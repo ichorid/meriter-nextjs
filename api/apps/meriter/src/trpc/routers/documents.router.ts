@@ -276,6 +276,27 @@ export const documentsRouter = router({
       }
     }),
 
+  syncStructureFromHtml: protectedProcedure
+    .input(
+      z
+        .object({
+          documentId: z.string().min(1),
+          html: z.string().max(200_000),
+        })
+        .merge(StructureConcurrencyInput),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ctx.documentHtmlSyncService.syncStructureFromHtml(ctx.user.id, {
+          documentId: input.documentId,
+          html: input.html,
+          expectedUpdatedAt: input.expectedUpdatedAt,
+        });
+      } catch (err) {
+        mapNestToTrpc(err);
+      }
+    }),
+
   /** §12.3 — volitional official text (lead / document author). */
   applyAdminOverride: protectedProcedure
     .input(

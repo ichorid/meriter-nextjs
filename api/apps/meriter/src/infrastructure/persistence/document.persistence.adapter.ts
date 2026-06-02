@@ -226,6 +226,40 @@ export class DocumentPersistenceAdapter implements DocumentPersistencePort {
     return docs.map((doc) => mapDocumentBlockVariantToRecord(doc as DocumentBlockVariantRecord));
   }
 
+  async findActiveVariantsByDocument(
+    documentId: string,
+  ): Promise<DocumentBlockVariantRecord[]> {
+    const docs = await this.variantModel
+      .find({
+        documentId,
+        deleted: false,
+        status: { $in: ['open', 'closed-winner'] },
+      })
+      .sort({ proposedAt: -1 })
+      .lean()
+      .exec();
+    return docs.map((doc) => mapDocumentBlockVariantToRecord(doc as DocumentBlockVariantRecord));
+  }
+
+  async findOpenVariantsByBlockIds(
+    documentId: string,
+    blockIds: string[],
+  ): Promise<DocumentBlockVariantRecord[]> {
+    if (blockIds.length === 0) {
+      return [];
+    }
+    const docs = await this.variantModel
+      .find({
+        documentId,
+        blockId: { $in: blockIds },
+        status: 'open',
+        deleted: false,
+      })
+      .lean()
+      .exec();
+    return docs.map((doc) => mapDocumentBlockVariantToRecord(doc as DocumentBlockVariantRecord));
+  }
+
   async findVariantsPendingResolution(
     documentId: string,
     blockId: string,
@@ -246,11 +280,20 @@ export class DocumentPersistenceAdapter implements DocumentPersistencePort {
     documentId: string,
     blockId: string,
   ): Promise<DocumentBlockVariantRecord | null> {
-    const doc = await this.variantModel
-      .findOne({ documentId, blockId, status: 'closed-winner', deleted: false })
+    const winners = await this.findClosedWinnerVariants(documentId, blockId);
+    return winners[0] ?? null;
+  }
+
+  async findClosedWinnerVariants(
+    documentId: string,
+    blockId: string,
+  ): Promise<DocumentBlockVariantRecord[]> {
+    const docs = await this.variantModel
+      .find({ documentId, blockId, status: 'closed-winner', deleted: false })
+      .sort({ rating: -1, proposedAt: 1 })
       .lean()
       .exec();
-    return doc ? mapDocumentBlockVariantToRecord(doc as DocumentBlockVariantRecord) : null;
+    return docs.map((doc) => mapDocumentBlockVariantToRecord(doc as DocumentBlockVariantRecord));
   }
 
   async findOpenWaveBlockPairs(): Promise<OpenWaveBlockPair[]> {

@@ -13,7 +13,11 @@ export const PROPOSE_DOCUMENT_VARIANT_PORT = Symbol(
 export type ProposeDocumentVariantInput = {
   documentId: string;
   blockId: string;
-  content: string;
+  /** Full-block HTML (legacy) or merged preview when range fields are set. */
+  content?: string;
+  rangeStart?: number;
+  rangeEnd?: number;
+  proposedText?: string;
   references?: DocumentVariantReferenceInput[];
 };
 

@@ -29,6 +29,73 @@ function mapNestToTrpc(err: unknown): never {
 }
 
 export const documentVariantsRouter = router({
+  listByDocument: protectedProcedure
+    .input(z.object({ documentId: z.string().min(1) }))
+    .query(async ({ ctx, input }) => {
+      const doc = await ctx.documentService.getById(input.documentId);
+      if (!doc || doc.deleted) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Document not found' });
+      }
+
+      const variants = await ctx.documentVariantService.listActiveByDocument(
+        input.documentId,
+      );
+      const blockIds = new Set<string>();
+      for (const sec of (doc.sections ?? []) as Array<{ blocks?: Array<{ id: string }> }>) {
+        for (const b of sec.blocks ?? []) {
+          blockIds.add(b.id);
+        }
+      }
+      const active = variants.filter((v) => blockIds.has(v.blockId));
+
+      const userIds = [...new Set(active.map((v) => v.proposedBy))];
+      const userById = await ctx.userService.getUsersByIdsForEnrichment(userIds);
+
+      const threads = new Map<
+        string,
+        {
+          blockId: string;
+          officialExcerpt: string;
+          waveOpen: boolean;
+          variants: typeof active;
+        }
+      >();
+
+      for (const variant of active) {
+        const block = ctx.documentService.findBlock(doc, variant.blockId);
+        const excerptPlain = block?.officialContent
+          ? block.officialContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+          : '';
+        const excerpt =
+          excerptPlain.length > 120 ? `${excerptPlain.slice(0, 120)}…` : excerptPlain;
+        const existing = threads.get(variant.blockId);
+        if (existing) {
+          existing.variants.push(variant);
+        } else {
+          threads.set(variant.blockId, {
+            blockId: variant.blockId,
+            officialExcerpt: excerpt,
+            waveOpen: ctx.documentService.isDocumentBlockVotingOpen(doc, variant.blockId),
+            variants: [variant],
+          });
+        }
+      }
+
+      return {
+        threads: [...threads.values()].map((thread) => ({
+          ...thread,
+          variants: thread.variants.map((variant) => {
+            const proposer = userById.get(variant.proposedBy);
+            return {
+              ...variant,
+              proposedByDisplayName:
+                proposer?.displayName ?? variant.proposedBy.slice(0, 8),
+            };
+          }),
+        })),
+      };
+    }),
+
   listByBlock: protectedProcedure
     .input(
       z.object({
@@ -210,12 +277,25 @@ export const documentVariantsRouter = router({
 
   propose: protectedProcedure
     .input(
-      z.object({
-        documentId: z.string().min(1),
-        blockId: z.string().min(1),
-        content: z.string().min(1).max(5000),
-        references: z.array(ReferenceSchema).max(10).optional(),
-      }),
+      z
+        .object({
+          documentId: z.string().min(1),
+          blockId: z.string().min(1),
+          content: z.string().max(5000).optional(),
+          rangeStart: z.number().int().min(0).optional(),
+          rangeEnd: z.number().int().min(0).optional(),
+          proposedText: z.string().max(5000).optional(),
+          references: z.array(ReferenceSchema).max(10).optional(),
+        })
+        .refine(
+          (v) =>
+            (v.content != null && v.content.length > 0) ||
+            (v.rangeStart != null &&
+              v.rangeEnd != null &&
+              v.proposedText != null &&
+              v.proposedText.length > 0),
+          { message: 'Provide content or rangeStart, rangeEnd, and proposedText' },
+        ),
     )
     .mutation(async ({ ctx, input }) => {
       try {
@@ -223,6 +303,9 @@ export const documentVariantsRouter = router({
           documentId: input.documentId,
           blockId: input.blockId,
           content: input.content,
+          rangeStart: input.rangeStart,
+          rangeEnd: input.rangeEnd,
+          proposedText: input.proposedText,
           references: input.references,
         });
       } catch (err) {
@@ -242,10 +325,17 @@ export const documentVariantsRouter = router({
     }),
 
   applyVotingWinner: protectedProcedure
-    .input(z.object({ variantId: z.string().min(1) }))
+    .input(
+      z.object({
+        variantId: z.string().min(1),
+        confirmStale: z.boolean().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       try {
-        await ctx.documentVariantService.applyVotingWinner(ctx.user.id, input.variantId);
+        await ctx.documentVariantService.applyVotingWinner(ctx.user.id, input.variantId, {
+          confirmStale: input.confirmStale,
+        });
         return { ok: true as const };
       } catch (err) {
         mapNestToTrpc(err);

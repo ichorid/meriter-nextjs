@@ -162,6 +162,7 @@ import { CommunityInviteService } from './domain/services/community-invite.servi
 import { DocumentService } from './domain/services/document.service';
 import { DocumentVariantService } from './domain/services/document-variant.service';
 import { DocumentStructureService } from './domain/services/document-structure.service';
+import { DocumentHtmlSyncService } from './domain/services/document-html-sync.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -276,6 +277,7 @@ import { EventBus } from './domain/events/event-bus';
     DocumentService,
     DocumentVariantService,
     DocumentStructureService,
+    DocumentHtmlSyncService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -344,6 +346,7 @@ import { EventBus } from './domain/events/event-bus';
     DocumentService,
     DocumentVariantService,
     DocumentStructureService,
+    DocumentHtmlSyncService,
 
     // Export vote factor services
     RoleHierarchyFactor,

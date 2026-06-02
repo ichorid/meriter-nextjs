@@ -30,6 +30,12 @@ import { NotificationService } from './notification.service';
 import { PermissionService } from './permission.service';
 import { MERITER_DOCUMENT_AUTO_APPLY_USER_ID } from '../common/constants/meriter-actors.constant';
 import { sanitizeDocumentHtml } from '../../common/utils/sanitize-document-html';
+import { blockHtmlToPlainText } from '../common/document-plain-text.util';
+import {
+  isStaleVariant,
+  mergeRangeIntoBlockHtml,
+  resolveVariantRangeBounds,
+} from '../common/document-range.util';
 import {
   type DocumentVariantReferenceInput,
 } from '../common/document-variant-references.util';
@@ -57,6 +63,11 @@ export class DocumentVariantService {
 
   async listByBlock(documentId: string, blockId: string): Promise<DocumentBlockVariantSchemaClass[]> {
     const variants = await this.documentPersistence.findVariantsByBlock(documentId, blockId);
+    return variants as DocumentBlockVariantSchemaClass[];
+  }
+
+  async listActiveByDocument(documentId: string): Promise<DocumentBlockVariantSchemaClass[]> {
+    const variants = await this.documentPersistence.findActiveVariantsByDocument(documentId);
     return variants as DocumentBlockVariantSchemaClass[];
   }
 
@@ -170,7 +181,11 @@ export class DocumentVariantService {
   }
 
   /** Apply voting winner (closed-winner) — document owner or community admin. */
-  async applyVotingWinner(actorUserId: string, variantId: string): Promise<void> {
+  async applyVotingWinner(
+    actorUserId: string,
+    variantId: string,
+    options?: { confirmStale?: boolean },
+  ): Promise<void> {
     const v = await this.documentService.getVariantById(variantId);
     if (!v) {
       throw new NotFoundException('Variant not found');
@@ -191,6 +206,17 @@ export class DocumentVariantService {
 
     if (doc.mode !== 'manual') {
       throw new BadRequestException('Manual apply is only for documents in manual mode');
+    }
+
+    const block = this.documentService.findBlock(doc, v.blockId);
+    if (
+      block &&
+      isStaleVariant(v.officialTextHashAtPropose, String(block.officialContent ?? '')) &&
+      !options?.confirmStale
+    ) {
+      throw new BadRequestException(
+        'Official text changed since this variant was proposed; confirm apply to continue',
+      );
     }
 
     await this.applyVariantToOfficial(actorUserId, v, doc, 'vote');
@@ -340,7 +366,36 @@ export class DocumentVariantService {
     v: DocumentBlockVariantSchemaClass,
     doc: MeriterDocumentSchemaClass,
     reason: 'vote' | 'admin',
+    options?: { skipStaleCheck?: boolean },
   ): Promise<void> {
+    const block = this.documentService.findBlock(doc, v.blockId);
+    if (!block) {
+      throw new NotFoundException('Block not found');
+    }
+    const officialHtml = String(block.officialContent ?? '');
+    if (
+      !options?.skipStaleCheck &&
+      isStaleVariant(v.officialTextHashAtPropose, officialHtml)
+    ) {
+      throw new BadRequestException(
+        'Official text changed since this variant was proposed; confirm apply to continue',
+      );
+    }
+
+    const bounds = resolveVariantRangeBounds(v, officialHtml);
+    const hasRange =
+      typeof v.rangeStart === 'number' &&
+      typeof v.rangeEnd === 'number' &&
+      v.proposedText != null;
+    const nextOfficial = hasRange
+      ? mergeRangeIntoBlockHtml(
+          officialHtml,
+          bounds.rangeStart,
+          bounds.rangeEnd,
+          v.proposedText ?? '',
+        )
+      : v.content;
+
     const now = new Date();
     const openVariantsBeforeApply = await this.documentPersistence.findOpenVariants(
       doc.id,
@@ -355,7 +410,7 @@ export class DocumentVariantService {
         ...(reason === 'vote' ? { variantId: v.id } : {}),
         previousContent,
       });
-      b.officialContent = v.content;
+      b.officialContent = nextOfficial;
       b.officialContentSetAt = now;
       b.officialContentSetBy = actorUserId;
       b.officialContentReason = reason;
@@ -382,6 +437,19 @@ export class DocumentVariantService {
     );
 
     await this.documentPersistence.markVariantApplied(v.id, now, actorUserId);
+
+    const updatedDoc = await this.documentService.getById(doc.id);
+    const updatedBlock = updatedDoc
+      ? this.documentService.findBlock(updatedDoc, v.blockId)
+      : null;
+    const updatedHtml = String(updatedBlock?.officialContent ?? '');
+    const plainLen = blockHtmlToPlainText(updatedHtml).length;
+    for (const open of openVariantsBeforeApply) {
+      const ob = resolveVariantRangeBounds(open, updatedHtml);
+      if (ob.rangeEnd > plainLen || ob.rangeStart >= plainLen) {
+        await this.documentPersistence.updateVariantStatus(open.id, 'withdrawn');
+      }
+    }
 
     await this.documentService.mirrorOfficialTextToCommunityIfApplicable(doc.id);
 
@@ -421,21 +489,52 @@ export class DocumentVariantService {
     if (!doc || doc.deleted || doc.mode !== 'auto') {
       return;
     }
-    const winner = await this.documentPersistence.findClosedWinnerVariant(documentId, blockId);
-    if (!winner || (winner.rating ?? 0) <= 0) {
+    const winners = await this.documentPersistence.findClosedWinnerVariants(
+      documentId,
+      blockId,
+    );
+    const rated = winners.filter((w) => (w.rating ?? 0) > 0);
+    if (rated.length === 0) {
       return;
     }
-    try {
-      await this.applyVariantToOfficial(
-        MERITER_DOCUMENT_AUTO_APPLY_USER_ID,
-        winner as DocumentBlockVariantSchemaClass,
-        doc,
-        'vote',
-      );
-    } catch (err) {
-      this.logger.warn(
-        `tryAutoApplyWinner ${documentId}/${blockId}: ${err instanceof Error ? err.message : String(err)}`,
-      );
+
+    const block = this.documentService.findBlock(doc, blockId);
+    const officialHtml = String(block?.officialContent ?? '');
+    const ordered = [...rated].sort((a, b) => {
+      const ba = resolveVariantRangeBounds(a, officialHtml);
+      const bb = resolveVariantRangeBounds(b, officialHtml);
+      return bb.rangeStart - ba.rangeStart;
+    });
+
+    for (const winner of ordered) {
+      const freshDoc = await this.documentService.getById(documentId);
+      if (!freshDoc) {
+        return;
+      }
+      const freshBlock = this.documentService.findBlock(freshDoc, blockId);
+      if (
+        isStaleVariant(
+          winner.officialTextHashAtPropose,
+          String(freshBlock?.officialContent ?? ''),
+        )
+      ) {
+        continue;
+      }
+      try {
+        await this.applyVariantToOfficial(
+          MERITER_DOCUMENT_AUTO_APPLY_USER_ID,
+          winner as DocumentBlockVariantSchemaClass,
+          freshDoc,
+          'vote',
+          { skipStaleCheck: true },
+        );
+      } catch (err) {
+        this.logger.warn(
+          `tryAutoApplyWinner ${documentId}/${blockId}/${winner.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
     }
   }
 

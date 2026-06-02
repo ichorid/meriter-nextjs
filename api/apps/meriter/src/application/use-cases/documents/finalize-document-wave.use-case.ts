@@ -7,6 +7,10 @@ import type { CommunityService } from '../../../domain/services/community.servic
 import type { DocumentService } from '../../../domain/services/document.service';
 import type { NotificationService } from '../../../domain/services/notification.service';
 import type { FinalizeDocumentWavePort } from '../../../domain/ports/finalize-document-wave.port';
+import {
+  rangesOverlap,
+  resolveVariantRangeBounds,
+} from '../../../domain/common/document-range.util';
 export type FinalizeDocumentWaveDeps = {
   documentService: DocumentService;
   documentPersistence: DocumentPersistencePort;
@@ -145,11 +149,12 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
       return;
     }
 
-    const top = topVariant;
-    const topRated = topVariantRating > 0;
+    const officialHtml = String(block?.officialContent ?? '');
+    const winners = pickNonOverlappingWinners(openVariants, officialHtml);
+    const winnerIds = new Set(winners.map((w) => w.id));
 
     for (const v of openVariants) {
-      const isWinner = topRated && v.id === top.id;
+      const isWinner = winnerIds.has(v.id);
       await this.deps.documentPersistence.updateVariantStatus(
         v.id,
         isWinner ? 'closed-winner' : 'closed-not-winner',
@@ -163,13 +168,15 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
 
     const community = await this.deps.communityService.getCommunity(docLean.communityId);
     if (community) {
+      const primaryWinner = winners[0];
       await notifyVariantsNotSelected(this.deps, {
         doc: docLean,
         community,
         blockId,
         variants: openVariants,
-        winnerVariantId: topRated ? top.id : undefined,
-        reason: topRated ? 'other_variant_won' : 'no_positive_winner',
+        winnerVariantId: primaryWinner?.id,
+        reason:
+          winners.length > 0 ? 'other_variant_won' : 'no_positive_winner',
       }).catch((err) => {
         this.logger.warn(
           `Failed to notify variant non-selection ${documentId}/${blockId}: ${
@@ -179,12 +186,16 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
       });
     }
 
-    if (topRated && docLean.mode !== 'auto') {
-      await notifyVariantWon(this.deps, top, docLean).catch((err) => {
-        this.logger.warn(
-          `Failed to notify variant winner ${top.id}: ${err instanceof Error ? err.message : String(err)}`,
-        );
-      });
+    if (docLean.mode !== 'auto') {
+      for (const winner of winners) {
+        await notifyVariantWon(this.deps, winner, docLean).catch((err) => {
+          this.logger.warn(
+            `Failed to notify variant winner ${winner.id}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        });
+      }
     }
 
     await this.deps.autoApplyWinner(documentId, blockId);
@@ -195,6 +206,37 @@ export function createFinalizeDocumentWaveUseCase(
   deps: FinalizeDocumentWaveDeps,
 ): FinalizeDocumentWaveUseCase {
   return new FinalizeDocumentWaveUseCase(deps);
+}
+
+function pickNonOverlappingWinners(
+  openVariants: DocumentBlockVariantSchemaClass[],
+  officialHtml: string,
+): DocumentBlockVariantSchemaClass[] {
+  const sorted = [...openVariants].sort((a, b) => {
+    if ((b.rating ?? 0) !== (a.rating ?? 0)) {
+      return (b.rating ?? 0) - (a.rating ?? 0);
+    }
+    return new Date(a.proposedAt).getTime() - new Date(b.proposedAt).getTime();
+  });
+
+  const winners: DocumentBlockVariantSchemaClass[] = [];
+  const winnerBounds: Array<{ start: number; end: number }> = [];
+
+  for (const variant of sorted) {
+    if ((variant.rating ?? 0) <= 0) {
+      continue;
+    }
+    const bounds = resolveVariantRangeBounds(variant, officialHtml);
+    const overlapsWinner = winnerBounds.some((w) =>
+      rangesOverlap(bounds.rangeStart, bounds.rangeEnd, w.start, w.end),
+    );
+    if (!overlapsWinner) {
+      winners.push(variant);
+      winnerBounds.push({ start: bounds.rangeStart, end: bounds.rangeEnd });
+    }
+  }
+
+  return winners;
 }
 
 function buildDocumentNotificationMetadata(

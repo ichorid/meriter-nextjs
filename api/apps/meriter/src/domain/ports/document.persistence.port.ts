@@ -119,6 +119,10 @@ export interface DocumentBlockVariantRecord {
   documentId: string;
   blockId: string;
   content: string;
+  rangeStart?: number;
+  rangeEnd?: number;
+  proposedText?: string;
+  officialTextHashAtPropose?: string;
   references: DocumentBlockVariantReference[];
   proposedBy: string;
   proposedAt: Date;
@@ -198,7 +202,16 @@ export interface DocumentPersistencePort {
     blockId: string,
   ): Promise<DocumentBlockVariantRecord[]>;
 
+  findActiveVariantsByDocument(
+    documentId: string,
+  ): Promise<DocumentBlockVariantRecord[]>;
+
   findOpenVariants(documentId: string, blockId: string): Promise<DocumentBlockVariantRecord[]>;
+
+  findOpenVariantsByBlockIds(
+    documentId: string,
+    blockIds: string[],
+  ): Promise<DocumentBlockVariantRecord[]>;
 
   findVariantsPendingResolution(
     documentId: string,
@@ -209,6 +222,11 @@ export interface DocumentPersistencePort {
     documentId: string,
     blockId: string,
   ): Promise<DocumentBlockVariantRecord | null>;
+
+  findClosedWinnerVariants(
+    documentId: string,
+    blockId: string,
+  ): Promise<DocumentBlockVariantRecord[]>;
 
   findOpenWaveBlockPairs(): Promise<OpenWaveBlockPair[]>;
 

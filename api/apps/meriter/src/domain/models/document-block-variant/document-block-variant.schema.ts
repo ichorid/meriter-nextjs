@@ -30,6 +30,22 @@ export class DocumentBlockVariantSchemaClass {
   @Prop({ required: true })
   content!: string;
 
+  /** Sub-block range start (UTF-16 plain text index in official block). */
+  @Prop()
+  rangeStart?: number;
+
+  /** Sub-block range end (exclusive). */
+  @Prop()
+  rangeEnd?: number;
+
+  /** Proposed replacement for the range (sanitized HTML). */
+  @Prop()
+  proposedText?: string;
+
+  /** Hash of official plain text at propose time (stale apply warning). */
+  @Prop()
+  officialTextHashAtPropose?: string;
+
   @Prop({ type: [ReferenceEmbeddedSchema], default: [] })
   references!: unknown[];
 

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Logger,
   NotFoundException,
@@ -27,6 +28,13 @@ import type { UserCommunityRoleService } from '../../../domain/services/user-com
 import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
 import { sanitizeDocumentHtml } from '../../../common/utils/sanitize-document-html';
+import { blockHtmlToPlainText } from '../../../domain/common/document-plain-text.util';
+import {
+  assertNoOverlapWithOpenRanges,
+  buildMergedBlockPreviewContent,
+  hashBlockOfficialAtPropose,
+  normalizeRangeBounds,
+} from '../../../domain/common/document-range.util';
 import type {
   ProposeDocumentVariantInput,
   ProposeDocumentVariantPort,
@@ -72,16 +80,6 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     userId: string,
     input: ProposeDocumentVariantInput,
   ): Promise<DocumentBlockVariantSchemaClass> {
-    const content = sanitizeDocumentHtml(input.content ?? '');
-    if (!content) {
-      throw new BadRequestException('Variant content is required');
-    }
-    if (content.length > MAX_VARIANT_CONTENT) {
-      throw new BadRequestException(
-        `Variant content must be at most ${MAX_VARIANT_CONTENT} characters`,
-      );
-    }
-
     let doc = await this.deps.documentService.getById(input.documentId);
     if (!doc || doc.deleted || doc.status !== 'active') {
       throw new NotFoundException('Document not found');
@@ -101,14 +99,68 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     }
 
     if (block.proposalsLocked === true) {
-      const canEditStructure = await this.deps.permissionService.canEditDocumentStructure(
-        userId,
+      throw new ForbiddenException('This block is locked; you cannot propose changes');
+    }
+
+    const officialHtml = String(block.officialContent ?? '');
+    const plainLen = blockHtmlToPlainText(officialHtml).length;
+    const hasRange =
+      input.rangeStart !== undefined &&
+      input.rangeEnd !== undefined &&
+      input.proposedText !== undefined;
+
+    let rangeStart: number | undefined;
+    let rangeEnd: number | undefined;
+    let proposedText: string | undefined;
+    let content: string;
+
+    if (hasRange) {
+      const bounds = normalizeRangeBounds(plainLen, input.rangeStart!, input.rangeEnd!);
+      rangeStart = bounds.rangeStart;
+      rangeEnd = bounds.rangeEnd;
+      proposedText = sanitizeDocumentHtml(input.proposedText ?? '');
+      if (!proposedText) {
+        throw new BadRequestException('Proposed text is required for a range variant');
+      }
+      const openOnBlock = await this.deps.documentPersistence.findOpenVariants(
         doc.id,
+        input.blockId,
       );
-      if (!canEditStructure) {
-        throw new ForbiddenException('This block is locked; you cannot propose changes');
+      try {
+        assertNoOverlapWithOpenRanges(
+          rangeStart,
+          rangeEnd,
+          openOnBlock,
+          officialHtml,
+        );
+      } catch (err) {
+        if (err instanceof Error && err.message === 'RANGE_OVERLAP') {
+          throw new ConflictException(
+            'This range overlaps an open proposal on the same block',
+          );
+        }
+        throw err;
+      }
+      content = buildMergedBlockPreviewContent(
+        officialHtml,
+        rangeStart,
+        rangeEnd,
+        proposedText,
+      );
+    } else {
+      content = sanitizeDocumentHtml(input.content ?? '');
+      if (!content) {
+        throw new BadRequestException('Variant content is required');
       }
     }
+
+    if (content.length > MAX_VARIANT_CONTENT) {
+      throw new BadRequestException(
+        `Variant content must be at most ${MAX_VARIANT_CONTENT} characters`,
+      );
+    }
+
+    const officialTextHashAtPropose = hashBlockOfficialAtPropose(officialHtml);
 
     await this.deps.finalizeExpiredWaveOnBlock(doc.id, input.blockId);
 
@@ -141,6 +193,14 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       documentId: doc.id,
       blockId: input.blockId,
       content,
+      ...(hasRange
+        ? {
+            rangeStart,
+            rangeEnd,
+            proposedText,
+            officialTextHashAtPropose,
+          }
+        : { officialTextHashAtPropose }),
       references: refs,
       proposedBy: userId,
       proposedAt: now,
