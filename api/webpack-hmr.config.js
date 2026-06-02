@@ -8,7 +8,7 @@ module.exports = function (options, webpack) {
     entry: ['webpack/hot/poll?100', options.entry],
     externals: [
       nodeExternals({
-        allowlist: ['webpack/hot/poll?100', '@meriter/shared-types'],
+        allowlist: ['webpack/hot/poll?100', /^@meriter\/shared-types/],
       }),
     ],
     resolve: {
