@@ -12,6 +12,7 @@
     "<rootDir>/apps/meriter/test/jest-e2e.setup.ts"
   ],
   "setupFilesAfterEnv": [
+    "<rootDir>/apps/meriter/test/jest-e2e.hooks.ts",
     "<rootDir>/jest.mongo-teardown.js"
   ],
   "globalTeardown": "<rootDir>/jest.global-teardown.js",
