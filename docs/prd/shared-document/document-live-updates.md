@@ -33,7 +33,7 @@ Users on an open document page see changes from others without manual refresh: n
 
 - TanStack Query invalidation on each event.
 - Toast when `actorUserId` ≠ current user (optional per event type).
-- Gdocs editor resets from server when `document.updatedAt` changes (existing revision guard).
+- Gdocs editor: when `document.updatedAt` changes **and** the user has unsaved local work, show a banner (keep mine / show server) instead of auto-discarding. Discarded drafts are archived to `localStorage` (up to 5 per document). No editor reset on `vote.cast` / `variant.proposed` invalidation alone.
 
 ## Out of scope (future)
 

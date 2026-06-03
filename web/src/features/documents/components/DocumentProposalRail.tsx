@@ -42,6 +42,12 @@ export function DocumentProposalRail({ sections, className }: DocumentProposalRa
   }, [focusedBlock, focus.votingDurationHours]);
 
   useEffect(() => {
+    if (!focus.focusedBlockId && threads.length > 0) {
+      focus.setFocusedBlockId(threads[0]!.blockId);
+    }
+  }, [focus, threads]);
+
+  useEffect(() => {
     if (!focus.focusedBlockId) {
       return;
     }
@@ -88,38 +94,40 @@ export function DocumentProposalRail({ sections, className }: DocumentProposalRa
           />
         ) : null}
 
-        {threads.map((thread) => {
-          const block = focus.getBlock(thread.blockId);
-          if (!block) {
-            return null;
-          }
-          const isActive = focus.focusedBlockId === thread.blockId;
-          return (
-            <button
-              key={thread.blockId}
-              type="button"
-              className={cn(
-                'w-full rounded-lg border px-3 py-2 text-left transition-colors',
-                isActive
-                  ? 'border-primary/50 bg-primary/10'
-                  : 'border-stitch-border bg-stitch-elevated/40 hover:bg-stitch-elevated',
-              )}
-              onClick={() => focus.setFocusedBlockId(thread.blockId)}
-            >
-              <p className="line-clamp-2 text-xs text-base-content/80">
-                {thread.officialExcerpt || tGdocs('emptyExcerpt')}
-              </p>
-              <p className="mt-1 text-[10px] text-base-content/50">
-                {thread.waveOpen ? tGdocs('waveOpen') : tGdocs('waveIdle')} ·{' '}
-                {thread.variants.length}
-              </p>
-            </button>
-          );
-        })}
+        {threads.length > 1
+          ? threads.map((thread) => {
+              const block = focus.getBlock(thread.blockId);
+              if (!block) {
+                return null;
+              }
+              const isActive = focus.focusedBlockId === thread.blockId;
+              return (
+                <button
+                  key={thread.blockId}
+                  type="button"
+                  className={cn(
+                    'w-full rounded-lg border px-3 py-2 text-left transition-colors',
+                    isActive
+                      ? 'border-primary/50 bg-primary/10'
+                      : 'border-stitch-border bg-stitch-elevated/40 hover:bg-stitch-elevated',
+                  )}
+                  onClick={() => focus.setFocusedBlockId(thread.blockId)}
+                >
+                  <p className="text-xs font-medium text-base-content/80">
+                    {tGdocs('railBlockChip', { count: thread.variants.length })}
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-base-content/50">
+                    {thread.waveOpen ? tGdocs('waveOpen') : tGdocs('waveIdle')}
+                  </p>
+                </button>
+              );
+            })
+          : null}
 
         {focusedBlock ? (
           <DocumentBlockProposalsPanel
             documentId={focus.documentId}
+            sections={sections}
             block={focusedBlock}
             docMode={focus.docMode}
             docAllowDownvotes={focus.docAllowDownvotes}
@@ -131,6 +139,7 @@ export function DocumentProposalRail({ sections, className }: DocumentProposalRa
             userId={focus.userId}
             addToast={focus.addToast}
             t={focus.t}
+            layout="compact"
           />
         ) : (
           <p className="px-2 text-center text-xs text-base-content/50">{tGdocs('selectBlock')}</p>

@@ -9,6 +9,19 @@ export function joinDocumentBlocksToHtml(sections: unknown): string {
     .join('');
 }
 
+/** Joined document HTML with one block replaced (variant preview in unified editor). */
+export function joinDocumentWithBlockOverride(
+  sections: unknown,
+  blockId: string,
+  blockHtml: string,
+): string {
+  const groups = groupBlocksBySection(sections);
+  return groups
+    .flatMap((g) => g.blocks)
+    .map((b) => (b.id === blockId ? blockHtml : (b.officialContent ?? '')))
+    .join('');
+}
+
 export function selectionRangeInBlock(
   blockRoot: HTMLElement,
   selection: Selection,

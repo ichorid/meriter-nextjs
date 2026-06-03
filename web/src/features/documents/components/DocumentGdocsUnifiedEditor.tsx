@@ -8,7 +8,7 @@ import {
   useState,
   type MutableRefObject,
 } from 'react';
-import { useTranslations } from 'next-intl';
+import { useLocale, useTranslations } from 'next-intl';
 import { Pin } from 'lucide-react';
 import { DocumentBlockEditor } from '@/features/documents/components/DocumentBlockEditor';
 import { getPrimaryDocumentBlock } from '@/features/documents/lib/document-primary-block';
@@ -21,6 +21,17 @@ import {
 import { selectionRangeInBlock } from '@/features/documents/lib/document-html-structure';
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
 import { resolveProposeMutationPayload } from '@/features/documents/lib/document-variant-propose-target';
+import { DocumentEditorDraftRecovery } from '@/features/documents/components/DocumentEditorDraftRecovery';
+import { DocumentProposeCommentDialog } from '@/features/documents/components/DocumentProposeCommentDialog';
+import { DocumentRemoteUpdateBanner } from '@/features/documents/components/DocumentRemoteUpdateBanner';
+import { DocumentVariantMainPreview } from '@/features/documents/components/DocumentVariantMainPreview';
+import {
+  archiveDocumentEditorDraft,
+  documentEditorHtmlEquals,
+  listArchivedDocumentEditorDrafts,
+  shouldArchiveDocumentEditorDraft,
+  type DocumentEditorDraftArchiveEntry,
+} from '@/features/documents/lib/document-editor-draft-archive';
 import {
   clearDocumentEditorDraft,
   documentEditorDraftKey,
@@ -67,6 +78,7 @@ export function DocumentGdocsUnifiedEditor({
 }: DocumentGdocsUnifiedEditorProps) {
   const t = useTranslations('pages.documents');
   const tGdocs = useTranslations('pages.documents.gdocs');
+  const locale = useLocale();
   const focus = useDocumentCanvasFocusRequired();
   const utils = trpc.useUtils();
 
@@ -78,15 +90,39 @@ export function DocumentGdocsUnifiedEditor({
   const expectedUpdatedAtRef = useRef(updatedAt);
   const loadedDocumentIdRef = useRef<string | null>(null);
   const serverRevisionRef = useRef<string>('');
+  const acknowledgedRemoteRevisionRef = useRef<string>('');
+  const [pendingRemoteBaseline, setPendingRemoteBaseline] = useState<string | null>(null);
+  const [archiveListRefreshKey, setArchiveListRefreshKey] = useState(0);
   const [editorHtml, setEditorHtml] = useState(initialHtml);
   const [editorContentKey, setEditorContentKey] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [persistMode, setPersistMode] = useState<GdocsPersistMode>('propose');
+  const [proposeCommentOpen, setProposeCommentOpen] = useState(false);
   const [textSelection, setTextSelection] = useState<{ start: number; end: number } | null>(
     null,
   );
   const editorSurfaceRef = useRef<HTMLDivElement>(null);
+
+  const serverBaselineHtml = pendingRemoteBaseline ?? initialHtml;
+
+  const serverRevisionLabel = useMemo(() => {
+    if (!updatedAt) {
+      return null;
+    }
+    const date = updatedAt instanceof Date ? updatedAt : new Date(updatedAt);
+    if (Number.isNaN(date.getTime())) {
+      return null;
+    }
+    try {
+      return new Intl.DateTimeFormat(locale, {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      }).format(date);
+    } catch {
+      return null;
+    }
+  }, [locale, updatedAt]);
 
   const effectivePersistMode: GdocsPersistMode = canManageDocument ? persistMode : 'propose';
 
@@ -98,6 +134,10 @@ export function DocumentGdocsUnifiedEditor({
     const ms = date.getTime();
     return Number.isNaN(ms) ? '' : date.toISOString();
   }, [updatedAt]);
+
+  const bumpArchiveList = useCallback(() => {
+    setArchiveListRefreshKey((k) => k + 1);
+  }, []);
 
   const applyServerBaseline = useCallback(
     (baseline: string) => {
@@ -111,6 +151,103 @@ export function DocumentGdocsUnifiedEditor({
     [onDirtyChange],
   );
 
+  const hasUnsavedLocalWork = useCallback(
+    (baseline: string) => {
+      if (isDirty) {
+        return true;
+      }
+      const draft = readDocumentEditorDraft(draftKey);
+      if (draft?.html.trim() && draft.html.trim() !== baseline.trim()) {
+        return true;
+      }
+      return htmlRef.current.trim() !== baseline.trim();
+    },
+    [draftKey, isDirty],
+  );
+
+  const dismissPendingRemoteUpdate = useCallback(() => {
+    setPendingRemoteBaseline(null);
+    if (serverRevisionKey) {
+      acknowledgedRemoteRevisionRef.current = serverRevisionKey;
+    }
+  }, [serverRevisionKey]);
+
+  const archiveSnapshotBeforeServerApply = useCallback(
+    (baseline: string, reason: 'remote_update' | 'user_choice') => {
+      const existing = listArchivedDocumentEditorDrafts(documentId, focus.userId);
+      const draft = readDocumentEditorDraft(draftKey);
+      const snapshot = draft ?? {
+        html: htmlRef.current,
+        serverUpdatedAt:
+          updatedAt instanceof Date
+            ? updatedAt.toISOString()
+            : typeof updatedAt === 'string'
+              ? updatedAt
+              : null,
+      };
+      if (!shouldArchiveDocumentEditorDraft(snapshot, baseline, existing)) {
+        return;
+      }
+      const entry = archiveDocumentEditorDraft(documentId, focus.userId, snapshot, reason);
+      if (entry) {
+        bumpArchiveList();
+      }
+    },
+    [bumpArchiveList, documentId, draftKey, focus.userId, updatedAt],
+  );
+
+  const acceptPendingRemoteBaseline = useCallback(() => {
+    if (!pendingRemoteBaseline) {
+      return;
+    }
+    archiveSnapshotBeforeServerApply(pendingRemoteBaseline, 'remote_update');
+    clearDocumentEditorDraft(draftKey);
+    applyServerBaseline(pendingRemoteBaseline);
+    setPendingRemoteBaseline(null);
+    acknowledgedRemoteRevisionRef.current = serverRevisionKey;
+  }, [
+    archiveSnapshotBeforeServerApply,
+    applyServerBaseline,
+    applyServerBaseline,
+    draftKey,
+    pendingRemoteBaseline,
+    serverRevisionKey,
+  ]);
+
+  const restoreArchivedDraft = useCallback(
+    (entry: DocumentEditorDraftArchiveEntry) => {
+      htmlRef.current = entry.html;
+      setEditorHtml(entry.html);
+      writeDocumentEditorDraft(draftKey, entry.html, updatedAt);
+      setDraftRestored(true);
+      setIsDirty(true);
+      onDirtyChange?.(true);
+      setPendingRemoteBaseline(null);
+    },
+    [draftKey, onDirtyChange, updatedAt],
+  );
+
+  const showServerFromVersionPicker = useCallback(() => {
+    const baseline = serverBaselineHtml;
+    const currentHtml = htmlRef.current;
+    if (documentEditorHtmlEquals(currentHtml, baseline)) {
+      setPendingRemoteBaseline(null);
+      return;
+    }
+
+    archiveSnapshotBeforeServerApply(baseline, 'user_choice');
+    clearDocumentEditorDraft(draftKey);
+    applyServerBaseline(baseline);
+    setPendingRemoteBaseline(null);
+    acknowledgedRemoteRevisionRef.current = serverRevisionKey;
+  }, [
+    applyServerBaseline,
+    archiveSnapshotBeforeServerApply,
+    draftKey,
+    serverBaselineHtml,
+    serverRevisionKey,
+  ]);
+
   useEffect(() => {
     onPersistModeChange?.(effectivePersistMode);
   }, [effectivePersistMode, onPersistModeChange]);
@@ -120,8 +257,8 @@ export function DocumentGdocsUnifiedEditor({
   }, [updatedAt]);
 
   /**
-   * Hydrate from server or session draft. Discard local draft when document.updatedAt
-   * changed (another user saved official text while this tab was open).
+   * Hydrate from server or session draft. Remote revision bumps show a banner when
+   * there is unsaved local work instead of overwriting the editor.
    */
   useEffect(() => {
     const baseline = initialHtml;
@@ -130,6 +267,8 @@ export function DocumentGdocsUnifiedEditor({
     if (isNewDocument) {
       loadedDocumentIdRef.current = documentId;
       serverRevisionRef.current = serverRevisionKey;
+      acknowledgedRemoteRevisionRef.current = '';
+      setPendingRemoteBaseline(null);
     }
 
     const remoteRevisionChanged =
@@ -140,16 +279,18 @@ export function DocumentGdocsUnifiedEditor({
 
     if (remoteRevisionChanged) {
       serverRevisionRef.current = serverRevisionKey;
-      const draft = readDocumentEditorDraft(draftKey);
-      const hadLocalWork =
-        isDirty ||
-        Boolean(draft?.html.trim() && draft.html.trim() !== baseline.trim());
+
+      if (
+        hasUnsavedLocalWork(baseline) &&
+        acknowledgedRemoteRevisionRef.current !== serverRevisionKey
+      ) {
+        setPendingRemoteBaseline(baseline);
+        return;
+      }
+
+      setPendingRemoteBaseline(null);
       clearDocumentEditorDraft(draftKey);
       applyServerBaseline(baseline);
-      setEditorContentKey((k) => k + 1);
-      if (hadLocalWork) {
-        focus.addToast(tGdocs('remoteDocumentUpdate'), 'info');
-      }
       return;
     }
 
@@ -179,23 +320,25 @@ export function DocumentGdocsUnifiedEditor({
 
     if (draft && draftStale) {
       const hadStaleDraft = draft.html.trim() !== baseline.trim();
-      clearDocumentEditorDraft(draftKey);
       if (hadStaleDraft) {
-        focus.addToast(tGdocs('remoteDocumentUpdate'), 'info');
+        archiveDocumentEditorDraft(documentId, focus.userId, draft, 'remote_update');
+        bumpArchiveList();
       }
+      clearDocumentEditorDraft(draftKey);
     }
 
     applyServerBaseline(baseline);
   }, [
     applyServerBaseline,
+    bumpArchiveList,
     documentId,
     draftKey,
-    focus,
+    focus.userId,
+    hasUnsavedLocalWork,
     initialHtml,
     isDirty,
     onDirtyChange,
     serverRevisionKey,
-    tGdocs,
     updatedAt,
   ]);
 
@@ -207,6 +350,7 @@ export function DocumentGdocsUnifiedEditor({
       htmlRef.current = serverHtml;
       setEditorHtml(serverHtml);
       setDraftRestored(false);
+      setPendingRemoteBaseline(null);
       clearDocumentEditorDraft(draftKey);
       setIsDirty(false);
       onDirtyChange?.(false);
@@ -221,6 +365,7 @@ export function DocumentGdocsUnifiedEditor({
     onSuccess: async () => {
       lastPersistedHtmlRef.current = htmlRef.current;
       setDraftRestored(false);
+      setPendingRemoteBaseline(null);
       clearDocumentEditorDraft(draftKey);
       setIsDirty(false);
       onDirtyChange?.(false);
@@ -254,6 +399,20 @@ export function DocumentGdocsUnifiedEditor({
   useEffect(() => {
     onSavingChange?.(isSaving);
   }, [isSaving, onSavingChange]);
+
+  const executePropose = useCallback(
+    (proposerComment?: string) => {
+      const trimmed = htmlRef.current.trim();
+      const payload = resolveProposeMutationPayload(sections, lastPersistedHtmlRef.current, trimmed);
+      proposeMutation.mutate({
+        documentId,
+        ...payload,
+        ...(proposerComment ? { proposerComment } : {}),
+      });
+      setProposeCommentOpen(false);
+    },
+    [documentId, proposeMutation, sections],
+  );
 
   const submitProposal = useCallback(() => {
     if (!primaryBlock?.id) {
@@ -304,12 +463,8 @@ export function DocumentGdocsUnifiedEditor({
       }
     }
 
-    const payload = resolveProposeMutationPayload(sections, lastPersistedHtmlRef.current, trimmed);
-    proposeMutation.mutate({
-      documentId,
-      ...payload,
-    });
-  }, [primaryBlock, canManageDocument, documentId, focus, proposeMutation, sections, t, tGdocs]);
+    setProposeCommentOpen(true);
+  }, [primaryBlock, canManageDocument, focus, sections, t, tGdocs]);
 
   const saveOfficial = useCallback(() => {
     if (htmlRef.current === lastPersistedHtmlRef.current) {
@@ -471,8 +626,27 @@ export function DocumentGdocsUnifiedEditor({
       ? tGdocs('leadEditorSave')
       : tGdocs('submitProposal');
 
+  if (focus.variantPreview) {
+    return (
+      <div className="space-y-3">
+        <DocumentVariantMainPreview
+          target={focus.variantPreview}
+          showDiff={focus.showVariantDiff}
+          onShowDiffChange={focus.setShowVariantDiff}
+          onClose={focus.clearVariantPreview}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
+      <DocumentProposeCommentDialog
+        open={proposeCommentOpen}
+        onOpenChange={setProposeCommentOpen}
+        onConfirm={executePropose}
+        isPending={proposeMutation.isPending}
+      />
       <div className="flex min-w-0 flex-nowrap items-center gap-1.5 rounded-xl border border-base-300/50 bg-base-200/40 px-2 py-2 sm:gap-2 sm:px-3 dark:bg-base-300/20">
         {canManageDocument ? (
           <>
@@ -553,6 +727,25 @@ export function DocumentGdocsUnifiedEditor({
       {draftRestored ? (
         <p className="text-xs text-primary/80">{tGdocs('draftRestoredHint')}</p>
       ) : null}
+
+      {pendingRemoteBaseline ? (
+        <DocumentRemoteUpdateBanner
+          onKeepMine={dismissPendingRemoteUpdate}
+          onShowServer={acceptPendingRemoteBaseline}
+        />
+      ) : null}
+
+      <DocumentEditorDraftRecovery
+        documentId={documentId}
+        userId={focus.userId}
+        refreshKey={archiveListRefreshKey}
+        serverBaselineHtml={serverBaselineHtml}
+        editorHtml={editorHtml}
+        serverRevisionLabel={serverRevisionLabel}
+        onShowServer={showServerFromVersionPicker}
+        onRestore={restoreArchivedDraft}
+        onListChange={bumpArchiveList}
+      />
 
       <div ref={editorSurfaceRef} className="gdocs-editor-surface">
         <DocumentBlockEditor

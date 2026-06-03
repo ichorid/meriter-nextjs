@@ -8,10 +8,13 @@ import type { Community } from '@meriter/shared-types';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
+import { DocumentProposalVariantCard } from '@/features/documents/components/DocumentProposalVariantCard';
 import { DocumentVariantSuggestion } from '@/features/documents/components/DocumentVariantSuggestion';
+import type { DocumentVariantPreviewTarget } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { DocumentVariantVoteBreakdown } from '@/features/documents/components/DocumentVariantVoteBreakdown';
 import { DocumentRichContent } from '@/features/documents/components/DocumentRichContent';
 import { openDocumentOfficialVoting } from '@/features/documents/lib/document-official-voting';
+import { openDocumentVariantVoting } from '@/features/documents/lib/document-variant-voting';
 import { buildOfficialBlockVoteTargetId } from '@/features/documents/lib/document-official-vote';
 import {
   filterActiveProposalVariants,
@@ -26,10 +29,14 @@ import {
   type DocBlock,
   type DocTranslate,
 } from '@/features/documents/lib/document-canvas-shared';
+import { buildDocumentVariantPreviewPair } from '@/features/documents/lib/document-variant-document-preview';
+import { joinDocumentBlocksToHtml } from '@/features/documents/lib/document-html-structure';
 import { cn } from '@/lib/utils';
 
 export interface DocumentBlockProposalsPanelProps {
   documentId: string;
+  /** When set, main-canvas preview uses full joined document (unified editor scope). */
+  sections?: unknown;
   block: DocBlock;
   docMode: 'manual' | 'auto';
   docAllowDownvotes: boolean;
@@ -41,10 +48,13 @@ export interface DocumentBlockProposalsPanelProps {
   userId: string;
   addToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
   t: DocTranslate;
+  /** `compact` = metadata-only rail cards; preview opens in main canvas. */
+  layout?: 'full' | 'compact';
 }
 
 export function DocumentBlockProposalsPanel({
   documentId,
+  sections,
   block,
   docMode,
   docAllowDownvotes,
@@ -55,7 +65,9 @@ export function DocumentBlockProposalsPanel({
   userId,
   addToast,
   t,
+  layout = 'full',
 }: DocumentBlockProposalsPanelProps) {
+  const isCompact = layout === 'compact';
   const tCanvas = useTranslations('pages.documents.canvas');
   const tGdocs = useTranslations('pages.documents.gdocs');
   const focus = useDocumentCanvasFocus();
@@ -97,6 +109,50 @@ export function DocumentBlockProposalsPanel({
 
   const reasonKey = officialReasonLabelKey(block.officialContentReason);
   const communityId = community?.id ?? '';
+  const blockOfficialHtml = block.officialContent ?? '';
+  const useDocumentScope = isCompact && sections != null;
+
+  const buildVariantPreview = (
+    v: (typeof activeVariants)[number] & { proposedByDisplayName?: string },
+  ): DocumentVariantPreviewTarget => {
+    const variantInput = {
+      content: v.content,
+      rangeStart: v.rangeStart,
+      rangeEnd: v.rangeEnd,
+      proposedText: v.proposedText,
+    };
+    const { officialHtml, variantHtml } = useDocumentScope
+      ? buildDocumentVariantPreviewPair(sections, block.id, blockOfficialHtml, variantInput)
+      : {
+          officialHtml: blockOfficialHtml,
+          variantHtml: v.content,
+        };
+    return {
+      kind: 'variant',
+      variantId: v.id,
+      blockId: block.id,
+      blockType: useDocumentScope ? undefined : block.blockType,
+      officialHtml,
+      variantHtml,
+      proposedByDisplayName:
+        (v as { proposedByDisplayName?: string }).proposedByDisplayName ?? v.proposedBy,
+      proposedAt: v.proposedAt,
+      proposerComment: (v as { proposerComment?: string | null }).proposerComment ?? null,
+      rangeStart: v.rangeStart,
+      rangeEnd: v.rangeEnd,
+      proposedText: v.proposedText,
+    };
+  };
+
+  const officialPreviewTarget: DocumentVariantPreviewTarget = {
+    kind: 'official',
+    blockId: block.id,
+    blockType: useDocumentScope ? undefined : block.blockType,
+    officialHtml: useDocumentScope ? joinDocumentBlocksToHtml(sections) : blockOfficialHtml,
+  };
+
+  const isOfficialPreviewActive =
+    focus?.variantPreview?.kind === 'official' && focus.variantPreview.blockId === block.id;
 
   const manualPickAvailable =
     docMode === 'manual' &&
@@ -165,6 +221,14 @@ export function DocumentBlockProposalsPanel({
     onError: (err) => addToast(err.message, 'error'),
   });
 
+  const withdrawMutation = trpc.documentVariants.withdraw.useMutation({
+    onSuccess: async () => {
+      await invalidateBlock();
+      await utils.documentVariants.listByDocument.invalidate({ documentId });
+    },
+    onError: (err) => addToast(err.message, 'error'),
+  });
+
   const openOfficialVote = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!communityId) return;
@@ -224,155 +288,282 @@ export function DocumentBlockProposalsPanel({
             'max-h-[min(32rem,70vh)] overflow-y-auto overscroll-contain pr-1',
         )}
       >
-        <li className="rounded-xl border border-primary/25 bg-base-100/40 p-3">
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-            <Badge variant="secondary" className="rounded-md px-1.5 py-0 text-[10px] font-normal">
-              {tCanvas('originalVariant')}
-            </Badge>
-            {reasonKey ? (
-              <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px] font-normal">
-                {t(reasonKey)}
-              </Badge>
-            ) : null}
-            <span className="text-base-content/55">{t('rating', { rating: officialRating })}</span>
-          </div>
-          {(block.officialContent ?? '').trim() ? (
-            <DocumentRichContent
-              html={block.officialContent ?? ''}
-              blockType={block.blockType}
-              className="text-sm leading-relaxed text-base-content/90"
-            />
-          ) : (
-            <p className="text-sm italic text-base-content/45">{t('noOfficialYet')}</p>
-          )}
-          {waveActive ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="mt-3 h-8 rounded-lg text-xs"
-              onClick={openOfficialVote}
-            >
-              {tCanvas('sheetVoteOfficial')}
-            </Button>
-          ) : null}
-          {manualPickAvailable ? (
-            <Button
-              type="button"
-              size="sm"
-              className="mt-3 h-8 w-full rounded-lg text-xs"
-              disabled={applyOfficialWinnerMutation.isPending}
-              onClick={(e) => {
-                e.stopPropagation();
-                applyOfficialWinnerMutation.mutate({ documentId, blockId: block.id });
-              }}
-            >
-              {t('applyWinner')}
-            </Button>
-          ) : null}
-          <DocumentVariantVoteBreakdown
-            votes={votesByTarget.get(officialTargetId) ?? []}
-            expanded={votesExpandedFor === officialTargetId}
-            onToggle={() =>
-              setVotesExpandedFor((current) =>
-                current === officialTargetId ? null : officialTargetId,
-              )
+        {isCompact ? (
+          <DocumentProposalVariantCard
+            variantId={officialTargetId}
+            status="open"
+            rating={officialRating}
+            proposedByDisplayName={tCanvas('originalVariant')}
+            isActive={isOfficialPreviewActive}
+            onSelect={() => focus?.setVariantPreview(officialPreviewTarget)}
+            trailing={
+              <>
+                {reasonKey ? (
+                  <Badge variant="outline" className="w-fit rounded-md px-1.5 py-0 text-[10px] font-normal">
+                    {t(reasonKey)}
+                  </Badge>
+                ) : null}
+                {waveActive ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 rounded-lg text-xs"
+                    onClick={openOfficialVote}
+                  >
+                    {tCanvas('sheetVoteOfficial')}
+                  </Button>
+                ) : null}
+                {manualPickAvailable ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 w-full rounded-lg text-xs"
+                    disabled={applyOfficialWinnerMutation.isPending}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      applyOfficialWinnerMutation.mutate({ documentId, blockId: block.id });
+                    }}
+                  >
+                    {t('applyWinner')}
+                  </Button>
+                ) : null}
+                <DocumentVariantVoteBreakdown
+                  votes={votesByTarget.get(officialTargetId) ?? []}
+                  expanded={votesExpandedFor === officialTargetId}
+                  onToggle={() =>
+                    setVotesExpandedFor((current) =>
+                      current === officialTargetId ? null : officialTargetId,
+                    )
+                  }
+                />
+              </>
             }
           />
-        </li>
-
-        {displayedVariants.map((v) => (
-          <DocumentVariantSuggestion
-            key={v.id}
-            officialHtml={block.officialContent ?? ''}
-            prevBlockHtml={adjacent.prev?.officialContent}
-            nextBlockHtml={adjacent.next?.officialContent}
-            rangeStart={v.rangeStart}
-            rangeEnd={v.rangeEnd}
-            proposedText={v.proposedText}
-            variant={{
-              id: v.id,
-              documentId: v.documentId,
-              blockId: v.blockId,
-              content: v.content,
-              proposedBy: v.proposedBy,
-              status: v.status,
-              rating: v.rating ?? 0,
-              references: parseVariantReferencesFromApi(v.references),
-            }}
-            documentId={documentId}
-            blockId={block.id}
-            docMode={docMode}
-            docAllowDownvotes={docAllowDownvotes}
-            canManageDocument={canManageDocument}
-            community={community}
-            userId={userId}
-            addToast={addToast}
-            t={t}
-            blockType={block.blockType}
-            voteBreakdown={
-              <DocumentVariantVoteBreakdown
-                votes={votesByTarget.get(v.id) ?? []}
-                expanded={votesExpandedFor === v.id}
-                onToggle={() =>
-                  setVotesExpandedFor((current) => (current === v.id ? null : v.id))
-                }
+        ) : (
+          <li className="rounded-xl border border-primary/25 bg-base-100/40 p-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+              <Badge variant="secondary" className="rounded-md px-1.5 py-0 text-[10px] font-normal">
+                {tCanvas('originalVariant')}
+              </Badge>
+              {reasonKey ? (
+                <Badge variant="outline" className="rounded-md px-1.5 py-0 text-[10px] font-normal">
+                  {t(reasonKey)}
+                </Badge>
+              ) : null}
+              <span className="text-base-content/55">{t('rating', { rating: officialRating })}</span>
+            </div>
+            {(block.officialContent ?? '').trim() ? (
+              <DocumentRichContent
+                html={block.officialContent ?? ''}
+                blockType={block.blockType}
+                className="text-sm leading-relaxed text-base-content/90"
               />
-            }
-            adminActions={
-              canManageDocument ? (
-                <div className="mt-2 flex flex-col gap-1.5">
-                  {docMode === 'manual' &&
-                  v.status === 'closed-winner' &&
-                  (v.rating ?? 0) > 0 ? (
+            ) : (
+              <p className="text-sm italic text-base-content/45">{t('noOfficialYet')}</p>
+            )}
+            {waveActive ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="mt-3 h-8 rounded-lg text-xs"
+                onClick={openOfficialVote}
+              >
+                {tCanvas('sheetVoteOfficial')}
+              </Button>
+            ) : null}
+            {manualPickAvailable ? (
+              <Button
+                type="button"
+                size="sm"
+                className="mt-3 h-8 w-full rounded-lg text-xs"
+                disabled={applyOfficialWinnerMutation.isPending}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  applyOfficialWinnerMutation.mutate({ documentId, blockId: block.id });
+                }}
+              >
+                {t('applyWinner')}
+              </Button>
+            ) : null}
+            <DocumentVariantVoteBreakdown
+              votes={votesByTarget.get(officialTargetId) ?? []}
+              expanded={votesExpandedFor === officialTargetId}
+              onToggle={() =>
+                setVotesExpandedFor((current) =>
+                  current === officialTargetId ? null : officialTargetId,
+                )
+              }
+            />
+          </li>
+        )}
+
+        {displayedVariants.map((v) => {
+          const variantRow = v as typeof v & {
+            proposedByDisplayName?: string;
+            proposerComment?: string | null;
+          };
+          const isVariantActive =
+            focus?.variantPreview?.kind === 'variant' &&
+            focus.variantPreview.variantId === v.id;
+
+          const voteBreakdown = (
+            <DocumentVariantVoteBreakdown
+              votes={votesByTarget.get(v.id) ?? []}
+              expanded={votesExpandedFor === v.id}
+              onToggle={() =>
+                setVotesExpandedFor((current) => (current === v.id ? null : v.id))
+              }
+            />
+          );
+
+          const adminActions =
+            canManageDocument ? (
+              <>
+                {docMode === 'manual' && v.status === 'closed-winner' && (v.rating ?? 0) > 0 ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 w-full rounded-lg text-xs"
+                    disabled={applyWinnerMutation.isPending}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      requestApplyWinner(v.id);
+                    }}
+                  >
+                    {t('applyWinner')}
+                  </Button>
+                ) : null}
+                {v.status === 'open' ? (
+                  <>
                     <Button
                       type="button"
                       size="sm"
-                      className="h-7 w-full rounded-lg text-xs"
-                      disabled={applyWinnerMutation.isPending}
+                      variant="outline"
+                      className="h-7 rounded-lg text-xs"
+                      disabled={applyOpenMutation.isPending}
                       onClick={(e) => {
                         e.stopPropagation();
-                        requestApplyWinner(v.id);
+                        applyOpenMutation.mutate({ variantId: v.id });
                       }}
                     >
-                      {t('applyWinner')}
+                      {t('applyOpenAsAdmin')}
                     </Button>
-                  ) : null}
-                  {v.status === 'open' ? (
-                    <>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 rounded-lg text-xs text-error"
+                      disabled={deleteVariantMutation.isPending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteVariantMutation.mutate({ variantId: v.id });
+                      }}
+                    >
+                      {t('deleteVariant')}
+                    </Button>
+                  </>
+                ) : null}
+              </>
+            ) : null;
+
+          if (isCompact) {
+            const isOpen = v.status === 'open';
+            const isOwnOpen = isOpen && v.proposedBy === userId;
+            return (
+              <DocumentProposalVariantCard
+                key={v.id}
+                variantId={v.id}
+                status={v.status}
+                rating={v.rating ?? 0}
+                proposedByDisplayName={
+                  variantRow.proposedByDisplayName ?? v.proposedBy.slice(0, 8)
+                }
+                proposedAt={v.proposedAt}
+                proposerComment={variantRow.proposerComment}
+                isActive={Boolean(isVariantActive)}
+                onSelect={() => focus?.setVariantPreview(buildVariantPreview(variantRow))}
+                trailing={
+                  <>
+                    {isOpen ? (
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-7 rounded-lg text-xs"
-                        disabled={applyOpenMutation.isPending}
+                        className="h-8 rounded-lg text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          applyOpenMutation.mutate({ variantId: v.id });
+                          if (!communityId) return;
+                          focus?.setFocusedBlockId(block.id);
+                          openDocumentVariantVoting({
+                            variantId: v.id,
+                            communityId,
+                            proposedBy: v.proposedBy,
+                            userId,
+                            docAllowDownvotes,
+                            community,
+                          });
                         }}
                       >
-                        {t('applyOpenAsAdmin')}
+                        {tCanvas('sheetVote')}
                       </Button>
-                      <Button
+                    ) : null}
+                    {isOwnOpen ? (
+                      <button
                         type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 rounded-lg text-xs text-error"
-                        disabled={deleteVariantMutation.isPending}
+                        className="text-left text-[11px] text-base-content/50 underline-offset-2 hover:text-error hover:underline disabled:opacity-50"
+                        disabled={withdrawMutation.isPending}
                         onClick={(e) => {
                           e.stopPropagation();
-                          deleteVariantMutation.mutate({ variantId: v.id });
+                          withdrawMutation.mutate({ variantId: v.id });
                         }}
                       >
-                        {t('deleteVariant')}
-                      </Button>
-                    </>
-                  ) : null}
-                </div>
-              ) : null
-            }
-          />
-        ))}
+                        {t('withdraw')}
+                      </button>
+                    ) : null}
+                    {voteBreakdown}
+                    {adminActions}
+                  </>
+                }
+              />
+            );
+          }
+
+          return (
+            <DocumentVariantSuggestion
+              key={v.id}
+              officialHtml={block.officialContent ?? ''}
+              prevBlockHtml={adjacent.prev?.officialContent}
+              nextBlockHtml={adjacent.next?.officialContent}
+              rangeStart={v.rangeStart}
+              rangeEnd={v.rangeEnd}
+              proposedText={v.proposedText}
+              variant={{
+                id: v.id,
+                documentId: v.documentId,
+                blockId: v.blockId,
+                content: v.content,
+                proposedBy: v.proposedBy,
+                status: v.status,
+                rating: v.rating ?? 0,
+                references: parseVariantReferencesFromApi(v.references),
+              }}
+              documentId={documentId}
+              blockId={block.id}
+              docMode={docMode}
+              docAllowDownvotes={docAllowDownvotes}
+              canManageDocument={canManageDocument}
+              community={community}
+              userId={userId}
+              addToast={addToast}
+              t={t}
+              blockType={block.blockType}
+              voteBreakdown={voteBreakdown}
+              adminActions={adminActions ? <div className="mt-2 flex flex-col gap-1.5">{adminActions}</div> : null}
+            />
+          );
+        })}
       </ul>
 
       {hiddenVariantCount > 0 ? (

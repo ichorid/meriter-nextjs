@@ -24,6 +24,27 @@ export type DocumentAdminDialog =
   | { kind: 'adminOverride'; blockId: string }
   | { kind: 'closeVoting'; blockId: string };
 
+export type DocumentVariantPreviewTarget = {
+  blockId: string;
+  /** Omitted when preview uses joined document HTML (unified editor). */
+  blockType?: string;
+  /** Official baseline for diff; joined document HTML in gdocs compact rail. */
+  officialHtml: string;
+  proposedByDisplayName?: string;
+  proposedAt?: string | Date;
+  proposerComment?: string | null;
+} & (
+  | { kind: 'official' }
+  | {
+      kind: 'variant';
+      variantId: string;
+      variantHtml: string;
+      rangeStart?: number;
+      rangeEnd?: number;
+      proposedText?: string;
+    }
+);
+
 export type DocumentSelectionRange = {
   blockId: string;
   rangeStart: number;
@@ -51,6 +72,11 @@ export interface DocumentCanvasFocusContextValue {
   setFocusedBlockId: (blockId: string | null) => void;
   focusedVariantId: string | null;
   setFocusedVariantId: (variantId: string | null) => void;
+  variantPreview: DocumentVariantPreviewTarget | null;
+  showVariantDiff: boolean;
+  setShowVariantDiff: (value: boolean) => void;
+  setVariantPreview: (target: DocumentVariantPreviewTarget | null) => void;
+  clearVariantPreview: () => void;
   selectedRange: DocumentSelectionRange | null;
   setSelectedRange: (range: DocumentSelectionRange | null) => void;
   getBlock: (blockId: string) => DocBlock | null;
@@ -117,11 +143,32 @@ export function DocumentCanvasFocusProvider({
 }: DocumentCanvasFocusProviderProps) {
   const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const [focusedVariantId, setFocusedVariantId] = useState<string | null>(null);
+  const [variantPreview, setVariantPreviewState] = useState<DocumentVariantPreviewTarget | null>(
+    null,
+  );
+  const [showVariantDiff, setShowVariantDiff] = useState(true);
   const [selectedRange, setSelectedRange] = useState<DocumentSelectionRange | null>(null);
+
+  const clearVariantPreview = useCallback(() => {
+    setVariantPreviewState(null);
+    setFocusedVariantId(null);
+    setShowVariantDiff(true);
+  }, []);
+
+  const setVariantPreview = useCallback((target: DocumentVariantPreviewTarget | null) => {
+    setVariantPreviewState(target);
+    setFocusedVariantId(target?.kind === 'variant' ? target.variantId : null);
+    if (target) {
+      setFocusedBlockId(target.blockId);
+      setShowVariantDiff(true);
+    }
+    setSelectedRange(null);
+  }, []);
 
   const setFocusedBlockIdWrapped = useCallback((blockId: string | null) => {
     setFocusedBlockId(blockId);
     setFocusedVariantId(null);
+    setVariantPreviewState(null);
     setSelectedRange(null);
   }, []);
   const [mobileSheet, setMobileSheet] = useState<DocumentMobileSheet>({ kind: 'closed' });
@@ -204,6 +251,11 @@ export function DocumentCanvasFocusProvider({
       setFocusedBlockId: setFocusedBlockIdWrapped,
       focusedVariantId,
       setFocusedVariantId,
+      variantPreview,
+      showVariantDiff,
+      setShowVariantDiff,
+      setVariantPreview,
+      clearVariantPreview,
       selectedRange,
       setSelectedRange,
       getBlock,
@@ -233,6 +285,11 @@ export function DocumentCanvasFocusProvider({
       setFocusedBlockIdWrapped,
       focusedVariantId,
       setFocusedVariantId,
+      variantPreview,
+      showVariantDiff,
+      setShowVariantDiff,
+      setVariantPreview,
+      clearVariantPreview,
       selectedRange,
       setSelectedRange,
       getBlock,

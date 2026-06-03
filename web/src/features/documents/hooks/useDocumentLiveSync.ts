@@ -36,13 +36,30 @@ export function useDocumentLiveSync({
 
   const invalidateForEvent = useCallback(
     (event: DocumentLiveEvent) => {
-      void utils.documents.getById.invalidate({ id: documentId });
-      void utils.documentVariants.listByDocument.invalidate({ documentId });
-      if (event.blockId) {
-        void utils.documentVariants.listByBlock.invalidate({
-          documentId,
-          blockId: event.blockId,
-        });
+      const invalidateVariants = () => {
+        void utils.documentVariants.listByDocument.invalidate({ documentId });
+        if (event.blockId) {
+          void utils.documentVariants.listByBlock.invalidate({
+            documentId,
+            blockId: event.blockId,
+          });
+        }
+      };
+
+      switch (event.type) {
+        case 'variant.proposed':
+        case 'variant.withdrawn':
+        case 'vote.cast':
+          invalidateVariants();
+          return;
+        case 'block.locks_changed':
+          void utils.documents.getById.invalidate({ id: documentId });
+          return;
+        case 'document.updated':
+        case 'variant.applied':
+        case 'wave.closed':
+          void utils.documents.getById.invalidate({ id: documentId });
+          invalidateVariants();
       }
     },
     [documentId, utils.documentVariants.listByBlock, utils.documentVariants.listByDocument, utils.documents.getById],

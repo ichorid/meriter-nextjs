@@ -6,6 +6,7 @@ import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
 import { canUseWalletForVoting } from '@/components/organisms/VotingPopup/voting-utils';
 import { DocumentBlockEditor } from '@/features/documents/components/DocumentBlockEditor';
+import { DocumentProposeCommentDialog } from '@/features/documents/components/DocumentProposeCommentDialog';
 import { DocumentVariantReferencesEditor } from '@/features/documents/components/DocumentVariantReferencesEditor';
 import { normalizeOfficialContentForDisplay } from '@/features/documents/lib/block-content-format';
 import type { MeriterBlockType } from '@/features/documents/types/document-block';
@@ -60,6 +61,7 @@ export function DocumentProposeComposer({
   const proposalBodyRef = useRef(normalizedInitial);
   const [referenceDrafts, setReferenceDrafts] = useState<DocumentVariantReferenceDraft[]>([]);
   const [resetKey, setResetKey] = useState(0);
+  const [proposeCommentOpen, setProposeCommentOpen] = useState(false);
 
   const {
     documentId,
@@ -86,6 +88,33 @@ export function DocumentProposeComposer({
   const canAfford = useMemo(
     () => canAffordVariantProposal(variantCost, quotaRemaining, globalWalletBalance, community),
     [variantCost, quotaRemaining, globalWalletBalance, community],
+  );
+
+  const executePropose = useCallback(
+    (proposerComment?: string) => {
+      const trimmed = proposalBodyRef.current.trim();
+      const refs = referencesForPropose(referenceDrafts);
+      const isRange =
+        rangeStart !== undefined && rangeEnd !== undefined && rangeEnd > rangeStart;
+      proposeMutation.mutate({
+        documentId,
+        blockId,
+        ...(isRange
+          ? { rangeStart, rangeEnd, proposedText: trimmed }
+          : { content: trimmed }),
+        ...(refs.length > 0 ? { references: refs } : {}),
+        ...(proposerComment ? { proposerComment } : {}),
+      });
+      setProposeCommentOpen(false);
+    },
+    [
+      blockId,
+      documentId,
+      proposeMutation,
+      rangeEnd,
+      rangeStart,
+      referenceDrafts,
+    ],
   );
 
   const submit = useCallback(() => {
@@ -120,17 +149,7 @@ export function DocumentProposeComposer({
         return;
       }
     }
-    const refs = referencesForPropose(referenceDrafts);
-    const isRange =
-      rangeStart !== undefined && rangeEnd !== undefined && rangeEnd > rangeStart;
-    proposeMutation.mutate({
-      documentId,
-      blockId,
-      ...(isRange
-        ? { rangeStart, rangeEnd, proposedText: trimmed }
-        : { content: trimmed }),
-      ...(refs.length > 0 ? { references: refs } : {}),
-    });
+    setProposeCommentOpen(true);
   }, [
     blockId,
     documentId,
@@ -166,7 +185,14 @@ export function DocumentProposeComposer({
       : tCanvas('proposeSubmitFree');
 
   return (
-    <div className="overflow-hidden rounded-xl border border-primary/25 bg-base-300/[0.06] ring-1 ring-primary/10">
+    <>
+      <DocumentProposeCommentDialog
+        open={proposeCommentOpen}
+        onOpenChange={setProposeCommentOpen}
+        onConfirm={executePropose}
+        isPending={proposeMutation.isPending}
+      />
+      <div className="overflow-hidden rounded-xl border border-primary/25 bg-base-300/[0.06] ring-1 ring-primary/10">
       <div className="space-y-1 border-b border-base-300/30 bg-base-300/[0.08] px-3 py-2.5">
         {showPanelHeader ? (
           <p className="text-xs font-semibold tracking-tight text-base-content/85">
@@ -216,5 +242,6 @@ export function DocumentProposeComposer({
         </div>
       </div>
     </div>
+    </>
   );
 }

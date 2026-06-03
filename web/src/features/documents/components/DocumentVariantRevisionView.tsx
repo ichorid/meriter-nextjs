@@ -49,6 +49,11 @@ export interface DocumentVariantRevisionViewProps {
   className?: string;
   /** When set, default full-body preview is omitted (e.g. contextual preview shown above). */
   suppressDefaultPreview?: boolean;
+  /** Controlled diff mode; when omitted, internal toggle is used. */
+  compareMode?: boolean;
+  onCompareModeChange?: (value: boolean) => void;
+  /** Hide inline compare toggle (parent provides toolbar control). */
+  hideCompareToggle?: boolean;
 }
 
 export function DocumentVariantRevisionView({
@@ -58,10 +63,15 @@ export function DocumentVariantRevisionView({
   contentClassName,
   className,
   suppressDefaultPreview = false,
+  compareMode: compareModeProp,
+  onCompareModeChange,
+  hideCompareToggle = false,
 }: DocumentVariantRevisionViewProps) {
   const tCanvas = useTranslations('pages.documents.canvas');
   const canCompare = hasOfficialText(officialHtml) && variantDiffersFromOfficial(officialHtml, variantHtml);
-  const [compareMode, setCompareMode] = useState(false);
+  const [internalCompareMode, setInternalCompareMode] = useState(false);
+  const compareMode = compareModeProp ?? internalCompareMode;
+  const setCompareMode = onCompareModeChange ?? setInternalCompareMode;
 
   const structuredRevision = useMemo(
     () => (canCompare ? buildStructuredRevision(officialHtml, variantHtml, blockType) : null),
@@ -110,7 +120,7 @@ export function DocumentVariantRevisionView({
         <DocumentRichContent html={variantHtml} blockType={blockType} className={contentClassName} />
       )}
 
-      {canCompare ? (
+      {canCompare && !hideCompareToggle ? (
         <div className="mt-2 flex justify-end">
           <Button
             type="button"
@@ -119,7 +129,7 @@ export function DocumentVariantRevisionView({
             className="h-7 rounded-lg px-2.5 text-xs"
             onClick={(e) => {
               e.stopPropagation();
-              setCompareMode((v) => !v);
+              setCompareMode(!compareMode);
             }}
           >
             {showCompare ? tCanvas('viewClean') : tCanvas('viewCompare')}
