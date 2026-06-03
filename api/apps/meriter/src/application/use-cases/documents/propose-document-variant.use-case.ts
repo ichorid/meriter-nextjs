@@ -30,10 +30,7 @@ import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
 import { sanitizeDocumentHtml } from '../../../common/utils/sanitize-document-html';
 import { blockHtmlToPlainText } from '../../../domain/common/document-plain-text.util';
-import {
-  assertRangeNotOverlappingLocked,
-  getEffectiveLockedRanges,
-} from '../../../domain/common/document-locked-ranges.util';
+import { getEffectiveLockedRanges } from '../../../domain/common/document-locked-ranges.util';
 import {
   buildBlockPlainSegments,
   editChangeOverlapsLocked,
