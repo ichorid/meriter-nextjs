@@ -125,7 +125,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     const proposedText = prepared.proposedText;
     let content = prepared.content;
 
-    if (hasRange && rangeStart !== undefined && rangeEnd !== undefined && proposedText) {
+    if (hasRange && rangeStart !== undefined && rangeEnd !== undefined) {
       const openOnBlock = await this.deps.documentPersistence.findOpenVariants(doc.id, blockId);
       try {
         assertNoOverlapWithOpenRanges(rangeStart, rangeEnd, openOnBlock, officialHtml);
@@ -302,7 +302,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
 
     if (inputHasRange) {
       const proposedText = sanitizeProposedHtmlFragment(input.proposedText ?? '');
-      if (!proposedText) {
+      if (!proposedText && input.rangeEnd! <= input.rangeStart!) {
         throw new BadRequestException('Proposed text is required for a range variant');
       }
       const previewJoinedHtml = buildJoinedHtmlAfterGlobalRange(

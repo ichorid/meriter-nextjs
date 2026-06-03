@@ -54,6 +54,17 @@ describe('document-range.util', () => {
     expect(blockHtmlToPlainText(preview)).toMatch(/One.*X.*four/);
   });
 
+  it('merges a plain-text deletion (empty proposed fragment)', () => {
+    const withLine = '<p>Alpha</p><p>remove me</p><p>Omega</p>';
+    const plain = blockHtmlToPlainText(withLine);
+    const removeStart = plain.indexOf('remove me');
+    const removeEnd = removeStart + 'remove me'.length;
+    const merged = mergeRangeIntoBlockHtml(withLine, removeStart, removeEnd, '');
+    expect(blockHtmlToPlainText(merged)).not.toContain('remove me');
+    expect(blockHtmlToPlainText(merged)).toContain('Alpha');
+    expect(blockHtmlToPlainText(merged)).toContain('Omega');
+  });
+
   it('allows zero-width range for plain-text insertion', () => {
     const plainLen = blockHtmlToPlainText(official).length;
     expect(normalizeRangeBounds(plainLen, plainLen, plainLen)).toEqual({

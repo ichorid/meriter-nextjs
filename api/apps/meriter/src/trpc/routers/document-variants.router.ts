@@ -302,25 +302,37 @@ export const documentVariantsRouter = router({
           proposerComment: z.string().trim().max(500).optional(),
         })
         .refine(
-          (v) =>
-            (v.content != null && v.content.length > 0) ||
-            (v.rangeStart != null &&
-              v.rangeEnd != null &&
-              v.proposedText != null &&
-              v.proposedText.length > 0),
-          { message: 'Provide content or rangeStart, rangeEnd, and proposedText' },
+          (v) => {
+            if (v.content != null && v.content.length > 0) {
+              return true;
+            }
+            if (v.rangeStart == null || v.rangeEnd == null) {
+              return false;
+            }
+            if (v.rangeEnd > v.rangeStart) {
+              return true;
+            }
+            return (v.proposedText?.length ?? 0) > 0;
+          },
+          {
+            message:
+              'Provide content, or rangeStart/rangeEnd with proposedText (empty proposedText allowed for deletions)',
+          },
         ),
     )
     .mutation(async ({ ctx, input }) => {
       try {
+        const hasRange =
+          input.rangeStart != null && input.rangeEnd != null;
         return await ctx.documentVariantService.proposeVariant(ctx.user.id, {
           documentId: input.documentId,
           blockId: input.blockId,
           content: input.content,
           rangeStart: input.rangeStart,
           rangeEnd: input.rangeEnd,
-          proposedText: input.proposedText,
+          proposedText: hasRange ? (input.proposedText ?? '') : input.proposedText,
           references: input.references,
+          proposerComment: input.proposerComment,
         });
       } catch (err) {
         mapNestToTrpc(err);

@@ -22,6 +22,7 @@ import {
 } from '../ports/finalize-document-wave.port';
 import {
   PROPOSE_DOCUMENT_VARIANT_PORT,
+  type ProposeDocumentVariantInput,
   type ProposeDocumentVariantPort,
 } from '../ports/propose-document-variant.port';
 import { CommunityService } from './community.service';
@@ -103,12 +104,7 @@ export class DocumentVariantService {
   /** Delegates to ProposeDocumentVariantUseCase (BC-06 / P-6). */
   async proposeVariant(
     userId: string,
-    input: {
-      documentId: string;
-      blockId: string;
-      content: string;
-      references?: DocumentVariantReferenceInput[];
-    },
+    input: ProposeDocumentVariantInput,
   ): Promise<DocumentBlockVariantSchemaClass> {
     return this.proposeDocumentVariantUseCase.execute(userId, input);
   }
@@ -125,6 +121,12 @@ export class DocumentVariantService {
       throw new BadRequestException('Only open variants can be withdrawn');
     }
     await this.documentPersistence.updateVariantStatus(variantId, 'withdrawn');
+    await this.maybeCloseVotingWaveWhenNoOpenVariants(
+      userId,
+      v.documentId,
+      v.blockId,
+      'vote',
+    );
     this.documentLiveUpdates.publish({
       type: 'variant.withdrawn',
       documentId: v.documentId,
@@ -392,11 +394,40 @@ export class DocumentVariantService {
     });
   }
 
+  /**
+   * When the wave is active but no open variants remain, end voting and keep official text.
+   * Used after admin deletes the last proposal or the last author withdraws.
+   */
+  private async maybeCloseVotingWaveWhenNoOpenVariants(
+    actorUserId: string,
+    documentId: string,
+    blockId: string,
+    historyReason: 'admin' | 'vote',
+  ): Promise<void> {
+    const doc = await this.documentService.getById(documentId);
+    if (!doc || doc.deleted) {
+      return;
+    }
+    const block = this.documentService.findBlock(doc, blockId);
+    if (!block?.currentWaveStartedAt) {
+      return;
+    }
+    if (!this.documentService.isDocumentBlockVotingOpen(doc, blockId)) {
+      return;
+    }
+    const openVariants = await this.documentPersistence.findOpenVariants(documentId, blockId);
+    if (openVariants.length > 0) {
+      return;
+    }
+    await this.closeVotingWaveKeepingOfficial(actorUserId, doc, blockId, historyReason);
+  }
+
   /** Admin ends wave early and keeps current official text (recorded in block history). */
   private async closeVotingWaveKeepingOfficial(
     actorUserId: string,
     doc: MeriterDocumentSchemaClass,
     blockId: string,
+    historyReason: 'admin' | 'vote' = 'admin',
   ): Promise<void> {
     const openVariants = await this.documentPersistence.findOpenVariants(doc.id, blockId);
     const now = new Date();
@@ -409,15 +440,17 @@ export class DocumentVariantService {
       this.documentService.appendBlockEditHistory(b, {
         changedAt: now,
         changedBy: actorUserId,
-        reason: 'admin',
+        reason: historyReason,
         previousContent: String(b.officialContent ?? ''),
       });
       delete b.currentWaveStartedAt;
       b.officialRating = 0;
-      b.officialContentSetAt = now;
-      b.officialContentSetBy = actorUserId;
-      b.officialContentReason = 'admin';
-      delete b.officialContentVariantId;
+      if (historyReason === 'admin') {
+        b.officialContentSetAt = now;
+        b.officialContentSetBy = actorUserId;
+        b.officialContentReason = 'admin';
+        delete b.officialContentVariantId;
+      }
     });
     if (!ok) {
       throw new BadRequestException('Failed to update block');
@@ -459,6 +492,12 @@ export class DocumentVariantService {
       throw new BadRequestException('Cannot delete an applied variant');
     }
     await this.documentPersistence.softDeleteVariant(variantId);
+    await this.maybeCloseVotingWaveWhenNoOpenVariants(
+      actorUserId,
+      v.documentId,
+      v.blockId,
+      'admin',
+    );
   }
 
   private async applyVariantToOfficial(
