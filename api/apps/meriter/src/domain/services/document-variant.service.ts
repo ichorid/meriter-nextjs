@@ -44,6 +44,11 @@ export type { DocumentVariantReferenceInput };
 
 const MAX_VARIANT_CONTENT = 5000;
 
+export type CloseVotingWaveResolution =
+  | { mode: 'by_votes' }
+  | { mode: 'force_official' }
+  | { mode: 'force_variant'; variantId: string };
+
 @Injectable()
 export class DocumentVariantService {
   private readonly logger = new Logger(DocumentVariantService.name);
@@ -331,6 +336,7 @@ export class DocumentVariantService {
     actorUserId: string,
     documentId: string,
     blockId: string,
+    resolution: CloseVotingWaveResolution = { mode: 'by_votes' },
   ): Promise<void> {
     const doc = await this.documentService.getById(documentId);
     if (!doc || doc.deleted) {
@@ -341,7 +347,75 @@ export class DocumentVariantService {
     if (!block) {
       throw new NotFoundException('Block not found');
     }
+
+    if (resolution.mode === 'force_variant') {
+      const v = await this.documentService.getVariantById(resolution.variantId);
+      if (!v || v.deleted) {
+        throw new NotFoundException('Variant not found');
+      }
+      if (v.documentId !== documentId || v.blockId !== blockId) {
+        throw new BadRequestException('Variant does not belong to this block');
+      }
+      await this.applyOpenVariantAsAdmin(actorUserId, resolution.variantId);
+      return;
+    }
+
+    if (resolution.mode === 'force_official') {
+      await this.closeVotingWaveKeepingOfficial(actorUserId, doc, blockId);
+      return;
+    }
+
     await this.finalizeExpiredWaveOnBlock(documentId, blockId, { force: true });
+  }
+
+  /** Admin ends wave early and keeps current official text (recorded in block history). */
+  private async closeVotingWaveKeepingOfficial(
+    actorUserId: string,
+    doc: MeriterDocumentSchemaClass,
+    blockId: string,
+  ): Promise<void> {
+    const openVariants = await this.documentPersistence.findOpenVariants(doc.id, blockId);
+    const now = new Date();
+
+    for (const v of openVariants) {
+      await this.documentPersistence.updateVariantStatus(v.id, 'closed-not-winner');
+    }
+
+    const ok = await this.documentService.updateDocumentBlock(doc.id, blockId, (b) => {
+      this.documentService.appendBlockEditHistory(b, {
+        changedAt: now,
+        changedBy: actorUserId,
+        reason: 'admin',
+        previousContent: String(b.officialContent ?? ''),
+      });
+      delete b.currentWaveStartedAt;
+      b.officialRating = 0;
+      b.officialContentSetAt = now;
+      b.officialContentSetBy = actorUserId;
+      b.officialContentReason = 'admin';
+      delete b.officialContentVariantId;
+    });
+    if (!ok) {
+      throw new BadRequestException('Failed to update block');
+    }
+
+    const community = await this.communityService.getCommunity(doc.communityId);
+    if (community && openVariants.length > 0) {
+      await this.notifyVariantsNotSelected({
+        doc,
+        community,
+        blockId,
+        variants: openVariants,
+        reason: 'official_kept',
+        actorUserId,
+      }).catch((err) => {
+        this.logger.warn(
+          `Failed to notify variants after admin kept official ${doc.id}/${blockId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+    }
   }
 
   /** §7.3 — soft-delete a variant (admin / document author). */

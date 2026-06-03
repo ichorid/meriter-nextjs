@@ -381,6 +381,16 @@ export const documentVariantsRouter = router({
       z.object({
         documentId: z.string().min(1),
         blockId: z.string().min(1),
+        resolution: z
+          .discriminatedUnion('mode', [
+            z.object({ mode: z.literal('by_votes') }),
+            z.object({ mode: z.literal('force_official') }),
+            z.object({
+              mode: z.literal('force_variant'),
+              variantId: z.string().min(1),
+            }),
+          ])
+          .default({ mode: 'by_votes' }),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -389,6 +399,7 @@ export const documentVariantsRouter = router({
           ctx.user.id,
           input.documentId,
           input.blockId,
+          input.resolution,
         );
         return { ok: true as const };
       } catch (err) {
