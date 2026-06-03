@@ -65,6 +65,7 @@ export class DocumentHtmlSyncService {
         blockType: string;
         officialContent?: string;
         proposalsLocked?: boolean;
+        lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
         currentWaveStartedAt?: Date;
         officialRating?: number;
         editHistory?: unknown[];
@@ -88,6 +89,7 @@ export class DocumentHtmlSyncService {
           | 'quote',
         officialContent: b.officialContent,
         proposalsLocked: b.proposalsLocked,
+        lockedRanges: b.lockedRanges,
         currentWaveStartedAt: b.currentWaveStartedAt,
         officialRating: b.officialRating,
         editHistory: b.editHistory,
@@ -110,6 +112,7 @@ export class DocumentHtmlSyncService {
           blockType: b.blockType,
           officialContent: b.officialContent,
           proposalsLocked: b.proposalsLocked ?? false,
+          lockedRanges: b.lockedRanges ?? [],
           currentWaveStartedAt: b.currentWaveStartedAt,
           officialRating: b.officialRating ?? 0,
           editHistory: b.editHistory ?? [],

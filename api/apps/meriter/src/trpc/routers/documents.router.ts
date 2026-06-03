@@ -179,6 +179,14 @@ export const documentsRouter = router({
         blockType: BlockTypeSchema.optional(),
         order: z.number().int().min(0).optional(),
         proposalsLocked: z.boolean().optional(),
+        lockedRanges: z
+          .array(
+            z.object({
+              rangeStart: z.number().int().min(0),
+              rangeEnd: z.number().int().min(0),
+            }),
+          )
+          .optional(),
       }).merge(StructureConcurrencyInput),
     )
     .mutation(async ({ ctx, input }) => {
@@ -191,6 +199,7 @@ export const documentsRouter = router({
             blockType: input.blockType,
             order: input.order,
             proposalsLocked: input.proposalsLocked,
+            lockedRanges: input.lockedRanges,
             expectedUpdatedAt: input.expectedUpdatedAt,
           },
         );

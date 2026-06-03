@@ -13,6 +13,7 @@ import {
   DOCUMENT_PERSISTENCE_PORT,
   type DocumentPersistencePort,
 } from '../ports/document.persistence.port';
+import { splitSectionBlockForLockedRanges } from '../common/document-block-structure.util';
 import { DocumentService } from './document.service';
 import { DocumentVariantService } from './document-variant.service';
 
@@ -42,6 +43,7 @@ interface BlockEmbedded {
   currentWaveStartedAt?: Date;
   editHistory?: unknown[];
   proposalsLocked?: boolean;
+  lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
 }
 
 type StructureWriteInput = {
@@ -149,7 +151,12 @@ export class DocumentStructureService {
     actorUserId: string,
     documentId: string,
     blockId: string,
-    input: { blockType?: MeriterBlockType; order?: number; proposalsLocked?: boolean } & StructureWriteInput,
+    input: {
+      blockType?: MeriterBlockType;
+      order?: number;
+      proposalsLocked?: boolean;
+      lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
+    } & StructureWriteInput,
   ): Promise<MeriterDocumentSchemaClass> {
     const doc = await this.requireManageableDocument(actorUserId, documentId);
     const sections = this.cloneSections(doc);
@@ -165,6 +172,16 @@ export class DocumentStructureService {
     }
     if (input.proposalsLocked !== undefined) {
       located.block.proposalsLocked = input.proposalsLocked;
+    }
+    if (input.lockedRanges !== undefined) {
+      located.block.lockedRanges = input.lockedRanges;
+      const splitRows = splitSectionBlockForLockedRanges(
+        located.section.blocks as Parameters<typeof splitSectionBlockForLockedRanges>[0],
+        blockId,
+      );
+      if (splitRows.length !== located.section.blocks.length) {
+        located.section.blocks = splitRows as BlockEmbedded[];
+      }
     }
     return this.persistSections(documentId, sections, doc, input.expectedUpdatedAt);
   }

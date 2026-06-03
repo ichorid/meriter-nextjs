@@ -4,6 +4,7 @@ import {
   hashBlockOfficialAtPropose,
   isStaleVariant,
   mergeRangeIntoBlockHtml,
+  normalizeRangeBounds,
 } from '../src/domain/common/document-range.util';
 import { blockHtmlToPlainText } from '../src/domain/common/document-plain-text.util';
 import {
@@ -51,6 +52,21 @@ describe('document-range.util', () => {
   it('buildMergedBlockPreviewContent matches merge', () => {
     const preview = buildMergedBlockPreviewContent(official, 4, 7, 'X');
     expect(blockHtmlToPlainText(preview)).toMatch(/One.*X.*four/);
+  });
+
+  it('allows zero-width range for plain-text insertion', () => {
+    const plainLen = blockHtmlToPlainText(official).length;
+    expect(normalizeRangeBounds(plainLen, plainLen, plainLen)).toEqual({
+      rangeStart: plainLen,
+      rangeEnd: plainLen,
+    });
+    const inserted = buildMergedBlockPreviewContent(
+      official,
+      plainLen,
+      plainLen,
+      '<p>New line</p>',
+    );
+    expect(blockHtmlToPlainText(inserted)).toContain('New line');
   });
 });
 

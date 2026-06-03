@@ -15,9 +15,9 @@ export function normalizeRangeBounds(
   start: number,
   end: number,
 ): DocumentRangeBounds {
-  const rangeStart = Math.max(0, Math.floor(start));
-  const rangeEnd = Math.min(plainLength, Math.floor(end));
-  if (rangeEnd <= rangeStart) {
+  const rangeStart = Math.max(0, Math.min(plainLength, Math.floor(start)));
+  const rangeEnd = Math.max(0, Math.min(plainLength, Math.floor(end)));
+  if (rangeEnd < rangeStart) {
     throw new Error('Invalid range: end must be greater than start');
   }
   return { rangeStart, rangeEnd };

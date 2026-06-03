@@ -30,6 +30,23 @@ import type { WalletService } from '../../../domain/services/wallet.service';
 import { sanitizeDocumentHtml } from '../../../common/utils/sanitize-document-html';
 import { blockHtmlToPlainText } from '../../../domain/common/document-plain-text.util';
 import {
+  assertRangeNotOverlappingLocked,
+  getEffectiveLockedRanges,
+} from '../../../domain/common/document-locked-ranges.util';
+import {
+  buildBlockPlainSegments,
+  editChangeOverlapsLocked,
+  findPlainTextChangeBounds,
+  insertBlocksAfterInSection,
+  isAppendNewBlocksAtEnd,
+  mapGlobalPlainRangeToBlock,
+  proposedEditOverlapsLocked,
+  sanitizeProposedHtmlFragment,
+  splitSectionBlockForProposalRange,
+  type BlockPlainSegment,
+  type SectionBlockRow,
+} from '../../../domain/common/document-block-structure.util';
+import {
   assertNoOverlapWithOpenRanges,
   buildMergedBlockPreviewContent,
   hashBlockOfficialAtPropose,
@@ -93,46 +110,26 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     assertDocumentsModeAllowsDocument(community, doc.type);
     await assertCanAccessDocumentForProposal(this.deps, userId, community, doc);
 
-    const block = this.deps.documentService.findBlock(doc, input.blockId);
+    const prepared = await this.prepareProposalTarget(doc, input);
+    doc = prepared.doc;
+    const blockId = prepared.blockId;
+    const block = this.deps.documentService.findBlock(doc, blockId);
     if (!block) {
       throw new NotFoundException('Block not found');
     }
 
-    if (block.proposalsLocked === true) {
-      throw new ForbiddenException('This block is locked; you cannot propose changes');
-    }
-
     const officialHtml = String(block.officialContent ?? '');
     const plainLen = blockHtmlToPlainText(officialHtml).length;
-    const hasRange =
-      input.rangeStart !== undefined &&
-      input.rangeEnd !== undefined &&
-      input.proposedText !== undefined;
+    const hasRange = prepared.hasRange;
+    const rangeStart = prepared.rangeStart;
+    const rangeEnd = prepared.rangeEnd;
+    const proposedText = prepared.proposedText;
+    let content = prepared.content;
 
-    let rangeStart: number | undefined;
-    let rangeEnd: number | undefined;
-    let proposedText: string | undefined;
-    let content: string;
-
-    if (hasRange) {
-      const bounds = normalizeRangeBounds(plainLen, input.rangeStart!, input.rangeEnd!);
-      rangeStart = bounds.rangeStart;
-      rangeEnd = bounds.rangeEnd;
-      proposedText = sanitizeDocumentHtml(input.proposedText ?? '');
-      if (!proposedText) {
-        throw new BadRequestException('Proposed text is required for a range variant');
-      }
-      const openOnBlock = await this.deps.documentPersistence.findOpenVariants(
-        doc.id,
-        input.blockId,
-      );
+    if (hasRange && rangeStart !== undefined && rangeEnd !== undefined && proposedText) {
+      const openOnBlock = await this.deps.documentPersistence.findOpenVariants(doc.id, blockId);
       try {
-        assertNoOverlapWithOpenRanges(
-          rangeStart,
-          rangeEnd,
-          openOnBlock,
-          officialHtml,
-        );
+        assertNoOverlapWithOpenRanges(rangeStart, rangeEnd, openOnBlock, officialHtml);
       } catch (err) {
         if (err instanceof Error && err.message === 'RANGE_OVERLAP') {
           throw new ConflictException(
@@ -147,11 +144,6 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
         rangeEnd,
         proposedText,
       );
-    } else {
-      content = sanitizeDocumentHtml(input.content ?? '');
-      if (!content) {
-        throw new BadRequestException('Variant content is required');
-      }
     }
 
     if (content.length > MAX_VARIANT_CONTENT) {
@@ -160,9 +152,40 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       );
     }
 
+    const canManageDocument = await this.canManageDocumentForProposal(
+      userId,
+      doc,
+      community,
+    );
+    const lockedSpans = getEffectiveLockedRanges(
+      plainLen,
+      block.proposalsLocked === true,
+      block.lockedRanges as Array<{ rangeStart: number; rangeEnd: number }> | undefined,
+    );
+    if (!canManageDocument && lockedSpans.length > 0) {
+      if (block.proposalsLocked === true) {
+        throw new ForbiddenException('This block is locked; you cannot propose changes');
+      }
+      if (hasRange && rangeStart !== undefined && rangeEnd !== undefined) {
+        if (proposedEditOverlapsLocked(rangeStart, rangeEnd, lockedSpans)) {
+          throw new ForbiddenException(
+            'This range overlaps text pinned by an administrator',
+          );
+        }
+      } else {
+        const oldPlain = blockHtmlToPlainText(officialHtml);
+        const newPlain = blockHtmlToPlainText(content);
+        if (editChangeOverlapsLocked(oldPlain, newPlain, lockedSpans)) {
+          throw new ForbiddenException(
+            'Your proposal would change text pinned by an administrator',
+          );
+        }
+      }
+    }
+
     const officialTextHashAtPropose = hashBlockOfficialAtPropose(officialHtml);
 
-    await this.deps.finalizeExpiredWaveOnBlock(doc.id, input.blockId);
+    await this.deps.finalizeExpiredWaveOnBlock(doc.id, blockId);
 
     doc = (await this.deps.documentService.getById(input.documentId))!;
 
@@ -179,10 +202,10 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     const variantId = uid();
     const now = new Date();
 
-    const blockAfter = this.deps.documentService.findBlock(doc, input.blockId);
+    const blockAfter = this.deps.documentService.findBlock(doc, blockId);
     const needsWaveStart = !blockAfter?.currentWaveStartedAt;
     if (needsWaveStart) {
-      await this.deps.documentService.updateDocumentBlock(doc.id, input.blockId, (b) => {
+      await this.deps.documentService.updateDocumentBlock(doc.id, blockId, (b) => {
         b.currentWaveStartedAt = now;
         b.officialRating = 0;
       });
@@ -191,7 +214,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     const created = await this.deps.documentPersistence.insertVariant({
       id: variantId,
       documentId: doc.id,
-      blockId: input.blockId,
+      blockId,
       content,
       ...(hasRange
         ? {
@@ -231,6 +254,229 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       },
     );
     return created as DocumentBlockVariantSchemaClass;
+  }
+
+  /**
+   * Map unified-editor (joined HTML) proposals to the correct block, split structure when needed,
+   * and persist new blocks before overlap / variant checks.
+   */
+  private async prepareProposalTarget(
+    doc: MeriterDocumentSchemaClass,
+    input: ProposeDocumentVariantInput,
+  ): Promise<{
+    doc: MeriterDocumentSchemaClass;
+    blockId: string;
+    hasRange: boolean;
+    rangeStart?: number;
+    rangeEnd?: number;
+    proposedText?: string;
+    content: string;
+  }> {
+    const located = this.locateBlockInDocument(doc, input.blockId);
+    if (!located) {
+      throw new NotFoundException('Block not found');
+    }
+
+    const orderedBlocks = this.collectAllDocumentBlocks(located.allSections);
+    const { joinedHtml, joinedPlain, segments } = buildBlockPlainSegments(
+      orderedBlocks.map((b) => ({ id: b.id, officialContent: b.officialContent })),
+    );
+
+    const inputHasRange =
+      input.rangeStart !== undefined &&
+      input.rangeEnd !== undefined &&
+      input.proposedText !== undefined;
+
+    if (inputHasRange) {
+      const proposedText = sanitizeProposedHtmlFragment(input.proposedText ?? '');
+      if (!proposedText) {
+        throw new BadRequestException('Proposed text is required for a range variant');
+      }
+      const previewJoinedHtml = buildJoinedHtmlAfterGlobalRange(
+        segments,
+        input.rangeStart!,
+        input.rangeEnd!,
+        proposedText,
+      );
+      const appendParsed = isAppendNewBlocksAtEnd(joinedHtml, previewJoinedHtml);
+      if (appendParsed && appendParsed.length > 0) {
+        const afterId = segments[segments.length - 1]!.blockId;
+        const inserted = insertBlocksAfterInSection(located.blocks, afterId, appendParsed);
+        await this.persistDocumentSections(doc.id, located, inserted.blocks);
+        doc = (await this.deps.documentService.getById(doc.id))!;
+        const newId = inserted.newBlockIds[0]!;
+        const newHtml = appendParsed[0]!.officialContent;
+        return {
+          doc,
+          blockId: newId,
+          hasRange: false,
+          content: sanitizeDocumentHtml(newHtml),
+        };
+      }
+
+      const mapped = mapGlobalPlainRangeToBlock(
+        segments,
+        input.rangeStart!,
+        input.rangeEnd!,
+      );
+      if (!mapped) {
+        throw new BadRequestException('Proposal range is outside the document');
+      }
+      const split = splitSectionBlockForProposalRange(
+        located.blocks,
+        mapped.blockId,
+        mapped.localStart,
+        mapped.localEnd,
+      );
+      if (split.blocks !== located.blocks) {
+        await this.persistDocumentSections(doc.id, located, split.blocks);
+        doc = (await this.deps.documentService.getById(doc.id))!;
+      }
+      const target = this.deps.documentService.findBlock(doc, split.targetBlockId);
+      const targetHtml = String(target?.officialContent ?? '');
+      const plainLen = blockHtmlToPlainText(targetHtml).length;
+      const bounds = normalizeRangeBounds(plainLen, split.localStart, split.localEnd);
+      return {
+        doc,
+        blockId: split.targetBlockId,
+        hasRange: true,
+        rangeStart: bounds.rangeStart,
+        rangeEnd: bounds.rangeEnd,
+        proposedText,
+        content: buildMergedBlockPreviewContent(
+          targetHtml,
+          bounds.rangeStart,
+          bounds.rangeEnd,
+          proposedText,
+        ),
+      };
+    }
+
+    const content = sanitizeDocumentHtml(input.content ?? '');
+    if (!content) {
+      throw new BadRequestException('Variant content is required');
+    }
+
+    const appendParsed = isAppendNewBlocksAtEnd(joinedHtml, content);
+    if (appendParsed && appendParsed.length > 0) {
+      const afterId = segments[segments.length - 1]!.blockId;
+      const inserted = insertBlocksAfterInSection(located.blocks, afterId, appendParsed);
+      await this.persistDocumentSections(doc.id, located, inserted.blocks);
+      doc = (await this.deps.documentService.getById(doc.id))!;
+      const newId = inserted.newBlockIds[0]!;
+      return {
+        doc,
+        blockId: newId,
+        hasRange: false,
+        content: sanitizeDocumentHtml(appendParsed[0]!.officialContent),
+      };
+    }
+
+    const bounds = findPlainTextChangeBounds(joinedPlain, blockHtmlToPlainText(content));
+    if (bounds && bounds.proposedText.trim()) {
+      const proposedText = sanitizeProposedHtmlFragment(bounds.proposedText);
+      if (proposedText) {
+        const mapped = mapGlobalPlainRangeToBlock(
+          segments,
+          bounds.rangeStart,
+          bounds.rangeEnd,
+        );
+        if (mapped) {
+          const split = splitSectionBlockForProposalRange(
+            located.blocks,
+            mapped.blockId,
+            mapped.localStart,
+            mapped.localEnd,
+          );
+          if (split.blocks !== located.blocks) {
+            await this.persistDocumentSections(doc.id, located, split.blocks);
+            doc = (await this.deps.documentService.getById(doc.id))!;
+          }
+          const target = this.deps.documentService.findBlock(doc, split.targetBlockId);
+          const targetHtml = String(target?.officialContent ?? '');
+          const plainLen = blockHtmlToPlainText(targetHtml).length;
+          const local = normalizeRangeBounds(plainLen, split.localStart, split.localEnd);
+          return {
+            doc,
+            blockId: split.targetBlockId,
+            hasRange: true,
+            rangeStart: local.rangeStart,
+            rangeEnd: local.rangeEnd,
+            proposedText,
+            content: buildMergedBlockPreviewContent(
+              targetHtml,
+              local.rangeStart,
+              local.rangeEnd,
+              proposedText,
+            ),
+          };
+        }
+      }
+    }
+
+    const mapped = mapGlobalPlainRangeToBlock(
+      segments,
+      bounds?.rangeStart ?? 0,
+      bounds?.rangeEnd ?? joinedPlain.length,
+    );
+    const blockId = mapped?.blockId ?? input.blockId;
+    return { doc, blockId, hasRange: false, content };
+  }
+
+  private collectAllDocumentBlocks(
+    sections: Array<{ order?: number; blocks?: SectionBlockRow[] }>,
+  ): SectionBlockRow[] {
+    const rows: SectionBlockRow[] = [];
+    const sortedSections = [...sections].sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0),
+    );
+    for (const sec of sortedSections) {
+      for (const b of [...(sec.blocks ?? [])].sort((a, c) => a.order - c.order)) {
+        rows.push(b as SectionBlockRow);
+      }
+    }
+    return rows;
+  }
+
+  private locateBlockInDocument(
+    doc: MeriterDocumentSchemaClass,
+    blockId: string,
+  ): {
+    allSections: Array<{ order?: number; blocks?: SectionBlockRow[] }>;
+    sectionIndex: number;
+    blocks: SectionBlockRow[];
+  } | null {
+    const allSections = JSON.parse(JSON.stringify(doc.sections ?? [])) as Array<{
+      order?: number;
+      blocks?: SectionBlockRow[];
+    }>;
+    for (let i = 0; i < allSections.length; i++) {
+      const sec = allSections[i]!;
+      if ((sec.blocks ?? []).some((b) => b.id === blockId)) {
+        return {
+          allSections,
+          sectionIndex: i,
+          blocks: sec.blocks ?? [],
+        };
+      }
+    }
+    return null;
+  }
+
+  private async persistDocumentSections(
+    documentId: string,
+    located: {
+      allSections: Array<{ order?: number; blocks?: SectionBlockRow[] }>;
+      sectionIndex: number;
+    },
+    sectionBlocks: SectionBlockRow[],
+  ): Promise<void> {
+    const sections = located.allSections;
+    sections[located.sectionIndex]!.blocks = sectionBlocks;
+    const result = await this.deps.documentService.updateSections(documentId, sections);
+    if (!result.ok) {
+      throw new ConflictException('Document was updated by someone else; refresh and try again');
+    }
   }
 
   private async collectVariantProposalFee(
@@ -366,6 +612,21 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       });
     }
   }
+
+  private async canManageDocumentForProposal(
+    userId: string,
+    doc: MeriterDocumentSchemaClass,
+    community: Community,
+  ): Promise<boolean> {
+    const user = await this.deps.userService.getUserById(userId);
+    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
+      return true;
+    }
+    if (doc.createdBy === userId) {
+      return true;
+    }
+    return this.deps.communityService.isUserAdmin(community.id, userId);
+  }
 }
 
 export function createProposeDocumentVariantUseCase(
@@ -418,6 +679,32 @@ async function assertCanAccessDocumentForProposal(
   if (!admin) {
     throw new ForbiddenException('Only community admins can propose variants on custom documents');
   }
+}
+
+function buildJoinedHtmlAfterGlobalRange(
+  segments: BlockPlainSegment[],
+  globalStart: number,
+  globalEnd: number,
+  proposedHtml: string,
+): string {
+  const mapped = mapGlobalPlainRangeToBlock(segments, globalStart, globalEnd);
+  if (!mapped) {
+    throw new BadRequestException('Proposal range is outside the document');
+  }
+  let html = '';
+  for (const seg of segments) {
+    if (seg.blockId === mapped.blockId) {
+      html += buildMergedBlockPreviewContent(
+        seg.html,
+        mapped.localStart,
+        mapped.localEnd,
+        proposedHtml,
+      );
+    } else {
+      html += seg.html;
+    }
+  }
+  return html;
 }
 
 function buildDocumentNotificationMetadata(

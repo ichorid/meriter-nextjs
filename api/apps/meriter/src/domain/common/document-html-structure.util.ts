@@ -76,6 +76,7 @@ export type ExistingBlockForMapping = {
   blockType: DocumentBlockType;
   officialContent?: string;
   proposalsLocked?: boolean;
+  lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
   currentWaveStartedAt?: Date;
   officialRating?: number;
   editHistory?: unknown[];
