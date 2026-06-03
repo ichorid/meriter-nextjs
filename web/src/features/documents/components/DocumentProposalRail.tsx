@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react';
 import { DocumentBlockProposalsPanel } from '@/features/documents/components/DocumentBlockProposalsPanel';
 import { DocumentProposeComposer } from '@/features/documents/components/DocumentProposeComposer';
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
+import { documentLiveQueryOptions } from '@/features/documents/hooks/useDocumentLiveSync';
 import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
 
@@ -17,9 +18,10 @@ export interface DocumentProposalRailProps {
 export function DocumentProposalRail({ sections, className }: DocumentProposalRailProps) {
   const tGdocs = useTranslations('pages.documents.gdocs');
   const focus = useDocumentCanvasFocusRequired();
-  const threadsQuery = trpc.documentVariants.listByDocument.useQuery({
-    documentId: focus.documentId,
-  });
+  const threadsQuery = trpc.documentVariants.listByDocument.useQuery(
+    { documentId: focus.documentId },
+    documentLiveQueryOptions(),
+  );
 
   const threads = threadsQuery.data?.threads ?? [];
   const focusedBlock = focus.focusedBlockId ? focus.getBlock(focus.focusedBlockId) : null;

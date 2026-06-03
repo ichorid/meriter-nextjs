@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
@@ -26,6 +26,11 @@ import { DocumentProposalRail } from '@/features/documents/components/DocumentPr
 import { DocumentCanvasMobileSheet } from '@/features/documents/components/DocumentCanvasMobileSheet';
 import { DocumentBlockAdminDialogs } from '@/features/documents/components/DocumentBlockAdminDialogs';
 import type { DocTranslate } from '@/features/documents/lib/document-canvas-shared';
+import {
+  documentLiveQueryOptions,
+  useDocumentLiveSync,
+} from '@/features/documents/hooks/useDocumentLiveSync';
+import type { DocumentLiveEvent } from '@meriter/shared-types';
 
 export interface CommunityDocumentDetailPageClientProps {
   communityId: string;
@@ -46,13 +51,47 @@ export function CommunityDocumentDetailPageClient({
   const { data: wallets = [] } = useWallets();
   const { data: quotaData } = useUserQuota(communityId);
 
+  const liveQueryOptions = documentLiveQueryOptions();
+
   const docQuery = trpc.documents.getById.useQuery(
     { id: documentId },
     {
       enabled: Boolean(documentId && user?.id),
-      refetchOnWindowFocus: true,
+      ...liveQueryOptions,
     },
   );
+
+  const handleRemoteDocumentActivity = useCallback(
+    (event: DocumentLiveEvent) => {
+      if (event.type === 'variant.proposed') {
+        addToast(t('gdocs.liveVariantProposed'), 'info');
+        return;
+      }
+      if (event.type === 'vote.cast') {
+        addToast(t('gdocs.liveVoteCast'), 'info');
+        return;
+      }
+      if (event.type === 'document.updated' || event.type === 'variant.applied') {
+        addToast(t('gdocs.liveDocumentUpdated'), 'info');
+        return;
+      }
+      if (event.type === 'wave.closed') {
+        addToast(t('gdocs.liveWaveClosed'), 'info');
+        return;
+      }
+      if (event.type === 'block.locks_changed') {
+        addToast(t('gdocs.liveLocksChanged'), 'info');
+      }
+    },
+    [addToast, t],
+  );
+
+  useDocumentLiveSync({
+    documentId,
+    enabled: Boolean(documentId && user?.id && docQuery.data),
+    userId: user?.id,
+    onRemoteActivity: handleRemoteDocumentActivity,
+  });
 
   useEffect(() => {
     if (!docQuery.data?.sections) return;
