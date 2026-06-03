@@ -42,9 +42,11 @@ export type DocumentVariantPreviewTarget = {
       kind: 'variant';
       variantId: string;
       variantHtml: string;
-      rangeStart?: number;
-      rangeEnd?: number;
-      proposedText?: string;
+  rangeStart?: number;
+  rangeEnd?: number;
+  proposedText?: string;
+  /** Sections snapshot for document-scoped range diff in main preview. */
+  sectionsForRevision?: unknown;
     }
 );
 

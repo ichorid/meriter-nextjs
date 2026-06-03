@@ -7,7 +7,19 @@ import { Switch } from '@/components/ui/shadcn/switch';
 import { Label } from '@/components/ui/shadcn/label';
 import { DocumentVariantRevisionView } from '@/features/documents/components/DocumentVariantRevisionView';
 import type { DocumentVariantPreviewTarget } from '@/features/documents/context/DocumentCanvasFocusContext';
-import { hasOfficialText, variantDiffersFromOfficial } from '@/features/documents/lib/document-text-diff';
+import { mergeRangeIntoBlockHtmlWithRevisionMarks } from '@/features/documents/lib/document-block-merge';
+import {
+  buildDocumentVariantRevisionMarkupHtml,
+  blockOfficialHtmlFromSections,
+} from '@/features/documents/lib/document-variant-document-preview';
+import {
+  buildStructuredRevision,
+  hasOfficialText,
+  type StructuredRevision,
+  variantDiffersFromOfficial,
+} from '@/features/documents/lib/document-text-diff';
+import { documentRevisionMarkupProseClass } from '@/features/documents/lib/document-revision-styles';
+import type { VariantPreviewInput } from '@/features/documents/lib/document-variant-preview';
 import { cn } from '@/lib/utils';
 
 export type DocumentVariantMainPreviewProps = {
@@ -50,13 +62,64 @@ export function DocumentVariantMainPreview({
   const compareOfficialHtml = target.compareOfficialHtml ?? target.officialHtml;
   const compareVariantHtml = target.compareVariantHtml ?? variantHtml;
 
+  const variantPreviewInput = useMemo((): VariantPreviewInput | null => {
+    if (isOfficialRow || target.kind !== 'variant') {
+      return null;
+    }
+    return {
+      content: target.variantHtml,
+      rangeStart: target.rangeStart,
+      rangeEnd: target.rangeEnd,
+      proposedText: target.proposedText,
+    };
+  }, [isOfficialRow, target]);
+
+  const revisionMarkupHtml = useMemo((): string | null => {
+    if (!variantPreviewInput || target.kind !== 'variant') {
+      return null;
+    }
+    if (target.sectionsForRevision != null) {
+      const blockOfficial = blockOfficialHtmlFromSections(
+        target.sectionsForRevision,
+        target.blockId,
+      );
+      return buildDocumentVariantRevisionMarkupHtml(
+        target.sectionsForRevision,
+        target.blockId,
+        blockOfficial,
+        variantPreviewInput,
+      );
+    }
+    if (
+      typeof target.rangeStart === 'number' &&
+      typeof target.rangeEnd === 'number' &&
+      target.proposedText != null
+    ) {
+      return mergeRangeIntoBlockHtmlWithRevisionMarks(
+        compareOfficialHtml,
+        target.rangeStart,
+        target.rangeEnd,
+        target.proposedText,
+      );
+    }
+    return null;
+  }, [variantPreviewInput, target, compareOfficialHtml]);
+
   const canCompare = useMemo(
     () =>
       !isOfficialRow &&
-      hasOfficialText(compareOfficialHtml) &&
-      variantDiffersFromOfficial(compareOfficialHtml, compareVariantHtml),
-    [isOfficialRow, compareOfficialHtml, compareVariantHtml],
+      (revisionMarkupHtml != null ||
+        (hasOfficialText(compareOfficialHtml) &&
+          variantDiffersFromOfficial(compareOfficialHtml, compareVariantHtml))),
+    [isOfficialRow, revisionMarkupHtml, compareOfficialHtml, compareVariantHtml],
   );
+
+  const structuredRevision = useMemo((): StructuredRevision | null => {
+    if (!canCompare || revisionMarkupHtml) {
+      return null;
+    }
+    return buildStructuredRevision(compareOfficialHtml, compareVariantHtml);
+  }, [canCompare, revisionMarkupHtml, compareOfficialHtml, compareVariantHtml]);
 
   const title = isOfficialRow
     ? tGdocs('previewOfficialTitle')
@@ -102,7 +165,7 @@ export function DocumentVariantMainPreview({
 
       <div
         className={cn(
-          'min-h-[12rem] rounded-xl border border-stitch-border bg-stitch-canvas/80 px-4 py-4',
+          'min-h-[12rem] min-w-0 overflow-x-hidden rounded-xl border border-stitch-border bg-stitch-canvas/80 px-4 py-4',
           'text-base leading-relaxed',
         )}
       >
@@ -110,10 +173,12 @@ export function DocumentVariantMainPreview({
           officialHtml={compareOfficialHtml}
           variantHtml={compareVariantHtml}
           displayVariantHtml={variantHtml}
+          structuredRevision={structuredRevision}
+          revisionMarkupHtml={revisionMarkupHtml}
           compareMode={showDiff && canCompare}
           onCompareModeChange={onShowDiffChange}
           hideCompareToggle
-          contentClassName="text-base"
+          contentClassName={cn('text-base', documentRevisionMarkupProseClass)}
         />
       </div>
     </div>

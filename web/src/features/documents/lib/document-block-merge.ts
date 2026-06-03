@@ -1,4 +1,9 @@
+import { expandDeletionRangeStart } from '@/features/documents/lib/document-plain-range';
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
+import {
+  DOC_REVISION_DELETE_CLASS,
+  DOC_REVISION_INSERT_CLASS,
+} from '@/features/documents/lib/document-revision-styles';
 import {
   resolveVariantChangeBounds,
   type VariantPreviewInput,
@@ -33,6 +38,15 @@ function plainMergeToHtml(
   const singleParagraph =
     /^<p[^>]*>[\s\S]*<\/p>$/i.test(trimmed) && !trimmed.includes('</p><');
   if (singleParagraph) {
+    const hasRevisionMarkup =
+      replacementHtml.includes('<del') || replacementHtml.includes('<ins');
+    if (hasRevisionMarkup) {
+      const before = plain.slice(0, rangeStart);
+      const after = plain.slice(rangeEnd);
+      const beforeHtml = before ? escapeHtml(before).replace(/\n/g, '<br>') : '';
+      const afterHtml = after ? escapeHtml(after).replace(/\n/g, '<br>') : '';
+      return `<p>${beforeHtml}${replacementHtml}${afterHtml}</p>`;
+    }
     const inner = mergedPlain.split('\n').map((line) => escapeHtml(line)).join('<br>');
     return `<p>${inner}</p>`;
   }
@@ -64,6 +78,58 @@ export function mergeRangeIntoBlockHtml(
   return plainMergeToHtml(officialHtml, plain, rs, re, replacement, mergedPlain);
 }
 
+/**
+ * Official block HTML with visible <del>/<ins> marks (preserves paragraphs/headings).
+ */
+export function mergeRangeIntoBlockHtmlWithRevisionMarks(
+  officialHtml: string,
+  rangeStart: number,
+  rangeEnd: number,
+  proposedText: string,
+): string {
+  const normalized = normalizeDeletionBounds(officialHtml, {
+    rangeStart,
+    rangeEnd,
+    proposedText,
+  });
+  const plain = blockHtmlToPlainText(officialHtml ?? '');
+  const { rangeStart: rs, rangeEnd: re } = normalizeRangeBounds(
+    plain.length,
+    normalized.rangeStart,
+    normalized.rangeEnd,
+  );
+  const deleted = plain.slice(rs, re);
+  const delPart = deleted
+    ? `<del class="${DOC_REVISION_DELETE_CLASS}">${escapeHtml(deleted).replace(/\n/g, '<br>')}</del>`
+    : '';
+  const insPart = normalized.proposedText.trim()
+    ? `<ins class="${DOC_REVISION_INSERT_CLASS}">${normalized.proposedText}</ins>`
+    : '';
+  const replacementHtml = insPart || delPart;
+  const mergedPlain =
+    plain.slice(0, rs) + blockHtmlToPlainText(normalized.proposedText) + plain.slice(re);
+  if (!officialHtml?.trim()) {
+    return replacementHtml || `<p>${escapeHtml(mergedPlain)}</p>`;
+  }
+  return plainMergeToHtml(officialHtml, plain, rs, re, replacementHtml, mergedPlain);
+}
+
+function normalizeDeletionBounds(
+  officialHtml: string,
+  bounds: { rangeStart: number; rangeEnd: number; proposedText: string },
+): { rangeStart: number; rangeEnd: number; proposedText: string } {
+  const isDeletion =
+    bounds.rangeEnd > bounds.rangeStart && !bounds.proposedText.trim();
+  if (!isDeletion) {
+    return bounds;
+  }
+  const plain = blockHtmlToPlainText(officialHtml);
+  return {
+    ...bounds,
+    rangeStart: expandDeletionRangeStart(plain, bounds.rangeStart),
+  };
+}
+
 /** Full block HTML for preview (merged when variant stores a range edit). */
 export function resolveVariantBlockPreviewHtml(
   blockOfficialHtml: string,
@@ -73,11 +139,12 @@ export function resolveVariantBlockPreviewHtml(
   if (!bounds) {
     return variant.content;
   }
+  const normalized = normalizeDeletionBounds(blockOfficialHtml, bounds);
   const merged = mergeRangeIntoBlockHtml(
     blockOfficialHtml,
-    bounds.rangeStart,
-    bounds.rangeEnd,
-    bounds.proposedText,
+    normalized.rangeStart,
+    normalized.rangeEnd,
+    normalized.proposedText,
   );
   const mergedPlain = blockHtmlToPlainText(merged);
   const variantPlain = blockHtmlToPlainText(variant.content);

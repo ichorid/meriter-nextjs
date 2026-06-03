@@ -1,3 +1,4 @@
+import { expandDeletionRangeStart } from '@/features/documents/lib/document-plain-range';
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
 import { findPlainTextChangeBounds } from '@/features/documents/lib/document-variant-preview';
 
@@ -32,15 +33,17 @@ export function resolveProposeDiffPayload(
   const bounds = findPlainTextChangeBounds(previousPlain, blockHtmlToPlainText(trimmed));
 
   if (bounds) {
-    const isDeletion = bounds.rangeEnd > bounds.rangeStart && !bounds.proposedText.trim();
-    const insertionHtml = bounds.proposedText.trim()
-      ? plainInsertToHtml(bounds.proposedText)
-      : '';
+    let { rangeStart, rangeEnd, proposedText } = bounds;
+    const isDeletion = rangeEnd > rangeStart && !proposedText.trim();
+    if (isDeletion) {
+      rangeStart = expandDeletionRangeStart(previousPlain, rangeStart);
+    }
+    const insertionHtml = proposedText.trim() ? plainInsertToHtml(proposedText) : '';
     if (isDeletion || insertionHtml) {
       return {
         mode: 'range',
-        rangeStart: bounds.rangeStart,
-        rangeEnd: bounds.rangeEnd,
+        rangeStart,
+        rangeEnd,
         proposedText: isDeletion ? '' : insertionHtml,
       };
     }

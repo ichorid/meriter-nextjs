@@ -22,6 +22,7 @@ import {
   type DocumentVariantReferenceDraft,
 } from '@/features/documents/types/document-variant-reference';
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
+import { refetchDocumentProposalCaches } from '@/features/documents/lib/document-variant-cache';
 
 export interface DocumentProposeComposerProps {
   blockId: string;
@@ -73,13 +74,12 @@ export function DocumentProposeComposer({
   } = focus;
 
   const proposeMutation = trpc.documentVariants.propose.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (variant) => {
       proposalBodyRef.current = '';
       setReferenceDrafts([]);
       setResetKey((k) => k + 1);
-      await utils.documents.getById.invalidate({ id: documentId });
-      await utils.documentVariants.listByBlock.invalidate({ documentId, blockId });
-      await utils.documentVariants.listByDocument.invalidate({ documentId });
+      focus.setFocusedBlockId(variant.blockId);
+      await refetchDocumentProposalCaches(utils, documentId, variant.blockId);
       onSuccess?.();
     },
     onError: (err) => addToast(err.message, 'error'),

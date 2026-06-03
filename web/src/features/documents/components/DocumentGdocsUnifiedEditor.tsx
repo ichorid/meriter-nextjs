@@ -48,6 +48,7 @@ import {
   MAX_VARIANT_HTML_LENGTH,
 } from '@/features/documents/lib/document-canvas-shared';
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
+import { refetchDocumentProposalCaches } from '@/features/documents/lib/document-variant-cache';
 import { canUseWalletForVoting } from '@/components/organisms/VotingPopup/voting-utils';
 import type { GdocsPersistMode } from '@/features/documents/lib/document-gdocs-editor';
 import { trpc } from '@/lib/trpc/client';
@@ -405,21 +406,15 @@ export function DocumentGdocsUnifiedEditor({
   });
 
   const proposeMutation = trpc.documentVariants.propose.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (variant) => {
       lastPersistedHtmlRef.current = htmlRef.current;
       setDraftRestored(false);
       setPendingRemoteBaseline(null);
       clearDocumentEditorDraft(draftKey);
       setIsDirty(false);
       onDirtyChange?.(false);
-      await utils.documents.getById.invalidate({ id: documentId });
-      if (primaryBlock?.id) {
-        await utils.documentVariants.listByBlock.invalidate({
-          documentId,
-          blockId: primaryBlock.id,
-        });
-      }
-      await utils.documentVariants.listByDocument.invalidate({ documentId });
+      focus.setFocusedBlockId(variant.blockId);
+      await refetchDocumentProposalCaches(utils, documentId, variant.blockId);
       focus.addToast(tGdocs('proposalSubmitted'), 'success');
       onSynced?.();
     },

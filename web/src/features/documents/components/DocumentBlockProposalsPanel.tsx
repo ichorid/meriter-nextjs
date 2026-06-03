@@ -32,13 +32,38 @@ import {
 import { buildDocumentVariantPreviewPair } from '@/features/documents/lib/document-variant-document-preview';
 import { resolveVariantBlockPreviewHtml } from '@/features/documents/lib/document-block-merge';
 import { joinDocumentBlocksToHtml } from '@/features/documents/lib/document-html-structure';
+import {
+  optimisticallyRemoveVariantFromCaches,
+  refetchDocumentGovernanceCaches,
+  restoreGovernanceCacheSnapshot,
+} from '@/features/documents/lib/document-variant-cache';
 import { cn } from '@/lib/utils';
+
+type BlockVariantRow = {
+  id: string;
+  documentId: string;
+  blockId: string;
+  content?: string;
+  proposedBy: string;
+  status: string;
+  rating?: number;
+  rangeStart?: number;
+  rangeEnd?: number;
+  proposedText?: string;
+  proposedAt?: string | Date;
+  proposedByDisplayName?: string;
+  proposerComment?: string | null;
+  references?: unknown;
+};
 
 export interface DocumentBlockProposalsPanelProps {
   documentId: string;
   /** When set, main-canvas preview uses full joined document (unified editor scope). */
   sections?: unknown;
   block: DocBlock;
+  /** From listByDocument while listByBlock refetches after propose. */
+  threadVariants?: BlockVariantRow[];
+  threadWaveOpen?: boolean;
   docMode: 'manual' | 'auto';
   docAllowDownvotes: boolean;
   canManageDocument: boolean;
@@ -57,6 +82,8 @@ export function DocumentBlockProposalsPanel({
   documentId,
   sections,
   block,
+  threadVariants,
+  threadWaveOpen,
   docMode,
   docAllowDownvotes,
   canManageDocument,
@@ -86,10 +113,24 @@ export function DocumentBlockProposalsPanel({
     { enabled: !!documentId && !!block.id },
   );
 
-  const allVariants = variantsQuery.data ?? [];
+  const allVariants = useMemo(() => {
+    const fromBlock = variantsQuery.data;
+    if (fromBlock && fromBlock.length > 0) {
+      return fromBlock;
+    }
+    return threadVariants ?? fromBlock ?? [];
+  }, [threadVariants, variantsQuery.data]);
+
+  const waveActiveEffective = waveActive || threadWaveOpen === true;
+
   const activeVariants = filterActiveProposalVariants(allVariants);
-  const pendingOfficialPick = isPendingOfficialManualPick(docMode, waveActive, allVariants);
-  const showOfficialOption = activeVariants.length > 0 || waveActive || pendingOfficialPick;
+  const pendingOfficialPick = isPendingOfficialManualPick(
+    docMode,
+    waveActiveEffective,
+    allVariants,
+  );
+  const showOfficialOption =
+    activeVariants.length > 0 || waveActiveEffective || pendingOfficialPick;
 
   const panelQuery = trpc.documentVariants.getBlockVotingPanel.useQuery(
     { documentId, blockId: block.id },
@@ -106,7 +147,7 @@ export function DocumentBlockProposalsPanel({
   const hiddenVariantCount = Math.max(0, activeVariants.length - displayedVariants.length);
 
   const waveCountdown =
-    waveActive && waveEndsAtMs != null ? formatWaveRemaining(waveEndsAtMs) : '';
+    waveActiveEffective && waveEndsAtMs != null ? formatWaveRemaining(waveEndsAtMs) : '';
 
   const reasonKey = officialReasonLabelKey(block.officialContentReason);
   const communityId = community?.id ?? '';
@@ -136,8 +177,9 @@ export function DocumentBlockProposalsPanel({
       blockType: useDocumentScope ? undefined : block.blockType,
       officialHtml,
       variantHtml,
-      compareOfficialHtml: blockOfficialHtml,
-      compareVariantHtml: variantBlockHtml,
+      compareOfficialHtml: officialHtml,
+      compareVariantHtml: variantHtml,
+      sectionsForRevision: useDocumentScope ? sections : undefined,
       proposedByDisplayName:
         (v as { proposedByDisplayName?: string }).proposedByDisplayName ?? v.proposedBy,
       proposedAt: v.proposedAt,
@@ -160,7 +202,7 @@ export function DocumentBlockProposalsPanel({
 
   const manualPickAvailable =
     docMode === 'manual' &&
-    !waveActive &&
+    !waveActiveEffective &&
     canManageDocument &&
     (activeVariants.some((v) => v.status === 'closed-winner') || pendingOfficialPick);
 
@@ -174,18 +216,12 @@ export function DocumentBlockProposalsPanel({
     return map;
   }, [panelVotes]);
 
-  const invalidateBlock = async () => {
-    await utils.documents.getById.invalidate({ id: documentId });
-    await utils.documentVariants.listByBlock.invalidate({ documentId, blockId: block.id });
-    await utils.documentVariants.getBlockVotingPanel.invalidate({ documentId, blockId: block.id });
-    await utils.documentVariants.getBlockGovernanceHistory.invalidate({ documentId, blockId: block.id });
+  const refreshBlockGovernance = async () => {
+    await refetchDocumentGovernanceCaches(utils, documentId, block.id);
   };
 
   const applyWinnerMutation = trpc.documentVariants.applyVotingWinner.useMutation({
-    onSuccess: async () => {
-      await invalidateBlock();
-      await utils.documentVariants.listByDocument.invalidate({ documentId });
-    },
+    onSuccess: refreshBlockGovernance,
   });
 
   const requestApplyWinner = (variantId: string, confirmStale = false) => {
@@ -211,26 +247,79 @@ export function DocumentBlockProposalsPanel({
   };
 
   const applyOfficialWinnerMutation = trpc.documentVariants.applyOfficialVotingWinner.useMutation({
-    onSuccess: invalidateBlock,
+    onSuccess: refreshBlockGovernance,
     onError: (err) => addToast(err.message, 'error'),
   });
 
   const applyOpenMutation = trpc.documentVariants.applyOpenAsAdmin.useMutation({
-    onSuccess: invalidateBlock,
+    onSuccess: refreshBlockGovernance,
     onError: (err) => addToast(err.message, 'error'),
   });
 
   const deleteVariantMutation = trpc.documentVariants.deleteVariant.useMutation({
-    onSuccess: invalidateBlock,
-    onError: (err) => addToast(err.message, 'error'),
+    onMutate: async ({ variantId }) => {
+      if (
+        focus?.variantPreview?.kind === 'variant' &&
+        focus.variantPreview.variantId === variantId
+      ) {
+        focus.clearVariantPreview();
+      }
+      await Promise.all([
+        utils.documentVariants.listByBlock.cancel({ documentId, blockId: block.id }),
+        utils.documentVariants.listByDocument.cancel({ documentId }),
+        utils.documents.getById.cancel({ id: documentId }),
+      ]);
+      const snapshot = optimisticallyRemoveVariantFromCaches(
+        utils,
+        documentId,
+        block.id,
+        variantId,
+      );
+      if (!utils.documentVariants.listByDocument.getData({ documentId })?.threads.length) {
+        focus?.setFocusedBlockId(null);
+      }
+      return snapshot;
+    },
+    onError: (err, _input, snapshot) => {
+      restoreGovernanceCacheSnapshot(utils, documentId, block.id, snapshot);
+      addToast(err.message, 'error');
+    },
+    onSettled: () => {
+      void refreshBlockGovernance();
+    },
   });
 
   const withdrawMutation = trpc.documentVariants.withdraw.useMutation({
-    onSuccess: async () => {
-      await invalidateBlock();
-      await utils.documentVariants.listByDocument.invalidate({ documentId });
+    onMutate: async ({ variantId }) => {
+      if (
+        focus?.variantPreview?.kind === 'variant' &&
+        focus.variantPreview.variantId === variantId
+      ) {
+        focus.clearVariantPreview();
+      }
+      await Promise.all([
+        utils.documentVariants.listByBlock.cancel({ documentId, blockId: block.id }),
+        utils.documentVariants.listByDocument.cancel({ documentId }),
+        utils.documents.getById.cancel({ id: documentId }),
+      ]);
+      const snapshot = optimisticallyRemoveVariantFromCaches(
+        utils,
+        documentId,
+        block.id,
+        variantId,
+      );
+      if (!utils.documentVariants.listByDocument.getData({ documentId })?.threads.length) {
+        focus?.setFocusedBlockId(null);
+      }
+      return snapshot;
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err, _input, snapshot) => {
+      restoreGovernanceCacheSnapshot(utils, documentId, block.id, snapshot);
+      addToast(err.message, 'error');
+    },
+    onSettled: () => {
+      void refreshBlockGovernance();
+    },
   });
 
   const openOfficialVote = (e: React.MouseEvent) => {
@@ -246,7 +335,7 @@ export function DocumentBlockProposalsPanel({
     });
   };
 
-  if (variantsQuery.isLoading) {
+  if (variantsQuery.isLoading && !threadVariants?.length) {
     return <Loader2 className="h-5 w-5 animate-spin text-brand-primary" />;
   }
 
@@ -256,7 +345,7 @@ export function DocumentBlockProposalsPanel({
 
   return (
     <div className="mt-4 space-y-3 rounded-xl border border-base-300/40 bg-base-200/30 p-3">
-      {waveActive ? (
+      {waveActiveEffective ? (
         <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
@@ -307,7 +396,7 @@ export function DocumentBlockProposalsPanel({
                     {t(reasonKey)}
                   </Badge>
                 ) : null}
-                {waveActive ? (
+                {waveActiveEffective ? (
                   <Button
                     type="button"
                     size="sm"
@@ -366,7 +455,7 @@ export function DocumentBlockProposalsPanel({
             ) : (
               <p className="text-sm italic text-base-content/45">{t('noOfficialYet')}</p>
             )}
-            {waveActive ? (
+            {waveActiveEffective ? (
               <Button
                 type="button"
                 size="sm"

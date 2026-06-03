@@ -9,7 +9,7 @@ export type BlockPlainSegment = {
 
 export function buildBlockPlainSegments(
   sections: unknown,
-): { segments: BlockPlainSegment[] } {
+): { segments: BlockPlainSegment[]; joinedPlain: string } {
   const blocks = groupBlocksBySection(sections)
     .flatMap((g) => g.blocks)
     .sort((a, b) => a.order - b.order);
@@ -25,7 +25,23 @@ export function buildBlockPlainSegments(
       plainEnd: joinedPlain.length,
     });
   }
-  return { segments };
+  return { segments, joinedPlain };
+}
+
+export function blockLocalRangeToGlobal(
+  segments: BlockPlainSegment[],
+  blockId: string,
+  localStart: number,
+  localEnd: number,
+): { globalStart: number; globalEnd: number } | null {
+  const seg = segments.find((s) => s.blockId === blockId);
+  if (!seg) {
+    return null;
+  }
+  return {
+    globalStart: seg.plainStart + localStart,
+    globalEnd: seg.plainStart + localEnd,
+  };
 }
 
 export function mapGlobalPlainRangeToBlock(

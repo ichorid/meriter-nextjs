@@ -8,14 +8,16 @@ import {
   buildStructuredRevision,
   hasOfficialText,
   type RevisionToken,
+  type StructuredRevision,
   variantDiffersFromOfficial,
 } from '@/features/documents/lib/document-text-diff';
+import { documentRevisionMarkupProseClass } from '@/features/documents/lib/document-revision-styles';
 import { cn } from '@/lib/utils';
 
 const revisionInsertClass =
-  'rounded-sm bg-primary/25 px-0.5 font-semibold text-base-content no-underline ring-1 ring-inset ring-primary/40';
+  'rounded-sm bg-primary/25 px-1 font-semibold text-base-content no-underline ring-1 ring-inset ring-primary/40';
 const revisionDeleteClass =
-  'rounded-sm bg-error/15 px-0.5 text-base-content/55 line-through decoration-error/70 decoration-2';
+  'rounded-sm bg-error/30 px-1 font-medium text-error line-through decoration-error decoration-2';
 
 function RevisionTokenInline({
   tokens,
@@ -56,6 +58,10 @@ export interface DocumentVariantRevisionViewProps {
   onCompareModeChange?: (value: boolean) => void;
   /** Hide inline compare toggle (parent provides toolbar control). */
   hideCompareToggle?: boolean;
+  /** Precomputed revision (e.g. document-scoped range diff). */
+  structuredRevision?: StructuredRevision | null;
+  /** Official HTML with <del>/<ins> marks; preserves headings and paragraphs when set. */
+  revisionMarkupHtml?: string | null;
 }
 
 export function DocumentVariantRevisionView({
@@ -69,28 +75,47 @@ export function DocumentVariantRevisionView({
   compareMode: compareModeProp,
   onCompareModeChange,
   hideCompareToggle = false,
+  structuredRevision: structuredRevisionProp,
+  revisionMarkupHtml,
 }: DocumentVariantRevisionViewProps) {
   const tCanvas = useTranslations('pages.documents.canvas');
-  const canCompare = hasOfficialText(officialHtml) && variantDiffersFromOfficial(officialHtml, variantHtml);
+  const wordDiffComparable =
+    hasOfficialText(officialHtml) && variantDiffersFromOfficial(officialHtml, variantHtml);
+  const canCompare =
+    revisionMarkupHtml != null || structuredRevisionProp != null || wordDiffComparable;
   const [internalCompareMode, setInternalCompareMode] = useState(false);
   const compareMode = compareModeProp ?? internalCompareMode;
   const setCompareMode = onCompareModeChange ?? setInternalCompareMode;
 
   const structuredRevision = useMemo(
-    () => (canCompare ? buildStructuredRevision(officialHtml, variantHtml, blockType) : null),
-    [canCompare, officialHtml, variantHtml, blockType],
+    () =>
+      structuredRevisionProp ??
+      (wordDiffComparable ? buildStructuredRevision(officialHtml, variantHtml, blockType) : null),
+    [structuredRevisionProp, wordDiffComparable, officialHtml, variantHtml, blockType],
   );
 
-  const showCompare = compareMode && canCompare && structuredRevision;
+  const showCompare = compareMode && canCompare;
+  const showMarkup = showCompare && revisionMarkupHtml;
+  const showTokenRevision = showCompare && !showMarkup && structuredRevision;
 
   return (
     <div className={className}>
-      {showCompare ? (
+      {showMarkup ? (
+        <DocumentRichContent
+          html={revisionMarkupHtml}
+          blockType={blockType}
+          className={cn(
+            'text-sm leading-relaxed',
+            documentRevisionMarkupProseClass,
+            contentClassName,
+          )}
+        />
+      ) : showTokenRevision ? (
         structuredRevision.kind === 'list' ? (
           structuredRevision.ordered ? (
             <ol
               className={cn(
-                'my-1 list-decimal space-y-1 pl-5 text-sm',
+                'my-1 list-inside list-decimal space-y-1 text-sm',
                 contentClassName,
               )}
             >
@@ -103,7 +128,7 @@ export function DocumentVariantRevisionView({
           ) : (
             <ul
               className={cn(
-                'my-1 list-disc space-y-1 pl-5 text-sm',
+                'my-1 list-inside list-disc space-y-1 text-sm',
                 contentClassName,
               )}
             >

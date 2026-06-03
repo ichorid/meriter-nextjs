@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import DOMPurify from 'dompurify';
 import { normalizeOfficialContentForDisplay } from '@/features/documents/lib/block-content-format';
+import { documentRichListProseClass } from '@/features/documents/lib/document-revision-styles';
 import { cn } from '@/lib/utils';
 
 /** Matches TipTap StarterKit + Link output used in RichTextEditor. */
@@ -17,6 +18,8 @@ const PURIFY: DOMPurify.Config = {
     'u',
     's',
     'strike',
+    'del',
+    'ins',
     'a',
     'ul',
     'ol',
@@ -72,14 +75,17 @@ function displayProseClass(blockType?: string): string {
     return cn(
       'max-w-none text-base leading-relaxed text-base-content',
       blockType === 'heading' && documentBlockHeadingProseClass,
-      '[&_ul]:my-1 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5',
-      '[&_ol]:my-1 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5',
-      '[&_li]:pl-0',
+      '[&_ul]:my-1 [&_ul]:list-disc [&_ul]:list-inside [&_ul]:space-y-1',
+      '[&_ol]:my-1 [&_ol]:list-decimal [&_ol]:list-inside [&_ol]:space-y-1',
+      '[&_li]:break-words [&_li]:pl-0.5',
       '[&_p]:my-0 [&_p]:leading-relaxed',
       '[&_blockquote]:my-0 [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/25 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-base-content/85',
     );
   }
-  return 'prose dark:prose-invert max-w-none text-base leading-relaxed text-base-content';
+  return cn(
+    'prose dark:prose-invert max-w-none text-base leading-relaxed text-base-content',
+    documentRichListProseClass,
+  );
 }
 
 export function DocumentRichContent({ html, className, blockType }: DocumentRichContentProps) {

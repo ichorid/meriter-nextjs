@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 const insertClass =
   'rounded-sm bg-primary/25 px-0.5 font-semibold text-base-content no-underline ring-1 ring-inset ring-primary/40';
 const deleteClass =
-  'rounded-sm bg-error/15 px-0.5 text-base-content/55 line-through decoration-error/70 decoration-2';
+  'rounded-sm bg-error/30 px-1 font-medium text-error line-through decoration-error decoration-2';
 
 export interface DocumentVariantContextPreviewProps {
   preview: VariantDisplayPreview;

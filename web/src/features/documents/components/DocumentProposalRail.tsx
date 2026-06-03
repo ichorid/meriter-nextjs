@@ -25,6 +25,9 @@ export function DocumentProposalRail({ sections, className }: DocumentProposalRa
 
   const threads = threadsQuery.data?.threads ?? [];
   const focusedBlock = focus.focusedBlockId ? focus.getBlock(focus.focusedBlockId) : null;
+  const focusedThread = focus.focusedBlockId
+    ? threads.find((thread) => thread.blockId === focus.focusedBlockId)
+    : undefined;
 
   const waveMeta = useMemo(() => {
     if (!focusedBlock) {
@@ -129,6 +132,8 @@ export function DocumentProposalRail({ sections, className }: DocumentProposalRa
             documentId={focus.documentId}
             sections={sections}
             block={focusedBlock}
+            threadVariants={focusedThread?.variants}
+            threadWaveOpen={focusedThread?.waveOpen}
             docMode={focus.docMode}
             docAllowDownvotes={focus.docAllowDownvotes}
             canManageDocument={focus.canManageDocument}
