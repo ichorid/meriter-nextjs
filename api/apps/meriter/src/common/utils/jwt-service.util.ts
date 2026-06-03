@@ -55,7 +55,7 @@ export class JwtService {
     displayName?: string;
     avatarUrl?: string;
     globalRole?: string;
-    profile?: User['profile'];
+    profile?: Partial<User['profile']>;
     inviteCode?: string;
     communityTags?: string[];
     communityMemberships?: string[];

@@ -35,15 +35,15 @@ import {
   buildBlockPlainSegments,
   editChangeOverlapsLocked,
   findPlainTextChangeBounds,
-  insertBlocksAfterInSection,
   isAppendNewBlocksAtEnd,
   mapGlobalPlainRangeToBlock,
   proposedEditOverlapsLocked,
   sanitizeProposedHtmlFragment,
-  splitSectionBlockForProposalRange,
   type BlockPlainSegment,
   type SectionBlockRow,
 } from '../../../domain/common/document-block-structure.util';
+import type { ParsedStructureBlock } from '../../../domain/common/document-html-structure.util';
+import { expandDeletionRangeStart } from '../../../domain/common/document-plain-range.util';
 import {
   assertNoOverlapWithOpenRanges,
   buildMergedBlockPreviewContent,
@@ -313,18 +313,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       );
       const appendParsed = isAppendNewBlocksAtEnd(joinedHtml, previewJoinedHtml);
       if (appendParsed && appendParsed.length > 0) {
-        const afterId = segments[segments.length - 1]!.blockId;
-        const inserted = insertBlocksAfterInSection(located.blocks, afterId, appendParsed);
-        await this.persistDocumentSections(doc.id, located, inserted.blocks);
-        doc = (await this.deps.documentService.getById(doc.id))!;
-        const newId = inserted.newBlockIds[0]!;
-        const newHtml = appendParsed[0]!.officialContent;
-        return {
-          doc,
-          blockId: newId,
-          hasRange: false,
-          content: sanitizeDocumentHtml(newHtml),
-        };
+        return this.buildAppendAtEndRangeProposal(doc, segments, appendParsed, proposedText);
       }
 
       const mapped = mapGlobalPlainRangeToBlock(
@@ -335,34 +324,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       if (!mapped) {
         throw new BadRequestException('Proposal range is outside the document');
       }
-      const split = splitSectionBlockForProposalRange(
-        located.blocks,
-        mapped.blockId,
-        mapped.localStart,
-        mapped.localEnd,
-      );
-      if (split.blocks !== located.blocks) {
-        await this.persistDocumentSections(doc.id, located, split.blocks);
-        doc = (await this.deps.documentService.getById(doc.id))!;
-      }
-      const target = this.deps.documentService.findBlock(doc, split.targetBlockId);
-      const targetHtml = String(target?.officialContent ?? '');
-      const plainLen = blockHtmlToPlainText(targetHtml).length;
-      const bounds = normalizeRangeBounds(plainLen, split.localStart, split.localEnd);
-      return {
-        doc,
-        blockId: split.targetBlockId,
-        hasRange: true,
-        rangeStart: bounds.rangeStart,
-        rangeEnd: bounds.rangeEnd,
-        proposedText,
-        content: buildMergedBlockPreviewContent(
-          targetHtml,
-          bounds.rangeStart,
-          bounds.rangeEnd,
-          proposedText,
-        ),
-      };
+      return this.buildRangeProposalFromMapped(doc, mapped, proposedText);
     }
 
     const content = sanitizeDocumentHtml(input.content ?? '');
@@ -372,57 +334,25 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
 
     const appendParsed = isAppendNewBlocksAtEnd(joinedHtml, content);
     if (appendParsed && appendParsed.length > 0) {
-      const afterId = segments[segments.length - 1]!.blockId;
-      const inserted = insertBlocksAfterInSection(located.blocks, afterId, appendParsed);
-      await this.persistDocumentSections(doc.id, located, inserted.blocks);
-      doc = (await this.deps.documentService.getById(doc.id))!;
-      const newId = inserted.newBlockIds[0]!;
-      return {
-        doc,
-        blockId: newId,
-        hasRange: false,
-        content: sanitizeDocumentHtml(appendParsed[0]!.officialContent),
-      };
+      const proposedText = sanitizeProposedHtmlFragment(
+        appendParsed.map((p) => p.officialContent).join(''),
+      );
+      return this.buildAppendAtEndRangeProposal(doc, segments, appendParsed, proposedText);
     }
 
     const bounds = findPlainTextChangeBounds(joinedPlain, blockHtmlToPlainText(content));
-    if (bounds && bounds.proposedText.trim()) {
-      const proposedText = sanitizeProposedHtmlFragment(bounds.proposedText);
-      if (proposedText) {
-        const mapped = mapGlobalPlainRangeToBlock(
-          segments,
-          bounds.rangeStart,
-          bounds.rangeEnd,
-        );
+    if (bounds) {
+      const { rangeEnd, proposedText: boundsProposed } = bounds;
+      let { rangeStart } = bounds;
+      const isDeletion = rangeEnd > rangeStart && !boundsProposed.trim();
+      if (isDeletion) {
+        rangeStart = expandDeletionRangeStart(joinedPlain, rangeStart);
+      }
+      const proposedText = sanitizeProposedHtmlFragment(boundsProposed);
+      if (isDeletion || proposedText) {
+        const mapped = mapGlobalPlainRangeToBlock(segments, rangeStart, rangeEnd);
         if (mapped) {
-          const split = splitSectionBlockForProposalRange(
-            located.blocks,
-            mapped.blockId,
-            mapped.localStart,
-            mapped.localEnd,
-          );
-          if (split.blocks !== located.blocks) {
-            await this.persistDocumentSections(doc.id, located, split.blocks);
-            doc = (await this.deps.documentService.getById(doc.id))!;
-          }
-          const target = this.deps.documentService.findBlock(doc, split.targetBlockId);
-          const targetHtml = String(target?.officialContent ?? '');
-          const plainLen = blockHtmlToPlainText(targetHtml).length;
-          const local = normalizeRangeBounds(plainLen, split.localStart, split.localEnd);
-          return {
-            doc,
-            blockId: split.targetBlockId,
-            hasRange: true,
-            rangeStart: local.rangeStart,
-            rangeEnd: local.rangeEnd,
-            proposedText,
-            content: buildMergedBlockPreviewContent(
-              targetHtml,
-              local.rangeStart,
-              local.rangeEnd,
-              proposedText,
-            ),
-          };
+          return this.buildRangeProposalFromMapped(doc, mapped, proposedText);
         }
       }
     }
@@ -476,20 +406,70 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     return null;
   }
 
-  private async persistDocumentSections(
-    documentId: string,
-    located: {
-      allSections: Array<{ order?: number; blocks?: SectionBlockRow[] }>;
-      sectionIndex: number;
-    },
-    sectionBlocks: SectionBlockRow[],
-  ): Promise<void> {
-    const sections = located.allSections;
-    sections[located.sectionIndex]!.blocks = sectionBlocks;
-    const result = await this.deps.documentService.updateSections(documentId, sections);
-    if (!result.ok) {
-      throw new ConflictException('Document was updated by someone else; refresh and try again');
+  /**
+   * Range proposals must not reshape official blocks (splits were previously persisted here
+   * and broke feed preview with extra paragraph breaks).
+   */
+  private buildRangeProposalFromMapped(
+    doc: MeriterDocumentSchemaClass,
+    mapped: { blockId: string; localStart: number; localEnd: number },
+    proposedText: string,
+  ): {
+    doc: MeriterDocumentSchemaClass;
+    blockId: string;
+    hasRange: true;
+    rangeStart: number;
+    rangeEnd: number;
+    proposedText: string;
+    content: string;
+  } {
+    const target = this.deps.documentService.findBlock(doc, mapped.blockId);
+    if (!target) {
+      throw new NotFoundException('Block not found');
     }
+    const targetHtml = String(target.officialContent ?? '');
+    const plainLen = blockHtmlToPlainText(targetHtml).length;
+    const local = normalizeRangeBounds(plainLen, mapped.localStart, mapped.localEnd);
+    return {
+      doc,
+      blockId: mapped.blockId,
+      hasRange: true,
+      rangeStart: local.rangeStart,
+      rangeEnd: local.rangeEnd,
+      proposedText,
+      content: buildMergedBlockPreviewContent(
+        targetHtml,
+        local.rangeStart,
+        local.rangeEnd,
+        proposedText,
+      ),
+    };
+  }
+
+  private buildAppendAtEndRangeProposal(
+    doc: MeriterDocumentSchemaClass,
+    segments: BlockPlainSegment[],
+    _appendParsed: ParsedStructureBlock[],
+    proposedText: string,
+  ): {
+    doc: MeriterDocumentSchemaClass;
+    blockId: string;
+    hasRange: true;
+    rangeStart: number;
+    rangeEnd: number;
+    proposedText: string;
+    content: string;
+  } {
+    const last = segments[segments.length - 1];
+    if (!last) {
+      throw new BadRequestException('Document has no blocks');
+    }
+    const atEnd = last.plainEnd - last.plainStart;
+    return this.buildRangeProposalFromMapped(
+      doc,
+      { blockId: last.blockId, localStart: atEnd, localEnd: atEnd },
+      proposedText,
+    );
   }
 
   private async collectVariantProposalFee(
