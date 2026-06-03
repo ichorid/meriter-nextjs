@@ -54,6 +54,7 @@ import { DocumentService } from '../domain/services/document.service';
 import { DocumentVariantService } from '../domain/services/document-variant.service';
 import { DocumentStructureService } from '../domain/services/document-structure.service';
 import { DocumentHtmlSyncService } from '../domain/services/document-html-sync.service';
+import { DocumentLiveUpdatesService } from '../domain/services/document-live-updates.service';
 import { PermissionRuleEngine } from '../domain/services/permission-rule-engine.service';
 import { createContext } from './context';
 import { appRouter } from './router';
@@ -113,6 +114,7 @@ export class TrpcService {
     private documentVariantService: DocumentVariantService,
     private documentStructureService: DocumentStructureService,
     private documentHtmlSyncService: DocumentHtmlSyncService,
+    private documentLiveUpdates: DocumentLiveUpdatesService,
     private permissionRuleEngine: PermissionRuleEngine,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
@@ -178,6 +180,7 @@ export class TrpcService {
       documentVariantService: this.documentVariantService,
       documentStructureService: this.documentStructureService,
       documentHtmlSyncService: this.documentHtmlSyncService,
+      documentLiveUpdates: this.documentLiveUpdates,
       permissionRuleEngine: this.permissionRuleEngine,
       connection: this.connection,
       configService: this.configService,

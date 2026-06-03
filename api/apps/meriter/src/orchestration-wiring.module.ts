@@ -16,6 +16,7 @@ import { PlatformSettingsService } from './domain/services/platform-settings.ser
 import { VoteService } from './domain/services/vote.service';
 import { PermissionService } from './domain/services/permission.service';
 import { CommunityWalletService } from './domain/services/community-wallet.service';
+import { DocumentLiveUpdatesService } from './domain/services/document-live-updates.service';
 import { DocumentService } from './domain/services/document.service';
 import { DocumentVariantService } from './domain/services/document-variant.service';
 import { EventBus } from './domain/events/event-bus';
@@ -351,6 +352,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         communityService: CommunityService,
         notificationService: NotificationService,
         moduleRef: ModuleRef,
+        documentLiveUpdates: DocumentLiveUpdatesService,
       ) =>
         createFinalizeDocumentWaveUseCase({
           documentService,
@@ -363,6 +365,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
             moduleRef
               .get(DocumentVariantService, { strict: false })
               .tryAutoApplyWinner(documentId, blockId),
+          documentLiveUpdates,
         }),
       inject: [
         DocumentService,
@@ -370,6 +373,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         CommunityService,
         NotificationService,
         ModuleRef,
+        DocumentLiveUpdatesService,
       ],
     },
     {
@@ -385,6 +389,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         permissionService: PermissionService,
         connection: Connection,
         finalizeDocumentWave: FinalizeDocumentWavePort,
+        documentLiveUpdates: DocumentLiveUpdatesService,
       ) =>
         createProposeDocumentVariantUseCase({
           documentService,
@@ -398,6 +403,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
           connection,
           finalizeExpiredWaveOnBlock: (documentId, blockId) =>
             finalizeDocumentWave.finalizeBlock(documentId, blockId),
+          documentLiveUpdates,
         }),
       inject: [
         DocumentService,
@@ -410,6 +416,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         PermissionService,
         getConnectionToken(),
         FINALIZE_DOCUMENT_WAVE_PORT,
+        DocumentLiveUpdatesService,
       ],
     },
     {

@@ -14,6 +14,7 @@ import {
   type DocumentPersistencePort,
 } from '../ports/document.persistence.port';
 import { splitSectionBlockForLockedRanges } from '../common/document-block-structure.util';
+import { DocumentLiveUpdatesService } from './document-live-updates.service';
 import { DocumentService } from './document.service';
 import { DocumentVariantService } from './document-variant.service';
 
@@ -55,6 +56,7 @@ export class DocumentStructureService {
   constructor(
     private readonly documentService: DocumentService,
     private readonly documentVariantService: DocumentVariantService,
+    private readonly documentLiveUpdates: DocumentLiveUpdatesService,
     @Inject(DOCUMENT_PERSISTENCE_PORT)
     private readonly documentPersistence: DocumentPersistencePort,
   ) {}
@@ -173,7 +175,8 @@ export class DocumentStructureService {
     if (input.proposalsLocked !== undefined) {
       located.block.proposalsLocked = input.proposalsLocked;
     }
-    if (input.lockedRanges !== undefined) {
+    const locksChanged = input.lockedRanges !== undefined;
+    if (locksChanged) {
       located.block.lockedRanges = input.lockedRanges;
       const splitRows = splitSectionBlockForLockedRanges(
         located.section.blocks as Parameters<typeof splitSectionBlockForLockedRanges>[0],
@@ -183,7 +186,17 @@ export class DocumentStructureService {
         located.section.blocks = splitRows as BlockEmbedded[];
       }
     }
-    return this.persistSections(documentId, sections, doc, input.expectedUpdatedAt);
+    const updated = await this.persistSections(documentId, sections, doc, input.expectedUpdatedAt);
+    if (locksChanged || input.proposalsLocked !== undefined) {
+      this.documentLiveUpdates.publish({
+        type: 'block.locks_changed',
+        documentId,
+        documentUpdatedAt: updated.updatedAt,
+        blockId,
+        actorUserId,
+      });
+    }
+    return updated;
   }
 
   async reorderBlocks(

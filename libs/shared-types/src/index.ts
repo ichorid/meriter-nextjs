@@ -267,3 +267,18 @@ export interface TransferRequest {
   amount: number;
   description?: string;
 }
+
+export {
+  DocumentLiveEventSchema,
+  DocumentLiveEventTypeSchema,
+  DocumentLiveHeartbeatSchema,
+  DocumentLiveSsePayloadSchema,
+  DOCUMENT_LIVE_POLL_INTERVAL_MS,
+  DOCUMENT_LIVE_SSE_HEARTBEAT_MS,
+} from './document-live-events';
+export type {
+  DocumentLiveEvent,
+  DocumentLiveEventType,
+  DocumentLiveHeartbeat,
+  DocumentLiveSsePayload,
+} from './document-live-events';

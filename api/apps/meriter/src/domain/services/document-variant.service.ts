@@ -25,6 +25,7 @@ import {
   type ProposeDocumentVariantPort,
 } from '../ports/propose-document-variant.port';
 import { CommunityService } from './community.service';
+import { DocumentLiveUpdatesService } from './document-live-updates.service';
 import { DocumentService } from './document.service';
 import { NotificationService } from './notification.service';
 import { PermissionService } from './permission.service';
@@ -64,6 +65,7 @@ export class DocumentVariantService {
     private readonly finalizeDocumentWaveUseCase: FinalizeDocumentWavePort,
     @Inject(PROPOSE_DOCUMENT_VARIANT_PORT)
     private readonly proposeDocumentVariantUseCase: ProposeDocumentVariantPort,
+    private readonly documentLiveUpdates: DocumentLiveUpdatesService,
   ) {}
 
   async listByBlock(documentId: string, blockId: string): Promise<DocumentBlockVariantSchemaClass[]> {
@@ -123,6 +125,13 @@ export class DocumentVariantService {
       throw new BadRequestException('Only open variants can be withdrawn');
     }
     await this.documentPersistence.updateVariantStatus(variantId, 'withdrawn');
+    this.documentLiveUpdates.publish({
+      type: 'variant.withdrawn',
+      documentId: v.documentId,
+      blockId: v.blockId,
+      variantId,
+      actorUserId: userId,
+    });
   }
 
   /** Apply voting winner (closed-winner) — document owner or community admin. */
@@ -357,6 +366,7 @@ export class DocumentVariantService {
         throw new BadRequestException('Variant does not belong to this block');
       }
       await this.applyOpenVariantAsAdmin(actorUserId, resolution.variantId);
+      this.publishWaveClosed(doc, blockId, actorUserId);
       return;
     }
 
@@ -366,6 +376,20 @@ export class DocumentVariantService {
     }
 
     await this.finalizeExpiredWaveOnBlock(documentId, blockId, { force: true });
+  }
+
+  private publishWaveClosed(
+    doc: MeriterDocumentSchemaClass,
+    blockId: string,
+    actorUserId?: string,
+  ): void {
+    this.documentLiveUpdates.publish({
+      type: 'wave.closed',
+      documentId: doc.id,
+      documentUpdatedAt: doc.updatedAt,
+      blockId,
+      actorUserId,
+    });
   }
 
   /** Admin ends wave early and keeps current official text (recorded in block history). */
@@ -416,6 +440,8 @@ export class DocumentVariantService {
         );
       });
     }
+
+    this.publishWaveClosed(doc, blockId, actorUserId);
   }
 
   /** §7.3 — soft-delete a variant (admin / document author). */
@@ -552,6 +578,16 @@ export class DocumentVariantService {
         );
       });
     }
+
+    const refreshed = await this.documentService.getById(doc.id);
+    this.documentLiveUpdates.publish({
+      type: 'variant.applied',
+      documentId: doc.id,
+      documentUpdatedAt: refreshed?.updatedAt,
+      blockId: v.blockId,
+      variantId: v.id,
+      actorUserId,
+    });
   }
 
   /**

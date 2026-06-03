@@ -21,6 +21,7 @@ import type {
 } from '../../../domain/models/meriter-document/meriter-document.schema';
 import type { DocumentPersistencePort } from '../../../domain/ports/document.persistence.port';
 import type { CommunityService } from '../../../domain/services/community.service';
+import type { DocumentLiveUpdatesService } from '../../../domain/services/document-live-updates.service';
 import type { DocumentService } from '../../../domain/services/document.service';
 import type { NotificationService } from '../../../domain/services/notification.service';
 import type { PermissionService } from '../../../domain/services/permission.service';
@@ -77,6 +78,7 @@ export type ProposeDocumentVariantDeps = {
   permissionService: PermissionService;
   connection: Connection;
   finalizeExpiredWaveOnBlock: (documentId: string, blockId: string) => Promise<void>;
+  documentLiveUpdates: DocumentLiveUpdatesService;
 };
 
 /**
@@ -253,6 +255,17 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
         );
       },
     );
+
+    const docAfter = (await this.deps.documentService.getById(doc.id)) ?? doc;
+    this.deps.documentLiveUpdates.publish({
+      type: 'variant.proposed',
+      documentId: docAfter.id,
+      documentUpdatedAt: docAfter.updatedAt,
+      blockId,
+      variantId,
+      actorUserId: userId,
+    });
+
     return created as DocumentBlockVariantSchemaClass;
   }
 

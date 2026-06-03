@@ -9,10 +9,45 @@ import { createWithdrawFromVoteUseCase } from '../../application/use-cases/votin
 import {
   createCreateVoteUseCaseFromContext,
 } from '../../application/use-cases/voting/create-vote.use-case';
+import { parseOfficialBlockVoteTargetId } from '../../domain/common/document-official-vote.util';
 import {
   isDocumentVoteTargetType,
   type DocumentVoteTargetType,
 } from '../../application/use-cases/voting/document-vote.helper';
+import type { Context } from '../context';
+
+function publishDocumentVoteLiveEvent(
+  ctx: Context,
+  targetType: DocumentVoteTargetType,
+  targetId: string,
+  actorUserId: string,
+): void {
+  if (targetType === 'document-variant') {
+    void ctx.documentService.getVariantById(targetId).then((variant) => {
+      if (!variant) {
+        return;
+      }
+      ctx.documentLiveUpdates.publish({
+        type: 'vote.cast',
+        documentId: variant.documentId,
+        blockId: variant.blockId,
+        variantId: variant.id,
+        actorUserId,
+      });
+    });
+    return;
+  }
+  const parsed = parseOfficialBlockVoteTargetId(targetId);
+  if (!parsed) {
+    return;
+  }
+  ctx.documentLiveUpdates.publish({
+    type: 'vote.cast',
+    documentId: parsed.documentId,
+    blockId: parsed.blockId,
+    actorUserId,
+  });
+}
 
 /**
  * Helper function to process withdrawal and credit wallet.
@@ -127,7 +162,7 @@ export const votesRouter = router({
             'targetType must be "publication", "vote", "document-variant", or "document-block-official"',
         });
       }
-      return createCreateVoteUseCaseFromContext(ctx).execute({
+      const vote = await createCreateVoteUseCaseFromContext(ctx).execute({
         userId: ctx.user.id,
         targetType: input.targetType as
           | 'publication'
@@ -140,6 +175,10 @@ export const votesRouter = router({
         comment: input.comment,
         images: input.images,
       });
+      if (isDocumentVoteTargetType(input.targetType)) {
+        publishDocumentVoteLiveEvent(ctx, input.targetType, input.targetId!, ctx.user.id);
+      }
+      return vote;
     }),
 
   /**

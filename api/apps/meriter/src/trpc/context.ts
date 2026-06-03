@@ -55,6 +55,7 @@ import { DocumentService } from '../domain/services/document.service';
 import { DocumentVariantService } from '../domain/services/document-variant.service';
 import { DocumentStructureService } from '../domain/services/document-structure.service';
 import { DocumentHtmlSyncService } from '../domain/services/document-html-sync.service';
+import { DocumentLiveUpdatesService } from '../domain/services/document-live-updates.service';
 import { PermissionRuleEngine } from '../domain/services/permission-rule-engine.service';
 
 export interface CreateContextOptions {
@@ -110,6 +111,7 @@ export interface CreateContextOptions {
   documentVariantService: DocumentVariantService;
   documentStructureService: DocumentStructureService;
   documentHtmlSyncService: DocumentHtmlSyncService;
+  documentLiveUpdates: DocumentLiveUpdatesService;
   permissionRuleEngine: PermissionRuleEngine;
   connection: Connection;
   configService: ConfigService<AppConfig>;
@@ -177,6 +179,7 @@ export async function createContext(opts: CreateContextOptions) {
     documentVariantService,
     documentStructureService,
     documentHtmlSyncService,
+    documentLiveUpdates,
     permissionRuleEngine,
     connection,
     configService,
@@ -293,6 +296,7 @@ export async function createContext(opts: CreateContextOptions) {
     documentVariantService,
     documentStructureService,
     documentHtmlSyncService,
+    documentLiveUpdates,
     permissionRuleEngine,
     connection,
     configService,

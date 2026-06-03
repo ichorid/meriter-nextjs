@@ -21,6 +21,7 @@ import {
   DOCUMENT_PERSISTENCE_PORT,
   type DocumentPersistencePort,
 } from '../ports/document.persistence.port';
+import { DocumentLiveUpdatesService } from './document-live-updates.service';
 import { DocumentService } from './document.service';
 import { DocumentVariantService } from './document-variant.service';
 
@@ -34,6 +35,7 @@ export class DocumentHtmlSyncService {
   constructor(
     private readonly documentService: DocumentService,
     private readonly documentVariantService: DocumentVariantService,
+    private readonly documentLiveUpdates: DocumentLiveUpdatesService,
     @Inject(DOCUMENT_PERSISTENCE_PORT)
     private readonly documentPersistence: DocumentPersistencePort,
   ) {}
@@ -189,6 +191,13 @@ export class DocumentHtmlSyncService {
     if (!updated) {
       throw new NotFoundException('Document not found');
     }
+
+    this.documentLiveUpdates.publish({
+      type: 'document.updated',
+      documentId: updated.id,
+      documentUpdatedAt: updated.updatedAt,
+      actorUserId,
+    });
 
     return { document: updated, mapping: report };
   }

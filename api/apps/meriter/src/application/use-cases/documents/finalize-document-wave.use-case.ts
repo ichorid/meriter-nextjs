@@ -4,6 +4,7 @@ import type { DocumentBlockVariantSchemaClass } from '../../../domain/models/doc
 import type { MeriterDocumentSchemaClass } from '../../../domain/models/meriter-document/meriter-document.schema';
 import type { DocumentPersistencePort } from '../../../domain/ports/document.persistence.port';
 import type { CommunityService } from '../../../domain/services/community.service';
+import type { DocumentLiveUpdatesService } from '../../../domain/services/document-live-updates.service';
 import type { DocumentService } from '../../../domain/services/document.service';
 import type { NotificationService } from '../../../domain/services/notification.service';
 import type { FinalizeDocumentWavePort } from '../../../domain/ports/finalize-document-wave.port';
@@ -18,6 +19,7 @@ export type FinalizeDocumentWaveDeps = {
   notificationService: NotificationService;
   /** Applies closed-winner in auto mode (inv-15 mirror stays in DocumentVariantService). */
   autoApplyWinner: (documentId: string, blockId: string) => Promise<void>;
+  documentLiveUpdates: DocumentLiveUpdatesService;
 };
 
 /**
@@ -146,6 +148,7 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
           );
         });
       }
+      this.emitWaveClosed(docLean, blockId);
       return;
     }
 
@@ -199,6 +202,16 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
     }
 
     await this.deps.autoApplyWinner(documentId, blockId);
+    this.emitWaveClosed(docLean, blockId);
+  }
+
+  private emitWaveClosed(doc: MeriterDocumentSchemaClass, blockId: string): void {
+    this.deps.documentLiveUpdates.publish({
+      type: 'wave.closed',
+      documentId: doc.id,
+      documentUpdatedAt: doc.updatedAt,
+      blockId,
+    });
   }
 }
 

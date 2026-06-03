@@ -163,6 +163,7 @@ import { DocumentService } from './domain/services/document.service';
 import { DocumentVariantService } from './domain/services/document-variant.service';
 import { DocumentStructureService } from './domain/services/document-structure.service';
 import { DocumentHtmlSyncService } from './domain/services/document-html-sync.service';
+import { DocumentLiveUpdatesService } from './domain/services/document-live-updates.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -278,6 +279,7 @@ import { EventBus } from './domain/events/event-bus';
     DocumentVariantService,
     DocumentStructureService,
     DocumentHtmlSyncService,
+    DocumentLiveUpdatesService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -347,6 +349,7 @@ import { EventBus } from './domain/events/event-bus';
     DocumentVariantService,
     DocumentStructureService,
     DocumentHtmlSyncService,
+    DocumentLiveUpdatesService,
 
     // Export vote factor services
     RoleHierarchyFactor,
