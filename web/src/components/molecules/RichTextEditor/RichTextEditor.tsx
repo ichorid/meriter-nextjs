@@ -21,6 +21,7 @@ export function RichTextEditor({
   minEditorHeight = '150px',
   lockedRanges = [],
   lockedRangeTooltip = '',
+  toolbarSecondary,
 }: RichTextEditorProps) {
   const showDocumentToolbar = toolbar === 'document';
   const lockedRangesRef = useRef(lockedRanges);
@@ -95,9 +96,24 @@ export function RichTextEditor({
       )}
     >
       {showFormatToolbar ? (
-        <div className="rounded-t-xl overflow-hidden">
+        <div
+          className={cn(
+            'rounded-t-xl overflow-hidden',
+            toolbarSecondary ? 'border-b border-base-300 bg-base-200' : null,
+          )}
+        >
           {showDocumentToolbar ? <DocumentStructureToolbar actions={documentActions} /> : null}
-          <FormatToolbar editor={editor} variant={toolbar} disabled={!editable} />
+          <FormatToolbar
+            editor={editor}
+            variant={toolbar}
+            disabled={!editable}
+            embedded={Boolean(toolbarSecondary)}
+          />
+          {toolbarSecondary ? (
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-2 pb-2 pt-0 sm:gap-2 sm:px-3">
+              {toolbarSecondary}
+            </div>
+          ) : null}
         </div>
       ) : null}
       <EditorContent

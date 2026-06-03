@@ -8,6 +8,7 @@ import {
   documentEditorHtmlEquals,
   listArchivedDocumentEditorDrafts,
   removeArchivedDocumentEditorDraft,
+  shouldShowDocumentVersionPicker,
   type DocumentEditorDraftArchiveEntry,
 } from '@/features/documents/lib/document-editor-draft-archive';
 
@@ -56,8 +57,7 @@ export function DocumentEditorDraftRecovery({
   );
 
   const isServerActive = documentEditorHtmlEquals(editorHtml, serverBaselineHtml);
-
-  const showPanel = entries.length > 0 || !isServerActive;
+  const showPanel = shouldShowDocumentVersionPicker(isServerActive, entries.length);
 
   if (!showPanel) {
     return null;

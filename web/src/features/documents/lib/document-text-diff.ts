@@ -1,10 +1,8 @@
-/** Strip HTML to plain text for comparison and revision diff. */
+import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
+
+/** Strip HTML to plain text for comparison and revision diff (preserves paragraph breaks). */
 export function htmlToPlainText(html: string): string {
-  return html
-    .replace(/<[^>]*>/g, ' ')
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return blockHtmlToPlainText(html);
 }
 
 export function normalizePlainText(html: string): string {

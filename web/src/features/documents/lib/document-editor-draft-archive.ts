@@ -1,3 +1,5 @@
+import { isEmptyTipTapHtml } from '@/features/documents/lib/document-canvas-shared';
+import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
 import type { DocumentEditorDraft } from './document-editor-draft';
 
 const ARCHIVE_LIST_PREFIX = 'meriter:document-editor-draft-archive:';
@@ -46,9 +48,40 @@ function readArchiveList(key: string): DocumentEditorDraftArchiveEntry[] {
   }
 }
 
-/** Loose equality for TipTap HTML (trimmed). */
+function normalizeForEditorCompare(html: string): string {
+  return html
+    .trim()
+    .replace(/(?:<p>(?:\s|&nbsp;|<br\s*\/?>)*<\/p>\s*)+$/gi, '')
+    .trim();
+}
+
+/**
+ * Version picker visibility:
+ * - server view, no archived drafts → hidden
+ * - server view, has archived drafts → visible
+ * - any non-server view (live or archived draft) → visible
+ */
+export function shouldShowDocumentVersionPicker(
+  isServerActive: boolean,
+  archivedDraftCount: number,
+): boolean {
+  if (!isServerActive) {
+    return true;
+  }
+  return archivedDraftCount > 0;
+}
+
+/** Loose equality for TipTap vs server HTML (avoids false dirty on open). */
 export function documentEditorHtmlEquals(a: string, b: string): boolean {
-  return a.trim() === b.trim();
+  const left = normalizeForEditorCompare(a);
+  const right = normalizeForEditorCompare(b);
+  if (left === right) {
+    return true;
+  }
+  if (isEmptyTipTapHtml(left) && isEmptyTipTapHtml(right)) {
+    return true;
+  }
+  return blockHtmlToPlainText(left) === blockHtmlToPlainText(right);
 }
 
 function writeArchiveList(key: string, entries: DocumentEditorDraftArchiveEntry[]): void {

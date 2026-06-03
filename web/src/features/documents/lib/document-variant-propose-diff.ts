@@ -31,14 +31,17 @@ export function resolveProposeDiffPayload(
   const previousPlain = blockHtmlToPlainText(previousHtml);
   const bounds = findPlainTextChangeBounds(previousPlain, blockHtmlToPlainText(trimmed));
 
-  if (bounds && bounds.proposedText.trim()) {
-    const proposedText = plainInsertToHtml(bounds.proposedText);
-    if (proposedText) {
+  if (bounds) {
+    const isDeletion = bounds.rangeEnd > bounds.rangeStart && !bounds.proposedText.trim();
+    const insertionHtml = bounds.proposedText.trim()
+      ? plainInsertToHtml(bounds.proposedText)
+      : '';
+    if (isDeletion || insertionHtml) {
       return {
         mode: 'range',
         rangeStart: bounds.rangeStart,
         rangeEnd: bounds.rangeEnd,
-        proposedText,
+        proposedText: isDeletion ? '' : insertionHtml,
       };
     }
   }

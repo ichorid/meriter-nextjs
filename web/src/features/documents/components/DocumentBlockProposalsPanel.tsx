@@ -30,6 +30,7 @@ import {
   type DocTranslate,
 } from '@/features/documents/lib/document-canvas-shared';
 import { buildDocumentVariantPreviewPair } from '@/features/documents/lib/document-variant-document-preview';
+import { resolveVariantBlockPreviewHtml } from '@/features/documents/lib/document-block-merge';
 import { joinDocumentBlocksToHtml } from '@/features/documents/lib/document-html-structure';
 import { cn } from '@/lib/utils';
 
@@ -121,11 +122,12 @@ export function DocumentBlockProposalsPanel({
       rangeEnd: v.rangeEnd,
       proposedText: v.proposedText,
     };
+    const variantBlockHtml = resolveVariantBlockPreviewHtml(blockOfficialHtml, variantInput);
     const { officialHtml, variantHtml } = useDocumentScope
       ? buildDocumentVariantPreviewPair(sections, block.id, blockOfficialHtml, variantInput)
       : {
           officialHtml: blockOfficialHtml,
-          variantHtml: v.content,
+          variantHtml: variantBlockHtml,
         };
     return {
       kind: 'variant',
@@ -134,6 +136,8 @@ export function DocumentBlockProposalsPanel({
       blockType: useDocumentScope ? undefined : block.blockType,
       officialHtml,
       variantHtml,
+      compareOfficialHtml: blockOfficialHtml,
+      compareVariantHtml: variantBlockHtml,
       proposedByDisplayName:
         (v as { proposedByDisplayName?: string }).proposedByDisplayName ?? v.proposedBy,
       proposedAt: v.proposedAt,
@@ -481,7 +485,7 @@ export function DocumentBlockProposalsPanel({
                   variantRow.proposedByDisplayName ?? v.proposedBy.slice(0, 8)
                 }
                 proposedAt={v.proposedAt}
-                proposerComment={variantRow.proposerComment}
+                proposerComment={v.proposerComment ?? variantRow.proposerComment}
                 isActive={Boolean(isVariantActive)}
                 onSelect={() => focus?.setVariantPreview(buildVariantPreview(variantRow))}
                 trailing={
@@ -510,9 +514,11 @@ export function DocumentBlockProposalsPanel({
                       </Button>
                     ) : null}
                     {isOwnOpen ? (
-                      <button
+                      <Button
                         type="button"
-                        className="text-left text-[11px] text-base-content/50 underline-offset-2 hover:text-error hover:underline disabled:opacity-50"
+                        size="sm"
+                        variant="outline"
+                        className="h-8 w-full rounded-lg border-error/35 text-xs text-error hover:bg-error/10 hover:text-error"
                         disabled={withdrawMutation.isPending}
                         onClick={(e) => {
                           e.stopPropagation();
@@ -520,7 +526,7 @@ export function DocumentBlockProposalsPanel({
                         }}
                       >
                         {t('withdraw')}
-                      </button>
+                      </Button>
                     ) : null}
                     {voteBreakdown}
                     {adminActions}

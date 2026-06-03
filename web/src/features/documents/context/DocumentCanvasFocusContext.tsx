@@ -30,6 +30,9 @@ export type DocumentVariantPreviewTarget = {
   blockType?: string;
   /** Official baseline for diff; joined document HTML in gdocs compact rail. */
   officialHtml: string;
+  /** Block-scoped HTML for compare toggle (avoids full-document word diff). */
+  compareOfficialHtml?: string;
+  compareVariantHtml?: string;
   proposedByDisplayName?: string;
   proposedAt?: string | Date;
   proposerComment?: string | null;

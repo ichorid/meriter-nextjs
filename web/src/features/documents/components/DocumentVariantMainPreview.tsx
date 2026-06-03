@@ -47,12 +47,15 @@ export function DocumentVariantMainPreview({
   const isOfficialRow = target.kind === 'official';
   const variantHtml = isOfficialRow ? target.officialHtml : target.variantHtml;
 
+  const compareOfficialHtml = target.compareOfficialHtml ?? target.officialHtml;
+  const compareVariantHtml = target.compareVariantHtml ?? variantHtml;
+
   const canCompare = useMemo(
     () =>
       !isOfficialRow &&
-      hasOfficialText(target.officialHtml) &&
-      variantDiffersFromOfficial(target.officialHtml, variantHtml),
-    [isOfficialRow, target.officialHtml, variantHtml],
+      hasOfficialText(compareOfficialHtml) &&
+      variantDiffersFromOfficial(compareOfficialHtml, compareVariantHtml),
+    [isOfficialRow, compareOfficialHtml, compareVariantHtml],
   );
 
   const title = isOfficialRow
@@ -104,8 +107,9 @@ export function DocumentVariantMainPreview({
         )}
       >
         <DocumentVariantRevisionView
-          officialHtml={target.officialHtml}
-          variantHtml={variantHtml}
+          officialHtml={compareOfficialHtml}
+          variantHtml={compareVariantHtml}
+          displayVariantHtml={variantHtml}
           compareMode={showDiff && canCompare}
           onCompareModeChange={onShowDiffChange}
           hideCompareToggle

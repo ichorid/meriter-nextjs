@@ -1,8 +1,10 @@
 import {
   archiveDocumentEditorDraft,
+  documentEditorHtmlEquals,
   listArchivedDocumentEditorDrafts,
   removeArchivedDocumentEditorDraft,
   shouldArchiveDocumentEditorDraft,
+  shouldShowDocumentVersionPicker,
 } from './document-editor-draft-archive';
 
 describe('document-editor-draft-archive', () => {
@@ -99,6 +101,19 @@ describe('document-editor-draft-archive', () => {
         '<p>server</p>',
         existing ? [existing] : [],
       ),
+    ).toBe(true);
+  });
+
+  it('shouldShowDocumentVersionPicker follows server vs draft rules', () => {
+    expect(shouldShowDocumentVersionPicker(true, 0)).toBe(false);
+    expect(shouldShowDocumentVersionPicker(true, 2)).toBe(true);
+    expect(shouldShowDocumentVersionPicker(false, 0)).toBe(true);
+    expect(shouldShowDocumentVersionPicker(false, 1)).toBe(true);
+  });
+
+  it('documentEditorHtmlEquals treats same plain text as equal', () => {
+    expect(
+      documentEditorHtmlEquals('<p>Hello</p>', '<p>Hello</p><p><br></p>'),
     ).toBe(true);
   });
 

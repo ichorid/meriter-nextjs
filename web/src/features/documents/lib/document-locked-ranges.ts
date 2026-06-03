@@ -171,3 +171,47 @@ export function applyPinActionToRanges(
   }
   return subtractRangeFromLocked(ranges, selStart, selEnd, plainLength);
 }
+
+export type BlockLockState = {
+  lockedRanges: LockedRange[];
+  proposalsLocked: boolean;
+};
+
+export function blockLockStatesEqual(a: BlockLockState, b: BlockLockState): boolean {
+  if (a.proposalsLocked !== b.proposalsLocked) {
+    return false;
+  }
+  if (a.lockedRanges.length !== b.lockedRanges.length) {
+    return false;
+  }
+  return a.lockedRanges.every((range, index) => {
+    const other = b.lockedRanges[index]!;
+    return range.rangeStart === other.rangeStart && range.rangeEnd === other.rangeEnd;
+  });
+}
+
+export function serverBlockLockState(
+  html: string,
+  proposalsLocked: boolean,
+  lockedRanges: LockedRange[] | undefined,
+): BlockLockState {
+  return {
+    proposalsLocked: proposalsLocked === true,
+    lockedRanges: getEditableLockedRanges(html, proposalsLocked, lockedRanges),
+  };
+}
+
+export function hasPendingBlockLockChanges(
+  pending: BlockLockState | null,
+  html: string,
+  serverProposalsLocked: boolean,
+  serverLockedRanges: LockedRange[] | undefined,
+): boolean {
+  if (!pending) {
+    return false;
+  }
+  return !blockLockStatesEqual(
+    pending,
+    serverBlockLockState(html, serverProposalsLocked, serverLockedRanges),
+  );
+}

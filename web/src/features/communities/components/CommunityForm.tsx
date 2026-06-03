@@ -363,12 +363,7 @@ export const CommunityForm = ({
                     ) : !isEditMode ? (
                         <BrandFormControl
                             label={t("futureVisionSection")}
-                            labelDescription={
-                                <>
-                                    <p>{t("futureVisionSectionHint")}</p>
-                                    <p>{t("futureVisionSectionHintPinBlock")}</p>
-                                </>
-                            }
+                            labelDescription={t("futureVisionSectionHint")}
                             required
                         >
                             <MeriterEditor

@@ -28,6 +28,7 @@ export interface DocumentBlockEditorProps {
   lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
   lockedRangeTooltip?: string;
   editorContainerClassName?: string;
+  toolbarSecondary?: ReactNode;
 }
 
 function HeadingBlockEditor({
@@ -212,6 +213,7 @@ export function DocumentBlockEditor({
   lockedRanges,
   lockedRangeTooltip,
   editorContainerClassName,
+  toolbarSecondary,
 }: DocumentBlockEditorProps) {
   const type = (blockType || 'paragraph') as MeriterBlockType;
 
@@ -275,6 +277,7 @@ export function DocumentBlockEditor({
           minEditorHeight="120px"
           lockedRanges={lockedRanges}
           lockedRangeTooltip={lockedRangeTooltip}
+          toolbarSecondary={toolbarSecondary}
         />
       );
   }

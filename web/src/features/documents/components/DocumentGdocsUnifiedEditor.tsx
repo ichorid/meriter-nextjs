@@ -9,14 +9,16 @@ import {
   type MutableRefObject,
 } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
-import { Pin } from 'lucide-react';
 import { DocumentBlockEditor } from '@/features/documents/components/DocumentBlockEditor';
+import { DocumentGdocsEditorActionToolbar } from '@/features/documents/components/DocumentGdocsEditorActionToolbar';
 import { getPrimaryDocumentBlock } from '@/features/documents/lib/document-primary-block';
 import {
   applyPinActionToRanges,
-  getEditableLockedRanges,
   getEffectiveLockedRanges,
+  hasPendingBlockLockChanges,
   pinActionForSelection,
+  serverBlockLockState,
+  type BlockLockState,
 } from '@/features/documents/lib/document-locked-ranges';
 import { selectionRangeInBlock } from '@/features/documents/lib/document-html-structure';
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
@@ -47,11 +49,10 @@ import {
 } from '@/features/documents/lib/document-canvas-shared';
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { canUseWalletForVoting } from '@/components/organisms/VotingPopup/voting-utils';
-import { Button } from '@/components/ui/shadcn/button';
-import { cn } from '@/lib/utils';
+import type { GdocsPersistMode } from '@/features/documents/lib/document-gdocs-editor';
 import { trpc } from '@/lib/trpc/client';
 
-export type GdocsPersistMode = 'propose' | 'official';
+export type { GdocsPersistMode } from '@/features/documents/lib/document-gdocs-editor';
 
 export interface DocumentGdocsUnifiedEditorProps {
   documentId: string;
@@ -99,10 +100,14 @@ export function DocumentGdocsUnifiedEditor({
   const [draftRestored, setDraftRestored] = useState(false);
   const [persistMode, setPersistMode] = useState<GdocsPersistMode>('propose');
   const [proposeCommentOpen, setProposeCommentOpen] = useState(false);
+  const [pendingBlockLocks, setPendingBlockLocks] = useState<BlockLockState | null>(null);
+  const pendingBlockLocksRef = useRef<BlockLockState | null>(null);
   const [textSelection, setTextSelection] = useState<{ start: number; end: number } | null>(
     null,
   );
   const editorSurfaceRef = useRef<HTMLDivElement>(null);
+
+  pendingBlockLocksRef.current = pendingBlockLocks;
 
   const serverBaselineHtml = pendingRemoteBaseline ?? initialHtml;
 
@@ -145,10 +150,28 @@ export function DocumentGdocsUnifiedEditor({
       htmlRef.current = baseline;
       setEditorHtml(baseline);
       setDraftRestored(false);
+      setPendingBlockLocks(null);
       setIsDirty(false);
       onDirtyChange?.(false);
     },
     [onDirtyChange],
+  );
+
+  const syncEditorDirtyState = useCallback(
+    (html: string, locks: BlockLockState | null) => {
+      const htmlDirty = !documentEditorHtmlEquals(html, lastPersistedHtmlRef.current);
+      const pinDirty = hasPendingBlockLockChanges(
+        locks,
+        html,
+        primaryBlock?.proposalsLocked === true,
+        primaryBlock?.lockedRanges,
+      );
+      const dirty = htmlDirty || pinDirty;
+      setIsDirty(dirty);
+      onDirtyChange?.(dirty);
+      return dirty;
+    },
+    [onDirtyChange, primaryBlock?.lockedRanges, primaryBlock?.proposalsLocked],
   );
 
   const hasUnsavedLocalWork = useCallback(
@@ -156,13 +179,23 @@ export function DocumentGdocsUnifiedEditor({
       if (isDirty) {
         return true;
       }
-      const draft = readDocumentEditorDraft(draftKey);
-      if (draft?.html.trim() && draft.html.trim() !== baseline.trim()) {
+      if (
+        hasPendingBlockLockChanges(
+          pendingBlockLocksRef.current,
+          htmlRef.current,
+          primaryBlock?.proposalsLocked === true,
+          primaryBlock?.lockedRanges,
+        )
+      ) {
         return true;
       }
-      return htmlRef.current.trim() !== baseline.trim();
+      const draft = readDocumentEditorDraft(draftKey);
+      if (draft?.html.trim() && !documentEditorHtmlEquals(draft.html, baseline)) {
+        return true;
+      }
+      return !documentEditorHtmlEquals(htmlRef.current, baseline);
     },
-    [draftKey, isDirty],
+    [draftKey, isDirty, primaryBlock?.lockedRanges, primaryBlock?.proposalsLocked],
   );
 
   const dismissPendingRemoteUpdate = useCallback(() => {
@@ -269,6 +302,7 @@ export function DocumentGdocsUnifiedEditor({
       serverRevisionRef.current = serverRevisionKey;
       acknowledgedRemoteRevisionRef.current = '';
       setPendingRemoteBaseline(null);
+      setPendingBlockLocks(null);
     }
 
     const remoteRevisionChanged =
@@ -307,7 +341,7 @@ export function DocumentGdocsUnifiedEditor({
     const canRestoreDraft =
       draft &&
       !draftStale &&
-      draft.html.trim() !== baseline.trim();
+      !documentEditorHtmlEquals(draft.html, baseline);
 
     if (canRestoreDraft) {
       htmlRef.current = draft.html;
@@ -318,8 +352,12 @@ export function DocumentGdocsUnifiedEditor({
       return;
     }
 
+    if (draft && (draftStale || documentEditorHtmlEquals(draft.html, baseline))) {
+      clearDocumentEditorDraft(draftKey);
+    }
+
     if (draft && draftStale) {
-      const hadStaleDraft = draft.html.trim() !== baseline.trim();
+      const hadStaleDraft = !documentEditorHtmlEquals(draft.html, baseline);
       if (hadStaleDraft) {
         archiveDocumentEditorDraft(documentId, focus.userId, draft, 'remote_update');
         bumpArchiveList();
@@ -352,11 +390,16 @@ export function DocumentGdocsUnifiedEditor({
       setDraftRestored(false);
       setPendingRemoteBaseline(null);
       clearDocumentEditorDraft(draftKey);
-      setIsDirty(false);
-      onDirtyChange?.(false);
+      const stillDirty = hasPendingBlockLockChanges(
+        pendingBlockLocksRef.current,
+        serverHtml,
+        primaryBlock?.proposalsLocked === true,
+        primaryBlock?.lockedRanges,
+      );
+      setIsDirty(stillDirty);
+      onDirtyChange?.(stillDirty);
       utils.documents.getById.setData({ id: documentId }, result.document);
       await utils.documentVariants.listByDocument.invalidate({ documentId });
-      focus.addToast(tGdocs('leadEditorSaved'), 'success');
       onSynced?.();
     },
   });
@@ -385,6 +428,7 @@ export function DocumentGdocsUnifiedEditor({
 
   const lockBlockMutation = trpc.documents.updateBlock.useMutation({
     onSuccess: async (_data, variables) => {
+      setPendingBlockLocks(null);
       await utils.documents.getById.invalidate({ id: documentId });
       focus.addToast(
         variables.proposalsLocked ? tGdocs('pinnedBlock') : tGdocs('unpinnedBlock'),
@@ -393,6 +437,31 @@ export function DocumentGdocsUnifiedEditor({
     },
     onError: (err) => focus.addToast(err.message, 'error'),
   });
+
+  const persistPendingBlockLocks = useCallback(async () => {
+    if (!primaryBlock?.id || !pendingBlockLocks) {
+      return;
+    }
+    if (
+      !hasPendingBlockLockChanges(
+        pendingBlockLocks,
+        htmlRef.current,
+        primaryBlock.proposalsLocked === true,
+        primaryBlock.lockedRanges,
+      )
+    ) {
+      return;
+    }
+    await lockBlockMutation.mutateAsync({
+      documentId,
+      blockId: primaryBlock.id,
+      lockedRanges: pendingBlockLocks.lockedRanges,
+      proposalsLocked: pendingBlockLocks.proposalsLocked,
+      expectedUpdatedAt: expectedUpdatedAtRef.current
+        ? new Date(expectedUpdatedAtRef.current)
+        : undefined,
+    });
+  }, [documentId, lockBlockMutation, pendingBlockLocks, primaryBlock]);
 
   const isSaving = syncMutation.isPending || proposeMutation.isPending || lockBlockMutation.isPending;
 
@@ -431,7 +500,7 @@ export function DocumentGdocsUnifiedEditor({
       focus.addToast(t('proposalTooLong', { max: MAX_VARIANT_HTML_LENGTH }), 'error');
       return;
     }
-    if (trimmed === lastPersistedHtmlRef.current.trim()) {
+    if (documentEditorHtmlEquals(trimmed, lastPersistedHtmlRef.current)) {
       return;
     }
 
@@ -466,29 +535,97 @@ export function DocumentGdocsUnifiedEditor({
     setProposeCommentOpen(true);
   }, [primaryBlock, canManageDocument, focus, sections, t, tGdocs]);
 
-  const saveOfficial = useCallback(() => {
-    if (htmlRef.current === lastPersistedHtmlRef.current) {
+  const saveOfficial = useCallback(async () => {
+    const htmlDirty = !documentEditorHtmlEquals(htmlRef.current, lastPersistedHtmlRef.current);
+    const pinDirty = hasPendingBlockLockChanges(
+      pendingBlockLocks,
+      htmlRef.current,
+      primaryBlock?.proposalsLocked === true,
+      primaryBlock?.lockedRanges,
+    );
+    if (!htmlDirty && !pinDirty) {
       return;
     }
-    syncMutation.mutate({
-      documentId,
-      html: htmlRef.current,
-      expectedUpdatedAt: expectedUpdatedAtRef.current
-        ? new Date(expectedUpdatedAtRef.current)
-        : undefined,
-    });
-  }, [documentId, syncMutation]);
+
+    if (htmlDirty) {
+      const result = await syncMutation.mutateAsync({
+        documentId,
+        html: htmlRef.current,
+        expectedUpdatedAt: expectedUpdatedAtRef.current
+          ? new Date(expectedUpdatedAtRef.current)
+          : undefined,
+      });
+      expectedUpdatedAtRef.current = result.document.updatedAt;
+    }
+    if (pinDirty) {
+      await persistPendingBlockLocks();
+    }
+    const stillDirty = syncEditorDirtyState(htmlRef.current, pendingBlockLocksRef.current);
+    if (!stillDirty) {
+      focus.addToast(tGdocs('leadEditorSaved'), 'success');
+    }
+  }, [
+    documentId,
+    pendingBlockLocks,
+    persistPendingBlockLocks,
+    primaryBlock?.lockedRanges,
+    primaryBlock?.proposalsLocked,
+    focus,
+    syncEditorDirtyState,
+    syncMutation,
+    tGdocs,
+  ]);
 
   const saveNow = useCallback(() => {
-    if (isSaving) {
+    if (isSaving || !primaryBlock?.id) {
       return;
     }
+    const htmlDirty = !documentEditorHtmlEquals(htmlRef.current, lastPersistedHtmlRef.current);
+    const pinDirty = hasPendingBlockLockChanges(
+      pendingBlockLocks,
+      htmlRef.current,
+      primaryBlock.proposalsLocked === true,
+      primaryBlock.lockedRanges,
+    );
+    if (!htmlDirty && !pinDirty) {
+      return;
+    }
+
     if (effectivePersistMode === 'official') {
-      saveOfficial();
-    } else {
+      void saveOfficial();
+      return;
+    }
+
+    if (pinDirty && canManageDocument) {
+      void (async () => {
+        try {
+          await persistPendingBlockLocks();
+          if (htmlDirty) {
+            submitProposal();
+          } else {
+            syncEditorDirtyState(htmlRef.current, null);
+          }
+        } catch {
+          // toast from mutation
+        }
+      })();
+      return;
+    }
+
+    if (htmlDirty) {
       submitProposal();
     }
-  }, [effectivePersistMode, isSaving, saveOfficial, submitProposal]);
+  }, [
+    canManageDocument,
+    effectivePersistMode,
+    isSaving,
+    pendingBlockLocks,
+    persistPendingBlockLocks,
+    primaryBlock,
+    saveOfficial,
+    submitProposal,
+    syncEditorDirtyState,
+  ]);
 
   useEffect(() => {
     if (!saveRequestRef) {
@@ -524,14 +661,25 @@ export function DocumentGdocsUnifiedEditor({
 
   const plainLength = useMemo(() => blockHtmlToPlainText(editorHtml).length, [editorHtml]);
 
+  const effectiveBlockLocks = useMemo(() => {
+    if (pendingBlockLocks) {
+      return pendingBlockLocks;
+    }
+    return serverBlockLockState(
+      editorHtml,
+      primaryBlock?.proposalsLocked === true,
+      primaryBlock?.lockedRanges,
+    );
+  }, [editorHtml, pendingBlockLocks, primaryBlock?.lockedRanges, primaryBlock?.proposalsLocked]);
+
   const effectiveLockedRanges = useMemo(
     () =>
       getEffectiveLockedRanges(
         editorHtml,
-        primaryBlock?.proposalsLocked === true,
-        primaryBlock?.lockedRanges,
+        effectiveBlockLocks.proposalsLocked,
+        effectiveBlockLocks.lockedRanges,
       ),
-    [editorHtml, primaryBlock?.proposalsLocked, primaryBlock?.lockedRanges],
+    [editorHtml, effectiveBlockLocks],
   );
 
   const pinToolbarAction = useMemo(() => {
@@ -577,11 +725,7 @@ export function DocumentGdocsUnifiedEditor({
     if (!primaryBlock?.id || !canManageDocument || !textSelection || !pinToolbarAction) {
       return;
     }
-    const baseRanges = getEditableLockedRanges(
-      editorHtml,
-      primaryBlock.proposalsLocked === true,
-      primaryBlock.lockedRanges,
-    );
+    const baseRanges = effectiveLockedRanges;
     const nextRanges = applyPinActionToRanges(
       baseRanges,
       pinToolbarAction,
@@ -595,15 +739,12 @@ export function DocumentGdocsUnifiedEditor({
       nextRanges[0]!.rangeStart === 0 &&
       nextRanges[0]!.rangeEnd === plainLength;
 
-    lockBlockMutation.mutate({
-      documentId,
-      blockId: primaryBlock.id,
+    const nextLocks: BlockLockState = {
       lockedRanges: nextRanges,
       proposalsLocked: fullBlockPinned,
-      expectedUpdatedAt: expectedUpdatedAtRef.current
-        ? new Date(expectedUpdatedAtRef.current)
-        : undefined,
-    });
+    };
+    setPendingBlockLocks(nextLocks);
+    syncEditorDirtyState(htmlRef.current, nextLocks);
   };
 
   if (!primaryBlock) {
@@ -647,82 +788,6 @@ export function DocumentGdocsUnifiedEditor({
         onConfirm={executePropose}
         isPending={proposeMutation.isPending}
       />
-      <div className="flex min-w-0 flex-nowrap items-center gap-1.5 rounded-xl border border-base-300/50 bg-base-200/40 px-2 py-2 sm:gap-2 sm:px-3 dark:bg-base-300/20">
-        {canManageDocument ? (
-          <>
-            <div
-              className="inline-flex shrink-0 rounded-lg border border-base-300/60 bg-base-100/80 p-0.5 dark:bg-base-100/10"
-              role="group"
-              aria-label={tGdocs('persistModeLabel')}
-            >
-              <button
-                type="button"
-                className={cn(
-                  'whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors sm:px-3',
-                  effectivePersistMode === 'propose'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-base-content/70 hover:bg-base-300/50',
-                )}
-                onClick={() => setPersistMode('propose')}
-              >
-                {tGdocs('persistModePropose')}
-              </button>
-              <button
-                type="button"
-                className={cn(
-                  'whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors sm:px-3',
-                  effectivePersistMode === 'official'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-base-content/70 hover:bg-base-300/50',
-                )}
-                onClick={() => setPersistMode('official')}
-              >
-                {tGdocs('persistModeOfficial')}
-              </button>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              variant={pinToolbarAction === 'unlock' ? 'default' : 'outline'}
-              className={cn(
-                'h-8 shrink-0 gap-1 whitespace-nowrap rounded-lg px-2 text-xs sm:px-3',
-                pinToolbarAction === 'unlock' && 'bg-primary hover:bg-primary/90',
-              )}
-              disabled={
-                lockBlockMutation.isPending || !textSelection || !pinToolbarAction
-              }
-              onClick={applyPinToSelection}
-              title={
-                textSelection
-                  ? tGdocs('pinBlockHint', {
-                      defaultMessage: 'Закрепить или открепить выделенный фрагмент',
-                    })
-                  : tGdocs('pinSelectTextHint', {
-                      defaultMessage: 'Выделите фрагмент в тексте',
-                    })
-              }
-            >
-              <Pin
-                size={14}
-                className={cn('shrink-0', pinToolbarAction === 'unlock' && 'fill-current')}
-              />
-              {pinToolbarAction === 'unlock'
-                ? tGdocs('unpinBlock', { defaultMessage: 'Открепить' })
-                : tGdocs('pinBlock', { defaultMessage: 'Закрепить' })}
-            </Button>
-          </>
-        ) : null}
-        <Button
-          type="button"
-          size="sm"
-          className="ml-auto h-8 shrink-0 whitespace-nowrap rounded-lg px-3 text-xs"
-          onClick={saveNow}
-          disabled={!isDirty || isSaving}
-        >
-          {isSaving ? tGdocs('leadEditorSaving') : saveButtonLabel}
-        </Button>
-      </div>
-
       <p className="text-xs text-base-content/55">{hint}</p>
       {draftRestored ? (
         <p className="text-xs text-primary/80">{tGdocs('draftRestoredHint')}</p>
@@ -752,14 +817,30 @@ export function DocumentGdocsUnifiedEditor({
           key={`gdocs-${documentId}-${primaryBlock.id}-${editorContentKey}`}
           blockType="paragraph"
           content={editorHtml}
+          toolbarSecondary={
+            <DocumentGdocsEditorActionToolbar
+              canManageDocument={canManageDocument}
+              effectivePersistMode={effectivePersistMode}
+              onPersistModeChange={setPersistMode}
+              pinToolbarAction={pinToolbarAction}
+              hasTextSelection={textSelection != null}
+              onPinClick={applyPinToSelection}
+              saveButtonLabel={saveButtonLabel}
+              isDirty={isDirty}
+              isSaving={isSaving}
+              onSave={saveNow}
+            />
+          }
           onChange={(html) => {
             htmlRef.current = html;
             setEditorHtml(html);
-            writeDocumentEditorDraft(draftKey, html, updatedAt);
             setDraftRestored(false);
-            const dirty = html.trim() !== lastPersistedHtmlRef.current.trim();
-            setIsDirty(dirty);
-            onDirtyChange?.(dirty);
+            if (!documentEditorHtmlEquals(html, lastPersistedHtmlRef.current)) {
+              writeDocumentEditorDraft(draftKey, html, updatedAt);
+            } else {
+              clearDocumentEditorDraft(draftKey);
+            }
+            syncEditorDirtyState(html, pendingBlockLocksRef.current);
           }}
           placeholder={tGdocs('leadEditorPlaceholder')}
           disabled={isSaving || (primaryBlock.proposalsLocked && !canManageDocument)}

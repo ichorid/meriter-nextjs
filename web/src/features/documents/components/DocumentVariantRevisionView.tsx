@@ -44,6 +44,8 @@ function RevisionTokenInline({
 export interface DocumentVariantRevisionViewProps {
   officialHtml: string;
   variantHtml: string;
+  /** Full preview HTML when compare uses a narrower scope (e.g. single block). */
+  displayVariantHtml?: string;
   blockType?: string;
   contentClassName?: string;
   className?: string;
@@ -59,6 +61,7 @@ export interface DocumentVariantRevisionViewProps {
 export function DocumentVariantRevisionView({
   officialHtml,
   variantHtml,
+  displayVariantHtml,
   blockType,
   contentClassName,
   className,
@@ -117,7 +120,11 @@ export function DocumentVariantRevisionView({
           </div>
         )
       ) : suppressDefaultPreview ? null : (
-        <DocumentRichContent html={variantHtml} blockType={blockType} className={contentClassName} />
+        <DocumentRichContent
+          html={displayVariantHtml ?? variantHtml}
+          blockType={blockType}
+          className={contentClassName}
+        />
       )}
 
       {canCompare && !hideCompareToggle ? (
