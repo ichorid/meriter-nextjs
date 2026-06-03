@@ -224,6 +224,9 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
           }
         : { officialTextHashAtPropose }),
       references: refs,
+      ...(input.proposerComment?.trim()
+        ? { proposerComment: input.proposerComment.trim().slice(0, 500) }
+        : {}),
       proposedBy: userId,
       proposedAt: now,
       status: 'open',

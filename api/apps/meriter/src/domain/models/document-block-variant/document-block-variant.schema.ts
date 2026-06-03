@@ -55,6 +55,10 @@ export class DocumentBlockVariantSchemaClass {
   @Prop({ required: true })
   proposedAt!: Date;
 
+  /** Optional rationale from proposer (shown in proposal rail). */
+  @Prop({ maxlength: 500 })
+  proposerComment?: string;
+
   @Prop({
     enum: ['open', 'closed-winner', 'closed-not-winner', 'applied', 'withdrawn'],
     default: 'open',

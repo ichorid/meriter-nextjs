@@ -104,7 +104,20 @@ export const documentVariantsRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      return ctx.documentVariantService.listByBlock(input.documentId, input.blockId);
+      const variants = await ctx.documentVariantService.listByBlock(
+        input.documentId,
+        input.blockId,
+      );
+      const userIds = [...new Set(variants.map((v) => v.proposedBy))];
+      const userById = await ctx.userService.getUsersByIdsForEnrichment(userIds);
+      return variants.map((variant) => {
+        const proposer = userById.get(variant.proposedBy);
+        return {
+          ...variant,
+          proposedByDisplayName:
+            proposer?.displayName ?? variant.proposedBy.slice(0, 8),
+        };
+      });
     }),
 
   getBlockVotingPanel: protectedProcedure
@@ -286,6 +299,7 @@ export const documentVariantsRouter = router({
           rangeEnd: z.number().int().min(0).optional(),
           proposedText: z.string().max(5000).optional(),
           references: z.array(ReferenceSchema).max(10).optional(),
+          proposerComment: z.string().trim().max(500).optional(),
         })
         .refine(
           (v) =>

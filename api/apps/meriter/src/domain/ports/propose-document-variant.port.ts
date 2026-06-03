@@ -19,6 +19,7 @@ export type ProposeDocumentVariantInput = {
   rangeEnd?: number;
   proposedText?: string;
   references?: DocumentVariantReferenceInput[];
+  proposerComment?: string;
 };
 
 export interface ProposeDocumentVariantPort {
