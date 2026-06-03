@@ -37,20 +37,6 @@ export function DocumentCanvasMobileSheet() {
     { documentId, blockId },
     { enabled: sheetNeedsVariants },
   );
-  const utils = trpc.useUtils();
-
-  const closeVotingMutation = trpc.documentVariants.closeVotingWaveOnBlock.useMutation({
-    onSuccess: async () => {
-      focus?.addToast(t('closeVotingSuccess'), 'success');
-      focus?.closeMobileSheet();
-      await utils.documents.getById.invalidate({ id: documentId });
-      if (blockId) {
-        await utils.documentVariants.listByBlock.invalidate({ documentId, blockId });
-      }
-    },
-    onError: (err) => focus?.addToast(err.message, 'error'),
-  });
-
   const variants = variantsQuery.data ?? [];
   const waveStartMs = block?.currentWaveStartedAt
     ? new Date(block.currentWaveStartedAt).getTime()
@@ -190,12 +176,12 @@ export function DocumentCanvasMobileSheet() {
                   type="button"
                   variant="outline"
                   className="h-10 justify-start rounded-lg"
-                  disabled={closeVotingMutation.isPending}
-                  onClick={() =>
-                    closeVotingMutation.mutate({ documentId, blockId })
-                  }
+                  onClick={() => {
+                    closeMobileSheet();
+                    openAdminDialog({ kind: 'closeVoting', blockId });
+                  }}
                 >
-                  {t('editor.closeVoting')}
+                  {t('closeVotingNow')}
                 </Button>
               ) : null}
             </>

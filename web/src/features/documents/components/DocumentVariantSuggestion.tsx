@@ -1,10 +1,13 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import type { Community } from '@meriter/shared-types';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
+import { DocumentVariantContextPreview } from '@/features/documents/components/DocumentVariantContextPreview';
 import { DocumentVariantRevisionView } from '@/features/documents/components/DocumentVariantRevisionView';
+import { buildVariantDisplayPreview } from '@/features/documents/lib/document-variant-preview';
 import { DocumentVariantReferencesList } from '@/features/documents/components/DocumentVariantReferencesList';
 import { variantStatusLabelKey, variantStatusToneClass, type DocTranslate } from '@/features/documents/lib/document-canvas-shared';
 import { openDocumentVariantVoting } from '@/features/documents/lib/document-variant-voting';
@@ -34,6 +37,11 @@ export interface DocumentVariantSuggestionProps {
   t: DocTranslate;
   officialHtml?: string;
   blockType?: string;
+  prevBlockHtml?: string;
+  nextBlockHtml?: string;
+  rangeStart?: number;
+  rangeEnd?: number;
+  proposedText?: string;
   className?: string;
   voteBreakdown?: React.ReactNode;
   adminActions?: React.ReactNode;
@@ -51,6 +59,11 @@ export function DocumentVariantSuggestion({
   t,
   officialHtml = '',
   blockType,
+  prevBlockHtml,
+  nextBlockHtml,
+  rangeStart,
+  rangeEnd,
+  proposedText,
   className,
   voteBreakdown,
   adminActions,
@@ -73,6 +86,29 @@ export function DocumentVariantSuggestion({
   const isOpen = variant.status === 'open';
   const isOwnOpen = isOpen && variant.proposedBy === userId;
   const communityId = community?.id ?? focus?.community?.id ?? '';
+
+  const contextPreview = useMemo(
+    () =>
+      buildVariantDisplayPreview(
+        officialHtml,
+        {
+          content: variant.content,
+          rangeStart,
+          rangeEnd,
+          proposedText,
+        },
+        { prevBlockHtml, nextBlockHtml },
+      ),
+    [
+      officialHtml,
+      variant.content,
+      rangeStart,
+      rangeEnd,
+      proposedText,
+      prevBlockHtml,
+      nextBlockHtml,
+    ],
+  );
 
   const openVote = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -123,11 +159,20 @@ export function DocumentVariantSuggestion({
         ) : null}
       </div>
 
+      {contextPreview ? (
+        <DocumentVariantContextPreview
+          preview={contextPreview}
+          blockType={blockType}
+          className="text-base-content/90"
+        />
+      ) : null}
+
       <DocumentVariantRevisionView
         officialHtml={officialHtml}
         variantHtml={variant.content}
         blockType={blockType}
         contentClassName="text-sm leading-relaxed text-base-content/90"
+        suppressDefaultPreview={contextPreview != null}
       />
 
       {variant.references.length > 0 ? (

@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/shadcn/dialog';
 import { DocumentBlockEditor } from '@/features/documents/components/DocumentBlockEditor';
 import { DocumentBlockHistoryPanel } from '@/features/documents/components/DocumentBlockHistoryPanel';
+import { DocumentCloseVotingDialog } from '@/features/documents/components/DocumentCloseVotingDialog';
 import { normalizeOfficialContentForDisplay } from '@/features/documents/lib/block-content-format';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
 import {
@@ -35,7 +36,9 @@ export function DocumentBlockAdminDialogs() {
   const { adminDialog, closeAdminDialog, documentId, addToast, getBlock } = focus;
 
   const blockId =
-    adminDialog.kind === 'history' || adminDialog.kind === 'adminOverride'
+    adminDialog.kind === 'history' ||
+    adminDialog.kind === 'adminOverride' ||
+    adminDialog.kind === 'closeVoting'
       ? adminDialog.blockId
       : null;
   const block = blockId ? getBlock(blockId) : null;
@@ -72,6 +75,8 @@ export function DocumentBlockAdminDialogs() {
 
   return (
     <>
+      <DocumentCloseVotingDialog />
+
       <Dialog
         open={adminDialog.kind === 'adminOverride'}
         onOpenChange={(open) => {

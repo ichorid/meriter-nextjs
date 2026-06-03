@@ -25,6 +25,9 @@ export interface DocumentBlockEditorProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
+  lockedRangeTooltip?: string;
+  editorContainerClassName?: string;
 }
 
 function HeadingBlockEditor({
@@ -206,6 +209,9 @@ export function DocumentBlockEditor({
   placeholder,
   disabled,
   className,
+  lockedRanges,
+  lockedRangeTooltip,
+  editorContainerClassName,
 }: DocumentBlockEditorProps) {
   const type = (blockType || 'paragraph') as MeriterBlockType;
 
@@ -262,8 +268,13 @@ export function DocumentBlockEditor({
           placeholder={placeholder}
           editable={!disabled}
           toolbar="default"
-          className="min-h-[140px] rounded-xl border border-input bg-background"
+          className={cn(
+            'min-h-[140px] rounded-xl border border-input bg-background',
+            editorContainerClassName,
+          )}
           minEditorHeight="120px"
+          lockedRanges={lockedRanges}
+          lockedRangeTooltip={lockedRangeTooltip}
         />
       );
   }

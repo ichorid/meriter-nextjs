@@ -4,7 +4,6 @@ import { useTranslations } from 'next-intl';
 import { History } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
-import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
 
 export interface DocumentBlockGovernanceToolbarProps {
@@ -29,17 +28,6 @@ export function DocumentBlockGovernanceToolbar({
 }: DocumentBlockGovernanceToolbarProps) {
   const focus = useDocumentCanvasFocus();
   const t = useTranslations('pages.documents');
-  const utils = trpc.useUtils();
-
-  const closeVotingMutation = trpc.documentVariants.closeVotingWaveOnBlock.useMutation({
-    onSuccess: async () => {
-      onCloseVotingSuccess?.();
-      await utils.documents.getById.invalidate({ id: documentId });
-      await utils.documentVariants.listByBlock.invalidate({ documentId, blockId });
-      await utils.documentVariants.getBlockVotingPanel.invalidate({ documentId, blockId });
-    },
-    onError: (err) => onCloseVotingError?.(err.message),
-  });
 
   if (!focus) {
     return null;
@@ -77,10 +65,9 @@ export function DocumentBlockGovernanceToolbar({
           variant={variant}
           size="sm"
           className={buttonClass}
-          disabled={closeVotingMutation.isPending}
-          onClick={() => closeVotingMutation.mutate({ documentId, blockId })}
+          onClick={() => focus.openAdminDialog({ kind: 'closeVoting', blockId })}
         >
-          {t('editor.closeVoting')}
+          {t('closeVotingNow')}
         </Button>
       ) : null}
     </div>

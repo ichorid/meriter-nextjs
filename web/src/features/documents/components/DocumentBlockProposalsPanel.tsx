@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import type { Community } from '@meriter/shared-types';
@@ -57,7 +58,13 @@ export function DocumentBlockProposalsPanel({
 }: DocumentBlockProposalsPanelProps) {
   const tCanvas = useTranslations('pages.documents.canvas');
   const tGdocs = useTranslations('pages.documents.gdocs');
+  const focus = useDocumentCanvasFocus();
   const utils = trpc.useUtils();
+
+  const adjacent = useMemo(
+    () => focus?.getAdjacentBlocks(block.id) ?? { prev: null, next: null },
+    [focus, block.id],
+  );
   const [showAllVariants, setShowAllVariants] = useState(false);
   const [votesExpandedFor, setVotesExpandedFor] = useState<string | null>(null);
 
@@ -183,12 +190,30 @@ export function DocumentBlockProposalsPanel({
     <div className="mt-4 space-y-3 rounded-xl border border-base-300/40 bg-base-200/30 p-3">
       {waveActive ? (
         <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
-          <p className="text-xs font-medium text-primary">{tCanvas('votingOpen')}</p>
-          {waveCountdown ? (
-            <p className="mt-0.5 text-[11px] text-base-content/65">
-              {t('waveEndsIn', { time: waveCountdown })}
-            </p>
-          ) : null}
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-primary">{tCanvas('votingOpen')}</p>
+              {waveCountdown ? (
+                <p className="mt-0.5 text-[11px] text-base-content/65">
+                  {t('waveEndsIn', { time: waveCountdown })}
+                </p>
+              ) : null}
+            </div>
+            {canManageDocument ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-7 shrink-0 rounded-lg px-2 text-[11px]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  focus?.openAdminDialog({ kind: 'closeVoting', blockId: block.id });
+                }}
+              >
+                {t('closeVotingNow')}
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -260,6 +285,11 @@ export function DocumentBlockProposalsPanel({
           <DocumentVariantSuggestion
             key={v.id}
             officialHtml={block.officialContent ?? ''}
+            prevBlockHtml={adjacent.prev?.officialContent}
+            nextBlockHtml={adjacent.next?.officialContent}
+            rangeStart={v.rangeStart}
+            rangeEnd={v.rangeEnd}
+            proposedText={v.proposedText}
             variant={{
               id: v.id,
               documentId: v.documentId,

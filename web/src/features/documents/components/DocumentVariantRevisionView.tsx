@@ -47,6 +47,8 @@ export interface DocumentVariantRevisionViewProps {
   blockType?: string;
   contentClassName?: string;
   className?: string;
+  /** When set, default full-body preview is omitted (e.g. contextual preview shown above). */
+  suppressDefaultPreview?: boolean;
 }
 
 export function DocumentVariantRevisionView({
@@ -55,6 +57,7 @@ export function DocumentVariantRevisionView({
   blockType,
   contentClassName,
   className,
+  suppressDefaultPreview = false,
 }: DocumentVariantRevisionViewProps) {
   const tCanvas = useTranslations('pages.documents.canvas');
   const canCompare = hasOfficialText(officialHtml) && variantDiffersFromOfficial(officialHtml, variantHtml);
@@ -103,7 +106,7 @@ export function DocumentVariantRevisionView({
             <RevisionTokenInline tokens={structuredRevision.tokens} />
           </div>
         )
-      ) : (
+      ) : suppressDefaultPreview ? null : (
         <DocumentRichContent html={variantHtml} blockType={blockType} className={contentClassName} />
       )}
 

@@ -5,6 +5,7 @@ export type PrimaryDocumentBlock = {
   id: string;
   blockType: string;
   proposalsLocked: boolean;
+  lockedRanges: Array<{ rangeStart: number; rangeEnd: number }>;
   officialHtml: string;
 };
 
@@ -18,6 +19,7 @@ export function getPrimaryDocumentBlock(sections: unknown): PrimaryDocumentBlock
     id: first.id,
     blockType: first.blockType,
     proposalsLocked: first.proposalsLocked === true,
+    lockedRanges: first.lockedRanges ?? [],
     officialHtml: joinDocumentBlocksToHtml(sections),
   };
 }

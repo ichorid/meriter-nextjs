@@ -29,6 +29,8 @@ export interface DocBlock {
   editHistory?: BlockEditHistoryEntry[];
   /** When true, non-admin members cannot propose variants for this block. */
   proposalsLocked?: boolean;
+  /** Pinned plain-text spans (UTF-16 offsets in block official HTML). */
+  lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
 }
 
 export interface DocSection {

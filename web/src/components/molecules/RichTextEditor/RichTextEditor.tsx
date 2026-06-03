@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { cn } from '@/lib/utils';
 import { createEditorExtensions } from './create-editor-extensions';
+import { createLockedRangeHighlightExtension } from './locked-range-highlight-extension';
 import { FormatToolbar } from './FormatToolbar';
 import { DocumentStructureToolbar } from './DocumentStructureToolbar';
 import type { RichTextEditorProps } from './types';
@@ -18,11 +19,31 @@ export function RichTextEditor({
   documentActions,
   editorClassName,
   minEditorHeight = '150px',
+  lockedRanges = [],
+  lockedRangeTooltip = '',
 }: RichTextEditorProps) {
   const showDocumentToolbar = toolbar === 'document';
+  const lockedRangesRef = useRef(lockedRanges);
+  const lockedTooltipRef = useRef(lockedRangeTooltip);
+  lockedRangesRef.current = lockedRanges;
+  lockedTooltipRef.current = lockedRangeTooltip;
+
+  const highlightExtension = useMemo(
+    () =>
+      createLockedRangeHighlightExtension({
+        getRanges: () => lockedRangesRef.current,
+        getTooltip: () => lockedTooltipRef.current,
+      }),
+    [],
+  );
+
+  const lockedRangesKey = useMemo(
+    () => lockedRanges.map((r) => `${r.rangeStart}:${r.rangeEnd}`).join(','),
+    [lockedRanges],
+  );
 
   const editor = useEditor({
-    extensions: createEditorExtensions({ placeholder }),
+    extensions: [...createEditorExtensions({ placeholder }), highlightExtension],
     content: content || '',
     editable,
     immediatelyRender: false,
@@ -39,6 +60,13 @@ export function RichTextEditor({
       },
     },
   });
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+    editor.view.dispatch(editor.state.tr);
+  }, [editor, lockedRangesKey, lockedRangeTooltip]);
 
   useEffect(() => {
     if (!editor) {

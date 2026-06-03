@@ -24,6 +24,9 @@ export interface RichTextEditorProps {
   documentActions?: DocumentStructureToolbarActions;
   editorClassName?: string;
   minEditorHeight?: string;
+  /** Plain-text UTF-16 spans to highlight as admin-pinned (GDocs editor). */
+  lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
+  lockedRangeTooltip?: string;
 }
 
 export interface RichTextFieldProps {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
@@ -21,10 +21,7 @@ import { DocumentSettingsDialog } from '@/features/documents/components/Document
 import { DocumentCanvas } from '@/features/documents/components/DocumentCanvas';
 import { DocumentCanvasHeader } from '@/features/documents/components/DocumentCanvasHeader';
 import { DocumentUnifiedCanvas } from '@/features/documents/components/DocumentUnifiedCanvas';
-import {
-  DocumentGdocsUnifiedEditor,
-  type GdocsPersistMode,
-} from '@/features/documents/components/DocumentGdocsUnifiedEditor';
+import { DocumentGdocsUnifiedEditor } from '@/features/documents/components/DocumentGdocsUnifiedEditor';
 import { DocumentProposalRail } from '@/features/documents/components/DocumentProposalRail';
 import { DocumentCanvasMobileSheet } from '@/features/documents/components/DocumentCanvasMobileSheet';
 import { DocumentBlockAdminDialogs } from '@/features/documents/components/DocumentBlockAdminDialogs';
@@ -41,13 +38,8 @@ export function CommunityDocumentDetailPageClient({
 }: CommunityDocumentDetailPageClientProps) {
   const router = useRouter();
   const t = useTranslations('pages.documents');
-  const tGdocs = useTranslations('pages.documents.gdocs');
   const addToast = useToastStore((s) => s.addToast);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [editorDirty, setEditorDirty] = useState(false);
-  const [editorSaving, setEditorSaving] = useState(false);
-  const [editorPersistMode, setEditorPersistMode] = useState<GdocsPersistMode>('propose');
-  const editorSaveRef = useRef<(() => void) | null>(null);
   const { user, isLoading: authLoading } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id ?? '');
   const { data: community } = useCommunity(communityId);
@@ -56,7 +48,10 @@ export function CommunityDocumentDetailPageClient({
 
   const docQuery = trpc.documents.getById.useQuery(
     { id: documentId },
-    { enabled: Boolean(documentId && user?.id) },
+    {
+      enabled: Boolean(documentId && user?.id),
+      refetchOnWindowFocus: true,
+    },
   );
 
   useEffect(() => {
@@ -240,21 +235,6 @@ export function CommunityDocumentDetailPageClient({
                     updatedAt={doc.updatedAt}
                     canManageDocument={canManageDocument}
                     onOpenSettings={() => setSettingsOpen(true)}
-                    onSave={
-                      canUseGdocsEditor
-                        ? () => {
-                            editorSaveRef.current?.();
-                          }
-                        : undefined
-                    }
-                    saveDisabled={!editorDirty}
-                    savePending={editorSaving}
-                    saveLabel={
-                      canManageDocument && editorPersistMode === 'official'
-                        ? tGdocs('leadEditorSave')
-                        : tGdocs('submitProposal')
-                    }
-                    savePendingLabel={tGdocs('leadEditorSaving')}
                   />
 
                   {canUseGdocsEditor ? (
@@ -263,10 +243,6 @@ export function CommunityDocumentDetailPageClient({
                       sections={doc.sections}
                       updatedAt={doc.updatedAt}
                       canManageDocument={canManageDocument}
-                      saveRequestRef={editorSaveRef}
-                      onDirtyChange={setEditorDirty}
-                      onSavingChange={setEditorSaving}
-                      onPersistModeChange={setEditorPersistMode}
                     />
                   ) : (
                     <DocumentUnifiedCanvas

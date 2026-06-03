@@ -21,7 +21,8 @@ export type DocumentMobileSheet =
 export type DocumentAdminDialog =
   | { kind: 'closed' }
   | { kind: 'history'; blockId: string }
-  | { kind: 'adminOverride'; blockId: string };
+  | { kind: 'adminOverride'; blockId: string }
+  | { kind: 'closeVoting'; blockId: string };
 
 export type DocumentSelectionRange = {
   blockId: string;
@@ -53,6 +54,10 @@ export interface DocumentCanvasFocusContextValue {
   selectedRange: DocumentSelectionRange | null;
   setSelectedRange: (range: DocumentSelectionRange | null) => void;
   getBlock: (blockId: string) => DocBlock | null;
+  getAdjacentBlocks: (blockId: string) => {
+    prev: DocBlock | null;
+    next: DocBlock | null;
+  };
   mobileSheet: DocumentMobileSheet;
   openMobileSheet: (sheet: Exclude<DocumentMobileSheet, { kind: 'closed' }>) => void;
   closeMobileSheet: () => void;
@@ -132,7 +137,31 @@ export function DocumentCanvasFocusProvider({
     return map;
   }, [sections]);
 
+  const orderedBlocks = useMemo(
+    () =>
+      groupBlocksBySection(sections)
+        .flatMap((g) => g.blocks)
+        .slice()
+        .sort((a, b) => a.order - b.order),
+    [sections],
+  );
+
   const getBlock = useCallback((blockId: string) => blockById.get(blockId) ?? null, [blockById]);
+
+  const getAdjacentBlocks = useCallback(
+    (blockId: string) => {
+      const index = orderedBlocks.findIndex((b) => b.id === blockId);
+      if (index < 0) {
+        return { prev: null, next: null };
+      }
+      return {
+        prev: index > 0 ? (orderedBlocks[index - 1] ?? null) : null,
+        next:
+          index < orderedBlocks.length - 1 ? (orderedBlocks[index + 1] ?? null) : null,
+      };
+    },
+    [orderedBlocks],
+  );
 
   const openMobileSheet = useCallback(
     (sheet: Exclude<DocumentMobileSheet, { kind: 'closed' }>) => {
@@ -178,6 +207,7 @@ export function DocumentCanvasFocusProvider({
       selectedRange,
       setSelectedRange,
       getBlock,
+      getAdjacentBlocks,
       mobileSheet,
       openMobileSheet,
       closeMobileSheet,
@@ -206,6 +236,7 @@ export function DocumentCanvasFocusProvider({
       selectedRange,
       setSelectedRange,
       getBlock,
+      getAdjacentBlocks,
       mobileSheet,
       openMobileSheet,
       closeMobileSheet,
