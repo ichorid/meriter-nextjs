@@ -350,8 +350,26 @@ export class CreateVoteUseCase {
         const canUseQuotaByRole = _userRole ? quotaRecipients.includes(_userRole) : true;
         const quotaEnabled = effectiveMeritSettings?.quotaEnabled !== false;
         const quotaAllowedByCurrency = currencySource !== 'wallet-only';
-        const canUseQuota = quotaEnabled && canUseQuotaByRole && quotaAllowedByCurrency;
-    
+        let canUseQuota = quotaEnabled && canUseQuotaByRole && quotaAllowedByCurrency;
+
+        // Self-vote: wallet only — must match VoteService / SocialCurrencyConstraintFactor
+        if (
+          canUseQuota &&
+          input.targetType === 'document-variant' &&
+          documentVoteCtx?.variant?.proposedBy === userId
+        ) {
+          canUseQuota = false;
+        }
+        if (
+          canUseQuota &&
+          input.targetType === 'publication' &&
+          publicationDoc &&
+          publicationDoc.authorId === userId &&
+          !isPublicationEntitySourced(publicationDoc)
+        ) {
+          canUseQuota = false;
+        }
+
         let remainingQuota = 0;
         if (canUseQuota) {
           remainingQuota = await getRemainingQuota(
