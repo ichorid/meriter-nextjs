@@ -66,24 +66,28 @@ export const documentBlockHeadingProseClass = cn(
 );
 
 function displayProseClass(blockType?: string): string {
-  if (
-    blockType === 'heading' ||
-    blockType === 'list-bullet' ||
-    blockType === 'list-numbered' ||
-    blockType === 'quote'
-  ) {
+  const richBase =
+    'document-rich-content max-w-none text-base leading-relaxed text-base-content';
+
+  if (blockType === 'list-bullet' || blockType === 'list-numbered') {
+    return cn(richBase, documentRichListProseClass);
+  }
+
+  if (blockType === 'heading' || blockType === 'quote') {
     return cn(
-      'max-w-none text-base leading-relaxed text-base-content',
+      richBase,
+      'prose dark:prose-invert',
       blockType === 'heading' && documentBlockHeadingProseClass,
-      '[&_ul]:my-1 [&_ul]:list-disc [&_ul]:list-inside [&_ul]:space-y-1',
-      '[&_ol]:my-1 [&_ol]:list-decimal [&_ol]:list-inside [&_ol]:space-y-1',
-      '[&_li]:break-words [&_li]:pl-0.5',
+      documentRichListProseClass,
       '[&_p]:my-0 [&_p]:leading-relaxed',
       '[&_blockquote]:my-0 [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/25 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-base-content/85',
     );
   }
+
   return cn(
-    'prose dark:prose-invert max-w-none text-base leading-relaxed text-base-content',
+    richBase,
+    'prose dark:prose-invert',
+    documentBlockHeadingProseClass,
     documentRichListProseClass,
   );
 }

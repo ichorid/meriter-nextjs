@@ -112,33 +112,25 @@ export function DocumentVariantRevisionView({
         />
       ) : showTokenRevision ? (
         structuredRevision.kind === 'list' ? (
-          structuredRevision.ordered ? (
-            <ol
-              className={cn(
-                'my-1 list-inside list-decimal space-y-1 text-sm',
-                contentClassName,
-              )}
-            >
-              {structuredRevision.items.map((itemTokens, index) => (
-                <li key={index} className="pl-0 leading-relaxed">
-                  <RevisionTokenInline tokens={itemTokens} />
-                </li>
-              ))}
-            </ol>
-          ) : (
-            <ul
-              className={cn(
-                'my-1 list-inside list-disc space-y-1 text-sm',
-                contentClassName,
-              )}
-            >
-              {structuredRevision.items.map((itemTokens, index) => (
-                <li key={index} className="pl-0 leading-relaxed">
-                  <RevisionTokenInline tokens={itemTokens} />
-                </li>
-              ))}
-            </ul>
-          )
+          <div className={cn('document-rich-content text-sm', contentClassName)}>
+            {structuredRevision.ordered ? (
+              <ol className="my-2">
+                {structuredRevision.items.map((itemTokens, index) => (
+                  <li key={index} className="leading-relaxed">
+                    <RevisionTokenInline tokens={itemTokens} />
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <ul className="my-2">
+                {structuredRevision.items.map((itemTokens, index) => (
+                  <li key={index} className="leading-relaxed">
+                    <RevisionTokenInline tokens={itemTokens} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         ) : (
           <div className={cn('text-sm leading-relaxed', contentClassName)}>
             <RevisionTokenInline tokens={structuredRevision.tokens} />

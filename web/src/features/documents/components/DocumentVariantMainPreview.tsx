@@ -121,43 +121,77 @@ export function DocumentVariantMainPreview({
     return buildStructuredRevision(compareOfficialHtml, compareVariantHtml);
   }, [canCompare, revisionMarkupHtml, compareOfficialHtml, compareVariantHtml]);
 
-  const title = isOfficialRow
-    ? tGdocs('previewOfficialTitle')
-    : tGdocs('previewVariantTitle', {
-        name: target.proposedByDisplayName ?? tGdocs('previewUnknownAuthor'),
-      });
-
   const proposedAtLabel = formatProposedAt(target.proposedAt, locale);
+  const proposerName =
+    target.kind === 'variant'
+      ? target.proposedByDisplayName ?? tGdocs('previewUnknownAuthor')
+      : null;
+  const justification =
+    !isOfficialRow && target.proposerComment?.trim() ? target.proposerComment.trim() : null;
+
+  const metadataLabelClass =
+    'text-[11px] font-semibold uppercase tracking-wide text-base-content/45';
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-3 rounded-xl border border-stitch-border bg-stitch-surface/60 px-4 py-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="text-sm font-semibold tracking-tight text-base-content">{title}</p>
-          {proposedAtLabel ? (
-            <p className="text-xs text-base-content/55">{proposedAtLabel}</p>
-          ) : null}
-          {!isOfficialRow && target.proposerComment?.trim() ? (
-            <p className="text-xs leading-relaxed text-base-content/75">
-              <span className="font-medium text-base-content/60">{tGdocs('proposerCommentLabel')}: </span>
-              {target.proposerComment.trim()}
+      <div className="overflow-hidden rounded-xl border border-stitch-border bg-stitch-surface/60">
+        <div className="space-y-4 px-4 py-4">
+          {isOfficialRow ? (
+            <p className="text-sm font-semibold tracking-tight text-base-content">
+              {tGdocs('previewOfficialTitle')}
             </p>
-          ) : null}
+          ) : (
+            <dl className="space-y-4">
+              <div className="space-y-1">
+                <dt className={metadataLabelClass}>{tGdocs('previewProposedByLabel')}</dt>
+                <dd className="text-sm font-semibold leading-snug text-base-content">{proposerName}</dd>
+                {proposedAtLabel ? (
+                  <dd className="text-xs tabular-nums text-base-content/55">{proposedAtLabel}</dd>
+                ) : null}
+              </div>
+              {justification ? (
+                <div className="space-y-1.5">
+                  <dt className={metadataLabelClass}>{tGdocs('proposerCommentLabel')}</dt>
+                  <dd className="text-sm leading-relaxed text-base-content/85">{justification}</dd>
+                </div>
+              ) : null}
+            </dl>
+          )}
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-3 sm:justify-end">
+
+        <div
+          className={cn(
+            'flex flex-col gap-3 border-t border-stitch-border/70 bg-stitch-canvas/25 px-4 py-3',
+            'sm:flex-row sm:items-center sm:justify-between',
+          )}
+        >
           {canCompare ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <Switch
                 id="variant-show-diff"
                 checked={showDiff}
                 onCheckedChange={onShowDiffChange}
               />
-              <Label htmlFor="variant-show-diff" className="cursor-pointer text-xs text-base-content/80">
+              <Label
+                htmlFor="variant-show-diff"
+                className="cursor-pointer text-sm text-base-content/80"
+              >
                 {tGdocs('showEditsToggle')}
               </Label>
             </div>
-          ) : null}
-          <Button type="button" size="sm" variant="outline" className="h-8 rounded-lg text-xs" onClick={onClose}>
+          ) : (
+            <span className="hidden sm:block" aria-hidden />
+          )}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className={cn(
+              'h-9 shrink-0 rounded-lg px-4 text-sm',
+              !canCompare && 'w-full sm:ml-auto sm:w-auto',
+            )}
+            onClick={onClose}
+          >
             {tGdocs('backToEditing')}
           </Button>
         </div>

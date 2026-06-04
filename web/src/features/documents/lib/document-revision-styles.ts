@@ -3,16 +3,16 @@ import { cn } from '@/lib/utils';
 export const DOC_REVISION_DELETE_CLASS = 'doc-revision-del';
 export const DOC_REVISION_INSERT_CLASS = 'doc-revision-ins';
 
-/** Keep list markers inside padded content (avoids bullets past card edge). */
+/** TipTap often wraps li text in <p> — list markers/spacing live in globals.css. */
 export const documentRichListProseClass = cn(
-  '[&_ul]:my-2 [&_ul]:list-disc [&_ul]:list-inside [&_ul]:space-y-1',
-  '[&_ol]:my-2 [&_ol]:list-decimal [&_ol]:list-inside [&_ol]:space-y-1',
-  '[&_li]:break-words [&_li]:pl-0.5',
+  '[&_li]:leading-relaxed',
+  '[&_li>p]:my-0',
+  '[&_li>p:first-child]:mt-0',
+  '[&_li>p:last-child]:mb-0',
 );
 
 /** Prose wrapper for rich preview with <del>/<ins> revision marks. */
 export const documentRevisionMarkupProseClass = cn(
-  documentRichListProseClass,
   '[&_.doc-revision-del]:rounded-sm [&_.doc-revision-del]:bg-error/30 [&_.doc-revision-del]:px-1',
   '[&_.doc-revision-del]:font-medium [&_.doc-revision-del]:text-error',
   '[&_.doc-revision-del]:line-through [&_.doc-revision-del]:decoration-error',

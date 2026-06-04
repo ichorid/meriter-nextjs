@@ -35,7 +35,7 @@ function officialTypographyClass(blockType: string): string {
       return 'border-l-2 border-base-content/25 pl-4 italic text-base-content/85';
     case 'list-bullet':
     case 'list-numbered':
-      return '[&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5';
+      return '';
     default:
       return 'text-base-content/95';
   }

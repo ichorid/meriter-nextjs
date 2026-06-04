@@ -206,8 +206,55 @@ function levenshtein(a: string, b: string): number {
   return dp[n]!;
 }
 
+const LI_FRAGMENT_RE = /<li(?:\s[^>]*)?>[\s\S]*?<\/li>/gi;
+
+export function extractListItemFragments(html: string): string[] {
+  const raw = (html ?? '').trim();
+  if (!raw) {
+    return [];
+  }
+  const items = [...raw.matchAll(LI_FRAGMENT_RE)].map((m) => m[0]!);
+  if (items.length > 0) {
+    return items;
+  }
+  return [`<li>${raw}</li>`];
+}
+
 export function joinBlocksToDocumentHtml(
-  blocks: Array<{ officialContent: string }>,
+  blocks: Array<{ blockType?: DocumentBlockType; officialContent: string }>,
 ): string {
-  return blocks.map((b) => b.officialContent ?? '').join('');
+  const parts: string[] = [];
+  let index = 0;
+
+  while (index < blocks.length) {
+    const block = blocks[index]!;
+    const blockType = block.blockType ?? 'paragraph';
+
+    if (blockType === 'list-bullet' || blockType === 'list-numbered') {
+      const tag = blockType === 'list-numbered' ? 'ol' : 'ul';
+      const items: string[] = [];
+
+      while (index < blocks.length) {
+        const current = blocks[index]!;
+        if ((current.blockType ?? 'paragraph') !== blockType) {
+          break;
+        }
+        items.push(...extractListItemFragments(current.officialContent ?? ''));
+        index += 1;
+      }
+
+      if (items.length > 0) {
+        parts.push(`<${tag}>${items.join('')}</${tag}>`);
+      }
+      continue;
+    }
+
+    const content = block.officialContent ?? '';
+    if (content) {
+      parts.push(content);
+    }
+    index += 1;
+  }
+
+  return parts.join('');
 }
