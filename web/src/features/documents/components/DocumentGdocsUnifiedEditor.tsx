@@ -52,6 +52,7 @@ import { useDocumentCanvasFocusRequired } from '@/features/documents/context/Doc
 import { refetchDocumentProposalCaches } from '@/features/documents/lib/document-variant-cache';
 import { buildOpenProposalHighlightRanges } from '@/features/documents/lib/document-open-proposal-highlights';
 import { joinDocumentBlocksToHtml } from '@/features/documents/lib/document-html-structure';
+import { buildDocumentServerRevisionKey } from '@/features/documents/lib/document-server-revision';
 import { canUseWalletForVoting } from '@/components/organisms/VotingPopup/voting-utils';
 import type { GdocsPersistMode } from '@/features/documents/lib/document-gdocs-editor';
 import { trpc } from '@/lib/trpc/client';
@@ -137,14 +138,10 @@ export function DocumentGdocsUnifiedEditor({
 
   const effectivePersistMode: GdocsPersistMode = canManageDocument ? persistMode : 'propose';
 
-  const serverRevisionKey = useMemo(() => {
-    if (!updatedAt) {
-      return '';
-    }
-    const date = updatedAt instanceof Date ? updatedAt : new Date(updatedAt);
-    const ms = date.getTime();
-    return Number.isNaN(ms) ? '' : date.toISOString();
-  }, [updatedAt]);
+  const serverRevisionKey = useMemo(
+    () => buildDocumentServerRevisionKey(updatedAt, joinedOfficialHtml),
+    [joinedOfficialHtml, updatedAt],
+  );
 
   const bumpArchiveList = useCallback(() => {
     setArchiveListRefreshKey((k) => k + 1);

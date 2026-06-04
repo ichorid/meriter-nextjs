@@ -71,11 +71,13 @@ export function DocumentCloseVotingDialog() {
       focus?.addToast(t('closeVotingSuccess'), 'success');
       focus?.closeAdminDialog();
       if (blockId) {
-        await utils.documents.getById.invalidate({ id: documentId });
-        await utils.documentVariants.listByBlock.invalidate({ documentId, blockId });
-        await utils.documentVariants.listByDocument.invalidate({ documentId });
-        await utils.documentVariants.getBlockVotingPanel.invalidate({ documentId, blockId });
-        await utils.documentVariants.getBlockGovernanceHistory.invalidate({ documentId, blockId });
+        await Promise.all([
+          utils.documents.getById.refetch({ id: documentId }),
+          utils.documentVariants.listByDocument.refetch({ documentId }),
+          utils.documentVariants.listByBlock.refetch({ documentId, blockId }),
+          utils.documentVariants.getBlockVotingPanel.refetch({ documentId, blockId }),
+          utils.documentVariants.getBlockGovernanceHistory.refetch({ documentId, blockId }),
+        ]);
       }
     },
     onError: (err) => focus?.addToast(err.message, 'error'),

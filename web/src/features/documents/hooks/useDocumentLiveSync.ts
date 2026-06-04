@@ -58,8 +58,15 @@ export function useDocumentLiveSync({
         case 'document.updated':
         case 'variant.applied':
         case 'wave.closed':
-          void utils.documents.getById.invalidate({ id: documentId });
-          invalidateVariants();
+          void utils.documents.getById.refetch({ id: documentId });
+          void utils.documentVariants.listByDocument.refetch({ documentId });
+          if (event.blockId) {
+            void utils.documentVariants.listByBlock.refetch({
+              documentId,
+              blockId: event.blockId,
+            });
+          }
+          return;
       }
     },
     [documentId, utils.documentVariants.listByBlock, utils.documentVariants.listByDocument, utils.documents.getById],
