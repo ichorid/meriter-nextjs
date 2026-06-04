@@ -1,6 +1,9 @@
 import {
   applyBlockSplitsForPatches,
   computeProposalPatchesFromJoinedContent,
+  isFullBlockDeletionPatch,
+  normalizeVariantContentForPersistence,
+  normalizeVariantPatchesForPersistence,
 } from '../src/domain/common/document-proposal-patches.util';
 import type { SectionBlockRow } from '../src/domain/common/document-block-structure.util';
 import { blockHtmlToPlainText } from '../src/domain/common/document-plain-text.util';
@@ -27,8 +30,25 @@ describe('document-proposal-patches.util', () => {
     expect(result.patches.map((p) => p.blockId).sort()).toEqual(['b1', 'b2', 'b3']);
     for (const patch of result.patches) {
       expect(patch.proposedText).toBe('');
-      expect(patch.previewContent).toBe('');
+      expect(patch.previewContent.length).toBeGreaterThan(0);
     }
+    const officialById = (id: string) =>
+      official.find((b) => b.id === id)!.officialContent;
+    const persisted = normalizeVariantPatchesForPersistence(result.patches, officialById);
+    expect(normalizeVariantContentForPersistence('', persisted).length).toBeGreaterThan(0);
+  });
+
+  it('flags whole-block removal patches', () => {
+    const official = blocks([
+      { id: 'b1', html: '<p>One</p>' },
+      { id: 'b2', html: '<p>Two</p>' },
+    ]);
+    const result = computeProposalPatchesFromJoinedContent(official, '<p>One</p>');
+    expect(result.patches).toHaveLength(1);
+    const patch = result.patches[0]!;
+    expect(
+      isFullBlockDeletionPatch(official[1]!.officialContent, patch),
+    ).toBe(true);
   });
 
   it('splits a block when the patch is partial', () => {

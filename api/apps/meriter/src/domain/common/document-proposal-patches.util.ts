@@ -21,6 +21,7 @@ import {
 import {
   buildMergedBlockPreviewContent,
   hashJoinedDocumentAtPropose,
+  normalizeRangeBounds,
 } from './document-range.util';
 
 export type DocumentVariantPatch = {
@@ -31,12 +32,82 @@ export type DocumentVariantPatch = {
   previewContent: string;
 };
 
+/** Mongoose rejects empty strings on required paths; use for empty blocks after delete. */
+export const EMPTY_VARIANT_BLOCK_HTML = '<p></p>';
+
+export function isEmptyVariantBlockHtml(html: string): boolean {
+  return blockHtmlToPlainText(html ?? '').trim().length === 0;
+}
+
+/** Whole-block delete (paragraph removed), not an in-block range edit. */
+export function isFullBlockDeletionPatch(
+  officialHtml: string,
+  patch: Pick<DocumentVariantPatch, 'rangeStart' | 'rangeEnd' | 'proposedText' | 'previewContent'>,
+): boolean {
+  if ((patch.proposedText ?? '').trim().length > 0) {
+    return false;
+  }
+  if (!isEmptyVariantBlockHtml(patch.previewContent)) {
+    return false;
+  }
+  const plainLen = blockHtmlToPlainText(officialHtml).length;
+  if (plainLen === 0) {
+    return true;
+  }
+  const { rangeStart, rangeEnd } = normalizeRangeBounds(
+    plainLen,
+    patch.rangeStart,
+    patch.rangeEnd,
+  );
+  return rangeStart <= 0 && rangeEnd >= plainLen;
+}
+
 export type ComputeProposalPatchesResult = {
   patches: DocumentVariantPatch[];
   appendBlocks: ParsedStructureBlock[] | null;
   anchorBlockId: string;
   joinedOfficialHash: string;
 };
+
+function nonEmptyPreviewContent(
+  officialHtml: string,
+  patch: Pick<DocumentVariantPatch, 'rangeStart' | 'rangeEnd' | 'proposedText' | 'previewContent'>,
+): string {
+  const direct = patch.previewContent?.trim();
+  if (direct) {
+    return sanitizeProposedHtmlFragment(direct) || EMPTY_VARIANT_BLOCK_HTML;
+  }
+  const merged = buildMergedBlockPreviewContent(
+    officialHtml,
+    patch.rangeStart,
+    patch.rangeEnd,
+    patch.proposedText ?? '',
+  ).trim();
+  return merged ? sanitizeProposedHtmlFragment(merged) : EMPTY_VARIANT_BLOCK_HTML;
+}
+
+export function normalizeVariantPatchesForPersistence(
+  patches: DocumentVariantPatch[],
+  officialHtmlByBlockId: (blockId: string) => string,
+): DocumentVariantPatch[] {
+  return patches.map((patch) => ({
+    ...patch,
+    previewContent: nonEmptyPreviewContent(officialHtmlByBlockId(patch.blockId), patch),
+  }));
+}
+
+/** Legacy `content` column must stay non-empty even when scope is `patches`. */
+export function normalizeVariantContentForPersistence(
+  content: string,
+  patches: DocumentVariantPatch[],
+): string {
+  const trimmed = content?.trim();
+  if (trimmed) {
+    return sanitizeProposedHtmlFragment(trimmed) || EMPTY_VARIANT_BLOCK_HTML;
+  }
+  const joined = patches.map((p) => p.previewContent).join('').trim();
+  return joined ? sanitizeProposedHtmlFragment(joined) : EMPTY_VARIANT_BLOCK_HTML;
+}
 
 function plainInsertToHtml(text: string): string {
   const trimmed = text.trim();
@@ -86,12 +157,17 @@ function buildPatchForBlock(
     proposedText = plainInsertToHtml(proposedText);
   }
 
-  const previewContent = buildMergedBlockPreviewContent(
-    officialHtml,
+  const previewContent = nonEmptyPreviewContent(officialHtml, {
     rangeStart,
     rangeEnd,
     proposedText,
-  );
+    previewContent: buildMergedBlockPreviewContent(
+      officialHtml,
+      rangeStart,
+      rangeEnd,
+      proposedText,
+    ),
+  });
 
   return {
     blockId,
@@ -159,7 +235,12 @@ export function computeProposalPatchesFromJoinedContent(
       rangeStart: 0,
       rangeEnd: Math.max(plainLen, 1),
       proposedText: '',
-      previewContent: '',
+      previewContent: nonEmptyPreviewContent(officialHtml, {
+        rangeStart: 0,
+        rangeEnd: Math.max(plainLen, 1),
+        proposedText: '',
+        previewContent: '',
+      }),
     });
   }
 
@@ -229,12 +310,17 @@ export function applyBlockSplitsForPatches(
       rangeStart: 0,
       rangeEnd: targetPlainLen,
       proposedText: patch.proposedText,
-      previewContent: buildMergedBlockPreviewContent(
-        targetHtml,
-        0,
-        targetPlainLen,
-        patch.proposedText,
-      ),
+      previewContent: nonEmptyPreviewContent(targetHtml, {
+        rangeStart: 0,
+        rangeEnd: targetPlainLen,
+        proposedText: patch.proposedText,
+        previewContent: buildMergedBlockPreviewContent(
+          targetHtml,
+          0,
+          targetPlainLen,
+          patch.proposedText,
+        ),
+      }),
     });
   }
 

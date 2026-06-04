@@ -34,7 +34,10 @@ import { MERITER_DOCUMENT_AUTO_APPLY_USER_ID } from '../common/constants/meriter
 import { sanitizeDocumentHtml } from '../../common/utils/sanitize-document-html';
 import { blockHtmlToPlainText } from '../common/document-plain-text.util';
 import type { SectionBlockRow } from '../common/document-block-structure.util';
-import type { DocumentVariantPatch } from '../common/document-proposal-patches.util';
+import {
+  isFullBlockDeletionPatch,
+  type DocumentVariantPatch,
+} from '../common/document-proposal-patches.util';
 import {
   hashJoinedDocumentAtPropose,
   isStaleVariant,
@@ -506,6 +509,47 @@ export class DocumentVariantService {
     );
   }
 
+  private async removeDocumentBlocksByIds(
+    doc: MeriterDocumentSchemaClass,
+    blockIds: string[],
+    exceptVariantId?: string,
+  ): Promise<void> {
+    if (blockIds.length === 0) {
+      return;
+    }
+    const removeSet = new Set(blockIds);
+    const rows = this.collectDocumentBlockRows(doc);
+    if (rows.length - blockIds.length < 1) {
+      throw new BadRequestException('Cannot remove every block in the document');
+    }
+    for (const blockId of blockIds) {
+      await this.documentPersistence.withdrawOpenVariantsOnBlock(
+        doc.id,
+        blockId,
+        exceptVariantId,
+      );
+    }
+    const sections = [...(doc.sections ?? [])].sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0),
+    );
+    const nextSections = sections
+      .map((sec) => ({
+        ...sec,
+        blocks: [...(sec.blocks ?? [])]
+          .sort((a, b) => a.order - b.order)
+          .filter((b) => !removeSet.has(b.id))
+          .map((b, order) => ({ ...b, order })),
+      }))
+      .filter((sec) => (sec.blocks?.length ?? 0) > 0);
+    if (nextSections.length === 0) {
+      throw new BadRequestException('Cannot remove every block in the document');
+    }
+    const result = await this.documentService.updateSections(doc.id, nextSections);
+    if (!result.ok) {
+      throw new BadRequestException('Failed to remove blocks after applying variant');
+    }
+  }
+
   private collectDocumentBlockRows(
     doc: MeriterDocumentSchemaClass,
   ): SectionBlockRow[] {
@@ -562,6 +606,7 @@ export class DocumentVariantService {
 
     const now = new Date();
     const affectedBlockIds = new Set<string>();
+    const blockIdsToRemove: string[] = [];
 
     for (const patch of patches) {
       affectedBlockIds.add(patch.blockId);
@@ -570,6 +615,10 @@ export class DocumentVariantService {
         throw new NotFoundException(`Block not found: ${patch.blockId}`);
       }
       const officialHtml = String(block.officialContent ?? '');
+      if (isFullBlockDeletionPatch(officialHtml, patch)) {
+        blockIdsToRemove.push(patch.blockId);
+        continue;
+      }
       const nextOfficial = mergeRangeIntoBlockHtml(
         officialHtml,
         patch.rangeStart,
@@ -601,6 +650,11 @@ export class DocumentVariantService {
       if (!ok) {
         throw new BadRequestException(`Failed to update block ${patch.blockId}`);
       }
+    }
+
+    if (blockIdsToRemove.length > 0) {
+      const refreshed = (await this.documentService.getById(doc.id))!;
+      await this.removeDocumentBlocksByIds(refreshed, blockIdsToRemove, v.id);
     }
 
     for (const blockId of affectedBlockIds) {

@@ -267,7 +267,11 @@ export interface DocumentPersistencePort {
 
   softDeleteVariant(variantId: string): Promise<void>;
 
-  withdrawOpenVariantsOnBlock(documentId: string, blockId: string): Promise<void>;
+  withdrawOpenVariantsOnBlock(
+    documentId: string,
+    blockId: string,
+    exceptVariantId?: string,
+  ): Promise<void>;
 
   acquireWaveFinalizeLock(documentId: string, blockId: string): Promise<boolean>;
 

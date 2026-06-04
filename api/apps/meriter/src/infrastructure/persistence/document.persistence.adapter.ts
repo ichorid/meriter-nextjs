@@ -382,13 +382,18 @@ export class DocumentPersistenceAdapter implements DocumentPersistencePort {
     );
   }
 
-  async withdrawOpenVariantsOnBlock(documentId: string, blockId: string): Promise<void> {
+  async withdrawOpenVariantsOnBlock(
+    documentId: string,
+    blockId: string,
+    exceptVariantId?: string,
+  ): Promise<void> {
     await this.variantModel.updateMany(
       {
         documentId,
         blockId,
         status: 'open',
         deleted: false,
+        ...(exceptVariantId ? { id: { $ne: exceptVariantId } } : {}),
       },
       { $set: { status: 'withdrawn', updatedAt: new Date() } },
     );

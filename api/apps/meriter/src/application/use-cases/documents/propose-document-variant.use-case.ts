@@ -43,6 +43,8 @@ import {
   computeProposalPatchesFromJoinedContent,
   joinBlocksToSectionRows,
   newSectionId,
+  normalizeVariantContentForPersistence,
+  normalizeVariantPatchesForPersistence,
   type DocumentVariantPatch,
 } from '../../../domain/common/document-proposal-patches.util';
 import {
@@ -167,13 +169,18 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       });
     }
 
+    const officialHtmlForBlock = (patchBlockId: string) =>
+      String(this.deps.documentService.findBlock(doc, patchBlockId)?.officialContent ?? '');
+    const persistedPatches = normalizeVariantPatchesForPersistence(patches, officialHtmlForBlock);
+    const persistedContent = normalizeVariantContentForPersistence(content, persistedPatches);
+
     const created = await this.deps.documentPersistence.insertVariant({
       id: variantId,
       documentId: doc.id,
       blockId,
       proposalScope: proposalScope ?? 'block',
-      patches,
-      content,
+      patches: persistedPatches,
+      content: persistedContent,
       ...(hasRange
         ? {
             rangeStart,
