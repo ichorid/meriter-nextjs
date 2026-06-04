@@ -41,6 +41,8 @@ interface UIState {
   votingCommunityId?: string | null;
   votingDocumentVariantIsOwn?: boolean;
   votingDocumentAllowDownvotes?: boolean;
+  /** Reopen mobile «Предложения» sheet after document vote popup closes */
+  returnToDocumentProposalsSheet?: boolean;
   activeVotingFormData: VotingFormData | null;
   // Withdraw popup state - non-persistent
   activeWithdrawTarget: string | null;
@@ -68,9 +70,11 @@ interface UIActions {
       communityId?: string;
       documentVariantIsOwn?: boolean;
       documentAllowDownvotes?: boolean;
+      returnToDocumentProposalsSheet?: boolean;
     },
   ) => void;
   closeVotingPopup: () => void;
+  clearReturnToDocumentProposalsSheet: () => void;
   updateVotingFormData: (data: Partial<VotingFormData>) => void;
   // Withdraw popup actions
   openWithdrawPopup: (targetId: string, targetType: WithdrawTargetType, maxWithdrawAmount?: number, maxTopUpAmount?: number) => void;
@@ -92,6 +96,7 @@ const initialState: UIState = {
   votingCommunityId: null,
   votingDocumentVariantIsOwn: false,
   votingDocumentAllowDownvotes: true,
+  returnToDocumentProposalsSheet: false,
   activeVotingFormData: null,
   activeWithdrawTarget: null,
   withdrawTargetType: null,
@@ -122,6 +127,7 @@ export const useUIStore = create<UIState & UIActions>()(
             votingCommunityId: opts?.communityId ?? null,
             votingDocumentVariantIsOwn: opts?.documentVariantIsOwn === true,
             votingDocumentAllowDownvotes: opts?.documentAllowDownvotes !== false,
+            returnToDocumentProposalsSheet: opts?.returnToDocumentProposalsSheet === true,
             activeVotingFormData: { comment: '', delta: 0, error: '', images: [] },
           }),
         closeVotingPopup: () =>
@@ -135,6 +141,8 @@ export const useUIStore = create<UIState & UIActions>()(
             votingDocumentAllowDownvotes: true,
             activeVotingFormData: null,
           }),
+        clearReturnToDocumentProposalsSheet: () =>
+          set({ returnToDocumentProposalsSheet: false }),
         updateVotingFormData: (data) => set((state) => ({
           activeVotingFormData: state.activeVotingFormData
             ? { ...state.activeVotingFormData, ...data }

@@ -329,7 +329,10 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       quotaAmount = 0;
       walletAmount = 0;
     } else if (isUpvote) {
-      if (effectiveVotingMode === 'wallet-only') {
+      const forceWalletOnlySubmit =
+        effectiveVotingMode === 'wallet-only' ||
+        (isDocumentVoteTarget(votingTargetType) && isOwnPost);
+      if (forceWalletOnlySubmit) {
         if (!canUseWallet) {
           updateVotingFormData({ error: t('downvoteRequiresBalance') });
           return;
@@ -464,7 +467,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   const votingPanelTitle = documentVoteTarget === 'official'
     ? t('documentOfficialVoteTitle')
     : documentVoteTarget === 'variant'
-      ? t('documentVariantVoteTitle')
+      ? votingDocumentVariantIsOwn
+        ? t('documentVariantOwnVoteTitle')
+        : t('documentVariantVoteTitle')
       : undefined;
 
   return (

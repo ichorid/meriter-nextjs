@@ -780,15 +780,17 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {/* Withdraw Progress Bar (when hideQuota is true, not in neutralOnly) */}
             {hideQuota && commentMode !== 'neutralOnly' && (
                 <div className="flex flex-col gap-4">
-                    {/* Hint text: different for "add merits" vs "withdraw" */}
-                    <p className="text-xs text-base-content/60 leading-relaxed">
-                        {hintMode === 'add'
-                            ? tShared('addMeritsHint')
-                            : withdrawMeritsDestination === 'sourceProject'
-                              ? tShared('withdrawHintSourceProject')
-                              : withdrawMeritsDestination === 'sourceCommunity'
-                                ? tShared('withdrawHintSourceCommunity')
-                                : tShared('withdrawHint')}
+                    {/* Hint: document votes use mechanics copy; withdraw/add for post withdraw UI */}
+                    <p className="text-xs text-base-content/60 leading-relaxed whitespace-pre-line">
+                        {documentVoteTarget === 'variant' || documentVoteTarget === 'official'
+                            ? votingMechanicsText
+                            : hintMode === 'add'
+                              ? tShared('addMeritsHint')
+                              : withdrawMeritsDestination === 'sourceProject'
+                                ? tShared('withdrawHintSourceProject')
+                                : withdrawMeritsDestination === 'sourceCommunity'
+                                  ? tShared('withdrawHintSourceCommunity')
+                                  : tShared('withdrawHint')}
                     </p>
 
                     {/* Available Progress Bar - above amount input */}
@@ -929,7 +931,10 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             : "bg-base-content text-base-100 hover:bg-base-content/90 border border-base-content/20"
                     )}
                 >
-                    {hideQuota ? (submitButtonLabel ?? tShared("withdrawButton")) : t("voteTitle")}
+                    {hideQuota
+                        ? (submitButtonLabel ??
+                          (documentVoteTarget ? t('voteTitle') : tShared('withdrawButton')))
+                        : t('voteTitle')}
                 </button>
                 {/* Server error (if any) */}
                 {error && (
