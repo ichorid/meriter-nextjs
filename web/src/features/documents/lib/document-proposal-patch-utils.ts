@@ -1,12 +1,25 @@
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
 
+export type DocumentVariantInsertBlockPreview = {
+  blockType: string;
+  officialContent: string;
+};
+
 export type DocumentVariantPatchPreview = {
   blockId: string;
   rangeStart: number;
   rangeEnd: number;
   proposedText: string;
   previewContent: string;
+  insertAfterBlockId?: string;
+  insertBlocks?: DocumentVariantInsertBlockPreview[];
 };
+
+export function isInsertBlocksPatch(
+  patch: Pick<DocumentVariantPatchPreview, 'insertAfterBlockId' | 'insertBlocks'>,
+): boolean {
+  return Boolean(patch.insertBlocks?.length && patch.insertAfterBlockId);
+}
 
 export const EMPTY_VARIANT_BLOCK_HTML = '<p></p>';
 

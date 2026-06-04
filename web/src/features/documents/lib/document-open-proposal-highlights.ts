@@ -8,7 +8,10 @@ import {
 } from '@/features/documents/lib/document-html-structure';
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
 import type { VariantPreviewInput } from '@/features/documents/lib/document-variant-preview';
-import { isFullBlockDeletionPatch } from '@/features/documents/lib/document-proposal-patch-utils';
+import {
+  isFullBlockDeletionPatch,
+  isInsertBlocksPatch,
+} from '@/features/documents/lib/document-proposal-patch-utils';
 
 export type { DocumentVariantPatchPreview } from '@/features/documents/lib/document-proposal-patch-utils';
 import type { DocumentVariantPatchPreview } from '@/features/documents/lib/document-proposal-patch-utils';
@@ -190,7 +193,10 @@ export function buildJoinedHtmlFromPatches(
   sections: unknown,
   patches: DocumentVariantPatchPreview[],
 ): string {
-  const patchByBlock = new Map(patches.map((p) => [p.blockId, p]));
+  const patchByBlock = new Map(
+    patches.filter((p) => !isInsertBlocksPatch(p)).map((p) => [p.blockId, p]),
+  );
+  const insertPatches = patches.filter(isInsertBlocksPatch);
   const blocks = groupBlocksBySection(sections)
     .flatMap((g) => g.blocks)
     .sort((a, b) => a.order - b.order)
@@ -200,12 +206,19 @@ export function buildJoinedHtmlFromPatches(
       if (patch && isFullBlockDeletionPatch(officialHtml, patch)) {
         return [];
       }
-      return [
-        {
-          blockType: b.blockType,
-          officialContent: patch?.previewContent ?? officialHtml,
-        },
-      ];
+      const row = {
+        blockType: b.blockType,
+        officialContent: patch?.previewContent ?? officialHtml,
+      };
+      const insertAfter = insertPatches.find((p) => p.insertAfterBlockId === b.id);
+      if (!insertAfter?.insertBlocks?.length) {
+        return [row];
+      }
+      const inserted = insertAfter.insertBlocks.map((ib) => ({
+        blockType: ib.blockType,
+        officialContent: ib.officialContent,
+      }));
+      return [row, ...inserted];
     });
   return joinBlocksToDisplayHtml(blocks);
 }
