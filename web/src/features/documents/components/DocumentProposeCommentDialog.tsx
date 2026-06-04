@@ -56,16 +56,7 @@ export function DocumentProposeCommentDialog({
         <p className="text-right text-[11px] text-base-content/45">
           {trimmed.length}/{MAX_COMMENT_LENGTH}
         </p>
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            type="button"
-            variant="ghost"
-            className="rounded-lg"
-            disabled={isPending}
-            onClick={() => onOpenChange(false)}
-          >
-            {tGdocs('proposeCommentSkip')}
-          </Button>
+        <DialogFooter>
           <Button
             type="button"
             className="rounded-lg"

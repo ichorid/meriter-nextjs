@@ -1233,7 +1233,6 @@
                 "proposeCommentDialogTitle": "Comment on your proposal",
                 "proposeCommentDialogDescription": "Optional: briefly explain why you suggest these edits. Shown in the proposals list on the right.",
                 "proposeCommentPlaceholder": "e.g. Clarify the document goal…",
-                "proposeCommentSkip": "Skip",
                 "proposeCommentSubmit": "Submit proposal",
                 "selectBlock": "Select text in the document or pick a thread",
                 "emptyExcerpt": "(empty block)",

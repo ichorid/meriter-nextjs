@@ -1233,7 +1233,6 @@
                 "proposeCommentDialogTitle": "Комментарий к предложению",
                 "proposeCommentDialogDescription": "Необязательно: кратко объясните, зачем нужны эти правки. Увидят в списке предложений справа.",
                 "proposeCommentPlaceholder": "Например: уточняем формулировку цели документа…",
-                "proposeCommentSkip": "Без комментария",
                 "proposeCommentSubmit": "Отправить предложение",
                 "selectBlock": "Выделите фрагмент в документе или выберите ветку",
                 "emptyExcerpt": "(пустой блок)",
