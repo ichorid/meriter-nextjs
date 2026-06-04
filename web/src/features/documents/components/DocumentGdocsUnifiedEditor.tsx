@@ -25,6 +25,7 @@ import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-te
 import { resolveProposeMutationPayload } from '@/features/documents/lib/document-variant-propose-target';
 import { DocumentEditorDraftRecovery } from '@/features/documents/components/DocumentEditorDraftRecovery';
 import { DocumentProposeCommentDialog } from '@/features/documents/components/DocumentProposeCommentDialog';
+import { DocumentProposalMergeDialog } from '@/features/documents/components/DocumentProposalMergeDialog';
 import { DocumentRemoteUpdateBanner } from '@/features/documents/components/DocumentRemoteUpdateBanner';
 import { DocumentVariantMainPreview } from '@/features/documents/components/DocumentVariantMainPreview';
 import {
@@ -104,6 +105,7 @@ export function DocumentGdocsUnifiedEditor({
   const [draftRestored, setDraftRestored] = useState(false);
   const [persistMode, setPersistMode] = useState<GdocsPersistMode>('propose');
   const [proposeCommentOpen, setProposeCommentOpen] = useState(false);
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [pendingBlockLocks, setPendingBlockLocks] = useState<BlockLockState | null>(null);
   const pendingBlockLocksRef = useRef<BlockLockState | null>(null);
   const [textSelection, setTextSelection] = useState<{ start: number; end: number } | null>(
@@ -422,7 +424,7 @@ export function DocumentGdocsUnifiedEditor({
       await refetchDocumentProposalCaches(utils, documentId, variant.blockId);
       setEditorContentKey((k) => k + 1);
       if (result.proposeWarning === 'merged_into_voting') {
-        focus.addToast(tGdocs('mergedIntoVoting'), 'success');
+        setMergeDialogOpen(true);
       } else {
         focus.addToast(tGdocs('proposalSubmitted'), 'success');
       }
@@ -710,6 +712,7 @@ export function DocumentGdocsUnifiedEditor({
       ) ?? [];
     return buildOpenProposalHighlightRanges(sections, open, {
       tooltipPrefix: tGdocs('openProposalsTooltipPrefix'),
+      insertMarkerLabel: tGdocs('insertAdditionMarker'),
     });
   }, [sections, threadsQuery.data, tGdocs]);
 
@@ -807,6 +810,10 @@ export function DocumentGdocsUnifiedEditor({
         onOpenChange={setProposeCommentOpen}
         onConfirm={executePropose}
         isPending={proposeMutation.isPending}
+      />
+      <DocumentProposalMergeDialog
+        open={mergeDialogOpen}
+        onOpenChange={setMergeDialogOpen}
       />
       <p className="text-xs text-base-content/55">{hint}</p>
       {draftRestored ? (

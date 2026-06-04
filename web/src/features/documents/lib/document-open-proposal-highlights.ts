@@ -19,6 +19,7 @@ import type { DocumentVariantPatchPreview } from '@/features/documents/lib/docum
 export type OpenProposalVariant = {
   id: string;
   blockId: string;
+  votingThreadId?: string | null;
   status: string;
   content: string;
   proposalScope?: 'block' | 'patches';
@@ -47,6 +48,9 @@ function variantToPreviewInput(v: OpenProposalVariant): VariantPreviewInput {
 }
 
 function summarizePatchChange(officialHtml: string, patch: DocumentVariantPatchPreview): string {
+  if (isInsertBlocksPatch(patch)) {
+    return 'добавить абзацы';
+  }
   const plain = blockHtmlToPlainText(officialHtml);
   const deleted = plain.slice(patch.rangeStart, patch.rangeEnd).trim();
   const inserted = blockHtmlToPlainText(patch.proposedText).trim();
@@ -83,8 +87,6 @@ function variantSummaryLine(
   }
   const blockHtml = blockOfficialFromSections(sections, v.blockId);
   const input = variantToPreviewInput(v);
-  const bounds = blockHtmlToPlainText(blockHtml);
-  void bounds;
   const preview = resolveVariantBlockPreviewHtml(blockHtml, input);
   const oldPlain = blockHtmlToPlainText(blockHtml);
   const newPlain = blockHtmlToPlainText(preview);
@@ -113,9 +115,10 @@ function blockOfficialFromSections(sections: unknown, blockId: string): string {
 function patchGlobalRanges(
   sections: unknown,
   v: OpenProposalVariant,
-): Array<{ rangeStart: number; rangeEnd: number }> {
+  insertMarkerLabel: string,
+): Array<{ rangeStart: number; rangeEnd: number; isInsertMarker?: boolean }> {
   const { segments } = buildBlockPlainSegments(sections);
-  const list: Array<{ rangeStart: number; rangeEnd: number }> = [];
+  const list: Array<{ rangeStart: number; rangeEnd: number; isInsertMarker?: boolean }> = [];
 
   const patchList =
     v.patches && v.patches.length > 0
@@ -131,6 +134,18 @@ function patchGlobalRanges(
         ];
 
   for (const patch of patchList) {
+    if (isInsertBlocksPatch(patch)) {
+      const anchorSeg = segments.find((s) => s.blockId === patch.insertAfterBlockId);
+      if (anchorSeg) {
+        const at = anchorSeg.plainEnd;
+        list.push({
+          rangeStart: at,
+          rangeEnd: Math.min(at + 1, anchorSeg.plainEnd + 1),
+          isInsertMarker: true,
+        });
+      }
+      continue;
+    }
     const seg = segments.find((s) => s.blockId === patch.blockId);
     if (!seg) {
       continue;
@@ -144,28 +159,51 @@ function patchGlobalRanges(
       list.push({ rangeStart: start, rangeEnd: end });
     }
   }
+  void insertMarkerLabel;
   return list;
+}
+
+function threadKey(v: OpenProposalVariant): string {
+  return v.votingThreadId ?? v.id;
 }
 
 /** Merge overlapping proposal ranges and attach tooltip lines for the editor. */
 export function buildOpenProposalHighlightRanges(
   sections: unknown,
   openVariants: OpenProposalVariant[],
-  options?: { tooltipPrefix?: string },
+  options?: { tooltipPrefix?: string; insertMarkerLabel?: string },
 ): ProposalHighlightRange[] {
   const tooltipPrefix = options?.tooltipPrefix ?? 'Предложения:';
+  const insertMarkerLabel = options?.insertMarkerLabel ?? 'есть дополнения';
   const active = openVariants.filter((v) => v.status === 'open');
   if (active.length === 0) {
     return [];
   }
 
-  type Span = { start: number; end: number; lines: string[] };
+  type Span = { start: number; end: number; lines: string[]; isInsertMarker?: boolean };
   const spans: Span[] = [];
 
+  const byThread = new Map<string, OpenProposalVariant[]>();
   for (const v of active) {
-    const line = variantSummaryLine(v, sections);
-    for (const r of patchGlobalRanges(sections, v)) {
-      spans.push({ start: r.rangeStart, end: r.rangeEnd, lines: [line] });
+    const key = threadKey(v);
+    const bucket = byThread.get(key) ?? [];
+    bucket.push(v);
+    byThread.set(key, bucket);
+  }
+
+  for (const threadVariants of byThread.values()) {
+    const lines = threadVariants.map((v) => variantSummaryLine(v, sections));
+    const threadLine =
+      lines.length === 1 ? lines[0]! : `${lines.length} предложений в голосовании`;
+    for (const v of threadVariants) {
+      for (const r of patchGlobalRanges(sections, v, insertMarkerLabel)) {
+        spans.push({
+          start: r.rangeStart,
+          end: r.rangeEnd,
+          lines: [threadLine, ...lines],
+          isInsertMarker: r.isInsertMarker,
+        });
+      }
     }
   }
 
@@ -176,6 +214,7 @@ export function buildOpenProposalHighlightRanges(
     if (last && span.start <= last.end) {
       last.end = Math.max(last.end, span.end);
       last.lines = [...new Set([...last.lines, ...span.lines])];
+      last.isInsertMarker = last.isInsertMarker || span.isInsertMarker;
     } else {
       merged.push({ ...span, lines: [...span.lines] });
     }
@@ -184,7 +223,9 @@ export function buildOpenProposalHighlightRanges(
   return merged.map((m) => ({
     rangeStart: m.start,
     rangeEnd: m.end,
-    tooltip: `${tooltipPrefix}\n${m.lines.map((l) => `— ${l}`).join('\n')}`,
+    tooltip: m.isInsertMarker
+      ? `${insertMarkerLabel}\n${tooltipPrefix}\n${m.lines.map((l) => `— ${l}`).join('\n')}`
+      : `${tooltipPrefix}\n${m.lines.map((l) => `— ${l}`).join('\n')}`,
   }));
 }
 
