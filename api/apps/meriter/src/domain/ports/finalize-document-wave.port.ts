@@ -6,6 +6,8 @@
  */
 export const FINALIZE_DOCUMENT_WAVE_PORT = Symbol('FINALIZE_DOCUMENT_WAVE_PORT');
 
+import type { DocumentVotingThreadRecord } from './document.persistence.port';
+
 export interface FinalizeDocumentWavePort {
   /** Periodic sweep invoked by the document-wave cron. */
   execute(): Promise<void>;
@@ -14,4 +16,5 @@ export interface FinalizeDocumentWavePort {
     blockId: string,
     options?: { force?: boolean },
   ): Promise<void>;
+  finalizeThread(thread: DocumentVotingThreadRecord): Promise<void>;
 }

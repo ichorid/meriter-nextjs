@@ -1,4 +1,8 @@
-import { patchesToOps, sortOpsForApply } from '../src/domain/common/document-document-ops.util';
+import {
+  opsToPatches,
+  patchesToOps,
+  sortOpsForApply,
+} from '../src/domain/common/document-document-ops.util';
 import type { DocumentVariantPatch } from '../src/domain/common/document-proposal-patches.util';
 
 describe('document-document-ops.util', () => {
@@ -25,5 +29,23 @@ describe('document-document-ops.util', () => {
       patchesToOps(patches, (id) => (id === 'b2' ? '<p>Old2</p>' : '<p>Old</p>')),
     );
     expect(ops.map((o) => o.op)).toEqual(['replace_range', 'insert_after']);
+  });
+
+  it('round-trips insert_after op back to patch', () => {
+    const patches: DocumentVariantPatch[] = [
+      {
+        blockId: 'b1',
+        insertAfterBlockId: 'b1',
+        insertBlocks: [{ blockType: 'paragraph', officialContent: '<p>Two</p>' }],
+        rangeStart: 0,
+        rangeEnd: 0,
+        proposedText: '',
+        previewContent: '<p>One</p><p>Two</p>',
+      },
+    ];
+    const ops = patchesToOps(patches, () => '<p>One</p>');
+    const back = opsToPatches(ops);
+    expect(back[0]?.insertAfterBlockId).toBe('b1');
+    expect(back[0]?.insertBlocks).toHaveLength(1);
   });
 });

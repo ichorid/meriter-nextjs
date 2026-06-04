@@ -4,3 +4,10 @@ export const DOCUMENT_WAVE_FINALIZE_LOCKS_COLLECTION = 'document_wave_finalize_l
 export function documentWaveFinalizeLockId(documentId: string, blockId: string): string {
   return `${documentId}:${blockId}`;
 }
+
+export function documentVotingThreadFinalizeLockId(
+  documentId: string,
+  threadId: string,
+): string {
+  return `${documentId}:thread:${threadId}`;
+}

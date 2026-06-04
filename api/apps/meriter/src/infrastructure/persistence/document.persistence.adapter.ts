@@ -304,6 +304,26 @@ export class DocumentPersistenceAdapter implements DocumentPersistencePort {
     return docs.map((doc) => mapDocumentBlockVariantToRecord(doc as DocumentBlockVariantRecord));
   }
 
+  async findExpiredOpenVotingThreads(): Promise<DocumentVotingThreadRecord[]> {
+    const now = new Date();
+    const docs = await this.votingThreadModel
+      .find({ status: 'open', waveEndsAt: { $lte: now } })
+      .lean()
+      .exec();
+    return docs as DocumentVotingThreadRecord[];
+  }
+
+  async findOpenVariantsByVotingThreadId(
+    threadId: string,
+  ): Promise<DocumentBlockVariantRecord[]> {
+    const docs = await this.variantModel
+      .find({ votingThreadId: threadId, status: 'open', deleted: false })
+      .sort({ rating: -1, proposedAt: 1 })
+      .lean()
+      .exec();
+    return docs.map((doc) => mapDocumentBlockVariantToRecord(doc as DocumentBlockVariantRecord));
+  }
+
   async findOpenVotingThreads(
     documentId: string,
   ): Promise<DocumentVotingThreadRecord[]> {

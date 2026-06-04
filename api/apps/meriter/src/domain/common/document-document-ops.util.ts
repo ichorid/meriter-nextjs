@@ -70,3 +70,36 @@ export function sortOpsForApply(ops: DocumentOp[]): DocumentOp[] {
 export function orderedBlocksFingerprint(blocks: SectionBlockRow[]): string {
   return blocks.map((b) => `${b.id}:${blockHtmlToPlainText(String(b.officialContent ?? ''))}`).join('|');
 }
+
+/** Reconstruct legacy patches from persisted ops (for apply / highlights). */
+export function opsToPatches(ops: DocumentOp[]): DocumentVariantPatch[] {
+  return ops.map((op) => {
+    if (op.op === 'insert_after') {
+      return {
+        blockId: op.insertAfterBlockId ?? '',
+        insertAfterBlockId: op.insertAfterBlockId,
+        insertBlocks: op.blocks ?? [],
+        rangeStart: 0,
+        rangeEnd: 0,
+        proposedText: '',
+        previewContent: (op.blocks ?? []).map((b) => b.officialContent).join(''),
+      };
+    }
+    if (op.op === 'delete_block') {
+      return {
+        blockId: op.blockId,
+        rangeStart: 0,
+        rangeEnd: 1,
+        proposedText: '',
+        previewContent: '<p></p>',
+      };
+    }
+    return {
+      blockId: op.blockId,
+      rangeStart: op.rangeStart,
+      rangeEnd: op.rangeEnd,
+      proposedText: op.proposedText,
+      previewContent: '',
+    };
+  });
+}

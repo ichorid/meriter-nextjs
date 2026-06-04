@@ -119,6 +119,7 @@ export interface DocumentBlockVariantRecord {
   documentId: string;
   blockId: string;
   votingThreadId?: string;
+  ops?: DocumentVariantOpRecord[];
   proposalScope?: 'block' | 'patches';
   patches?: Array<{
     blockId: string;
@@ -147,6 +148,16 @@ export interface DocumentBlockVariantRecord {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export type DocumentVariantOpRecord = {
+  op: 'replace_range' | 'delete_block' | 'insert_after';
+  blockId?: string;
+  rangeStart?: number;
+  rangeEnd?: number;
+  proposedText?: string;
+  insertAfterBlockId?: string;
+  blocks?: Array<{ blockType: string; officialContent: string }>;
+};
 
 export type InsertDocumentBlockVariantInput = Omit<
   DocumentBlockVariantRecord,
@@ -267,6 +278,12 @@ export interface DocumentPersistencePort {
     threadId: string,
     patch: Partial<Pick<DocumentVotingThreadRecord, 'waveEndsAt' | 'ranges' | 'status'>>,
   ): Promise<void>;
+
+  findExpiredOpenVotingThreads(): Promise<DocumentVotingThreadRecord[]>;
+
+  findOpenVariantsByVotingThreadId(
+    threadId: string,
+  ): Promise<DocumentBlockVariantRecord[]>;
 
   insertVariant(input: InsertDocumentBlockVariantInput): Promise<DocumentBlockVariantRecord>;
 

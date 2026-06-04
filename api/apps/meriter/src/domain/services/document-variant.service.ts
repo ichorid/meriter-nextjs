@@ -44,6 +44,7 @@ import {
   isInsertBlocksPatch,
   type DocumentVariantPatch,
 } from '../common/document-proposal-patches.util';
+import { opsToPatches } from '../common/document-document-ops.util';
 import {
   hashJoinedDocumentAtPropose,
   isStaleVariant,
@@ -91,6 +92,10 @@ export class DocumentVariantService {
     return variants as DocumentBlockVariantSchemaClass[];
   }
 
+  async findOpenVotingThreads(documentId: string) {
+    return this.documentPersistence.findOpenVotingThreads(documentId);
+  }
+
   /**
    * When wave time elapsed: pick winner, reset wave anchor on block.
    * For `document.mode === 'auto'`, applies winning variant (§12.2).
@@ -100,7 +105,32 @@ export class DocumentVariantService {
     blockId: string,
     options?: { force?: boolean },
   ): Promise<void> {
+    const threads = await this.documentPersistence.findOpenVotingThreads(documentId);
+    const now = Date.now();
+    for (const thread of threads) {
+      if (new Date(thread.waveEndsAt).getTime() <= now) {
+        await this.finalizeDocumentWaveUseCase.finalizeThread(thread);
+      }
+    }
     return this.finalizeDocumentWaveUseCase.finalizeBlock(documentId, blockId, options);
+  }
+
+  async tryAutoApplyThreadWinner(documentId: string, variantId: string): Promise<void> {
+    const doc = await this.documentService.getById(documentId);
+    if (!doc || doc.deleted || doc.mode !== 'auto') {
+      return;
+    }
+    const record = await this.documentPersistence.findVariantById(variantId);
+    if (!record || record.status !== 'closed-winner') {
+      return;
+    }
+    await this.applyVariantToOfficial(
+      MERITER_DOCUMENT_AUTO_APPLY_USER_ID,
+      record as DocumentBlockVariantSchemaClass,
+      doc,
+      'vote',
+      { skipStaleCheck: true },
+    );
   }
 
   
@@ -583,6 +613,9 @@ export class DocumentVariantService {
         insertBlocks: p.insertBlocks,
       }));
     }
+    if (v.ops && v.ops.length > 0) {
+      return opsToPatches(v.ops);
+    }
     return [
       {
         blockId: v.blockId,
@@ -838,7 +871,11 @@ export class DocumentVariantService {
     options?: { skipStaleCheck?: boolean },
   ): Promise<void> {
     const patches = this.resolveVariantPatches(v);
-    if (v.proposalScope === 'patches' || patches.length > 1) {
+    if (
+      v.proposalScope === 'patches' ||
+      patches.length > 1 ||
+      patches.some(isInsertBlocksPatch)
+    ) {
       await this.applyPatchesVariant(actorUserId, v, doc, patches, reason, options);
       return;
     }

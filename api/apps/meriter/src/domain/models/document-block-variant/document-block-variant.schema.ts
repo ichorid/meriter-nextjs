@@ -20,6 +20,23 @@ const VariantInsertBlockEmbeddedSchema = new MongooseRawSchema(
   { _id: false },
 );
 
+const VariantOpEmbeddedSchema = new MongooseRawSchema(
+  {
+    op: {
+      type: String,
+      enum: ['replace_range', 'delete_block', 'insert_after'],
+      required: true,
+    },
+    blockId: { type: String, required: false },
+    rangeStart: { type: Number, required: false },
+    rangeEnd: { type: Number, required: false },
+    proposedText: { type: String, required: false },
+    insertAfterBlockId: { type: String, required: false },
+    blocks: { type: [VariantInsertBlockEmbeddedSchema], default: undefined },
+  },
+  { _id: false },
+);
+
 const VariantPatchEmbeddedSchema = new MongooseRawSchema(
   {
     blockId: { type: String, required: true },
@@ -58,6 +75,18 @@ export class DocumentBlockVariantSchemaClass {
    */
   @Prop({ enum: ['block', 'patches'], default: 'block' })
   proposalScope!: 'block' | 'patches';
+
+  /** Canonical v3 operations (derived from patches at propose time). */
+  @Prop({ type: [VariantOpEmbeddedSchema] })
+  ops?: Array<{
+    op: 'replace_range' | 'delete_block' | 'insert_after';
+    blockId?: string;
+    rangeStart?: number;
+    rangeEnd?: number;
+    proposedText?: string;
+    insertAfterBlockId?: string;
+    blocks?: Array<{ blockType: string; officialContent: string }>;
+  }>;
 
   @Prop({ type: [VariantPatchEmbeddedSchema], default: [] })
   patches!: Array<{
@@ -147,3 +176,4 @@ export type DocumentBlockVariantDocument = DocumentBlockVariantSchemaClass &
 DocumentBlockVariantSchema.index({ documentId: 1, blockId: 1, status: 1 });
 DocumentBlockVariantSchema.index({ documentId: 1, blockId: 1, rating: -1 });
 DocumentBlockVariantSchema.index({ proposedAt: 1 });
+DocumentBlockVariantSchema.index({ documentId: 1, votingThreadId: 1, status: 1 });

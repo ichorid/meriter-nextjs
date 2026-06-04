@@ -12,6 +12,10 @@ import {
   rangesOverlap,
   resolveVariantRangeBounds,
 } from '../../../domain/common/document-range.util';
+import {
+  documentVotingThreadFinalizeLockId,
+} from '../../../domain/common/constants/document-wave-lock.constants';
+import type { DocumentVotingThreadRecord } from '../../../domain/ports/document.persistence.port';
 export type FinalizeDocumentWaveDeps = {
   documentService: DocumentService;
   documentPersistence: DocumentPersistencePort;
@@ -19,6 +23,8 @@ export type FinalizeDocumentWaveDeps = {
   notificationService: NotificationService;
   /** Applies closed-winner in auto mode (inv-15 mirror stays in DocumentVariantService). */
   autoApplyWinner: (documentId: string, blockId: string) => Promise<void>;
+  /** Applies single thread winner in auto mode (v3 one winner per thread). */
+  autoApplyThreadWinner: (documentId: string, variantId: string) => Promise<void>;
   documentLiveUpdates: DocumentLiveUpdatesService;
 };
 
@@ -33,6 +39,19 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
 
   /** Periodic sweep invoked by document-wave cron. */
   async execute(): Promise<void> {
+    const expiredThreads = await this.deps.documentPersistence.findExpiredOpenVotingThreads();
+    for (const thread of expiredThreads) {
+      try {
+        await this.finalizeThread(thread);
+      } catch (err) {
+        this.logger.warn(
+          `Thread wave sweep failed ${thread.documentId}/${thread.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+
     const pairs = await this.deps.documentPersistence.findOpenWaveBlockPairs();
 
     for (const p of pairs) {
@@ -41,6 +60,16 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
       try {
         const doc = await this.deps.documentService.getById(documentId);
         if (!doc) {
+          continue;
+        }
+        const openOnBlock = await this.deps.documentPersistence.findOpenVariants(
+          documentId,
+          blockId,
+        );
+        if (
+          openOnBlock.length > 0 &&
+          openOnBlock.every((v) => v.votingThreadId)
+        ) {
           continue;
         }
         if (this.deps.documentService.isDocumentBlockVotingOpen(doc, blockId)) {
@@ -78,6 +107,115 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
     }
   }
 
+  async finalizeThread(thread: DocumentVotingThreadRecord): Promise<void> {
+    const lockId = documentVotingThreadFinalizeLockId(thread.documentId, thread.id);
+    const acquired = await this.deps.documentPersistence.acquireWaveFinalizeLock(
+      thread.documentId,
+      lockId,
+    );
+    if (!acquired) {
+      return;
+    }
+    try {
+      await this.finalizeThreadCore(thread);
+    } finally {
+      await this.deps.documentPersistence.releaseWaveFinalizeLock(
+        thread.documentId,
+        lockId,
+      );
+    }
+  }
+
+  private async finalizeThreadCore(thread: DocumentVotingThreadRecord): Promise<void> {
+    const doc = await this.deps.documentService.getById(thread.documentId);
+    if (!doc) {
+      return;
+    }
+    if (new Date(thread.waveEndsAt).getTime() > Date.now()) {
+      return;
+    }
+
+    const openVariants = await this.deps.documentPersistence.findOpenVariantsByVotingThreadId(
+      thread.id,
+    );
+    if (openVariants.length === 0) {
+      await this.deps.documentPersistence.updateVotingThread(thread.id, {
+        status: 'closed',
+      });
+      return;
+    }
+
+    openVariants.sort((a, b) => {
+      if ((b.rating ?? 0) !== (a.rating ?? 0)) {
+        return (b.rating ?? 0) - (a.rating ?? 0);
+      }
+      return new Date(a.proposedAt).getTime() - new Date(b.proposedAt).getTime();
+    });
+
+    const winner = openVariants[0]!;
+    const hasPositiveWinner = (winner.rating ?? 0) > 0;
+
+    for (const v of openVariants) {
+      const isWinner = hasPositiveWinner && v.id === winner.id;
+      await this.deps.documentPersistence.updateVariantStatus(
+        v.id,
+        isWinner ? 'closed-winner' : 'closed-not-winner',
+      );
+    }
+
+    const touchedBlockIds = new Set(openVariants.map((v) => v.blockId));
+    for (const blockId of touchedBlockIds) {
+      await this.deps.documentService.updateDocumentBlock(thread.documentId, blockId, (b) => {
+        delete b.currentWaveStartedAt;
+        b.officialRating = 0;
+      });
+    }
+
+    await this.deps.documentPersistence.updateVotingThread(thread.id, { status: 'closed' });
+
+    const community = await this.deps.communityService.getCommunity(doc.communityId);
+    if (community) {
+      await notifyVariantsNotSelected(this.deps, {
+        doc,
+        community,
+        blockId: thread.anchorBlockId,
+        variants: openVariants,
+        winnerVariantId: hasPositiveWinner ? winner.id : undefined,
+        reason: hasPositiveWinner ? 'other_variant_won' : 'no_positive_winner',
+      }).catch((err) => {
+        this.logger.warn(
+          `Failed to notify thread variant outcome ${thread.documentId}/${thread.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+    }
+
+    if (hasPositiveWinner) {
+      if (doc.mode !== 'auto') {
+        await notifyVariantWon(
+          this.deps,
+          winner as DocumentBlockVariantSchemaClass,
+          doc,
+        ).catch((err) => {
+          this.logger.warn(
+            `Failed to notify thread winner ${winner.id}: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          );
+        });
+      }
+      await this.deps.autoApplyThreadWinner(thread.documentId, winner.id);
+    }
+
+    this.deps.documentLiveUpdates.publish({
+      type: 'wave.closed',
+      documentId: doc.id,
+      documentUpdatedAt: doc.updatedAt,
+      blockId: thread.anchorBlockId,
+    });
+  }
+
   private async finalizeBlockCore(
     documentId: string,
     blockId: string,
@@ -98,6 +236,13 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
       documentId,
       blockId,
     );
+
+    if (
+      openVariants.length > 0 &&
+      openVariants.every((v) => v.votingThreadId)
+    ) {
+      return;
+    }
 
     if (openVariants.length === 0) {
       await this.deps.documentService.updateDocumentBlock(documentId, blockId, (b) => {

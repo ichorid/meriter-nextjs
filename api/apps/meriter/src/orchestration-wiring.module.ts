@@ -365,6 +365,10 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
             moduleRef
               .get(DocumentVariantService, { strict: false })
               .tryAutoApplyWinner(documentId, blockId),
+          autoApplyThreadWinner: (documentId, variantId) =>
+            moduleRef
+              .get(DocumentVariantService, { strict: false })
+              .tryAutoApplyThreadWinner(documentId, variantId),
           documentLiveUpdates,
         }),
       inject: [

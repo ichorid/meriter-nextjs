@@ -36,6 +36,10 @@ import {
 } from '../../../domain/common/document-block-structure.util';
 import type { ParsedStructureBlock } from '../../../domain/common/document-html-structure.util';
 import {
+  patchesToOps,
+  sortOpsForApply,
+} from '../../../domain/common/document-document-ops.util';
+import {
   buildAppendInsertPatch,
   computeProposalPatchesFromJoinedContent,
   isInsertBlocksPatch,
@@ -181,6 +185,9 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       String(this.deps.documentService.findBlock(doc, patchBlockId)?.officialContent ?? '');
     const persistedPatches = normalizeVariantPatchesForPersistence(patches, officialHtmlForBlock);
     const persistedContent = normalizeVariantContentForPersistence(content, persistedPatches);
+    const persistedOps = sortOpsForApply(
+      patchesToOps(persistedPatches, officialHtmlForBlock),
+    );
 
     const created = await this.deps.documentPersistence.insertVariant({
       id: variantId,
@@ -189,6 +196,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       votingThreadId: threadResolution.votingThreadId,
       proposalScope: proposalScope ?? 'block',
       patches: persistedPatches,
+      ops: persistedOps,
       content: persistedContent,
       ...(hasRange
         ? {

@@ -51,6 +51,10 @@ export const documentVariantsRouter = router({
       const userIds = [...new Set(active.map((v) => v.proposedBy))];
       const userById = await ctx.userService.getUsersByIdsForEnrichment(userIds);
 
+      const openThreads = await ctx.documentVariantService.findOpenVotingThreads(
+        input.documentId,
+      );
+
       const threads = new Map<
         string,
         {
@@ -74,11 +78,17 @@ export const documentVariantsRouter = router({
         if (existing) {
           existing.variants.push(variant);
         } else {
+          const threadMeta = variant.votingThreadId
+            ? openThreads.find((t) => t.id === variant.votingThreadId)
+            : undefined;
+          const waveOpen = threadMeta
+            ? new Date(threadMeta.waveEndsAt).getTime() > Date.now()
+            : ctx.documentService.isDocumentBlockVotingOpen(doc, variant.blockId);
           threads.set(threadKey, {
             threadId: threadKey,
             blockId: variant.blockId,
             officialExcerpt: excerpt,
-            waveOpen: ctx.documentService.isDocumentBlockVotingOpen(doc, variant.blockId),
+            waveOpen,
             variants: [variant],
           });
         }
@@ -91,6 +101,8 @@ export const documentVariantsRouter = router({
             const proposer = userById.get(variant.proposedBy);
             return {
               ...variant,
+              votingThreadId: variant.votingThreadId ?? null,
+              patches: variant.patches ?? [],
               proposedByDisplayName:
                 proposer?.displayName ?? variant.proposedBy.slice(0, 8),
             };
