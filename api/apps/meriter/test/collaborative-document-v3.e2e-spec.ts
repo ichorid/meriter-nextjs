@@ -285,4 +285,170 @@ describe('Collaborative document v3 E2E', () => {
     });
     expect(listing.threads.length).toBeGreaterThanOrEqual(2);
   });
+
+  it('propose middle insert yields insert_after patches and full content', async () => {
+    const { documentId, blockIds } = await seedDocumentWithBlocks([
+      '<h2>Heading</h2>',
+      '<p>Footer</p>',
+    ]);
+    const anchorId = blockIds[0]!;
+    const proposed =
+      '<h2>Heading</h2><p>Inserted A</p><p>Inserted B</p><p>Footer</p>';
+
+    (global as { testUserId?: string }).testUserId = aliceId;
+    const result = await trpcMutation(app, 'documentVariants.propose', {
+      documentId,
+      blockId: anchorId,
+      content: proposed,
+    });
+
+    const variant = result.variant;
+    expect(variant.proposalScope).toBe('patches');
+    const insertPatch = variant.patches?.find(
+      (p: { insertBlocks?: unknown[] }) => (p.insertBlocks?.length ?? 0) > 0,
+    );
+    expect(insertPatch).toBeDefined();
+    const insertedHtml = (insertPatch?.insertBlocks ?? [])
+      .map((b: { officialContent: string }) => b.officialContent)
+      .join('');
+    expect(insertedHtml).toContain('Inserted A');
+    expect(insertedHtml).toContain('Inserted B');
+    expect(variant.content).toContain('Inserted A');
+    expect(variant.content).toContain('Inserted B');
+    expect(variant.content).toContain('Footer');
+  });
+
+  it('propose multi-block delete emits delete patch for removed heading', async () => {
+    const { documentId, blockIds } = await seedDocumentWithBlocks([
+      '<p>Long paragraph text</p>',
+      '<h3>Subheading</h3>',
+    ]);
+
+    (global as { testUserId?: string }).testUserId = aliceId;
+    const result = await trpcMutation(app, 'documentVariants.propose', {
+      documentId,
+      blockId: blockIds[0]!,
+      content: '<p>Long paragraph</p>',
+    });
+
+    const variant = result.variant;
+    expect(variant.proposalScope).toBe('patches');
+    const patchBlockIds = (variant.patches ?? []).map(
+      (p: { blockId: string }) => p.blockId,
+    );
+    expect(patchBlockIds).toContain(blockIds[1]!);
+    expect(variant.content).not.toContain('Subheading');
+  });
+
+  it('close by_votes ends open voting thread before wave expiry', async () => {
+    const { documentId, blockIds } = await seedDocumentWithBlocks([
+      '<p>Vote target text.</p>',
+    ]);
+    const block1 = blockIds[0]!;
+
+    (global as { testUserId?: string }).testUserId = aliceId;
+    const proposed = await trpcMutation(app, 'documentVariants.propose', {
+      documentId,
+      blockId: block1,
+      content: '<p>Vote target CHANGED.</p>',
+    });
+    expect(proposed.variant.status).toBe('open');
+
+    (global as { testUserId?: string }).testUserId = leadId;
+    await trpcMutation(app, 'documentVariants.closeVotingWaveOnBlock', {
+      documentId,
+      blockId: block1,
+      resolution: { mode: 'by_votes' },
+    });
+
+    const listing = await trpcQuery(app, 'documentVariants.listByDocument', {
+      documentId,
+    });
+    expect(
+      listing.threads.every((t: { waveOpen: boolean }) => !t.waveOpen),
+    ).toBe(true);
+
+    const refreshed = await trpcQuery(app, 'documentVariants.getBlockVotingPanel', {
+      documentId,
+      blockId: block1,
+    });
+    const openVariants = refreshed.variants.filter(
+      (v: { status: string }) => v.status === 'open',
+    );
+    expect(openVariants).toHaveLength(0);
+    expect(
+      refreshed.variants.some((v: { id: string; status: string }) =>
+        v.id === proposed.variant.id &&
+        (v.status === 'closed-winner' || v.status === 'closed-not-winner'),
+      ),
+    ).toBe(true);
+  });
+
+  it('after force_official wave close, new propose does not merge into stale thread', async () => {
+    const { documentId, blockIds } = await seedDocumentWithBlocks([
+      '<p>Alpha bravo charlie.</p>',
+    ]);
+    const block1 = blockIds[0]!;
+
+    (global as { testUserId?: string }).testUserId = aliceId;
+    await trpcMutation(app, 'documentVariants.propose', {
+      documentId,
+      blockId: block1,
+      content: '<p>Alpha BRAVO charlie.</p>',
+    });
+
+    (global as { testUserId?: string }).testUserId = leadId;
+    await trpcMutation(app, 'documentVariants.closeVotingWaveOnBlock', {
+      documentId,
+      blockId: block1,
+      resolution: { mode: 'force_official' },
+    });
+
+    (global as { testUserId?: string }).testUserId = bobId;
+    const afterClose = await trpcMutation(app, 'documentVariants.propose', {
+      documentId,
+      blockId: block1,
+      content:
+        '<p>Alpha bravo charlie.</p><p>Inserted after close</p>',
+    });
+
+    expect(afterClose.proposeWarning).toBeUndefined();
+    const openThreads = await trpcQuery(app, 'documentVariants.listByDocument', {
+      documentId,
+    });
+    const openCount = openThreads.threads.filter(
+      (t: { waveOpen: boolean }) => t.waveOpen,
+    ).length;
+    expect(openCount).toBeLessThanOrEqual(1);
+  });
+
+  it('apply winner applies middle insert_after to official document', async () => {
+    const { documentId, blockIds } = await seedDocumentWithBlocks([
+      '<h2>Title</h2>',
+      '<p>End</p>',
+    ]);
+    const proposed =
+      '<h2>Title</h2><p>Middle A</p><p>Middle B</p><p>End</p>';
+
+    (global as { testUserId?: string }).testUserId = aliceId;
+    const proposeResult = await trpcMutation(app, 'documentVariants.propose', {
+      documentId,
+      blockId: blockIds[0]!,
+      content: proposed,
+    });
+
+    (global as { testUserId?: string }).testUserId = leadId;
+    await trpcMutation(app, 'documentVariants.applyOpenAsAdmin', {
+      variantId: proposeResult.variant.id,
+    });
+
+    const afterApply = await trpcQuery(app, 'documents.getById', { id: documentId });
+    expect(blockCount(afterApply)).toBe(4);
+    const joined = (afterApply.sections ?? [])
+      .flatMap((s: { blocks: Array<{ officialContent: string }> }) => s.blocks)
+      .map((b: { officialContent: string }) => b.officialContent)
+      .join('');
+    expect(joined).toContain('Middle A');
+    expect(joined).toContain('Middle B');
+  });
 });

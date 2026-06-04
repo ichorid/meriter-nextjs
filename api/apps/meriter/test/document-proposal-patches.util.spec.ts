@@ -2,6 +2,7 @@ import {
   applyBlockSplitsForPatches,
   buildAppendInsertPatch,
   computeProposalPatchesFromJoinedContent,
+  isDocumentScopedProposal,
   isFullBlockDeletionPatch,
   isInsertBlocksPatch,
   normalizeVariantContentForPersistence,
@@ -84,5 +85,73 @@ describe('document-proposal-patches.util', () => {
     const middle = splitBlocks[1]!;
     expect(patches[0]!.blockId).toBe(middle.id);
     expect(patches[0]!.rangeStart).toBe(0);
+  });
+
+  it('emits insert_after with two blocks between heading and paragraph', () => {
+    const official: SectionBlockRow[] = [
+      {
+        id: 'h1',
+        order: 0,
+        blockType: 'heading',
+        officialContent: '<h2>Title</h2>',
+      },
+      {
+        id: 'p1',
+        order: 1,
+        blockType: 'paragraph',
+        officialContent: '<p>Body</p>',
+      },
+    ];
+    const proposed =
+      '<h2>Title</h2><p>New one</p><p>New two</p><p>Body</p>';
+    const result = computeProposalPatchesFromJoinedContent(official, proposed);
+    const insert = result.patches.find(isInsertBlocksPatch);
+    expect(insert).toBeDefined();
+    expect(insert!.insertAfterBlockId).toBe('h1');
+    expect(insert!.insertBlocks).toHaveLength(2);
+    expect(isDocumentScopedProposal(result.patches)).toBe(true);
+    const persisted = normalizeVariantContentForPersistence(proposed, result.patches);
+    expect(persisted).toContain('New one');
+    expect(persisted).toContain('Body');
+  });
+
+  it('deletes following heading when removed from joined html', () => {
+    const official: SectionBlockRow[] = [
+      {
+        id: 'b1',
+        order: 0,
+        blockType: 'paragraph',
+        officialContent: '<p>Long text here</p>',
+      },
+      {
+        id: 'b2',
+        order: 1,
+        blockType: 'heading',
+        officialContent: '<h3>Sub</h3>',
+      },
+    ];
+    const proposed = '<p>Long text</p>';
+    const result = computeProposalPatchesFromJoinedContent(official, proposed);
+    const deletePatch = result.patches.find((p) => p.blockId === 'b2');
+    expect(deletePatch).toBeDefined();
+    expect(deletePatch!.proposedText).toBe('');
+    expect(isFullBlockDeletionPatch(official[1]!.officialContent, deletePatch!)).toBe(
+      true,
+    );
+  });
+
+  it('allows delete and insert_after in one joined html propose', () => {
+    const official = blocks([
+      { id: 'b1', html: '<p>One</p>' },
+      { id: 'b2', html: '<p>Two</p>' },
+    ]);
+    const proposed = '<p>One changed</p><p>Inserted</p>';
+    const result = computeProposalPatchesFromJoinedContent(official, proposed);
+    expect(result.patches.some(isInsertBlocksPatch)).toBe(true);
+    expect(
+      result.patches.some(
+        (p) => p.blockId === 'b2' && p.proposedText === '' && !isInsertBlocksPatch(p),
+      ),
+    ).toBe(true);
   });
 });

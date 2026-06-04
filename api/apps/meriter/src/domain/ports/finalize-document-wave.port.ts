@@ -16,5 +16,8 @@ export interface FinalizeDocumentWavePort {
     blockId: string,
     options?: { force?: boolean },
   ): Promise<void>;
-  finalizeThread(thread: DocumentVotingThreadRecord): Promise<void>;
+  finalizeThread(
+    thread: DocumentVotingThreadRecord,
+    options?: { force?: boolean },
+  ): Promise<void>;
 }

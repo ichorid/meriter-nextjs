@@ -107,7 +107,10 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
     }
   }
 
-  async finalizeThread(thread: DocumentVotingThreadRecord): Promise<void> {
+  async finalizeThread(
+    thread: DocumentVotingThreadRecord,
+    options?: { force?: boolean },
+  ): Promise<void> {
     const lockId = documentVotingThreadFinalizeLockId(thread.documentId, thread.id);
     const acquired = await this.deps.documentPersistence.acquireWaveFinalizeLock(
       thread.documentId,
@@ -117,7 +120,7 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
       return;
     }
     try {
-      await this.finalizeThreadCore(thread);
+      await this.finalizeThreadCore(thread, options);
     } finally {
       await this.deps.documentPersistence.releaseWaveFinalizeLock(
         thread.documentId,
@@ -126,12 +129,18 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
     }
   }
 
-  private async finalizeThreadCore(thread: DocumentVotingThreadRecord): Promise<void> {
+  private async finalizeThreadCore(
+    thread: DocumentVotingThreadRecord,
+    options?: { force?: boolean },
+  ): Promise<void> {
     const doc = await this.deps.documentService.getById(thread.documentId);
     if (!doc) {
       return;
     }
-    if (new Date(thread.waveEndsAt).getTime() > Date.now()) {
+    if (
+      !options?.force &&
+      new Date(thread.waveEndsAt).getTime() > Date.now()
+    ) {
       return;
     }
 

@@ -42,6 +42,7 @@ import {
 import {
   buildAppendInsertPatch,
   computeProposalPatchesFromJoinedContent,
+  isDocumentScopedProposal,
   isInsertBlocksPatch,
   normalizeVariantContentForPersistence,
   normalizeVariantPatchesForPersistence,
@@ -260,6 +261,20 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     };
   }
 
+  /** Open threads without open variants are stale after wave close — close before overlap checks. */
+  private async closeStaleOpenVotingThreads(documentId: string): Promise<void> {
+    const openThreads = await this.deps.documentPersistence.findOpenVotingThreads(documentId);
+    for (const thread of openThreads) {
+      const openVariants =
+        await this.deps.documentPersistence.findOpenVariantsByVotingThreadId(thread.id);
+      if (openVariants.length === 0) {
+        await this.deps.documentPersistence.updateVotingThread(thread.id, {
+          status: 'closed',
+        });
+      }
+    }
+  }
+
   private async resolveVotingThreadForProposal(
     doc: MeriterDocumentSchemaClass,
     patches: DocumentVariantPatch[],
@@ -270,6 +285,8 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     mergedIntoThreadId?: string;
     extendWave: boolean;
   }> {
+    await this.closeStaleOpenVotingThreads(doc.id);
+
     const segments = buildSegmentsFromDocument(doc);
     const proposalRanges = proposalGlobalRanges(segments, patches);
     const hours = doc.votingDurationHours ?? 24;
@@ -323,6 +340,11 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
 
     const openThreads = await this.deps.documentPersistence.findOpenVotingThreads(doc.id);
     for (const thread of openThreads) {
+      const threadOpenVariants =
+        await this.deps.documentPersistence.findOpenVariantsByVotingThreadId(thread.id);
+      if (threadOpenVariants.length === 0) {
+        continue;
+      }
       const threadRanges = thread.ranges.map((r) => ({
         rangeStart: r.rangeStart,
         rangeEnd: r.rangeEnd,
@@ -412,7 +434,9 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     const patches = computed.patches;
     const anchor =
       patches.find((p) => p.blockId === computed.anchorBlockId) ?? patches[0]!;
-    const proposalScope = patches.length > 1 ? ('patches' as const) : ('block' as const);
+    const proposalScope = isDocumentScopedProposal(patches)
+      ? ('patches' as const)
+      : ('block' as const);
 
     return {
       doc,
@@ -423,7 +447,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       rangeStart: anchor.rangeStart,
       rangeEnd: anchor.rangeEnd,
       proposedText: anchor.proposedText,
-      content: anchor.previewContent,
+      content,
       joinedOfficialHash: computed.joinedOfficialHash,
     };
   }
@@ -448,7 +472,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     return {
       doc,
       blockId: patch.blockId,
-      proposalScope: 'block',
+      proposalScope: 'patches',
       patches: [patch],
       hasRange: false,
       rangeStart: 0,

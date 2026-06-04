@@ -108,11 +108,24 @@ export class DocumentVariantService {
     const threads = await this.documentPersistence.findOpenVotingThreads(documentId);
     const now = Date.now();
     for (const thread of threads) {
+      if (options?.force) {
+        const onBlock = await this.documentPersistence.findOpenVariantsByVotingThreadId(
+          thread.id,
+        );
+        if (!onBlock.some((v) => v.blockId === blockId)) {
+          continue;
+        }
+        await this.finalizeDocumentWaveUseCase.finalizeThread(thread, { force: true });
+        continue;
+      }
       if (new Date(thread.waveEndsAt).getTime() <= now) {
         await this.finalizeDocumentWaveUseCase.finalizeThread(thread);
       }
     }
-    return this.finalizeDocumentWaveUseCase.finalizeBlock(documentId, blockId, options);
+    await this.finalizeDocumentWaveUseCase.finalizeBlock(documentId, blockId, options);
+    if (options?.force) {
+      await this.closeStaleOpenVotingThreads(documentId);
+    }
   }
 
   async tryAutoApplyThreadWinner(documentId: string, variantId: string): Promise<void> {
@@ -423,6 +436,8 @@ export class DocumentVariantService {
     await this.applyClosedWinnersToOfficial(actorUserId, documentId, blockId, {
       skipStaleCheck: true,
     });
+    const docAfter = (await this.documentService.getById(documentId)) ?? doc;
+    this.publishWaveClosed(docAfter, blockId, actorUserId);
   }
 
   private publishWaveClosed(
@@ -519,7 +534,23 @@ export class DocumentVariantService {
       });
     }
 
+    await this.closeStaleOpenVotingThreads(doc.id);
+
     this.publishWaveClosed(doc, blockId, actorUserId);
+  }
+
+  /** Voting threads stay `open` in DB until explicitly closed; wave close leaves none without this. */
+  private async closeStaleOpenVotingThreads(documentId: string): Promise<void> {
+    const openThreads = await this.documentPersistence.findOpenVotingThreads(documentId);
+    for (const thread of openThreads) {
+      const openVariants =
+        await this.documentPersistence.findOpenVariantsByVotingThreadId(thread.id);
+      if (openVariants.length === 0) {
+        await this.documentPersistence.updateVotingThread(thread.id, {
+          status: 'closed',
+        });
+      }
+    }
   }
 
   /** §7.3 — soft-delete a variant (admin / document author). */

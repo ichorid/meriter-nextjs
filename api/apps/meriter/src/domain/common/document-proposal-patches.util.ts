@@ -45,6 +45,14 @@ export function isInsertBlocksPatch(patch: DocumentVariantPatch): boolean {
   return Boolean(patch.insertBlocks?.length && patch.insertAfterBlockId);
 }
 
+/** True when variant stores document-wide patch list (not a single in-block range edit). */
+export function isDocumentScopedProposal(patches: DocumentVariantPatch[]): boolean {
+  if (patches.length > 1) {
+    return true;
+  }
+  return patches.some(isInsertBlocksPatch);
+}
+
 /** Build a single patch inserting blocks after an anchor (append or mid-document). */
 export function buildInsertAfterPatch(
   orderedBlocks: SectionBlockRow[],
@@ -287,9 +295,6 @@ export function computeProposalPatchesFromJoinedContent(
   for (let i = 0; i < mapped.length; i++) {
     const m = mapped[i]!;
     if (report.created.includes(m.id)) {
-      if (report.removed.length > 0) {
-        continue;
-      }
       const run: ParsedStructureBlock[] = [];
       while (i < mapped.length && report.created.includes(mapped[i]!.id)) {
         const row = mapped[i]!;
@@ -303,8 +308,9 @@ export function computeProposalPatchesFromJoinedContent(
       i -= 1;
       const anchor =
         lastPreservedId ?? blocks[blocks.length - 1]?.id ?? mapped[0]?.id ?? '';
-      if (anchor && run.length > 0) {
-        patches.push(buildInsertAfterPatch(blocks, anchor, run));
+      const nonEmptyRun = run.filter((b) => !isEmptyVariantBlockHtml(b.officialContent));
+      if (anchor && nonEmptyRun.length > 0) {
+        patches.push(buildInsertAfterPatch(blocks, anchor, nonEmptyRun));
       }
       continue;
     }
@@ -313,7 +319,25 @@ export function computeProposalPatchesFromJoinedContent(
     if (!ex) {
       continue;
     }
-    const patch = buildPatchForBlock(m.id, String(ex.officialContent ?? ''), m.officialContent);
+    const officialHtml = String(ex.officialContent ?? '');
+    if (isEmptyVariantBlockHtml(m.officialContent) && !isEmptyVariantBlockHtml(officialHtml)) {
+      const plainLen = blockHtmlToPlainText(officialHtml).length;
+      patches.push({
+        blockId: m.id,
+        rangeStart: 0,
+        rangeEnd: Math.max(plainLen, 1),
+        proposedText: '',
+        previewContent: nonEmptyPreviewContent(officialHtml, {
+          rangeStart: 0,
+          rangeEnd: Math.max(plainLen, 1),
+          proposedText: '',
+          previewContent: '',
+        }),
+      });
+      lastPreservedId = m.id;
+      continue;
+    }
+    const patch = buildPatchForBlock(m.id, officialHtml, m.officialContent);
     if (patch) {
       patches.push(patch);
     }

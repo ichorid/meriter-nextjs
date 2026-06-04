@@ -129,6 +129,7 @@ export const documentVariantsRouter = router({
         const proposer = userById.get(variant.proposedBy);
         return {
           ...variant,
+          patches: variant.patches ?? [],
           proposedByDisplayName:
             proposer?.displayName ?? variant.proposedBy.slice(0, 8),
         };
