@@ -8,14 +8,10 @@ import {
 } from '@/features/documents/lib/document-html-structure';
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
 import type { VariantPreviewInput } from '@/features/documents/lib/document-variant-preview';
+import { isFullBlockDeletionPatch } from '@/features/documents/lib/document-proposal-patch-utils';
 
-export type DocumentVariantPatchPreview = {
-  blockId: string;
-  rangeStart: number;
-  rangeEnd: number;
-  proposedText: string;
-  previewContent: string;
-};
+export type { DocumentVariantPatchPreview } from '@/features/documents/lib/document-proposal-patch-utils';
+import type { DocumentVariantPatchPreview } from '@/features/documents/lib/document-proposal-patch-utils';
 
 export type OpenProposalVariant = {
   id: string;
@@ -194,13 +190,22 @@ export function buildJoinedHtmlFromPatches(
   sections: unknown,
   patches: DocumentVariantPatchPreview[],
 ): string {
-  const overrideByBlock = new Map(patches.map((p) => [p.blockId, p.previewContent]));
+  const patchByBlock = new Map(patches.map((p) => [p.blockId, p]));
   const blocks = groupBlocksBySection(sections)
     .flatMap((g) => g.blocks)
     .sort((a, b) => a.order - b.order)
-    .map((b) => ({
-      blockType: b.blockType,
-      officialContent: overrideByBlock.get(b.id) ?? b.officialContent ?? '',
-    }));
+    .flatMap((b) => {
+      const patch = patchByBlock.get(b.id);
+      const officialHtml = b.officialContent ?? '';
+      if (patch && isFullBlockDeletionPatch(officialHtml, patch)) {
+        return [];
+      }
+      return [
+        {
+          blockType: b.blockType,
+          officialContent: patch?.previewContent ?? officialHtml,
+        },
+      ];
+    });
   return joinBlocksToDisplayHtml(blocks);
 }
