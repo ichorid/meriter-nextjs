@@ -1,6 +1,10 @@
 import { randomUUID } from 'crypto';
 import { sanitizeDocumentHtml } from '../../common/utils/sanitize-document-html';
-import { blockHtmlToPlainText, rangesOverlap } from './document-plain-text.util';
+import {
+  blockHtmlToPlainText,
+  blockHtmlToPlainTextForDiff,
+  rangesOverlap,
+} from './document-plain-text.util';
 import type { DocumentBlockType } from '../ports/document.persistence.port';
 import {
   parseDocumentHtmlToBlocks,
@@ -55,14 +59,16 @@ export type BlockPlainSegment = {
 
 export function buildBlockPlainSegments(
   blocks: Array<{ id: string; officialContent?: string }>,
+  options?: { forDiff?: boolean },
 ): { joinedHtml: string; joinedPlain: string; segments: BlockPlainSegment[] } {
+  const toPlain = options?.forDiff ? blockHtmlToPlainTextForDiff : blockHtmlToPlainText;
   const segments: BlockPlainSegment[] = [];
   let joinedHtml = '';
   let joinedPlain = '';
 
   for (const block of blocks) {
     const html = String(block.officialContent ?? '');
-    const plain = blockHtmlToPlainText(html);
+    const plain = toPlain(html);
     const plainStart = joinedPlain.length;
     joinedHtml += html;
     joinedPlain += plain;
@@ -75,6 +81,24 @@ export function buildBlockPlainSegments(
   }
 
   return { joinedHtml, joinedPlain, segments };
+}
+
+/** True when [globalStart, globalEnd) overlaps more than one block segment. */
+export function globalPlainRangeTouchesMultipleBlocks(
+  segments: BlockPlainSegment[],
+  globalStart: number,
+  globalEnd: number,
+): boolean {
+  let touched = 0;
+  for (const seg of segments) {
+    if (globalStart < seg.plainEnd && globalEnd > seg.plainStart) {
+      touched += 1;
+      if (touched > 1) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 export function mapGlobalPlainRangeToBlock(

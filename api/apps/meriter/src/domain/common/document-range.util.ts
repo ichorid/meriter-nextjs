@@ -1,6 +1,9 @@
 import { sanitizeDocumentHtml } from '../../common/utils/sanitize-document-html';
+import { expandDeletionRangeStart } from './document-plain-range.util';
+import type { BlockPlainSegment } from './document-block-structure.util';
 import {
   blockHtmlToPlainText,
+  blockHtmlToPlainTextForDiff,
   hashOfficialPlainText,
   rangesOverlap,
 } from './document-plain-text.util';
@@ -76,10 +79,16 @@ export function mergeRangeIntoBlockHtml(
   proposedText: string,
 ): string {
   const plain = blockHtmlToPlainText(officialHtml ?? '');
+  let rsInput = rangeStart;
+  const reInput = rangeEnd;
+  const proposed = proposedText ?? '';
+  if (reInput > rsInput && !proposed.trim()) {
+    rsInput = expandDeletionRangeStart(plain, rsInput);
+  }
   const { rangeStart: rs, rangeEnd: re } = normalizeRangeBounds(
     plain.length,
-    rangeStart,
-    rangeEnd,
+    rsInput,
+    reInput,
   );
   const replacement = sanitizeDocumentHtml(proposedText ?? '');
   const before = plain.slice(0, rs);
@@ -132,4 +141,45 @@ export function buildMergedBlockPreviewContent(
   proposedText: string,
 ): string {
   return mergeRangeIntoBlockHtml(officialHtml, rangeStart, rangeEnd, proposedText);
+}
+
+/**
+ * Apply a global plain-text edit across one or more document blocks (e.g. deletion spanning paragraphs).
+ */
+/** Apply a global plain-text edit; each overlapping block gets its slice of the change. */
+export function buildJoinedHtmlAfterGlobalPlainEdit(
+  segments: BlockPlainSegment[],
+  globalStart: number,
+  globalEnd: number,
+  proposedText: string,
+): string {
+  const sanitized = sanitizeDocumentHtml(proposedText ?? '');
+  let html = '';
+  let proposedAssigned = false;
+
+  for (const seg of segments) {
+    if (globalEnd <= seg.plainStart || globalStart >= seg.plainEnd) {
+      html += seg.html;
+      continue;
+    }
+    const localStart = Math.max(0, globalStart - seg.plainStart);
+    const localEnd = Math.min(seg.plainEnd - seg.plainStart, globalEnd - seg.plainStart);
+    const localProposed =
+      !proposedAssigned && sanitized.trim() ? sanitized : '';
+    if (sanitized.trim()) {
+      proposedAssigned = true;
+    }
+    html += mergeRangeIntoBlockHtml(seg.html, localStart, localEnd, localProposed);
+  }
+  return html;
+}
+
+export function hashJoinedDocumentAtPropose(
+  blocks: Array<{ id: string; officialContent?: string }>,
+): string {
+  let joinedPlain = '';
+  for (const block of blocks) {
+    joinedPlain += blockHtmlToPlainTextForDiff(String(block.officialContent ?? ''));
+  }
+  return hashOfficialPlainText(joinedPlain);
 }

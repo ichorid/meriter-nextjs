@@ -65,6 +65,19 @@ describe('document-range.util', () => {
     expect(blockHtmlToPlainText(merged)).toContain('Omega');
   });
 
+  it('extends deletion start to word boundary so no orphan letter remains', () => {
+    const official =
+      '<p>Меритер — это среда. Тест прямой правки. Мир, где заслуга измерима.</p>';
+    const plain = blockHtmlToPlainText(official);
+    const start = plain.indexOf('ест');
+    const end = plain.indexOf('правки') + 'правки'.length;
+    const merged = mergeRangeIntoBlockHtml(official, start, end, '');
+    const mergedPlain = blockHtmlToPlainText(merged);
+    expect(mergedPlain).not.toContain('Тест');
+    expect(mergedPlain).not.toContain('правки');
+    expect(mergedPlain).toContain('Мир, где заслуга измерима');
+  });
+
   it('allows zero-width range for plain-text insertion', () => {
     const plainLen = blockHtmlToPlainText(official).length;
     expect(normalizeRangeBounds(plainLen, plainLen, plainLen)).toEqual({

@@ -118,6 +118,14 @@ export interface DocumentBlockVariantRecord {
   id: string;
   documentId: string;
   blockId: string;
+  proposalScope?: 'block' | 'patches';
+  patches?: Array<{
+    blockId: string;
+    rangeStart: number;
+    rangeEnd: number;
+    proposedText: string;
+    previewContent: string;
+  }>;
   content: string;
   rangeStart?: number;
   rangeEnd?: number;

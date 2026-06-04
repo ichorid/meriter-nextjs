@@ -2,11 +2,16 @@ import {
   buildBlockPlainSegments,
   editChangeOverlapsLocked,
   findPlainTextChangeBounds,
+  globalPlainRangeTouchesMultipleBlocks,
   isAppendNewBlocksAtEnd,
   mapGlobalPlainRangeToBlock,
   proposedEditOverlapsLocked,
 } from '../src/domain/common/document-block-structure.util';
-import { blockHtmlToPlainText } from '../src/domain/common/document-plain-text.util';
+import {
+  blockHtmlToPlainText,
+  blockHtmlToPlainTextForDiff,
+} from '../src/domain/common/document-plain-text.util';
+import { buildJoinedHtmlAfterGlobalPlainEdit } from '../src/domain/common/document-range.util';
 
 describe('document-block-structure.util', () => {
   it('maps global plain range to owning block', () => {
@@ -53,5 +58,49 @@ describe('document-block-structure.util', () => {
       proposedEditOverlapsLocked(bounds!.rangeStart, bounds!.rangeEnd, locked),
     ).toBe(false);
     expect(editChangeOverlapsLocked(official, variant, locked)).toBe(false);
+  });
+
+  it('finds bounds for deleting a one-letter line when using forDiff plain text', () => {
+    const official = '<p>Before.</p><p>Т</p><p>After</p>';
+    const variant = '<p>Before.</p><p>After</p>';
+    const bounds = findPlainTextChangeBounds(
+      blockHtmlToPlainTextForDiff(official),
+      blockHtmlToPlainTextForDiff(variant),
+    );
+    expect(bounds).not.toBeNull();
+    expect(blockHtmlToPlainTextForDiff(official).slice(bounds!.rangeStart, bounds!.rangeEnd)).toContain(
+      'Т',
+    );
+  });
+
+  it('detects multi-block plain ranges and merges deletions across blocks', () => {
+    const blocks = [
+      { id: 'a', officialContent: '<p>First tail</p>' },
+      { id: 'b', officialContent: '<p>Second block</p>' },
+      { id: 'c', officialContent: '<p>Third</p>' },
+    ];
+    const { segments, joinedHtml } = buildBlockPlainSegments(blocks, { forDiff: true });
+    const variantHtml = '<p>First</p><p>Third</p>';
+    const joinedPlain = blockHtmlToPlainTextForDiff(joinedHtml);
+    const bounds = findPlainTextChangeBounds(
+      joinedPlain,
+      blockHtmlToPlainTextForDiff(variantHtml),
+    );
+    expect(bounds).not.toBeNull();
+    expect(
+      globalPlainRangeTouchesMultipleBlocks(segments, bounds!.rangeStart, bounds!.rangeEnd),
+    ).toBe(true);
+    const thirdSeg = segments.find((s) => s.blockId === 'c')!;
+    const deleteEnd = thirdSeg.plainStart;
+    expect(deleteEnd).toBeGreaterThan(bounds!.rangeStart);
+    const merged = buildJoinedHtmlAfterGlobalPlainEdit(
+      segments,
+      bounds!.rangeStart,
+      deleteEnd,
+      '',
+    );
+    expect(merged).toContain('<p>First</p>');
+    expect(merged).not.toContain('Second block');
+    expect(merged).toContain('<p>Third</p>');
   });
 });

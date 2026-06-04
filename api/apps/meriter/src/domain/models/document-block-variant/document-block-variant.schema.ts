@@ -12,6 +12,17 @@ const ReferenceEmbeddedSchema = new MongooseRawSchema(
   { _id: false },
 );
 
+const VariantPatchEmbeddedSchema = new MongooseRawSchema(
+  {
+    blockId: { type: String, required: true },
+    rangeStart: { type: Number, required: true },
+    rangeEnd: { type: Number, required: true },
+    proposedText: { type: String, default: '' },
+    previewContent: { type: String, required: true },
+  },
+  { _id: false },
+);
+
 /**
  * Предложенный вариант текста блока документа.
  * Коллекция `document_block_variants` — см. business-approved-tz.md §4.4
@@ -26,6 +37,22 @@ export class DocumentBlockVariantSchemaClass {
 
   @Prop({ required: true })
   blockId!: string;
+
+  /**
+   * `block` — single-block variant (legacy fields mirror one patch).
+   * `patches` — multi-block edit; only `patches[]` stores per-block data.
+   */
+  @Prop({ enum: ['block', 'patches'], default: 'block' })
+  proposalScope!: 'block' | 'patches';
+
+  @Prop({ type: [VariantPatchEmbeddedSchema], default: [] })
+  patches!: Array<{
+    blockId: string;
+    rangeStart: number;
+    rangeEnd: number;
+    proposedText: string;
+    previewContent: string;
+  }>;
 
   @Prop({ required: true })
   content!: string;

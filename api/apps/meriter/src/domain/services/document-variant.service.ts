@@ -33,7 +33,10 @@ import { PermissionService } from './permission.service';
 import { MERITER_DOCUMENT_AUTO_APPLY_USER_ID } from '../common/constants/meriter-actors.constant';
 import { sanitizeDocumentHtml } from '../../common/utils/sanitize-document-html';
 import { blockHtmlToPlainText } from '../common/document-plain-text.util';
+import type { SectionBlockRow } from '../common/document-block-structure.util';
+import type { DocumentVariantPatch } from '../common/document-proposal-patches.util';
 import {
+  hashJoinedDocumentAtPropose,
   isStaleVariant,
   mergeRangeIntoBlockHtml,
   resolveVariantRangeBounds,
@@ -378,6 +381,9 @@ export class DocumentVariantService {
     }
 
     await this.finalizeExpiredWaveOnBlock(documentId, blockId, { force: true });
+    await this.applyClosedWinnersToOfficial(actorUserId, documentId, blockId, {
+      skipStaleCheck: true,
+    });
   }
 
   private publishWaveClosed(
@@ -500,6 +506,141 @@ export class DocumentVariantService {
     );
   }
 
+  private collectDocumentBlockRows(
+    doc: MeriterDocumentSchemaClass,
+  ): SectionBlockRow[] {
+    const rows: SectionBlockRow[] = [];
+    const sections = [...(doc.sections ?? [])].sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0),
+    );
+    for (const sec of sections) {
+      for (const b of [...(sec.blocks ?? [])].sort((a, c) => a.order - c.order)) {
+        rows.push(b as SectionBlockRow);
+      }
+    }
+    return rows;
+  }
+
+  private resolveVariantPatches(v: DocumentBlockVariantSchemaClass): DocumentVariantPatch[] {
+    if (v.patches && v.patches.length > 0) {
+      return v.patches.map((p) => ({
+        blockId: p.blockId,
+        rangeStart: p.rangeStart,
+        rangeEnd: p.rangeEnd,
+        proposedText: p.proposedText ?? '',
+        previewContent: p.previewContent,
+      }));
+    }
+    return [
+      {
+        blockId: v.blockId,
+        rangeStart: v.rangeStart ?? 0,
+        rangeEnd: v.rangeEnd ?? 0,
+        proposedText: v.proposedText ?? '',
+        previewContent: v.content,
+      },
+    ];
+  }
+
+  private async applyPatchesVariant(
+    actorUserId: string,
+    v: DocumentBlockVariantSchemaClass,
+    doc: MeriterDocumentSchemaClass,
+    patches: DocumentVariantPatch[],
+    reason: 'vote' | 'admin',
+    options?: { skipStaleCheck?: boolean },
+  ): Promise<void> {
+    const blockRows = this.collectDocumentBlockRows(doc);
+    const currentHash = hashJoinedDocumentAtPropose(
+      blockRows.map((b) => ({ id: b.id, officialContent: b.officialContent })),
+    );
+    if (!options?.skipStaleCheck && v.officialTextHashAtPropose !== currentHash) {
+      throw new BadRequestException(
+        'Official text changed since this variant was proposed; confirm apply to continue',
+      );
+    }
+
+    const now = new Date();
+    const affectedBlockIds = new Set<string>();
+
+    for (const patch of patches) {
+      affectedBlockIds.add(patch.blockId);
+      const block = this.documentService.findBlock(doc, patch.blockId);
+      if (!block) {
+        throw new NotFoundException(`Block not found: ${patch.blockId}`);
+      }
+      const officialHtml = String(block.officialContent ?? '');
+      const nextOfficial = mergeRangeIntoBlockHtml(
+        officialHtml,
+        patch.rangeStart,
+        patch.rangeEnd,
+        patch.proposedText,
+      );
+      const ok = await this.documentService.updateDocumentBlock(doc.id, patch.blockId, (b) => {
+        const previousContent = String(b.officialContent ?? '');
+        this.documentService.appendBlockEditHistory(b, {
+          changedAt: now,
+          changedBy: actorUserId,
+          reason,
+          ...(reason === 'vote' ? { variantId: v.id } : {}),
+          previousContent,
+        });
+        b.officialContent = nextOfficial;
+        b.officialContentSetAt = now;
+        b.officialContentSetBy = actorUserId;
+        b.officialContentReason = reason;
+        if (reason === 'vote' && patch.blockId === v.blockId) {
+          b.officialContentVariantId = v.id;
+        } else if (reason === 'vote') {
+          delete b.officialContentVariantId;
+        } else {
+          delete b.officialContentVariantId;
+        }
+        delete b.currentWaveStartedAt;
+      });
+      if (!ok) {
+        throw new BadRequestException(`Failed to update block ${patch.blockId}`);
+      }
+    }
+
+    for (const blockId of affectedBlockIds) {
+      await this.documentPersistence.updateVariantsStatusByFilter(
+        {
+          documentId: doc.id,
+          blockId,
+          id: { $ne: v.id },
+          status: 'open',
+          deleted: false,
+        },
+        'closed-not-winner',
+      );
+    }
+
+    await this.documentPersistence.markVariantApplied(v.id, now, actorUserId);
+    await this.documentService.mirrorOfficialTextToCommunityIfApplicable(doc.id);
+
+    const community = await this.communityService.getCommunity(doc.communityId);
+    if (community) {
+      await this.notifyVariantApplied(v, doc, community).catch((err) => {
+        this.logger.warn(
+          `Failed to notify patches variant applied ${v.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+    }
+
+    const refreshed = await this.documentService.getById(doc.id);
+    this.documentLiveUpdates.publish({
+      type: 'variant.applied',
+      documentId: doc.id,
+      documentUpdatedAt: refreshed?.updatedAt,
+      blockId: v.blockId,
+      variantId: v.id,
+      actorUserId,
+    });
+  }
+
   private async applyVariantToOfficial(
     actorUserId: string,
     v: DocumentBlockVariantSchemaClass,
@@ -507,6 +648,12 @@ export class DocumentVariantService {
     reason: 'vote' | 'admin',
     options?: { skipStaleCheck?: boolean },
   ): Promise<void> {
+    const patches = this.resolveVariantPatches(v);
+    if (v.proposalScope === 'patches' || patches.length > 1) {
+      await this.applyPatchesVariant(actorUserId, v, doc, patches, reason, options);
+      return;
+    }
+
     const block = this.documentService.findBlock(doc, v.blockId);
     if (!block) {
       throw new NotFoundException('Block not found');
@@ -613,7 +760,9 @@ export class DocumentVariantService {
       }
       await this.notifyVariantApplied(v, doc, community).catch((err) => {
         this.logger.warn(
-          `Failed to notify variant applied ${v.id}: ${err instanceof Error ? err.message : String(err)}`,
+          `Failed to notify variant applied ${v.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
         );
       });
     }
@@ -636,6 +785,28 @@ export class DocumentVariantService {
   async tryAutoApplyWinner(documentId: string, blockId: string): Promise<void> {
     const doc = await this.documentService.getById(documentId);
     if (!doc || doc.deleted || doc.mode !== 'auto') {
+      return;
+    }
+    await this.applyClosedWinnersToOfficial(
+      MERITER_DOCUMENT_AUTO_APPLY_USER_ID,
+      documentId,
+      blockId,
+      { skipStaleCheck: true },
+    );
+  }
+
+  /**
+   * Apply closed-winner variant(s) with positive rating to official text (range order: end → start).
+   * Used after auto-mode finalize and after admin «by votes» wave close.
+   */
+  private async applyClosedWinnersToOfficial(
+    actorUserId: string,
+    documentId: string,
+    blockId: string,
+    options?: { skipStaleCheck?: boolean },
+  ): Promise<void> {
+    const doc = await this.documentService.getById(documentId);
+    if (!doc || doc.deleted) {
       return;
     }
     const winners = await this.documentPersistence.findClosedWinnerVariants(
@@ -662,6 +833,7 @@ export class DocumentVariantService {
       }
       const freshBlock = this.documentService.findBlock(freshDoc, blockId);
       if (
+        !options?.skipStaleCheck &&
         isStaleVariant(
           winner.officialTextHashAtPropose,
           String(freshBlock?.officialContent ?? ''),
@@ -671,15 +843,15 @@ export class DocumentVariantService {
       }
       try {
         await this.applyVariantToOfficial(
-          MERITER_DOCUMENT_AUTO_APPLY_USER_ID,
+          actorUserId,
           winner as DocumentBlockVariantSchemaClass,
           freshDoc,
           'vote',
-          { skipStaleCheck: true },
+          { skipStaleCheck: options?.skipStaleCheck === true },
         );
       } catch (err) {
         this.logger.warn(
-          `tryAutoApplyWinner ${documentId}/${blockId}/${winner.id}: ${
+          `applyClosedWinnersToOfficial ${documentId}/${blockId}/${winner.id}: ${
             err instanceof Error ? err.message : String(err)
           }`,
         );
