@@ -20,6 +20,8 @@ describe('DocumentVariantService wave auto-close', () => {
   let documentPersistence: {
     softDeleteVariant: jest.Mock;
     findOpenVariants: jest.Mock;
+    findOpenVotingThreads: jest.Mock;
+    findOpenVariantsByVotingThreadId: jest.Mock;
     updateVariantStatus: jest.Mock;
   };
 
@@ -72,6 +74,8 @@ describe('DocumentVariantService wave auto-close', () => {
     documentPersistence = {
       softDeleteVariant: jest.fn().mockResolvedValue(undefined),
       findOpenVariants: jest.fn().mockResolvedValue([]),
+      findOpenVotingThreads: jest.fn().mockResolvedValue([]),
+      findOpenVariantsByVotingThreadId: jest.fn().mockResolvedValue([]),
       updateVariantStatus: jest.fn().mockResolvedValue(undefined),
     };
 
