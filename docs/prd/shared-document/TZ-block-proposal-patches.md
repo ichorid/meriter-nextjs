@@ -1,7 +1,9 @@
 # ТЗ: блочные предложения (patches), сплит абзаца, подсветка в редакторе
 
+> **Superseded for v3 overlap/append/threads:** [prd-v3-collaborative-document.md](./prd-v3-collaborative-document.md)
+
 **Статус:** реализация 2026-06-04  
-**Связано:** `TZ-v2-proposal-layers-gdocs.md`, `business-shared-document.mdc`
+**Связано:** `TZ-v2-proposal-layers-gdocs.md`, `business-shared-document.mdc`, `prd-v3-collaborative-document.md`
 
 ## 1. Цель
 

@@ -12,7 +12,7 @@ alwaysApply: false
 
 # Collaborative documents (shared-document)
 
-> Merit-based collaborative editing: official block text, proposed variants, voting with заслуги, manual vs auto apply. PRD: `docs/prd/shared-document/`.
+> Merit-based collaborative editing: official block text, proposed variants, voting with заслуги, manual vs auto apply. PRD: `docs/prd/shared-document/` — **v3:** `prd-v3-collaborative-document.md` (ops, `insert_after` append, **merge-on-overlap** voting threads; split on apply only).
 
 ---
 
@@ -56,6 +56,7 @@ Also: `applyOfficialVotingWinner` (keep official text, close wave), `applyAdminO
 
 ## Voting waves and cron
 
+- **Voting threads (v3):** `document_voting_threads` + variant `votingThreadId`. Overlapping global plain ranges **merge** into the same open thread and **extend** `waveEndsAt` / anchor wave (~`votingDurationHours`). Non-overlapping ranges → parallel threads. Rail groups by `threadId`.
 - **Wave anchor:** first `proposeVariant` on a block sets `currentWaveStartedAt` and resets `officialRating`.
 - **Open window:** `now <= start + document.votingDurationHours` (per-document hours after bootstrap).
 - **Finalize:** `finalizeExpiredWaveOnBlock` — rank open variants vs block `officialRating`; positive winner → `closed-winner`; else all `closed-not-winner`; Mongo lock per block.
