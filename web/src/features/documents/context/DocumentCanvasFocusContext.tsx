@@ -107,6 +107,9 @@ export interface DocumentCanvasFocusContextValue {
   adminDialog: DocumentAdminDialog;
   openAdminDialog: (dialog: Exclude<DocumentAdminDialog, { kind: 'closed' }>) => void;
   closeAdminDialog: () => void;
+  /** Bumped after governance refetch so the unified editor applies server baseline immediately. */
+  editorResyncNonce: number;
+  bumpEditorResync: () => void;
 }
 
 const DocumentCanvasFocusContext = createContext<DocumentCanvasFocusContextValue | null>(null);
@@ -190,6 +193,10 @@ export function DocumentCanvasFocusProvider({
   }, []);
   const [mobileSheet, setMobileSheet] = useState<DocumentMobileSheet>({ kind: 'closed' });
   const [adminDialog, setAdminDialog] = useState<DocumentAdminDialog>({ kind: 'closed' });
+  const [editorResyncNonce, setEditorResyncNonce] = useState(0);
+  const bumpEditorResync = useCallback(() => {
+    setEditorResyncNonce((n) => n + 1);
+  }, []);
 
   const blockById = useMemo(() => {
     const map = new Map<string, DocBlock>();
@@ -283,6 +290,8 @@ export function DocumentCanvasFocusProvider({
       adminDialog,
       openAdminDialog,
       closeAdminDialog,
+      editorResyncNonce,
+      bumpEditorResync,
     }),
     [
       documentId,
@@ -317,6 +326,8 @@ export function DocumentCanvasFocusProvider({
       adminDialog,
       openAdminDialog,
       closeAdminDialog,
+      editorResyncNonce,
+      bumpEditorResync,
     ],
   );
 

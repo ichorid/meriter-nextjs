@@ -34,6 +34,7 @@ export async function refetchDocumentGovernanceCaches(
   utils: TrpcUtils,
   documentId: string,
   blockId: string,
+  options?: { bumpEditorResync?: () => void },
 ): Promise<void> {
   await Promise.all([
     utils.documents.getById.refetch({ id: documentId }),
@@ -42,6 +43,9 @@ export async function refetchDocumentGovernanceCaches(
     utils.documentVariants.getBlockVotingPanel.refetch({ documentId, blockId }),
     utils.documentVariants.getBlockGovernanceHistory.refetch({ documentId, blockId }),
   ]);
+  if (options?.bumpEditorResync) {
+    queueMicrotask(options.bumpEditorResync);
+  }
 }
 
 function patchDocumentBlockWaveClosed<T extends { sections?: unknown }>(

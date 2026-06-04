@@ -1,6 +1,6 @@
 {
     "name": "@meriter/web",
-    "version": "0.55.4",
+    "version": "0.55.6",
     "main": "index.js",
     "license": "SEE LICENSE IN LICENSE",
     "scripts": {

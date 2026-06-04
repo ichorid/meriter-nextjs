@@ -98,6 +98,7 @@ export function DocumentGdocsUnifiedEditor({
   const loadedDocumentIdRef = useRef<string | null>(null);
   const serverRevisionRef = useRef<string>('');
   const acknowledgedRemoteRevisionRef = useRef<string>('');
+  const lastEditorResyncNonceRef = useRef(focus.editorResyncNonce);
   const [pendingRemoteBaseline, setPendingRemoteBaseline] = useState<string | null>(null);
   const [archiveListRefreshKey, setArchiveListRefreshKey] = useState(0);
   const [editorHtml, setEditorHtml] = useState(initialHtml);
@@ -291,6 +292,32 @@ export function DocumentGdocsUnifiedEditor({
   useEffect(() => {
     expectedUpdatedAtRef.current = updatedAt;
   }, [updatedAt]);
+
+  /** After local governance actions (pin without voting, close wave, admin override). */
+  useEffect(() => {
+    const nonce = focus.editorResyncNonce;
+    if (nonce === lastEditorResyncNonceRef.current) {
+      return;
+    }
+    lastEditorResyncNonceRef.current = nonce;
+
+    const baseline = initialHtml;
+    clearDocumentEditorDraft(draftKey);
+    setPendingRemoteBaseline(null);
+    setPendingBlockLocks(null);
+    if (serverRevisionKey) {
+      serverRevisionRef.current = serverRevisionKey;
+      acknowledgedRemoteRevisionRef.current = serverRevisionKey;
+    }
+    applyServerBaseline(baseline);
+    setEditorContentKey((k) => k + 1);
+  }, [
+    applyServerBaseline,
+    draftKey,
+    focus.editorResyncNonce,
+    initialHtml,
+    serverRevisionKey,
+  ]);
 
   /**
    * Hydrate from server or session draft. Remote revision bumps show a banner when

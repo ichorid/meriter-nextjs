@@ -78,6 +78,7 @@ export function DocumentCloseVotingDialog() {
           utils.documentVariants.getBlockVotingPanel.refetch({ documentId, blockId }),
           utils.documentVariants.getBlockGovernanceHistory.refetch({ documentId, blockId }),
         ]);
+        queueMicrotask(() => focus.bumpEditorResync());
       }
     },
     onError: (err) => focus?.addToast(err.message, 'error'),

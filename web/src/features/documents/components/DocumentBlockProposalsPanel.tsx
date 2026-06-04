@@ -235,7 +235,9 @@ export function DocumentBlockProposalsPanel({
   }, [panelVotes]);
 
   const refreshBlockGovernance = async () => {
-    await refetchDocumentGovernanceCaches(utils, documentId, block.id);
+    await refetchDocumentGovernanceCaches(utils, documentId, block.id, {
+      bumpEditorResync: focus?.bumpEditorResync,
+    });
   };
 
   const applyWinnerMutation = trpc.documentVariants.applyVotingWinner.useMutation({
@@ -270,7 +272,15 @@ export function DocumentBlockProposalsPanel({
   });
 
   const applyOpenMutation = trpc.documentVariants.applyOpenAsAdmin.useMutation({
-    onSuccess: refreshBlockGovernance,
+    onSuccess: async (_data, { variantId }) => {
+      if (
+        focus?.variantPreview?.kind === 'variant' &&
+        focus.variantPreview.variantId === variantId
+      ) {
+        focus.clearVariantPreview();
+      }
+      await refreshBlockGovernance();
+    },
     onError: (err) => addToast(err.message, 'error'),
   });
 

@@ -50,9 +50,13 @@ export function DocumentBlockAdminDialogs() {
       adminOverrideRef.current = '';
       setAdminOverrideResetKey((k) => k + 1);
       if (blockId) {
-        await utils.documents.getById.invalidate({ id: documentId });
-        await utils.documentVariants.listByBlock.invalidate({ documentId, blockId });
-        await utils.documentVariants.getBlockGovernanceHistory.invalidate({ documentId, blockId });
+        await Promise.all([
+          utils.documents.getById.refetch({ id: documentId }),
+          utils.documentVariants.listByDocument.refetch({ documentId }),
+          utils.documentVariants.listByBlock.refetch({ documentId, blockId }),
+          utils.documentVariants.getBlockGovernanceHistory.refetch({ documentId, blockId }),
+        ]);
+        queueMicrotask(() => focus.bumpEditorResync());
       }
     },
     onError: (err) => addToast(err.message, 'error'),
