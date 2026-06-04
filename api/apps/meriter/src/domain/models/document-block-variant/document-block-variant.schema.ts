@@ -12,6 +12,14 @@ const ReferenceEmbeddedSchema = new MongooseRawSchema(
   { _id: false },
 );
 
+const VariantInsertBlockEmbeddedSchema = new MongooseRawSchema(
+  {
+    blockType: { type: String, required: true },
+    officialContent: { type: String, required: true },
+  },
+  { _id: false },
+);
+
 const VariantPatchEmbeddedSchema = new MongooseRawSchema(
   {
     blockId: { type: String, required: true },
@@ -19,6 +27,8 @@ const VariantPatchEmbeddedSchema = new MongooseRawSchema(
     rangeEnd: { type: Number, required: true },
     proposedText: { type: String, default: '' },
     previewContent: { type: String, required: true },
+    insertAfterBlockId: { type: String, required: false },
+    insertBlocks: { type: [VariantInsertBlockEmbeddedSchema], default: undefined },
   },
   { _id: false },
 );
@@ -38,6 +48,10 @@ export class DocumentBlockVariantSchemaClass {
   @Prop({ required: true })
   blockId!: string;
 
+  /** Groups overlapping proposals into one voting wave (v3). */
+  @Prop()
+  votingThreadId?: string;
+
   /**
    * `block` — single-block variant (legacy fields mirror one patch).
    * `patches` — multi-block edit; only `patches[]` stores per-block data.
@@ -52,6 +66,8 @@ export class DocumentBlockVariantSchemaClass {
     rangeEnd: number;
     proposedText: string;
     previewContent: string;
+    insertAfterBlockId?: string;
+    insertBlocks?: Array<{ blockType: string; officialContent: string }>;
   }>;
 
   @Prop({ required: true })

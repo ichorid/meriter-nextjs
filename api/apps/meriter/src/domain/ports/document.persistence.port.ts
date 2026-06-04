@@ -118,6 +118,7 @@ export interface DocumentBlockVariantRecord {
   id: string;
   documentId: string;
   blockId: string;
+  votingThreadId?: string;
   proposalScope?: 'block' | 'patches';
   patches?: Array<{
     blockId: string;
@@ -125,6 +126,8 @@ export interface DocumentBlockVariantRecord {
     rangeEnd: number;
     proposedText: string;
     previewContent: string;
+    insertAfterBlockId?: string;
+    insertBlocks?: Array<{ blockType: string; officialContent: string }>;
   }>;
   content: string;
   rangeStart?: number;
@@ -154,6 +157,22 @@ export interface OpenWaveBlockPair {
   documentId: string;
   blockId: string;
 }
+
+export type DocumentVotingThreadRecord = {
+  id: string;
+  documentId: string;
+  status: 'open' | 'closed';
+  anchorBlockId: string;
+  ranges: Array<{ blockId: string; rangeStart: number; rangeEnd: number }>;
+  waveEndsAt: Date;
+  createdAt?: Date;
+  updatedAt?: Date;
+};
+
+export type InsertDocumentVotingThreadInput = Omit<
+  DocumentVotingThreadRecord,
+  'createdAt' | 'updatedAt'
+>;
 
 /**
  * DocumentPersistencePort — BC-06 collaborative document persistence (Phase 9 partial).
@@ -237,6 +256,17 @@ export interface DocumentPersistencePort {
   ): Promise<DocumentBlockVariantRecord[]>;
 
   findOpenWaveBlockPairs(): Promise<OpenWaveBlockPair[]>;
+
+  findOpenVotingThreads(documentId: string): Promise<DocumentVotingThreadRecord[]>;
+
+  insertVotingThread(
+    input: InsertDocumentVotingThreadInput,
+  ): Promise<DocumentVotingThreadRecord>;
+
+  updateVotingThread(
+    threadId: string,
+    patch: Partial<Pick<DocumentVotingThreadRecord, 'waveEndsAt' | 'ranges' | 'status'>>,
+  ): Promise<void>;
 
   insertVariant(input: InsertDocumentBlockVariantInput): Promise<DocumentBlockVariantRecord>;
 

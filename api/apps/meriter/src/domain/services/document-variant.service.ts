@@ -33,9 +33,15 @@ import { PermissionService } from './permission.service';
 import { MERITER_DOCUMENT_AUTO_APPLY_USER_ID } from '../common/constants/meriter-actors.constant';
 import { sanitizeDocumentHtml } from '../../common/utils/sanitize-document-html';
 import { blockHtmlToPlainText } from '../common/document-plain-text.util';
-import type { SectionBlockRow } from '../common/document-block-structure.util';
 import {
+  insertBlocksAfterInSection,
+  type SectionBlockRow,
+} from '../common/document-block-structure.util';
+import type { ParsedStructureBlock } from '../common/document-html-structure.util';
+import {
+  applyBlockSplitsForPatches,
   isFullBlockDeletionPatch,
+  isInsertBlocksPatch,
   type DocumentVariantPatch,
 } from '../common/document-proposal-patches.util';
 import {
@@ -111,7 +117,7 @@ export class DocumentVariantService {
   async proposeVariant(
     userId: string,
     input: ProposeDocumentVariantInput,
-  ): Promise<DocumentBlockVariantSchemaClass> {
+  ) {
     return this.proposeDocumentVariantUseCase.execute(userId, input);
   }
 
@@ -573,6 +579,8 @@ export class DocumentVariantService {
         rangeEnd: p.rangeEnd,
         proposedText: p.proposedText ?? '',
         previewContent: p.previewContent,
+        insertAfterBlockId: p.insertAfterBlockId,
+        insertBlocks: p.insertBlocks,
       }));
     }
     return [
@@ -607,10 +615,72 @@ export class DocumentVariantService {
     const now = new Date();
     const affectedBlockIds = new Set<string>();
     const blockIdsToRemove: string[] = [];
+    let workingDoc = doc;
 
-    for (const patch of patches) {
+    let patchesToApply = [...patches];
+    const rangePatches = patchesToApply.filter((p) => !isInsertBlocksPatch(p));
+    const partialNeedsSplit = rangePatches.some((patch) => {
+      const block = this.documentService.findBlock(workingDoc, patch.blockId);
+      if (!block) {
+        return false;
+      }
+      const plainLen = blockHtmlToPlainText(String(block.officialContent ?? '')).length;
+      return plainLen > 0 && (patch.rangeStart > 0 || patch.rangeEnd < plainLen);
+    });
+
+    if (partialNeedsSplit) {
+      const rows = this.collectDocumentBlockRows(workingDoc);
+      const { blocks: splitBlocks, patches: splitPatches } = applyBlockSplitsForPatches(
+        rows,
+        rangePatches,
+      );
+      const sections = [...(workingDoc.sections ?? [])].sort(
+        (a, b) => (a.order ?? 0) - (b.order ?? 0),
+      );
+      const sectionIndex = sections.findIndex((sec) =>
+        (sec.blocks ?? []).some((b) => rangePatches.some((p) => p.blockId === b.id)),
+      );
+      if (sectionIndex < 0) {
+        throw new BadRequestException('Failed to locate section for block split');
+      }
+      const nextSections = sections.map((sec, idx) =>
+        idx === sectionIndex
+          ? { ...sec, blocks: splitBlocks.map((b, order) => ({ ...b, order })) }
+          : sec,
+      );
+      const updated = await this.documentService.updateSections(workingDoc.id, nextSections);
+      if (!updated.ok) {
+        throw new BadRequestException('Failed to split blocks for variant apply');
+      }
+      const refreshed = await this.documentService.getById(workingDoc.id);
+      if (!refreshed) {
+        throw new NotFoundException('Document not found');
+      }
+      workingDoc = refreshed;
+      patchesToApply = [
+        ...patchesToApply.filter(isInsertBlocksPatch),
+        ...splitPatches,
+      ];
+    }
+
+    for (const patch of patchesToApply.filter(isInsertBlocksPatch)) {
+      const { doc: nextDoc, newBlockIds } = await this.applyInsertBlocksPatch(
+        actorUserId,
+        workingDoc,
+        patch,
+        reason,
+        v,
+      );
+      workingDoc = nextDoc;
       affectedBlockIds.add(patch.blockId);
-      const block = this.documentService.findBlock(doc, patch.blockId);
+      for (const id of newBlockIds) {
+        affectedBlockIds.add(id);
+      }
+    }
+
+    for (const patch of patchesToApply.filter((p) => !isInsertBlocksPatch(p))) {
+      affectedBlockIds.add(patch.blockId);
+      const block = this.documentService.findBlock(workingDoc, patch.blockId);
       if (!block) {
         throw new NotFoundException(`Block not found: ${patch.blockId}`);
       }
@@ -625,7 +695,7 @@ export class DocumentVariantService {
         patch.rangeEnd,
         patch.proposedText,
       );
-      const ok = await this.documentService.updateDocumentBlock(doc.id, patch.blockId, (b) => {
+      const ok = await this.documentService.updateDocumentBlock(workingDoc.id, patch.blockId, (b) => {
         const previousContent = String(b.officialContent ?? '');
         this.documentService.appendBlockEditHistory(b, {
           changedAt: now,
@@ -653,14 +723,15 @@ export class DocumentVariantService {
     }
 
     if (blockIdsToRemove.length > 0) {
-      const refreshed = (await this.documentService.getById(doc.id))!;
-      await this.removeDocumentBlocksByIds(refreshed, blockIdsToRemove, v.id);
+      const refreshed = (await this.documentService.getById(workingDoc.id))!;
+      workingDoc = refreshed ?? workingDoc;
+      await this.removeDocumentBlocksByIds(workingDoc, blockIdsToRemove, v.id);
     }
 
     for (const blockId of affectedBlockIds) {
       await this.documentPersistence.updateVariantsStatusByFilter(
         {
-          documentId: doc.id,
+          documentId: workingDoc.id,
           blockId,
           id: { $ne: v.id },
           status: 'open',
@@ -671,11 +742,11 @@ export class DocumentVariantService {
     }
 
     await this.documentPersistence.markVariantApplied(v.id, now, actorUserId);
-    await this.documentService.mirrorOfficialTextToCommunityIfApplicable(doc.id);
+    await this.documentService.mirrorOfficialTextToCommunityIfApplicable(workingDoc.id);
 
-    const community = await this.communityService.getCommunity(doc.communityId);
+    const community = await this.communityService.getCommunity(workingDoc.communityId);
     if (community) {
-      await this.notifyVariantApplied(v, doc, community).catch((err) => {
+      await this.notifyVariantApplied(v, workingDoc, community).catch((err) => {
         this.logger.warn(
           `Failed to notify patches variant applied ${v.id}: ${
             err instanceof Error ? err.message : String(err)
@@ -684,15 +755,79 @@ export class DocumentVariantService {
       });
     }
 
-    const refreshed = await this.documentService.getById(doc.id);
+    const refreshed = await this.documentService.getById(workingDoc.id);
     this.documentLiveUpdates.publish({
       type: 'variant.applied',
-      documentId: doc.id,
+      documentId: workingDoc.id,
       documentUpdatedAt: refreshed?.updatedAt,
       blockId: v.blockId,
       variantId: v.id,
       actorUserId,
     });
+  }
+
+  private async applyInsertBlocksPatch(
+    actorUserId: string,
+    doc: MeriterDocumentSchemaClass,
+    patch: DocumentVariantPatch,
+    reason: 'vote' | 'admin',
+    v: DocumentBlockVariantSchemaClass,
+  ): Promise<{ doc: MeriterDocumentSchemaClass; newBlockIds: string[] }> {
+    const afterId = patch.insertAfterBlockId;
+    const parsed = (patch.insertBlocks ?? []) as ParsedStructureBlock[];
+    if (!afterId || parsed.length === 0) {
+      throw new BadRequestException('Insert patch is missing blocks');
+    }
+
+    const sections = [...(doc.sections ?? [])].sort(
+      (a, b) => (a.order ?? 0) - (b.order ?? 0),
+    );
+    let found = false;
+    let insertedBlockIds: string[] = [];
+    const now = new Date();
+    const nextSections = sections.map((sec) => {
+      const blocks = [...(sec.blocks ?? [])].sort((a, b) => a.order - b.order);
+      const index = blocks.findIndex((b) => b.id === afterId);
+      if (index < 0) {
+        return sec;
+      }
+      found = true;
+      const { blocks: nextBlocks, newBlockIds } = insertBlocksAfterInSection(
+        blocks as SectionBlockRow[],
+        afterId,
+        parsed,
+      );
+      insertedBlockIds = newBlockIds;
+      const stamped = nextBlocks.map((b) => {
+        if (!newBlockIds.includes(b.id)) {
+          return b;
+        }
+        return {
+          ...b,
+          officialContentSetAt: now,
+          officialContentSetBy: actorUserId,
+          officialContentReason: reason,
+          ...(reason === 'vote' ? { officialContentVariantId: v.id } : {}),
+        };
+      });
+      return { ...sec, blocks: stamped };
+    });
+
+    if (!found) {
+      throw new NotFoundException(`Block not found: ${afterId}`);
+    }
+
+    const result = await this.documentService.updateSections(doc.id, nextSections);
+    if (!result.ok) {
+      throw new BadRequestException('Failed to insert blocks from variant');
+    }
+
+    const refreshed = await this.documentService.getById(doc.id);
+    if (!refreshed) {
+      throw new NotFoundException('Document not found');
+    }
+
+    return { doc: refreshed, newBlockIds: insertedBlockIds };
   }
 
   private async applyVariantToOfficial(

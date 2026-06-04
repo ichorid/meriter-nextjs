@@ -9,6 +9,7 @@ import {
   type SectionBlockRow,
 } from './document-block-structure.util';
 import {
+  joinBlocksToDocumentHtml,
   mapStableBlockIds,
   parseDocumentHtmlToBlocks,
   type ParsedStructureBlock,
@@ -24,13 +25,83 @@ import {
   normalizeRangeBounds,
 } from './document-range.util';
 
+export type DocumentVariantInsertBlock = {
+  blockType: string;
+  officialContent: string;
+};
+
 export type DocumentVariantPatch = {
   blockId: string;
   rangeStart: number;
   rangeEnd: number;
   proposedText: string;
   previewContent: string;
+  /** When set, apply inserts new blocks after `insertAfterBlockId` (no range merge). */
+  insertAfterBlockId?: string;
+  insertBlocks?: DocumentVariantInsertBlock[];
 };
+
+export function isInsertBlocksPatch(patch: DocumentVariantPatch): boolean {
+  return Boolean(patch.insertBlocks?.length && patch.insertAfterBlockId);
+}
+
+/** Build a single patch inserting blocks after an anchor (append or mid-document). */
+export function buildInsertAfterPatch(
+  orderedBlocks: SectionBlockRow[],
+  insertAfterBlockId: string,
+  insertParsed: ParsedStructureBlock[],
+): DocumentVariantPatch {
+  const anchorIdx = orderedBlocks.findIndex((b) => b.id === insertAfterBlockId);
+  if (anchorIdx < 0) {
+    throw new Error('Insert anchor block not found');
+  }
+  const insertBlocks: DocumentVariantInsertBlock[] = insertParsed.map((p) => ({
+    blockType: p.blockType,
+    officialContent: sanitizeProposedHtmlFragment(p.officialContent),
+  }));
+  const previewParts: ParsedStructureBlock[] = [];
+  for (let i = 0; i < orderedBlocks.length; i++) {
+    const b = orderedBlocks[i]!;
+    previewParts.push({
+      blockType: b.blockType as ParsedStructureBlock['blockType'],
+      officialContent: String(b.officialContent ?? ''),
+      order: i,
+    });
+    if (b.id === insertAfterBlockId) {
+      for (const ib of insertBlocks) {
+        previewParts.push({
+          blockType: ib.blockType as ParsedStructureBlock['blockType'],
+          officialContent: ib.officialContent,
+          order: previewParts.length,
+        });
+      }
+    }
+  }
+  const anchor = orderedBlocks[anchorIdx]!;
+  return {
+    blockId: anchor.id,
+    insertAfterBlockId,
+    insertBlocks,
+    rangeStart: 0,
+    rangeEnd: 0,
+    proposedText: '',
+    previewContent: sanitizeProposedHtmlFragment(
+      joinBlocksToDocumentHtml(previewParts),
+    ),
+  };
+}
+
+/** Build a single patch for paragraphs appended after the last existing block. */
+export function buildAppendInsertPatch(
+  orderedBlocks: SectionBlockRow[],
+  appendParsed: ParsedStructureBlock[],
+): DocumentVariantPatch {
+  const last = orderedBlocks[orderedBlocks.length - 1];
+  if (!last) {
+    throw new Error('Document has no blocks');
+  }
+  return buildInsertAfterPatch(orderedBlocks, last.id, appendParsed);
+}
 
 /** Mongoose rejects empty strings on required paths; use for empty blocks after delete. */
 export const EMPTY_VARIANT_BLOCK_HTML = '<p></p>';
@@ -211,8 +282,33 @@ export function computeProposalPatchesFromJoinedContent(
   const { blocks: mapped, report } = mapStableBlockIds(existing, parsed);
 
   const patches: DocumentVariantPatch[] = [];
+  let lastPreservedId: string | null = null;
 
-  for (const m of mapped) {
+  for (let i = 0; i < mapped.length; i++) {
+    const m = mapped[i]!;
+    if (report.created.includes(m.id)) {
+      if (report.removed.length > 0) {
+        continue;
+      }
+      const run: ParsedStructureBlock[] = [];
+      while (i < mapped.length && report.created.includes(mapped[i]!.id)) {
+        const row = mapped[i]!;
+        run.push({
+          blockType: row.blockType,
+          officialContent: row.officialContent,
+          order: row.order,
+        });
+        i += 1;
+      }
+      i -= 1;
+      const anchor =
+        lastPreservedId ?? blocks[blocks.length - 1]?.id ?? mapped[0]?.id ?? '';
+      if (anchor && run.length > 0) {
+        patches.push(buildInsertAfterPatch(blocks, anchor, run));
+      }
+      continue;
+    }
+
     const ex = existing.find((e) => e.id === m.id);
     if (!ex) {
       continue;
@@ -221,6 +317,7 @@ export function computeProposalPatchesFromJoinedContent(
     if (patch) {
       patches.push(patch);
     }
+    lastPreservedId = m.id;
   }
 
   for (const removedId of report.removed) {
@@ -353,6 +450,18 @@ export function patchToGlobalPlainRanges(
 ): Array<{ rangeStart: number; rangeEnd: number; blockId: string }> {
   const out: Array<{ rangeStart: number; rangeEnd: number; blockId: string }> = [];
   for (const patch of patches) {
+    if (isInsertBlocksPatch(patch)) {
+      const anchorSeg = segments.find((s) => s.blockId === patch.insertAfterBlockId);
+      if (anchorSeg) {
+        const at = anchorSeg.plainEnd;
+        out.push({
+          rangeStart: at,
+          rangeEnd: Math.min(at + 1, anchorSeg.plainEnd + 1),
+          blockId: patch.insertAfterBlockId!,
+        });
+      }
+      continue;
+    }
     const seg = segments.find((s) => s.blockId === patch.blockId);
     if (!seg) {
       continue;

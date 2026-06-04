@@ -14,6 +14,10 @@ import {
   documentWaveFinalizeLockId,
 } from '../../domain/common/constants/document-wave-lock.constants';
 import {
+  DocumentVotingThreadSchemaClass,
+  DocumentVotingThreadDocument,
+} from '../../domain/models/document-voting-thread/document-voting-thread.schema';
+import {
   DOCUMENT_PERSISTENCE_PORT,
   type DocumentBlockVariantRecord,
   type DocumentBlockVariantStatus,
@@ -22,7 +26,9 @@ import {
   type DocumentPersistencePort,
   type DocumentPersistenceSession,
   type DocumentSectionsUpdateResponse,
+  type DocumentVotingThreadRecord,
   type InsertDocumentBlockVariantInput,
+  type InsertDocumentVotingThreadInput,
   type InsertMeriterDocumentInput,
   type MeriterDocType,
   type MeriterDocumentSnapshot,
@@ -46,6 +52,8 @@ export class DocumentPersistenceAdapter implements DocumentPersistencePort {
     private readonly documentModel: Model<MeriterDocumentDocument>,
     @InjectModel(DocumentBlockVariantSchemaClass.name)
     private readonly variantModel: Model<DocumentBlockVariantDocument>,
+    @InjectModel(DocumentVotingThreadSchemaClass.name)
+    private readonly votingThreadModel: Model<DocumentVotingThreadDocument>,
     @InjectConnection() private readonly connection: Connection,
   ) {}
 
@@ -294,6 +302,33 @@ export class DocumentPersistenceAdapter implements DocumentPersistencePort {
       .lean()
       .exec();
     return docs.map((doc) => mapDocumentBlockVariantToRecord(doc as DocumentBlockVariantRecord));
+  }
+
+  async findOpenVotingThreads(
+    documentId: string,
+  ): Promise<DocumentVotingThreadRecord[]> {
+    const docs = await this.votingThreadModel
+      .find({ documentId, status: 'open' })
+      .lean()
+      .exec();
+    return docs as DocumentVotingThreadRecord[];
+  }
+
+  async insertVotingThread(
+    input: InsertDocumentVotingThreadInput,
+  ): Promise<DocumentVotingThreadRecord> {
+    const created = await this.votingThreadModel.create(input);
+    return created.toObject() as DocumentVotingThreadRecord;
+  }
+
+  async updateVotingThread(
+    threadId: string,
+    patch: Partial<Pick<DocumentVotingThreadRecord, 'waveEndsAt' | 'ranges' | 'status'>>,
+  ): Promise<void> {
+    await this.votingThreadModel.updateOne(
+      { id: threadId },
+      { $set: { ...patch, updatedAt: new Date() } },
+    );
   }
 
   async findOpenWaveBlockPairs(): Promise<OpenWaveBlockPair[]> {

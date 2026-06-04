@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Logger,
   NotFoundException,
@@ -33,29 +32,29 @@ import { blockHtmlToPlainText } from '../../../domain/common/document-plain-text
 import { getEffectiveLockedRanges } from '../../../domain/common/document-locked-ranges.util';
 import {
   editChangeOverlapsLocked,
-  insertBlocksAfterInSection,
-  sanitizeProposedHtmlFragment,
   type SectionBlockRow,
 } from '../../../domain/common/document-block-structure.util';
 import type { ParsedStructureBlock } from '../../../domain/common/document-html-structure.util';
 import {
-  applyBlockSplitsForPatches,
+  buildAppendInsertPatch,
   computeProposalPatchesFromJoinedContent,
-  joinBlocksToSectionRows,
-  newSectionId,
+  isInsertBlocksPatch,
   normalizeVariantContentForPersistence,
   normalizeVariantPatchesForPersistence,
   type DocumentVariantPatch,
 } from '../../../domain/common/document-proposal-patches.util';
+import { hashJoinedDocumentAtPropose, normalizeRangeBounds } from '../../../domain/common/document-range.util';
 import {
-  assertNoOverlapWithOpenRanges,
-  buildMergedBlockPreviewContent,
-  hashJoinedDocumentAtPropose,
-  normalizeRangeBounds,
-} from '../../../domain/common/document-range.util';
+  buildSegmentsFromDocument,
+  globalRangesOverlap,
+  mergeGlobalRanges,
+  proposalGlobalRanges,
+  variantGlobalRanges,
+} from '../../../domain/common/document-voting-thread.util';
 import type {
   ProposeDocumentVariantInput,
   ProposeDocumentVariantPort,
+  ProposeDocumentVariantResult,
 } from '../../../domain/ports/propose-document-variant.port';
 import {
   createGetRemainingQuotaUseCase,
@@ -98,7 +97,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
   async execute(
     userId: string,
     input: ProposeDocumentVariantInput,
-  ): Promise<DocumentBlockVariantSchemaClass> {
+  ): Promise<ProposeDocumentVariantResult> {
     let doc = await this.deps.documentService.getById(input.documentId);
     if (!doc || doc.deleted || doc.status !== 'active') {
       throw new NotFoundException('Document not found');
@@ -143,7 +142,13 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
 
     const officialTextHashAtPropose = prepared.joinedOfficialHash;
 
-    await this.deps.finalizeExpiredWaveOnBlock(doc.id, blockId);
+    const threadResolution = await this.resolveVotingThreadForProposal(
+      doc,
+      patches,
+      blockId,
+    );
+
+    await this.deps.finalizeExpiredWaveOnBlock(doc.id, threadResolution.anchorBlockId);
 
     doc = (await this.deps.documentService.getById(input.documentId))!;
 
@@ -160,12 +165,15 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     const variantId = uid();
     const now = new Date();
 
-    const blockAfter = this.deps.documentService.findBlock(doc, blockId);
+    const waveAnchorId = threadResolution.anchorBlockId;
+    const blockAfter = this.deps.documentService.findBlock(doc, waveAnchorId);
     const needsWaveStart = !blockAfter?.currentWaveStartedAt;
-    if (needsWaveStart) {
-      await this.deps.documentService.updateDocumentBlock(doc.id, blockId, (b) => {
+    if (needsWaveStart || threadResolution.extendWave) {
+      await this.deps.documentService.updateDocumentBlock(doc.id, waveAnchorId, (b) => {
         b.currentWaveStartedAt = now;
-        b.officialRating = 0;
+        if (needsWaveStart) {
+          b.officialRating = 0;
+        }
       });
     }
 
@@ -178,6 +186,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       id: variantId,
       documentId: doc.id,
       blockId,
+      votingThreadId: threadResolution.votingThreadId,
       proposalScope: proposalScope ?? 'block',
       patches: persistedPatches,
       content: persistedContent,
@@ -232,7 +241,124 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       actorUserId: userId,
     });
 
-    return created as DocumentBlockVariantSchemaClass;
+    return {
+      variant: created as DocumentBlockVariantSchemaClass,
+      ...(threadResolution.mergedIntoThreadId
+        ? {
+            mergedIntoThreadId: threadResolution.mergedIntoThreadId,
+            proposeWarning: 'merged_into_voting' as const,
+          }
+        : {}),
+    };
+  }
+
+  private async resolveVotingThreadForProposal(
+    doc: MeriterDocumentSchemaClass,
+    patches: DocumentVariantPatch[],
+    anchorBlockId: string,
+  ): Promise<{
+    votingThreadId: string;
+    anchorBlockId: string;
+    mergedIntoThreadId?: string;
+    extendWave: boolean;
+  }> {
+    const segments = buildSegmentsFromDocument(doc);
+    const proposalRanges = proposalGlobalRanges(segments, patches);
+    const hours = doc.votingDurationHours ?? 24;
+    const extendMs = hours * 60 * 60 * 1000;
+    const now = new Date();
+
+    const officialHtmlForBlock = (blockId: string) =>
+      String(this.deps.documentService.findBlock(doc, blockId)?.officialContent ?? '');
+
+    const openVariants = (
+      await this.deps.documentPersistence.findActiveVariantsByDocument(doc.id)
+    ).filter((v) => v.status === 'open');
+
+    for (const open of openVariants) {
+      const openRanges = variantGlobalRanges(segments, open, officialHtmlForBlock);
+      if (!globalRangesOverlap(proposalRanges, openRanges)) {
+        continue;
+      }
+      const threadId = open.votingThreadId ?? open.id;
+      const openThreads = await this.deps.documentPersistence.findOpenVotingThreads(doc.id);
+      const thread = openThreads.find((t) => t.id === threadId);
+      const waveEndsAt = new Date(
+        Math.max(
+          (thread?.waveEndsAt ?? now).getTime(),
+          now.getTime() + extendMs,
+        ),
+      );
+      if (thread) {
+        await this.deps.documentPersistence.updateVotingThread(thread.id, {
+          waveEndsAt,
+          ranges: mergeGlobalRanges(
+            thread.ranges.map((r) => ({
+              rangeStart: r.rangeStart,
+              rangeEnd: r.rangeEnd,
+            })),
+            proposalRanges,
+          ).map((r, i) => ({
+            blockId: patches[i]?.blockId ?? anchorBlockId,
+            rangeStart: r.rangeStart,
+            rangeEnd: r.rangeEnd,
+          })),
+        });
+      }
+      return {
+        votingThreadId: threadId,
+        anchorBlockId: thread?.anchorBlockId ?? open.blockId,
+        mergedIntoThreadId: threadId,
+        extendWave: true,
+      };
+    }
+
+    const openThreads = await this.deps.documentPersistence.findOpenVotingThreads(doc.id);
+    for (const thread of openThreads) {
+      const threadRanges = thread.ranges.map((r) => ({
+        rangeStart: r.rangeStart,
+        rangeEnd: r.rangeEnd,
+      }));
+      if (globalRangesOverlap(proposalRanges, threadRanges)) {
+        const waveEndsAt = new Date(
+          Math.max(thread.waveEndsAt.getTime(), now.getTime() + extendMs),
+        );
+        await this.deps.documentPersistence.updateVotingThread(thread.id, {
+          waveEndsAt,
+          ranges: mergeGlobalRanges(threadRanges, proposalRanges).map((r, i) => ({
+            blockId: patches[i]?.blockId ?? anchorBlockId,
+            rangeStart: r.rangeStart,
+            rangeEnd: r.rangeEnd,
+          })),
+        });
+        return {
+          votingThreadId: thread.id,
+          anchorBlockId: thread.anchorBlockId,
+          mergedIntoThreadId: thread.id,
+          extendWave: true,
+        };
+      }
+    }
+
+    const threadId = uid();
+    await this.deps.documentPersistence.insertVotingThread({
+      id: threadId,
+      documentId: doc.id,
+      status: 'open',
+      anchorBlockId,
+      ranges: proposalRanges.map((r, i) => ({
+        blockId: patches[i]?.blockId ?? anchorBlockId,
+        rangeStart: r.rangeStart,
+        rangeEnd: r.rangeEnd,
+      })),
+      waveEndsAt: new Date(now.getTime() + extendMs),
+    });
+
+    return {
+      votingThreadId: threadId,
+      anchorBlockId,
+      extendWave: false,
+    };
   }
 
   /**
@@ -268,37 +394,20 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     const computed = computeProposalPatchesFromJoinedContent(orderedBlocks, content);
 
     if (computed.appendBlocks && computed.appendBlocks.length > 0) {
-      return this.prepareAppendProposal(doc, located, orderedBlocks, computed.appendBlocks);
+      return this.prepareAppendProposal(doc, orderedBlocks, computed.appendBlocks);
     }
 
     if (computed.patches.length === 0) {
       throw new BadRequestException('No text changes detected in the proposal');
     }
 
-    const { blocks: splitBlocks, patches } = applyBlockSplitsForPatches(
-      orderedBlocks,
-      computed.patches,
-    );
-
-    const sectionId =
-      located.allSections[located.sectionIndex]?.id ?? newSectionId();
-    const sectionsPayload = joinBlocksToSectionRows(splitBlocks, sectionId);
-    const updated = await this.deps.documentService.updateSections(doc.id, sectionsPayload);
-    if (!updated.ok) {
-      throw new BadRequestException('Failed to update document structure for proposal');
-    }
-
-    const refreshed = await this.deps.documentService.getById(doc.id);
-    if (!refreshed) {
-      throw new NotFoundException('Document not found');
-    }
-
+    const patches = computed.patches;
     const anchor =
       patches.find((p) => p.blockId === computed.anchorBlockId) ?? patches[0]!;
     const proposalScope = patches.length > 1 ? ('patches' as const) : ('block' as const);
 
     return {
-      doc: refreshed,
+      doc,
       blockId: anchor.blockId,
       proposalScope,
       patches,
@@ -311,16 +420,11 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     };
   }
 
-  private async prepareAppendProposal(
+  private prepareAppendProposal(
     doc: MeriterDocumentSchemaClass,
-    located: {
-      allSections: Array<{ id?: string; order?: number; blocks?: SectionBlockRow[] }>;
-      sectionIndex: number;
-      blocks: SectionBlockRow[];
-    },
     orderedBlocks: SectionBlockRow[],
     appendParsed: ParsedStructureBlock[],
-  ): Promise<{
+  ): {
     doc: MeriterDocumentSchemaClass;
     blockId: string;
     proposalScope: 'block';
@@ -331,55 +435,18 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     proposedText: string;
     content: string;
     joinedOfficialHash: string;
-  }> {
-    const last = orderedBlocks[orderedBlocks.length - 1];
-    if (!last) {
-      throw new BadRequestException('Document has no blocks');
-    }
-    const { blocks: nextBlocks } = insertBlocksAfterInSection(
-      orderedBlocks,
-      last.id,
-      appendParsed,
-    );
-    const sectionId =
-      located.allSections[located.sectionIndex]?.id ?? newSectionId();
-    const updated = await this.deps.documentService.updateSections(
-      doc.id,
-      joinBlocksToSectionRows(nextBlocks, sectionId),
-    );
-    if (!updated.ok) {
-      throw new BadRequestException('Failed to append blocks for proposal');
-    }
-    const refreshed = (await this.deps.documentService.getById(doc.id))!;
-    const lastBlock = nextBlocks[nextBlocks.length - 1]!;
-    const proposedText = sanitizeProposedHtmlFragment(
-      appendParsed.map((p) => p.officialContent).join(''),
-    );
-    const targetHtml = String(lastBlock.officialContent ?? '');
-    const atEnd = blockHtmlToPlainText(targetHtml).length;
-    const previewContent = buildMergedBlockPreviewContent(
-      targetHtml,
-      atEnd,
-      atEnd,
-      proposedText,
-    );
-    const patch: DocumentVariantPatch = {
-      blockId: lastBlock.id,
-      rangeStart: atEnd,
-      rangeEnd: atEnd,
-      proposedText,
-      previewContent,
-    };
+  } {
+    const patch = buildAppendInsertPatch(orderedBlocks, appendParsed);
     return {
-      doc: refreshed,
-      blockId: lastBlock.id,
+      doc,
+      blockId: patch.blockId,
       proposalScope: 'block',
       patches: [patch],
-      hasRange: true,
-      rangeStart: atEnd,
-      rangeEnd: atEnd,
-      proposedText,
-      content: previewContent,
+      hasRange: false,
+      rangeStart: 0,
+      rangeEnd: 0,
+      proposedText: '',
+      content: patch.previewContent,
       joinedOfficialHash: hashJoinedDocumentAtPropose(
         orderedBlocks.map((b) => ({ id: b.id, officialContent: b.officialContent })),
       ),
@@ -395,6 +462,12 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       const block = this.deps.documentService.findBlock(doc, patch.blockId);
       if (!block) {
         throw new BadRequestException('Proposal references an unknown block');
+      }
+      if (isInsertBlocksPatch(patch)) {
+        if (!canManageDocument && block.proposalsLocked === true) {
+          throw new ForbiddenException('This block is locked; you cannot propose changes');
+        }
+        continue;
       }
       const officialHtml = String(block.officialContent ?? '');
       const oldPlain = blockHtmlToPlainText(officialHtml);
@@ -416,25 +489,6 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
         }
       }
 
-      try {
-        const openOnBlock = await this.deps.documentPersistence.findOpenVariants(
-          doc.id,
-          patch.blockId,
-        );
-        assertNoOverlapWithOpenRanges(
-          patch.rangeStart,
-          patch.rangeEnd,
-          openOnBlock,
-          officialHtml,
-        );
-      } catch (err) {
-        if (err instanceof Error && err.message === 'RANGE_OVERLAP') {
-          throw new ConflictException(
-            'This range overlaps an open proposal on the same block',
-          );
-        }
-        throw err;
-      }
     }
   }
 
