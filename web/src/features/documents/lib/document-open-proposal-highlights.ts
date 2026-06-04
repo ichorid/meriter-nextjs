@@ -1,17 +1,10 @@
 import { groupBlocksBySection } from '@/features/documents/lib/document-canvas-shared';
 import { buildBlockPlainSegments } from '@/features/documents/lib/document-block-plain-segments';
-import { resolveVariantBlockPreviewHtml } from '@/features/documents/lib/document-block-merge';
-import {
-  joinBlocksToDisplayHtml,
-  joinDocumentBlocksToHtml,
-  joinDocumentWithBlockOverride,
-} from '@/features/documents/lib/document-html-structure';
+import { joinDocumentBlocksToHtml } from '@/features/documents/lib/document-html-structure';
+import { buildProposedDocumentHtml } from '@/features/documents/lib/document-variant-document-preview';
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
 import type { VariantPreviewInput } from '@/features/documents/lib/document-variant-preview';
-import {
-  isFullBlockDeletionPatch,
-  isInsertBlocksPatch,
-} from '@/features/documents/lib/document-proposal-patch-utils';
+import { isInsertBlocksPatch } from '@/features/documents/lib/document-proposal-patch-utils';
 
 export type { DocumentVariantPatchPreview } from '@/features/documents/lib/document-proposal-patch-utils';
 import type { DocumentVariantPatchPreview } from '@/features/documents/lib/document-proposal-patch-utils';
@@ -41,6 +34,7 @@ function variantToPreviewInput(v: OpenProposalVariant): VariantPreviewInput {
   return {
     content: v.content,
     proposalScope: v.proposalScope,
+    patches: v.patches,
     rangeStart: v.rangeStart,
     rangeEnd: v.rangeEnd,
     proposedText: v.proposedText,
@@ -87,8 +81,9 @@ function variantSummaryLine(
   }
   const blockHtml = blockOfficialFromSections(sections, v.blockId);
   const input = variantToPreviewInput(v);
-  const preview = resolveVariantBlockPreviewHtml(blockHtml, input);
-  const oldPlain = blockHtmlToPlainText(blockHtml);
+  const officialHtml = joinDocumentBlocksToHtml(sections);
+  const preview = buildProposedDocumentHtml(sections, input, v.blockId, blockHtml);
+  const oldPlain = blockHtmlToPlainText(officialHtml);
   const newPlain = blockHtmlToPlainText(preview);
   if (oldPlain === newPlain) {
     return `${name}: правка`;
@@ -229,37 +224,4 @@ export function buildOpenProposalHighlightRanges(
   }));
 }
 
-/** Build joined variant HTML from per-block patches only (no full-document storage). */
-export function buildJoinedHtmlFromPatches(
-  sections: unknown,
-  patches: DocumentVariantPatchPreview[],
-): string {
-  const patchByBlock = new Map(
-    patches.filter((p) => !isInsertBlocksPatch(p)).map((p) => [p.blockId, p]),
-  );
-  const insertPatches = patches.filter(isInsertBlocksPatch);
-  const blocks = groupBlocksBySection(sections)
-    .flatMap((g) => g.blocks)
-    .sort((a, b) => a.order - b.order)
-    .flatMap((b) => {
-      const patch = patchByBlock.get(b.id);
-      const officialHtml = b.officialContent ?? '';
-      if (patch && isFullBlockDeletionPatch(officialHtml, patch)) {
-        return [];
-      }
-      const row = {
-        blockType: b.blockType,
-        officialContent: patch?.previewContent ?? officialHtml,
-      };
-      const insertAfter = insertPatches.find((p) => p.insertAfterBlockId === b.id);
-      if (!insertAfter?.insertBlocks?.length) {
-        return [row];
-      }
-      const inserted = insertAfter.insertBlocks.map((ib) => ({
-        blockType: ib.blockType,
-        officialContent: ib.officialContent,
-      }));
-      return [row, ...inserted];
-    });
-  return joinBlocksToDisplayHtml(blocks);
-}
+export { buildJoinedHtmlFromPatches } from '@/features/documents/lib/document-proposal-joined-html';

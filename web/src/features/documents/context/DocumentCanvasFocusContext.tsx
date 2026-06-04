@@ -42,11 +42,23 @@ export type DocumentVariantPreviewTarget = {
       kind: 'variant';
       variantId: string;
       variantHtml: string;
-  rangeStart?: number;
-  rangeEnd?: number;
-  proposedText?: string;
-  /** Sections snapshot for document-scoped range diff in main preview. */
-  sectionsForRevision?: unknown;
+      /** Persisted propose payload (joined HTML); used for diff, not preview HTML. */
+      variantContent?: string;
+      proposalScope?: 'block' | 'patches';
+      patches?: Array<{
+        blockId: string;
+        rangeStart: number;
+        rangeEnd: number;
+        proposedText: string;
+        previewContent: string;
+        insertAfterBlockId?: string;
+        insertBlocks?: Array<{ blockType: string; officialContent: string }>;
+      }>;
+      rangeStart?: number;
+      rangeEnd?: number;
+      proposedText?: string;
+      /** Sections snapshot for document-scoped range diff in main preview. */
+      sectionsForRevision?: unknown;
     }
 );
 

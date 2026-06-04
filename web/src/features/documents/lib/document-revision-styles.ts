@@ -17,8 +17,9 @@ export const documentRevisionMarkupProseClass = cn(
   '[&_.doc-revision-del]:font-medium [&_.doc-revision-del]:text-error',
   '[&_.doc-revision-del]:line-through [&_.doc-revision-del]:decoration-error',
   '[&_.doc-revision-del]:decoration-2',
-  '[&_.doc-revision-ins]:rounded-sm [&_.doc-revision-ins]:bg-primary/25 [&_.doc-revision-ins]:px-1',
+  '[&_.doc-revision-ins]:rounded-sm [&_.doc-revision-ins]:bg-amber-400/25 [&_.doc-revision-ins]:px-1',
   '[&_.doc-revision-ins]:font-semibold [&_.doc-revision-ins]:text-base-content',
   '[&_.doc-revision-ins]:no-underline [&_.doc-revision-ins]:ring-1 [&_.doc-revision-ins]:ring-inset',
-  '[&_.doc-revision-ins]:ring-primary/40',
+  '[&_.doc-revision-ins]:ring-amber-400/45',
+  '[&_li.doc-revision-ins]:rounded-sm',
 );

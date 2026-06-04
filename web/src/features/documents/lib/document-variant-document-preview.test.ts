@@ -2,7 +2,11 @@ import {
   joinDocumentBlocksToHtml,
   joinDocumentWithBlockOverride,
 } from '@/features/documents/lib/document-html-structure';
-import { buildDocumentVariantPreviewPair } from '@/features/documents/lib/document-variant-document-preview';
+import {
+  buildDocumentVariantPreviewPair,
+  buildDocumentVariantRevisionMarkupHtml,
+  shouldBuildVariantHtmlFromPatches,
+} from '@/features/documents/lib/document-variant-document-preview';
 
 const sections = [
   {
@@ -54,6 +58,81 @@ describe('document variant document preview', () => {
     });
     expect(pair.officialHtml).toBe(joinDocumentBlocksToHtml(sections));
     expect(pair.variantHtml).toBe('<p>Alpha changed</p><p>Beta changed</p>');
+  });
+
+  it('buildDocumentVariantPreviewPair applies insert-after patch when proposalScope is block', () => {
+    const pair = buildDocumentVariantPreviewPair(sections, 'b1', '<p>Alpha</p>', {
+      content: '<p>Alpha</p><p>Inserted</p><p>Beta</p>',
+      proposalScope: 'block',
+      patches: [
+        {
+          blockId: 'b1',
+          insertAfterBlockId: 'b1',
+          insertBlocks: [{ blockType: 'paragraph', officialContent: '<p>Inserted</p>' }],
+          rangeStart: 0,
+          rangeEnd: 0,
+          proposedText: '',
+          previewContent: '<p>Alpha</p><p>Inserted</p><p>Beta</p>',
+        },
+      ],
+    });
+    expect(
+      shouldBuildVariantHtmlFromPatches({
+        proposalScope: 'block',
+        patches: [
+          {
+            blockId: 'b1',
+            insertAfterBlockId: 'b1',
+            insertBlocks: [{ blockType: 'paragraph', officialContent: '<p>Inserted</p>' }],
+            rangeStart: 0,
+            rangeEnd: 0,
+            proposedText: '',
+            previewContent: '',
+          },
+        ],
+      }),
+    ).toBe(true);
+    expect(pair.officialHtml).toBe('<p>Alpha</p><p>Beta</p>');
+    expect(pair.variantHtml).toBe('<p>Alpha</p><p>Inserted</p><p>Beta</p>');
+  });
+
+  it('buildDocumentVariantPreviewPair uses full content when patches are absent', () => {
+    const pair = buildDocumentVariantPreviewPair(sections, 'b1', '<p>Alpha</p>', {
+      content: '<p>Alpha</p><p>Inserted</p><p>Beta</p>',
+      proposalScope: 'block',
+      rangeStart: 0,
+      rangeEnd: 0,
+      proposedText: '',
+    });
+    expect(pair.officialHtml).toBe('<p>Alpha</p><p>Beta</p>');
+    expect(pair.variantHtml).toBe('<p>Alpha</p><p>Inserted</p><p>Beta</p>');
+  });
+
+  it('buildDocumentVariantRevisionMarkupHtml is null for patch-scoped insert proposals', () => {
+    const markup = buildDocumentVariantRevisionMarkupHtml(
+      sections,
+      'b1',
+      '<p>Alpha</p>',
+      {
+        content: '<p>Alpha</p><p>Inserted</p><p>Beta</p>',
+        proposalScope: 'patches',
+        patches: [
+          {
+            blockId: 'b1',
+            insertAfterBlockId: 'b1',
+            insertBlocks: [{ blockType: 'paragraph', officialContent: '<p>Inserted</p>' }],
+            rangeStart: 0,
+            rangeEnd: 0,
+            proposedText: '',
+            previewContent: '',
+          },
+        ],
+        rangeStart: 0,
+        rangeEnd: 0,
+        proposedText: '',
+      },
+    );
+    expect(markup).toBeNull();
   });
 
   it('buildDocumentVariantPreviewPair keeps other blocks and merges range edit', () => {

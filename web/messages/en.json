@@ -1219,8 +1219,7 @@
             "gdocs": {
                 "railTitle": "Proposals",
                 "railSubtitle": "{count} active threads",
-                "mobileProposalsCta": "Proposals · {count}",
-                "mobileProposalsCtaEmpty": "Edit proposals",
+                "mobileProposalsCta": "Edit proposals ({count})",
                 "railBlockChip": "Proposals · {count}",
                 "previewOfficialTitle": "Original version",
                 "previewVariantTitle": "Proposal by {name}",
@@ -1229,7 +1228,7 @@
                 "proposerCommentLabel": "Rationale",
                 "viewProposal": "View",
                 "supportProposal": "Support",
-                "showEditsToggle": "Show edits",
+                "showEditsToggle": "Highlight edits",
                 "backToEditing": "Back to editing",
                 "proposeCommentDialogTitle": "Comment on your proposal",
                 "proposeCommentDialogDescription": "Optional: briefly explain why you suggest these edits. Shown in the proposals list on the right.",

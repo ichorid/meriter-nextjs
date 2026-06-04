@@ -31,6 +31,7 @@ import {
   type DocTranslate,
 } from '@/features/documents/lib/document-canvas-shared';
 import { buildDocumentVariantPreviewPair } from '@/features/documents/lib/document-variant-document-preview';
+import { mergeDocumentVariantRows } from '@/features/documents/lib/merge-document-variant-rows';
 import { resolveVariantBlockPreviewHtml } from '@/features/documents/lib/document-block-merge';
 import type { VariantPreviewInput } from '@/features/documents/lib/document-variant-preview';
 import { joinDocumentBlocksToHtml } from '@/features/documents/lib/document-html-structure';
@@ -46,6 +47,8 @@ type BlockVariantRow = {
   documentId: string;
   blockId: string;
   content?: string;
+  proposalScope?: 'block' | 'patches';
+  patches?: VariantPreviewInput['patches'];
   proposedBy: string;
   status: string;
   rating?: number;
@@ -118,13 +121,10 @@ export function DocumentBlockProposalsPanel({
     { enabled: !!documentId && !!block.id },
   );
 
-  const allVariants = useMemo(() => {
-    const fromBlock = variantsQuery.data;
-    if (fromBlock && fromBlock.length > 0) {
-      return fromBlock;
-    }
-    return threadVariants ?? fromBlock ?? [];
-  }, [threadVariants, variantsQuery.data]);
+  const allVariants = useMemo(
+    () => mergeDocumentVariantRows(threadVariants, variantsQuery.data),
+    [threadVariants, variantsQuery.data],
+  );
 
   const waveActiveEffective = waveActive || threadWaveOpen === true;
 
@@ -157,16 +157,15 @@ export function DocumentBlockProposalsPanel({
   const reasonKey = officialReasonLabelKey(block.officialContentReason);
   const communityId = community?.id ?? '';
   const blockOfficialHtml = block.officialContent ?? '';
-  const useDocumentScope = isCompact && sections != null;
+  const useDocumentScope = sections != null;
 
   const buildVariantPreview = (
     v: (typeof activeVariants)[number] & { proposedByDisplayName?: string },
   ): DocumentVariantPreviewTarget => {
     const variantInput: VariantPreviewInput = {
       content: v.content,
-      proposalScope: (v as { proposalScope?: VariantPreviewInput['proposalScope'] })
-        .proposalScope,
-      patches: (v as { patches?: VariantPreviewInput['patches'] }).patches,
+      proposalScope: v.proposalScope,
+      patches: v.patches,
       rangeStart: v.rangeStart,
       rangeEnd: v.rangeEnd,
       proposedText: v.proposedText,
@@ -182,6 +181,9 @@ export function DocumentBlockProposalsPanel({
       blockType: useDocumentScope ? undefined : block.blockType,
       officialHtml,
       variantHtml,
+      variantContent: v.content,
+      proposalScope: v.proposalScope,
+      patches: v.patches,
       compareOfficialHtml: officialHtml,
       compareVariantHtml: variantHtml,
       sectionsForRevision: useDocumentScope ? sections : undefined,

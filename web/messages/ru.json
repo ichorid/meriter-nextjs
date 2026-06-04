@@ -1219,8 +1219,7 @@
             "gdocs": {
                 "railTitle": "Предложения",
                 "railSubtitle": "{count} активных веток",
-                "mobileProposalsCta": "Предложения · {count}",
-                "mobileProposalsCtaEmpty": "Предложения по правкам",
+                "mobileProposalsCta": "Предложения по правкам ({count})",
                 "railBlockChip": "Предложения · {count}",
                 "previewOfficialTitle": "Исходный вариант",
                 "previewVariantTitle": "Предложение: {name}",
@@ -1229,7 +1228,7 @@
                 "proposerCommentLabel": "Обоснование",
                 "viewProposal": "Посмотреть",
                 "supportProposal": "Поддержать",
-                "showEditsToggle": "Показать правки",
+                "showEditsToggle": "Подсветить правки",
                 "backToEditing": "Вернуться к редактированию",
                 "proposeCommentDialogTitle": "Комментарий к предложению",
                 "proposeCommentDialogDescription": "Необязательно: кратко объясните, зачем нужны эти правки. Увидят в списке предложений справа.",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useUIStore } from '@/stores/ui.store';
 import { useTranslations } from 'next-intl';
 import { MessageSquareText } from 'lucide-react';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { DocumentProposalRailContent } from '@/features/documents/components/DocumentProposalRailContent';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { documentLiveQueryOptions } from '@/features/documents/hooks/useDocumentLiveSync';
+import { countActiveProposalVariants } from '@/features/documents/lib/document-proposal-utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
@@ -45,15 +46,16 @@ export function DocumentMobileProposalsDock({ sections }: DocumentMobileProposal
   );
 
   const threadCount = threadsQuery.data?.threads.length ?? 0;
+  const proposalCount = useMemo(() => {
+    const variants = (threadsQuery.data?.threads ?? []).flatMap((thread) => thread.variants);
+    return countActiveProposalVariants(variants);
+  }, [threadsQuery.data?.threads]);
 
   if (!focus || !isMobile) {
     return null;
   }
 
-  const ctaLabel =
-    threadCount > 0
-      ? tGdocs('mobileProposalsCta', { count: threadCount })
-      : tGdocs('mobileProposalsCtaEmpty');
+  const ctaLabel = tGdocs('mobileProposalsCta', { count: proposalCount });
 
   return (
     <>

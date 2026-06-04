@@ -19,6 +19,16 @@ describe('document-variant-preview', () => {
     expect(insert && insert.kind === 'insert' ? insert.html : '').toContain('New line');
   });
 
+  it('ignores empty stored range so insert proposals use content diff', () => {
+    const bounds = resolveVariantChangeBounds('<p>Heading</p>', {
+      content: '<p>Heading</p><p>Тест 1</p><p>Тест 2</p><p>Footer</p>',
+      rangeStart: 0,
+      rangeEnd: 0,
+      proposedText: '',
+    });
+    expect(bounds?.proposedText).toContain('Тест 1');
+  });
+
   it('uses stored range fields when present', () => {
     const bounds = resolveVariantChangeBounds(official, {
       content: '<p>Hello universe.</p>',

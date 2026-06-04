@@ -27,6 +27,8 @@ export type VariantPreviewInput = {
     rangeEnd: number;
     proposedText: string;
     previewContent: string;
+    insertAfterBlockId?: string;
+    insertBlocks?: Array<{ blockType: string; officialContent: string }>;
   }>;
   rangeStart?: number;
   rangeEnd?: number;
@@ -77,11 +79,15 @@ export function resolveVariantChangeBounds(
     variant.rangeEnd >= variant.rangeStart;
 
   if (hasStoredRange) {
-    return {
-      rangeStart: variant.rangeStart!,
-      rangeEnd: variant.rangeEnd!,
-      proposedText: variant.proposedText!,
-    };
+    const hasMeaningfulRange =
+      variant.rangeEnd! > variant.rangeStart! || (variant.proposedText?.trim() ?? '').length > 0;
+    if (hasMeaningfulRange) {
+      return {
+        rangeStart: variant.rangeStart!,
+        rangeEnd: variant.rangeEnd!,
+        proposedText: variant.proposedText!,
+      };
+    }
   }
 
   const officialPlain = blockHtmlToPlainText(officialHtml);

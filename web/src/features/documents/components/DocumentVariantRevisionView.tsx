@@ -15,7 +15,7 @@ import { documentRevisionMarkupProseClass } from '@/features/documents/lib/docum
 import { cn } from '@/lib/utils';
 
 const revisionInsertClass =
-  'rounded-sm bg-primary/25 px-1 font-semibold text-base-content no-underline ring-1 ring-inset ring-primary/40';
+  'rounded-sm bg-amber-400/25 px-1 font-semibold text-base-content no-underline ring-1 ring-inset ring-amber-400/45';
 const revisionDeleteClass =
   'rounded-sm bg-error/30 px-1 font-medium text-error line-through decoration-error decoration-2';
 

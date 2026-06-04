@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/shadcn/label';
 import { DocumentVariantRevisionView } from '@/features/documents/components/DocumentVariantRevisionView';
 import type { DocumentVariantPreviewTarget } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { mergeRangeIntoBlockHtmlWithRevisionMarks } from '@/features/documents/lib/document-block-merge';
+import { buildJoinedDocumentRevisionHtml } from '@/features/documents/lib/document-joined-revision-html';
 import {
   buildDocumentVariantRevisionMarkupHtml,
   blockOfficialHtmlFromSections,
@@ -67,7 +68,9 @@ export function DocumentVariantMainPreview({
       return null;
     }
     return {
-      content: target.variantHtml,
+      content: target.variantContent ?? target.variantHtml,
+      proposalScope: target.proposalScope,
+      patches: target.patches,
       rangeStart: target.rangeStart,
       rangeEnd: target.rangeEnd,
       proposedText: target.proposedText,
@@ -79,6 +82,13 @@ export function DocumentVariantMainPreview({
       return null;
     }
     if (target.sectionsForRevision != null) {
+      const joinedRevision = buildJoinedDocumentRevisionHtml(
+        compareOfficialHtml,
+        compareVariantHtml,
+      );
+      if (joinedRevision) {
+        return joinedRevision;
+      }
       const blockOfficial = blockOfficialHtmlFromSections(
         target.sectionsForRevision,
         target.blockId,
@@ -103,7 +113,7 @@ export function DocumentVariantMainPreview({
       );
     }
     return null;
-  }, [variantPreviewInput, target, compareOfficialHtml]);
+  }, [variantPreviewInput, target, compareOfficialHtml, compareVariantHtml]);
 
   const canCompare = useMemo(
     () =>
