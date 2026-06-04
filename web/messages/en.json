@@ -1269,6 +1269,7 @@
                 "leadEditorSaved": "Document saved",
                 "submitProposal": "Submit",
                 "proposalSubmitted": "Proposal submitted",
+                "mergedIntoVoting": "Your edit was added to the open vote; deadline extended",
                 "participantEditorHint": "Your draft stays in the browser; submit to the document only via Submit",
                 "participantEditorDirtyHint": "Unsaved edits — press Submit",
                 "persistModeLabel": "How to save edits",

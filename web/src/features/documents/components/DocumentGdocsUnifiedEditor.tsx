@@ -409,7 +409,8 @@ export function DocumentGdocsUnifiedEditor({
   });
 
   const proposeMutation = trpc.documentVariants.propose.useMutation({
-    onSuccess: async (variant) => {
+    onSuccess: async (result) => {
+      const variant = result.variant;
       lastPersistedHtmlRef.current = htmlRef.current;
       setDraftRestored(false);
       setPendingRemoteBaseline(null);
@@ -420,7 +421,11 @@ export function DocumentGdocsUnifiedEditor({
       await utils.documents.getById.invalidate({ id: documentId });
       await refetchDocumentProposalCaches(utils, documentId, variant.blockId);
       setEditorContentKey((k) => k + 1);
-      focus.addToast(tGdocs('proposalSubmitted'), 'success');
+      if (result.proposeWarning === 'merged_into_voting') {
+        focus.addToast(tGdocs('mergedIntoVoting'), 'success');
+      } else {
+        focus.addToast(tGdocs('proposalSubmitted'), 'success');
+      }
       onSynced?.();
     },
     onError: (err) => focus.addToast(err.message, 'error'),

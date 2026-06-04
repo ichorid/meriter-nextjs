@@ -75,12 +75,12 @@ export function DocumentProposeComposer({
   } = focus;
 
   const proposeMutation = trpc.documentVariants.propose.useMutation({
-    onSuccess: async (variant) => {
+    onSuccess: async (result) => {
       proposalBodyRef.current = '';
       setReferenceDrafts([]);
       setResetKey((k) => k + 1);
-      focus.setFocusedBlockId(variant.blockId);
-      await refetchDocumentProposalCaches(utils, documentId, variant.blockId);
+      focus.setFocusedBlockId(result.variant.blockId);
+      await refetchDocumentProposalCaches(utils, documentId, result.variant.blockId);
       onSuccess?.();
     },
     onError: (err) => addToast(err.message, 'error'),

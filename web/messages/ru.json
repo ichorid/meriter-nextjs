@@ -1269,6 +1269,7 @@
                 "leadEditorSaved": "Документ сохранён",
                 "submitProposal": "Отправить",
                 "proposalSubmitted": "Предложение отправлено",
+                "mergedIntoVoting": "Правка добавлена в текущее голосование; срок продлён",
                 "participantEditorHint": "Черновик хранится в браузере; в документ — только по кнопке «Отправить»",
                 "participantEditorDirtyHint": "Есть несохранённые правки — нажмите «Отправить»",
                 "persistModeLabel": "Как сохранять правки",
