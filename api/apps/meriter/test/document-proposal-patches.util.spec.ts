@@ -1,7 +1,9 @@
 import {
   applyBlockSplitsForPatches,
+  buildAppendInsertPatch,
   computeProposalPatchesFromJoinedContent,
   isFullBlockDeletionPatch,
+  isInsertBlocksPatch,
   normalizeVariantContentForPersistence,
   normalizeVariantPatchesForPersistence,
 } from '../src/domain/common/document-proposal-patches.util';
@@ -49,6 +51,20 @@ describe('document-proposal-patches.util', () => {
     expect(
       isFullBlockDeletionPatch(official[1]!.officialContent, patch),
     ).toBe(true);
+  });
+
+  it('builds insert-after patch for paragraphs appended at end', () => {
+    const official = blocks([{ id: 'b1', html: '<p>One</p>' }]);
+    const joined = '<p>One</p><p>Two</p><p>Three</p><p>Four</p>';
+    const computed = computeProposalPatchesFromJoinedContent(official, joined);
+    expect(computed.appendBlocks).toHaveLength(3);
+    const patch = buildAppendInsertPatch(official, computed.appendBlocks!);
+    expect(isInsertBlocksPatch(patch)).toBe(true);
+    expect(patch.insertAfterBlockId).toBe('b1');
+    expect(patch.insertBlocks).toHaveLength(3);
+    expect(patch.proposedText).toBe('');
+    expect(patch.previewContent).toContain('Two');
+    expect(patch.previewContent).toContain('One');
   });
 
   it('splits a block when the patch is partial', () => {
