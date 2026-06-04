@@ -715,9 +715,21 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         user?.id && isCommunityMember && obDocForHero?.id,
     );
 
-    const futureVisionCollaborativeDocumentHref = canOpenObCollaborativeDocument
+    const obDocumentHref = canOpenObCollaborativeDocument
         ? routes.communityDocument(chatId, obDocForHero!.id)
         : undefined;
+
+    const obProposalThreadsQuery = trpc.documentVariants.listByDocument.useQuery(
+        { documentId: obDocForHero?.id ?? '' },
+        { enabled: Boolean(obDocumentHref && obDocForHero?.id) },
+    );
+
+    const futureVisionCollaborativeDocumentHref =
+        obDocumentHref &&
+        obProposalThreadsQuery.isSuccess &&
+        (obProposalThreadsQuery.data?.threads.length ?? 0) > 0
+            ? obDocumentHref
+            : undefined;
 
     /** Hub CTAs: create post / project / event / Birzha publish — participants or leads only, plus superadmin. */
     const canUseCommunityHubWriteActions = Boolean(

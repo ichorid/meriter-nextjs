@@ -381,7 +381,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                         onClick={(e) => e.stopPropagation()}
                         className="inline-block text-sm font-medium text-primary hover:underline"
                       >
-                        {tCommunities('openCollaborativeDocument')}
+                        {tCommunities('showDocumentEditProposals')}
                       </Link>
                     ) : null}
                   </>

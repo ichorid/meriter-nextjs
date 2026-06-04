@@ -43,6 +43,7 @@ export interface DocumentVariantSuggestionProps {
   rangeEnd?: number;
   proposedText?: string;
   className?: string;
+  onViewVariant?: () => void;
   voteBreakdown?: React.ReactNode;
   adminActions?: React.ReactNode;
 }
@@ -65,10 +66,11 @@ export function DocumentVariantSuggestion({
   rangeEnd,
   proposedText,
   className,
+  onViewVariant,
   voteBreakdown,
   adminActions,
 }: DocumentVariantSuggestionProps) {
-  const tCanvas = useTranslations('pages.documents.canvas');
+  const tGdocs = useTranslations('pages.documents.gdocs');
   const focus = useDocumentCanvasFocus();
   const utils = trpc.useUtils();
 
@@ -182,17 +184,32 @@ export function DocumentVariantSuggestion({
         />
       ) : null}
 
-      {isOpen ? (
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="mt-3 h-8 rounded-lg text-xs"
-          onClick={openVote}
-        >
-          {tCanvas('sheetVote')}
-        </Button>
-      ) : null}
+      <div className="my-3 flex flex-wrap justify-end gap-2 py-0.5">
+        {onViewVariant ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-8 rounded-lg text-xs"
+            onClick={(e) => {
+              e.stopPropagation();
+              onViewVariant();
+            }}
+          >
+            {tGdocs('viewProposal')}
+          </Button>
+        ) : null}
+        {isOpen ? (
+          <Button
+            type="button"
+            size="sm"
+            className="h-8 rounded-lg text-xs"
+            onClick={openVote}
+          >
+            {tGdocs('supportProposal')}
+          </Button>
+        ) : null}
+      </div>
 
       {voteBreakdown}
 

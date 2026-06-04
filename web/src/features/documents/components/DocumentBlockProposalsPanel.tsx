@@ -76,6 +76,8 @@ export interface DocumentBlockProposalsPanelProps {
   t: DocTranslate;
   /** `compact` = metadata-only rail cards; preview opens in main canvas. */
   layout?: 'full' | 'compact';
+  /** e.g. close mobile proposals sheet when opening main-canvas preview. */
+  onVariantPreviewSelect?: () => void;
 }
 
 export function DocumentBlockProposalsPanel({
@@ -94,6 +96,7 @@ export function DocumentBlockProposalsPanel({
   addToast,
   t,
   layout = 'full',
+  onVariantPreviewSelect,
 }: DocumentBlockProposalsPanelProps) {
   const isCompact = layout === 'compact';
   const tCanvas = useTranslations('pages.documents.canvas');
@@ -199,6 +202,11 @@ export function DocumentBlockProposalsPanel({
 
   const isOfficialPreviewActive =
     focus?.variantPreview?.kind === 'official' && focus.variantPreview.blockId === block.id;
+
+  const openVariantPreview = (target: DocumentVariantPreviewTarget) => {
+    focus?.setVariantPreview(target);
+    onVariantPreviewSelect?.();
+  };
 
   const manualPickAvailable =
     docMode === 'manual' &&
@@ -388,7 +396,7 @@ export function DocumentBlockProposalsPanel({
             rating={officialRating}
             proposedByDisplayName={tCanvas('originalVariant')}
             isActive={isOfficialPreviewActive}
-            onSelect={() => focus?.setVariantPreview(officialPreviewTarget)}
+            onSelect={() => openVariantPreview(officialPreviewTarget)}
             trailing={
               <>
                 {reasonKey ? (
@@ -396,17 +404,30 @@ export function DocumentBlockProposalsPanel({
                     {t(reasonKey)}
                   </Badge>
                 ) : null}
-                {waveActiveEffective ? (
+                <div className="flex flex-wrap justify-end gap-2 py-0.5">
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-8 rounded-lg text-xs"
-                    onClick={openOfficialVote}
+                    className="h-8 shrink-0 rounded-lg text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openVariantPreview(officialPreviewTarget);
+                    }}
                   >
-                    {tCanvas('sheetVoteOfficial')}
+                    {tGdocs('viewProposal')}
                   </Button>
-                ) : null}
+                  {waveActiveEffective ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="h-8 shrink-0 rounded-lg text-xs"
+                      onClick={openOfficialVote}
+                    >
+                      {tGdocs('supportProposal')}
+                    </Button>
+                  ) : null}
+                </div>
                 {manualPickAvailable ? (
                   <Button
                     type="button"
@@ -455,17 +476,30 @@ export function DocumentBlockProposalsPanel({
             ) : (
               <p className="text-sm italic text-base-content/45">{t('noOfficialYet')}</p>
             )}
-            {waveActiveEffective ? (
+            <div className="my-3 flex flex-wrap justify-end gap-2 py-0.5">
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
-                className="mt-3 h-8 rounded-lg text-xs"
-                onClick={openOfficialVote}
+                className="h-8 rounded-lg text-xs"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openVariantPreview(officialPreviewTarget);
+                }}
               >
-                {tCanvas('sheetVoteOfficial')}
+                {tGdocs('viewProposal')}
               </Button>
-            ) : null}
+              {waveActiveEffective ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 rounded-lg text-xs"
+                  onClick={openOfficialVote}
+                >
+                  {tGdocs('supportProposal')}
+                </Button>
+              ) : null}
+            </div>
             {manualPickAvailable ? (
               <Button
                 type="button"
@@ -576,32 +610,45 @@ export function DocumentBlockProposalsPanel({
                 proposedAt={v.proposedAt}
                 proposerComment={v.proposerComment ?? variantRow.proposerComment}
                 isActive={Boolean(isVariantActive)}
-                onSelect={() => focus?.setVariantPreview(buildVariantPreview(variantRow))}
+                onSelect={() => openVariantPreview(buildVariantPreview(variantRow))}
                 trailing={
                   <>
-                    {isOpen ? (
+                    <div className="flex flex-wrap justify-end gap-2 py-0.5">
                       <Button
                         type="button"
                         size="sm"
                         variant="outline"
-                        className="h-8 rounded-lg text-xs"
+                        className="h-8 shrink-0 rounded-lg text-xs"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (!communityId) return;
-                          focus?.setFocusedBlockId(block.id);
-                          openDocumentVariantVoting({
-                            variantId: v.id,
-                            communityId,
-                            proposedBy: v.proposedBy,
-                            userId,
-                            docAllowDownvotes,
-                            community,
-                          });
+                          openVariantPreview(buildVariantPreview(variantRow));
                         }}
                       >
-                        {tCanvas('sheetVote')}
+                        {tGdocs('viewProposal')}
                       </Button>
-                    ) : null}
+                      {isOpen ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          className="h-8 shrink-0 rounded-lg text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (!communityId) return;
+                            focus?.setFocusedBlockId(block.id);
+                            openDocumentVariantVoting({
+                              variantId: v.id,
+                              communityId,
+                              proposedBy: v.proposedBy,
+                              userId,
+                              docAllowDownvotes,
+                              community,
+                            });
+                          }}
+                        >
+                          {tGdocs('supportProposal')}
+                        </Button>
+                      ) : null}
+                    </div>
                     {isOwnOpen ? (
                       <Button
                         type="button"
@@ -654,6 +701,7 @@ export function DocumentBlockProposalsPanel({
               addToast={addToast}
               t={t}
               blockType={block.blockType}
+              onViewVariant={() => openVariantPreview(buildVariantPreview(variantRow))}
               voteBreakdown={voteBreakdown}
               adminActions={adminActions ? <div className="mt-2 flex flex-col gap-1.5">{adminActions}</div> : null}
             />

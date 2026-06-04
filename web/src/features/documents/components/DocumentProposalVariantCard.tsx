@@ -97,7 +97,7 @@ export function DocumentProposalVariantCard({
           </div>
         </button>
         {trailing ? (
-          <div className="flex flex-col gap-1.5 border-t border-stitch-border/50 px-3 py-2">
+          <div className="flex flex-col gap-2 border-t border-stitch-border/50 px-3 py-3">
             {trailing}
           </div>
         ) : null}

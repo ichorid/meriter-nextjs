@@ -23,6 +23,7 @@ import { DocumentCanvasHeader } from '@/features/documents/components/DocumentCa
 import { DocumentUnifiedCanvas } from '@/features/documents/components/DocumentUnifiedCanvas';
 import { DocumentGdocsUnifiedEditor } from '@/features/documents/components/DocumentGdocsUnifiedEditor';
 import { DocumentProposalRail } from '@/features/documents/components/DocumentProposalRail';
+import { DocumentMobileProposalsDock } from '@/features/documents/components/DocumentMobileProposalsDock';
 import { DocumentCanvasMobileSheet } from '@/features/documents/components/DocumentCanvasMobileSheet';
 import { DocumentBlockAdminDialogs } from '@/features/documents/components/DocumentBlockAdminDialogs';
 import type { DocTranslate } from '@/features/documents/lib/document-canvas-shared';
@@ -263,7 +264,7 @@ export function CommunityDocumentDetailPageClient({
         >
           <DocumentCanvasFocusProvider {...focusProps}>
             <>
-              <div className="grid w-full grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_min(280px,32%)] lg:items-start">
+              <div className="grid w-full grid-cols-1 gap-4 pb-20 max-lg:pb-24 lg:grid-cols-[minmax(0,1fr)_min(280px,32%)] lg:items-start lg:pb-0">
                 <DocumentCanvas fullWidth>
                   <DocumentCanvasHeader
                     title={doc.title}
@@ -298,6 +299,7 @@ export function CommunityDocumentDetailPageClient({
                 />
               </div>
 
+              <DocumentMobileProposalsDock sections={doc.sections} />
               <DocumentCanvasMobileSheet />
               <DocumentBlockAdminDialogs />
             </>
