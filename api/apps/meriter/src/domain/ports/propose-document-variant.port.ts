@@ -22,9 +22,15 @@ export type ProposeDocumentVariantInput = {
   proposerComment?: string;
 };
 
+export type ProposeDocumentVariantResult = {
+  variant: DocumentBlockVariantSchemaClass;
+  mergedIntoThreadId?: string;
+  proposeWarning?: 'merged_into_voting';
+};
+
 export interface ProposeDocumentVariantPort {
   execute(
     userId: string,
     input: ProposeDocumentVariantInput,
-  ): Promise<DocumentBlockVariantSchemaClass>;
+  ): Promise<ProposeDocumentVariantResult>;
 }

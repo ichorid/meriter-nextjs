@@ -33,6 +33,10 @@ import {
   DocumentBlockVariantSchemaClass,
 } from '../../domain/models/document-block-variant/document-block-variant.schema';
 import {
+  DocumentVotingThreadSchema,
+  DocumentVotingThreadSchemaClass,
+} from '../../domain/models/document-voting-thread/document-voting-thread.schema';
+import {
   EventInviteSchema,
   EventInviteSchemaClass,
 } from '../../domain/models/event-invite/event-invite.schema';
@@ -138,6 +142,7 @@ import { votePersistenceProvider } from './vote.persistence.adapter';
       { name: PollSchemaClass.name, schema: PollSchema },
       { name: MeriterDocumentSchemaClass.name, schema: MeriterDocumentSchema },
       { name: DocumentBlockVariantSchemaClass.name, schema: DocumentBlockVariantSchema },
+      { name: DocumentVotingThreadSchemaClass.name, schema: DocumentVotingThreadSchema },
       { name: EventInviteSchemaClass.name, schema: EventInviteSchema },
       { name: NotificationSchemaClass.name, schema: NotificationSchema },
       { name: CommentSchemaClass.name, schema: CommentSchema },

@@ -54,6 +54,7 @@ export const documentVariantsRouter = router({
       const threads = new Map<
         string,
         {
+          threadId: string;
           blockId: string;
           officialExcerpt: string;
           waveOpen: boolean;
@@ -62,17 +63,19 @@ export const documentVariantsRouter = router({
       >();
 
       for (const variant of active) {
+        const threadKey = variant.votingThreadId ?? variant.blockId;
         const block = ctx.documentService.findBlock(doc, variant.blockId);
         const excerptPlain = block?.officialContent
           ? block.officialContent.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
           : '';
         const excerpt =
           excerptPlain.length > 120 ? `${excerptPlain.slice(0, 120)}…` : excerptPlain;
-        const existing = threads.get(variant.blockId);
+        const existing = threads.get(threadKey);
         if (existing) {
           existing.variants.push(variant);
         } else {
-          threads.set(variant.blockId, {
+          threads.set(threadKey, {
+            threadId: threadKey,
             blockId: variant.blockId,
             officialExcerpt: excerpt,
             waveOpen: ctx.documentService.isDocumentBlockVotingOpen(doc, variant.blockId),
