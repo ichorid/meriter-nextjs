@@ -1057,6 +1057,24 @@
   box-shadow: inset 0 -2px 0 rgb(168 85 247 / 0.65);
 }
 
+/* GDocs editor: spans with open proposals */
+.document-canvas-prose .document-proposal-range {
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: help;
+}
+
+:root .document-canvas-prose .document-proposal-range {
+  background: rgb(250 204 21 / 0.35);
+  box-shadow: inset 0 -2px 0 rgb(234 179 8 / 0.75);
+}
+
+[data-theme='dark'] .document-canvas-prose .document-proposal-range {
+  background: rgb(250 204 21 / 0.28);
+  box-shadow: inset 0 -2px 0 rgb(202 138 4 / 0.85);
+}
+
 /*
  * Document preview lists: custom ::before markers (margin on ul is overridden by prose).
  * Marker at li left edge; text indented via li padding-inline-start.

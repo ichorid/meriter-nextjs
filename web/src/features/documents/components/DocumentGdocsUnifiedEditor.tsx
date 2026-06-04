@@ -49,6 +49,8 @@ import {
 } from '@/features/documents/lib/document-canvas-shared';
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { refetchDocumentProposalCaches } from '@/features/documents/lib/document-variant-cache';
+import { buildOpenProposalHighlightRanges } from '@/features/documents/lib/document-open-proposal-highlights';
+import { joinDocumentBlocksToHtml } from '@/features/documents/lib/document-html-structure';
 import { canUseWalletForVoting } from '@/components/organisms/VotingPopup/voting-utils';
 import type { GdocsPersistMode } from '@/features/documents/lib/document-gdocs-editor';
 import { trpc } from '@/lib/trpc/client';
@@ -85,7 +87,8 @@ export function DocumentGdocsUnifiedEditor({
   const utils = trpc.useUtils();
 
   const primaryBlock = useMemo(() => getPrimaryDocumentBlock(sections), [sections]);
-  const initialHtml = primaryBlock?.officialHtml ?? '';
+  const joinedOfficialHtml = useMemo(() => joinDocumentBlocksToHtml(sections), [sections]);
+  const initialHtml = (joinedOfficialHtml || primaryBlock?.officialHtml) ?? '';
   const draftKey = documentEditorDraftKey(documentId, focus.userId);
   const htmlRef = useRef(initialHtml);
   const lastPersistedHtmlRef = useRef(initialHtml);
@@ -383,7 +386,7 @@ export function DocumentGdocsUnifiedEditor({
 
   const syncMutation = trpc.documents.syncStructureFromHtml.useMutation({
     onSuccess: async (result) => {
-      const serverHtml = getPrimaryDocumentBlock(result.document.sections)?.officialHtml ?? '';
+      const serverHtml = joinDocumentBlocksToHtml(result.document.sections);
       expectedUpdatedAtRef.current = result.document.updatedAt;
       lastPersistedHtmlRef.current = serverHtml;
       htmlRef.current = serverHtml;
@@ -414,7 +417,9 @@ export function DocumentGdocsUnifiedEditor({
       setIsDirty(false);
       onDirtyChange?.(false);
       focus.setFocusedBlockId(variant.blockId);
+      await utils.documents.getById.invalidate({ id: documentId });
       await refetchDocumentProposalCaches(utils, documentId, variant.blockId);
+      setEditorContentKey((k) => k + 1);
       focus.addToast(tGdocs('proposalSubmitted'), 'success');
       onSynced?.();
     },
@@ -688,6 +693,21 @@ export function DocumentGdocsUnifiedEditor({
     );
   }, [effectiveLockedRanges, textSelection]);
 
+  const threadsQuery = trpc.documentVariants.listByDocument.useQuery(
+    { documentId },
+    { enabled: Boolean(documentId) },
+  );
+
+  const proposalHighlightRanges = useMemo(() => {
+    const open =
+      threadsQuery.data?.threads.flatMap((thread) =>
+        thread.variants.filter((v) => v.status === 'open'),
+      ) ?? [];
+    return buildOpenProposalHighlightRanges(sections, open, {
+      tooltipPrefix: tGdocs('openProposalsTooltipPrefix'),
+    });
+  }, [sections, threadsQuery.data, tGdocs]);
+
   const lockedRangeTooltip = canManageDocument
     ? tGdocs('lockedRangeTooltipAdmin', {
         defaultMessage:
@@ -841,6 +861,7 @@ export function DocumentGdocsUnifiedEditor({
           disabled={isSaving || (primaryBlock.proposalsLocked && !canManageDocument)}
           lockedRanges={effectiveLockedRanges}
           lockedRangeTooltip={lockedRangeTooltip}
+          proposalHighlightRanges={proposalHighlightRanges}
         />
       </div>
 

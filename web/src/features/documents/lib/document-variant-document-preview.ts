@@ -1,3 +1,4 @@
+import { buildJoinedHtmlFromPatches } from '@/features/documents/lib/document-open-proposal-highlights';
 import {
   joinDocumentBlocksToHtml,
   joinDocumentWithBlockOverride,
@@ -24,8 +25,14 @@ export function buildDocumentVariantPreviewPair(
   blockOfficialHtml: string,
   variant: VariantPreviewInput,
 ): DocumentVariantDocumentPreviewPair {
-  const variantBlockHtml = resolveVariantBlockPreviewHtml(blockOfficialHtml, variant);
   const officialHtml = joinDocumentBlocksToHtml(sections);
+  if (variant.proposalScope === 'patches' && variant.patches && variant.patches.length > 0) {
+    return {
+      officialHtml,
+      variantHtml: buildJoinedHtmlFromPatches(sections, variant.patches),
+    };
+  }
+  const variantBlockHtml = resolveVariantBlockPreviewHtml(blockOfficialHtml, variant);
   const variantHtml = joinDocumentWithBlockOverride(sections, blockId, variantBlockHtml);
   return { officialHtml, variantHtml };
 }

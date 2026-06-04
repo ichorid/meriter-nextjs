@@ -5,6 +5,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import { cn } from '@/lib/utils';
 import { createEditorExtensions } from './create-editor-extensions';
 import { createLockedRangeHighlightExtension } from './locked-range-highlight-extension';
+import { createProposalRangeHighlightExtension } from './proposal-range-highlight-extension';
 import { FormatToolbar } from './FormatToolbar';
 import { DocumentStructureToolbar } from './DocumentStructureToolbar';
 import type { RichTextEditorProps } from './types';
@@ -21,19 +22,30 @@ export function RichTextEditor({
   minEditorHeight = '150px',
   lockedRanges = [],
   lockedRangeTooltip = '',
+  proposalHighlightRanges = [],
   toolbarSecondary,
 }: RichTextEditorProps) {
   const showDocumentToolbar = toolbar === 'document';
   const lockedRangesRef = useRef(lockedRanges);
   const lockedTooltipRef = useRef(lockedRangeTooltip);
+  const proposalRangesRef = useRef(proposalHighlightRanges);
   lockedRangesRef.current = lockedRanges;
   lockedTooltipRef.current = lockedRangeTooltip;
+  proposalRangesRef.current = proposalHighlightRanges;
 
-  const highlightExtension = useMemo(
+  const lockedHighlightExtension = useMemo(
     () =>
       createLockedRangeHighlightExtension({
         getRanges: () => lockedRangesRef.current,
         getTooltip: () => lockedTooltipRef.current,
+      }),
+    [],
+  );
+
+  const proposalHighlightExtension = useMemo(
+    () =>
+      createProposalRangeHighlightExtension({
+        getRanges: () => proposalRangesRef.current,
       }),
     [],
   );
@@ -43,8 +55,20 @@ export function RichTextEditor({
     [lockedRanges],
   );
 
+  const proposalRangesKey = useMemo(
+    () =>
+      proposalHighlightRanges
+        .map((r) => `${r.rangeStart}:${r.rangeEnd}:${r.tooltip.length}`)
+        .join('|'),
+    [proposalHighlightRanges],
+  );
+
   const editor = useEditor({
-    extensions: [...createEditorExtensions({ placeholder }), highlightExtension],
+    extensions: [
+      ...createEditorExtensions({ placeholder }),
+      lockedHighlightExtension,
+      proposalHighlightExtension,
+    ],
     content: content || '',
     editable,
     immediatelyRender: false,
@@ -67,7 +91,7 @@ export function RichTextEditor({
       return;
     }
     editor.view.dispatch(editor.state.tr);
-  }, [editor, lockedRangesKey, lockedRangeTooltip]);
+  }, [editor, lockedRangesKey, lockedRangeTooltip, proposalRangesKey]);
 
   useEffect(() => {
     if (!editor) {

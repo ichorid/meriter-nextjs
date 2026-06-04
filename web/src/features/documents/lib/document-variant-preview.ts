@@ -20,6 +20,14 @@ export type VariantDisplayPreview = {
 
 export type VariantPreviewInput = {
   content: string;
+  proposalScope?: 'block' | 'patches';
+  patches?: Array<{
+    blockId: string;
+    rangeStart: number;
+    rangeEnd: number;
+    proposedText: string;
+    previewContent: string;
+  }>;
   rangeStart?: number;
   rangeEnd?: number;
   proposedText?: string;

@@ -66,9 +66,18 @@ export function mergeRangeIntoBlockHtml(
   rangeEnd: number,
   proposedText: string,
 ): string {
+  const normalized = normalizeDeletionBounds(officialHtml, {
+    rangeStart,
+    rangeEnd,
+    proposedText,
+  });
   const plain = blockHtmlToPlainText(officialHtml ?? '');
-  const { rangeStart: rs, rangeEnd: re } = normalizeRangeBounds(plain.length, rangeStart, rangeEnd);
-  const replacement = (proposedText ?? '').trim();
+  const { rangeStart: rs, rangeEnd: re } = normalizeRangeBounds(
+    plain.length,
+    normalized.rangeStart,
+    normalized.rangeEnd,
+  );
+  const replacement = normalized.proposedText.trim();
   const before = plain.slice(0, rs);
   const after = plain.slice(re);
   const mergedPlain = before + blockHtmlToPlainText(replacement) + after;

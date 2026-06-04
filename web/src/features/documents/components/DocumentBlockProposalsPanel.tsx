@@ -9,6 +9,7 @@ import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { DocumentProposalVariantCard } from '@/features/documents/components/DocumentProposalVariantCard';
+import { DocumentProposalVariantRating } from '@/features/documents/components/DocumentProposalVariantRating';
 import { DocumentVariantSuggestion } from '@/features/documents/components/DocumentVariantSuggestion';
 import type { DocumentVariantPreviewTarget } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { DocumentVariantVoteBreakdown } from '@/features/documents/components/DocumentVariantVoteBreakdown';
@@ -31,6 +32,7 @@ import {
 } from '@/features/documents/lib/document-canvas-shared';
 import { buildDocumentVariantPreviewPair } from '@/features/documents/lib/document-variant-document-preview';
 import { resolveVariantBlockPreviewHtml } from '@/features/documents/lib/document-block-merge';
+import type { VariantPreviewInput } from '@/features/documents/lib/document-variant-preview';
 import { joinDocumentBlocksToHtml } from '@/features/documents/lib/document-html-structure';
 import {
   optimisticallyRemoveVariantFromCaches,
@@ -76,8 +78,8 @@ export interface DocumentBlockProposalsPanelProps {
   t: DocTranslate;
   /** `compact` = metadata-only rail cards; preview opens in main canvas. */
   layout?: 'full' | 'compact';
-  /** e.g. close mobile proposals sheet when opening main-canvas preview. */
-  onVariantPreviewSelect?: () => void;
+  /** e.g. close mobile proposals sheet before preview or voting UI. */
+  onDismissProposalsSheet?: () => void;
 }
 
 export function DocumentBlockProposalsPanel({
@@ -96,7 +98,7 @@ export function DocumentBlockProposalsPanel({
   addToast,
   t,
   layout = 'full',
-  onVariantPreviewSelect,
+  onDismissProposalsSheet,
 }: DocumentBlockProposalsPanelProps) {
   const isCompact = layout === 'compact';
   const tCanvas = useTranslations('pages.documents.canvas');
@@ -160,8 +162,11 @@ export function DocumentBlockProposalsPanel({
   const buildVariantPreview = (
     v: (typeof activeVariants)[number] & { proposedByDisplayName?: string },
   ): DocumentVariantPreviewTarget => {
-    const variantInput = {
+    const variantInput: VariantPreviewInput = {
       content: v.content,
+      proposalScope: (v as { proposalScope?: VariantPreviewInput['proposalScope'] })
+        .proposalScope,
+      patches: (v as { patches?: VariantPreviewInput['patches'] }).patches,
       rangeStart: v.rangeStart,
       rangeEnd: v.rangeEnd,
       proposedText: v.proposedText,
@@ -169,10 +174,7 @@ export function DocumentBlockProposalsPanel({
     const variantBlockHtml = resolveVariantBlockPreviewHtml(blockOfficialHtml, variantInput);
     const { officialHtml, variantHtml } = useDocumentScope
       ? buildDocumentVariantPreviewPair(sections, block.id, blockOfficialHtml, variantInput)
-      : {
-          officialHtml: blockOfficialHtml,
-          variantHtml: variantBlockHtml,
-        };
+      : { officialHtml: blockOfficialHtml, variantHtml: variantBlockHtml };
     return {
       kind: 'variant',
       variantId: v.id,
@@ -203,9 +205,15 @@ export function DocumentBlockProposalsPanel({
   const isOfficialPreviewActive =
     focus?.variantPreview?.kind === 'official' && focus.variantPreview.blockId === block.id;
 
+  const returnToProposalsSheet = Boolean(onDismissProposalsSheet);
+
+  const dismissProposalsSheet = () => {
+    onDismissProposalsSheet?.();
+  };
+
   const openVariantPreview = (target: DocumentVariantPreviewTarget) => {
     focus?.setVariantPreview(target);
-    onVariantPreviewSelect?.();
+    dismissProposalsSheet();
   };
 
   const manualPickAvailable =
@@ -333,6 +341,7 @@ export function DocumentBlockProposalsPanel({
   const openOfficialVote = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!communityId) return;
+    dismissProposalsSheet();
     openDocumentOfficialVoting({
       documentId,
       blockId: block.id,
@@ -340,6 +349,7 @@ export function DocumentBlockProposalsPanel({
       userId,
       docAllowDownvotes,
       community,
+      returnToProposalsSheet,
     });
   };
 
@@ -372,6 +382,7 @@ export function DocumentBlockProposalsPanel({
                 className="h-7 shrink-0 rounded-lg px-2 text-[11px]"
                 onClick={(e) => {
                   e.stopPropagation();
+                  dismissProposalsSheet();
                   focus?.openAdminDialog({ kind: 'closeVoting', blockId: block.id });
                 }}
               >
@@ -393,7 +404,6 @@ export function DocumentBlockProposalsPanel({
           <DocumentProposalVariantCard
             variantId={officialTargetId}
             status="open"
-            rating={officialRating}
             proposedByDisplayName={tCanvas('originalVariant')}
             isActive={isOfficialPreviewActive}
             onSelect={() => openVariantPreview(officialPreviewTarget)}
@@ -404,29 +414,32 @@ export function DocumentBlockProposalsPanel({
                     {t(reasonKey)}
                   </Badge>
                 ) : null}
-                <div className="flex flex-wrap justify-end gap-2 py-0.5">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="h-8 shrink-0 rounded-lg text-xs"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openVariantPreview(officialPreviewTarget);
-                    }}
-                  >
-                    {tGdocs('viewProposal')}
-                  </Button>
-                  {waveActiveEffective ? (
+                <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-0.5">
+                  <DocumentProposalVariantRating score={officialRating} />
+                  <div className="flex flex-wrap justify-end gap-2">
                     <Button
                       type="button"
                       size="sm"
+                      variant="outline"
                       className="h-8 shrink-0 rounded-lg text-xs"
-                      onClick={openOfficialVote}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openVariantPreview(officialPreviewTarget);
+                      }}
                     >
-                      {tGdocs('supportProposal')}
+                      {tGdocs('viewProposal')}
                     </Button>
-                  ) : null}
+                    {waveActiveEffective ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-8 shrink-0 rounded-lg text-xs"
+                        onClick={openOfficialVote}
+                      >
+                        {tGdocs('supportProposal')}
+                      </Button>
+                    ) : null}
+                  </div>
                 </div>
                 {manualPickAvailable ? (
                   <Button
@@ -465,7 +478,6 @@ export function DocumentBlockProposalsPanel({
                   {t(reasonKey)}
                 </Badge>
               ) : null}
-              <span className="text-base-content/55">{t('rating', { rating: officialRating })}</span>
             </div>
             {(block.officialContent ?? '').trim() ? (
               <DocumentRichContent
@@ -476,29 +488,32 @@ export function DocumentBlockProposalsPanel({
             ) : (
               <p className="text-sm italic text-base-content/45">{t('noOfficialYet')}</p>
             )}
-            <div className="my-3 flex flex-wrap justify-end gap-2 py-0.5">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-8 rounded-lg text-xs"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openVariantPreview(officialPreviewTarget);
-                }}
-              >
-                {tGdocs('viewProposal')}
-              </Button>
-              {waveActiveEffective ? (
+            <div className="my-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-0.5">
+              <DocumentProposalVariantRating score={officialRating} />
+              <div className="flex flex-wrap justify-end gap-2">
                 <Button
                   type="button"
                   size="sm"
+                  variant="outline"
                   className="h-8 rounded-lg text-xs"
-                  onClick={openOfficialVote}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openVariantPreview(officialPreviewTarget);
+                  }}
                 >
-                  {tGdocs('supportProposal')}
+                  {tGdocs('viewProposal')}
                 </Button>
-              ) : null}
+                {waveActiveEffective ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 rounded-lg text-xs"
+                    onClick={openOfficialVote}
+                  >
+                    {tGdocs('supportProposal')}
+                  </Button>
+                ) : null}
+              </div>
             </div>
             {manualPickAvailable ? (
               <Button
@@ -603,7 +618,6 @@ export function DocumentBlockProposalsPanel({
                 key={v.id}
                 variantId={v.id}
                 status={v.status}
-                rating={v.rating ?? 0}
                 proposedByDisplayName={
                   variantRow.proposedByDisplayName ?? v.proposedBy.slice(0, 8)
                 }
@@ -613,41 +627,46 @@ export function DocumentBlockProposalsPanel({
                 onSelect={() => openVariantPreview(buildVariantPreview(variantRow))}
                 trailing={
                   <>
-                    <div className="flex flex-wrap justify-end gap-2 py-0.5">
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        className="h-8 shrink-0 rounded-lg text-xs"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openVariantPreview(buildVariantPreview(variantRow));
-                        }}
-                      >
-                        {tGdocs('viewProposal')}
-                      </Button>
-                      {isOpen ? (
+                    <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-0.5">
+                      <DocumentProposalVariantRating score={v.rating ?? 0} />
+                      <div className="flex flex-wrap justify-end gap-2">
                         <Button
                           type="button"
                           size="sm"
+                          variant="outline"
                           className="h-8 shrink-0 rounded-lg text-xs"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (!communityId) return;
-                            focus?.setFocusedBlockId(block.id);
-                            openDocumentVariantVoting({
-                              variantId: v.id,
-                              communityId,
-                              proposedBy: v.proposedBy,
-                              userId,
-                              docAllowDownvotes,
-                              community,
-                            });
+                            openVariantPreview(buildVariantPreview(variantRow));
                           }}
                         >
-                          {tGdocs('supportProposal')}
+                          {tGdocs('viewProposal')}
                         </Button>
-                      ) : null}
+                        {isOpen ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            className="h-8 shrink-0 rounded-lg text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (!communityId) return;
+                              focus?.setFocusedBlockId(block.id);
+                              dismissProposalsSheet();
+                              openDocumentVariantVoting({
+                                variantId: v.id,
+                                communityId,
+                                proposedBy: v.proposedBy,
+                                userId,
+                                docAllowDownvotes,
+                                community,
+                                returnToProposalsSheet,
+                              });
+                            }}
+                          >
+                            {tGdocs('supportProposal')}
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                     {isOwnOpen ? (
                       <Button
@@ -702,6 +721,7 @@ export function DocumentBlockProposalsPanel({
               t={t}
               blockType={block.blockType}
               onViewVariant={() => openVariantPreview(buildVariantPreview(variantRow))}
+              onDismissProposalsSheet={dismissProposalsSheet}
               voteBreakdown={voteBreakdown}
               adminActions={adminActions ? <div className="mt-2 flex flex-col gap-1.5">{adminActions}</div> : null}
             />

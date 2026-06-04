@@ -2,12 +2,11 @@
 
 import { useLocale, useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
-import { variantStatusLabelKey, variantStatusToneClass } from '@/features/documents/lib/document-canvas-shared';
+import { variantStatusToneClass } from '@/features/documents/lib/document-canvas-shared';
 
 export type DocumentProposalVariantCardProps = {
   variantId: string;
   status: 'open' | 'closed-winner' | 'closed-not-winner' | 'applied' | 'withdrawn';
-  rating: number;
   proposedByDisplayName: string;
   proposedAt?: string | Date;
   proposerComment?: string | null;
@@ -36,7 +35,6 @@ function formatDate(value: string | Date | undefined, locale: string): string | 
 
 export function DocumentProposalVariantCard({
   status,
-  rating,
   proposedByDisplayName,
   proposedAt,
   proposerComment,
@@ -44,7 +42,6 @@ export function DocumentProposalVariantCard({
   onSelect,
   trailing,
 }: DocumentProposalVariantCardProps) {
-  const t = useTranslations('pages.documents');
   const tGdocs = useTranslations('pages.documents.gdocs');
   const locale = useLocale();
   const dateLabel = formatDate(proposedAt, locale);
@@ -82,9 +79,6 @@ export function DocumentProposalVariantCard({
               {dateLabel ? (
                 <p className="text-[11px] text-base-content/50">{dateLabel}</p>
               ) : null}
-              <p className="mt-1.5 text-[11px] text-base-content/55">
-                {t(variantStatusLabelKey(status))} · {t('rating', { rating })}
-              </p>
               {comment ? (
                 <p className="mt-2 text-xs leading-relaxed text-base-content/80">
                   <span className="font-medium text-base-content/55">

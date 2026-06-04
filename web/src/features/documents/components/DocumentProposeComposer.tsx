@@ -23,6 +23,7 @@ import {
 } from '@/features/documents/types/document-variant-reference';
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { refetchDocumentProposalCaches } from '@/features/documents/lib/document-variant-cache';
+import { resolveBlockProposeMutationPayload } from '@/features/documents/lib/document-variant-propose-target';
 
 export interface DocumentProposeComposerProps {
   blockId: string;
@@ -94,14 +95,21 @@ export function DocumentProposeComposer({
     (proposerComment?: string) => {
       const trimmed = proposalBodyRef.current.trim();
       const refs = referencesForPropose(referenceDrafts);
-      const isRange =
-        rangeStart !== undefined && rangeEnd !== undefined && rangeEnd > rangeStart;
+      const blockHtml = focus.getBlock(blockId)?.officialContent ?? normalizedInitial;
+      const selectionRange =
+        rangeStart !== undefined && rangeEnd !== undefined
+          ? { rangeStart, rangeEnd }
+          : undefined;
+      const payload = resolveBlockProposeMutationPayload(
+        focus.sections,
+        blockId,
+        blockHtml,
+        trimmed,
+        selectionRange,
+      );
       proposeMutation.mutate({
         documentId,
-        blockId,
-        ...(isRange
-          ? { rangeStart, rangeEnd, proposedText: trimmed }
-          : { content: trimmed }),
+        ...payload,
         ...(refs.length > 0 ? { references: refs } : {}),
         ...(proposerComment ? { proposerComment } : {}),
       });
@@ -110,6 +118,8 @@ export function DocumentProposeComposer({
     [
       blockId,
       documentId,
+      focus,
+      normalizedInitial,
       proposeMutation,
       rangeEnd,
       rangeStart,

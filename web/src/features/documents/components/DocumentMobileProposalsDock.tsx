@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useUIStore } from '@/stores/ui.store';
 import { useTranslations } from 'next-intl';
 import { MessageSquareText } from 'lucide-react';
 import { BottomActionSheet } from '@/components/ui/BottomActionSheet';
@@ -25,6 +26,17 @@ export function DocumentMobileProposalsDock({ sections }: DocumentMobileProposal
   const tGdocs = useTranslations('pages.documents.gdocs');
   const isMobile = !useMediaQuery('(min-width: 1024px)');
   const [sheetOpen, setSheetOpen] = useState(false);
+  const returnToProposalsSheet = useUIStore((s) => s.returnToDocumentProposalsSheet);
+  const activeVotingTarget = useUIStore((s) => s.activeVotingTarget);
+  const clearReturnToProposalsSheet = useUIStore((s) => s.clearReturnToDocumentProposalsSheet);
+
+  useEffect(() => {
+    if (!returnToProposalsSheet || activeVotingTarget) {
+      return;
+    }
+    setSheetOpen(true);
+    clearReturnToProposalsSheet();
+  }, [returnToProposalsSheet, activeVotingTarget, clearReturnToProposalsSheet]);
 
   const documentId = focus?.documentId ?? '';
   const threadsQuery = trpc.documentVariants.listByDocument.useQuery(
@@ -77,7 +89,7 @@ export function DocumentMobileProposalsDock({ sections }: DocumentMobileProposal
         </p>
         <DocumentProposalRailContent
           sections={sections}
-          onVariantPreviewSelect={() => setSheetOpen(false)}
+          onDismissProposalsSheet={() => setSheetOpen(false)}
         />
       </BottomActionSheet>
     </>

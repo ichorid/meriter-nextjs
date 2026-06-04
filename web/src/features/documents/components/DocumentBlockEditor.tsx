@@ -27,6 +27,11 @@ export interface DocumentBlockEditorProps {
   className?: string;
   lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
   lockedRangeTooltip?: string;
+  proposalHighlightRanges?: Array<{
+    rangeStart: number;
+    rangeEnd: number;
+    tooltip: string;
+  }>;
   editorContainerClassName?: string;
   toolbarSecondary?: ReactNode;
 }
@@ -212,6 +217,7 @@ export function DocumentBlockEditor({
   className,
   lockedRanges,
   lockedRangeTooltip,
+  proposalHighlightRanges,
   editorContainerClassName,
   toolbarSecondary,
 }: DocumentBlockEditorProps) {
@@ -277,6 +283,7 @@ export function DocumentBlockEditor({
           minEditorHeight="120px"
           lockedRanges={lockedRanges}
           lockedRangeTooltip={lockedRangeTooltip}
+          proposalHighlightRanges={proposalHighlightRanges}
           toolbarSecondary={toolbarSecondary}
         />
       );

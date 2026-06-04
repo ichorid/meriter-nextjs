@@ -33,6 +33,19 @@ describe('resolveProposeDiffPayload', () => {
     expect(merged).toContain('Мир');
   });
 
+  it('detects deletion of a lone one-letter paragraph line', () => {
+    const previous = '<p>Prefix.</p><p>Т</p><p>Suffix</p>';
+    const next = '<p>Prefix.</p><p>Suffix</p>';
+    const payload = resolveProposeDiffPayload(previous, next);
+    expect(payload.mode).toBe('range');
+    if (payload.mode !== 'range') {
+      return;
+    }
+    expect(payload.proposedText).toBe('');
+    const plain = blockHtmlToPlainText(previous);
+    expect(plain.slice(payload.rangeStart, payload.rangeEnd)).toContain('Т');
+  });
+
   it('keeps a short intentional prefix when only a small tail is removed', () => {
     const previous = '<p>Hello world</p>';
     const next = '<p>Hello</p>';

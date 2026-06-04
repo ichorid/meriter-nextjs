@@ -2,6 +2,15 @@
  * Plain text for document block ranges (UTF-16, aligned with API blockHtmlToPlainText).
  */
 export function blockHtmlToPlainText(html: string): string {
+  return normalizeBlockPlainText(html, true);
+}
+
+/** Plain text for propose/diff bounds — preserves extra newlines after line deletions. */
+export function blockHtmlToPlainTextForDiff(html: string): string {
+  return normalizeBlockPlainText(html, false);
+}
+
+function normalizeBlockPlainText(html: string, collapseExtraNewlines: boolean): string {
   if (!html?.trim()) {
     return '';
   }
@@ -12,7 +21,10 @@ export function blockHtmlToPlainText(html: string): string {
     .replace(/<\/h[1-6]>/gi, '\n')
     .replace(/<[^>]+>/g, '');
   text = decodeBasicEntities(text);
-  return text.replace(/\n{3,}/g, '\n\n').trimEnd();
+  if (collapseExtraNewlines) {
+    text = text.replace(/\n{3,}/g, '\n\n');
+  }
+  return text.trimEnd();
 }
 
 function decodeBasicEntities(raw: string): string {

@@ -9,7 +9,8 @@ import { DocumentVariantContextPreview } from '@/features/documents/components/D
 import { DocumentVariantRevisionView } from '@/features/documents/components/DocumentVariantRevisionView';
 import { buildVariantDisplayPreview } from '@/features/documents/lib/document-variant-preview';
 import { DocumentVariantReferencesList } from '@/features/documents/components/DocumentVariantReferencesList';
-import { variantStatusLabelKey, variantStatusToneClass, type DocTranslate } from '@/features/documents/lib/document-canvas-shared';
+import { DocumentProposalVariantRating } from '@/features/documents/components/DocumentProposalVariantRating';
+import { variantStatusToneClass, type DocTranslate } from '@/features/documents/lib/document-canvas-shared';
 import { openDocumentVariantVoting } from '@/features/documents/lib/document-variant-voting';
 import type { DocumentVariantReference } from '@/features/documents/types/document-variant-reference';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
@@ -44,6 +45,7 @@ export interface DocumentVariantSuggestionProps {
   proposedText?: string;
   className?: string;
   onViewVariant?: () => void;
+  onDismissProposalsSheet?: () => void;
   voteBreakdown?: React.ReactNode;
   adminActions?: React.ReactNode;
 }
@@ -67,6 +69,7 @@ export function DocumentVariantSuggestion({
   proposedText,
   className,
   onViewVariant,
+  onDismissProposalsSheet,
   voteBreakdown,
   adminActions,
 }: DocumentVariantSuggestionProps) {
@@ -115,6 +118,7 @@ export function DocumentVariantSuggestion({
   const openVote = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!communityId) return;
+    onDismissProposalsSheet?.();
     focus?.setFocusedBlockId(blockId);
     openDocumentVariantVoting({
       variantId: variant.id,
@@ -123,6 +127,7 @@ export function DocumentVariantSuggestion({
       userId,
       docAllowDownvotes,
       community,
+      returnToProposalsSheet: Boolean(onDismissProposalsSheet),
     });
   };
 
@@ -141,11 +146,6 @@ export function DocumentVariantSuggestion({
           )}
           aria-hidden
         />
-        <span className="font-medium text-base-content/80">
-          {t(variantStatusLabelKey(variant.status))}
-        </span>
-        <span className="text-base-content/45">·</span>
-        <span className="text-base-content/55">{t('rating', { rating: variant.rating ?? 0 })}</span>
         {isOwnOpen ? (
           <button
             type="button"
@@ -184,31 +184,34 @@ export function DocumentVariantSuggestion({
         />
       ) : null}
 
-      <div className="my-3 flex flex-wrap justify-end gap-2 py-0.5">
-        {onViewVariant ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8 rounded-lg text-xs"
-            onClick={(e) => {
-              e.stopPropagation();
-              onViewVariant();
-            }}
-          >
-            {tGdocs('viewProposal')}
-          </Button>
-        ) : null}
-        {isOpen ? (
-          <Button
-            type="button"
-            size="sm"
-            className="h-8 rounded-lg text-xs"
-            onClick={openVote}
-          >
-            {tGdocs('supportProposal')}
-          </Button>
-        ) : null}
+      <div className="my-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-0.5">
+        <DocumentProposalVariantRating score={variant.rating ?? 0} />
+        <div className="flex flex-wrap justify-end gap-2">
+          {onViewVariant ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8 rounded-lg text-xs"
+              onClick={(e) => {
+                e.stopPropagation();
+                onViewVariant();
+              }}
+            >
+              {tGdocs('viewProposal')}
+            </Button>
+          ) : null}
+          {isOpen ? (
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 rounded-lg text-xs"
+              onClick={openVote}
+            >
+              {tGdocs('supportProposal')}
+            </Button>
+          ) : null}
+        </div>
       </div>
 
       {voteBreakdown}

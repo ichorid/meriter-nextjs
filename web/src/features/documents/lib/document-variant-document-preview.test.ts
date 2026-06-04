@@ -31,6 +31,31 @@ describe('document variant document preview', () => {
     expect(joined).toBe('<p>Alpha</p><p>Beta changed</p>');
   });
 
+  it('buildDocumentVariantPreviewPair uses per-block patches for multi-block proposals', () => {
+    const pair = buildDocumentVariantPreviewPair(sections, 'b2', '<p>Beta</p>', {
+      content: '',
+      proposalScope: 'patches',
+      patches: [
+        {
+          blockId: 'b1',
+          rangeStart: 0,
+          rangeEnd: 5,
+          proposedText: '<p>Alpha changed</p>',
+          previewContent: '<p>Alpha changed</p>',
+        },
+        {
+          blockId: 'b2',
+          rangeStart: 0,
+          rangeEnd: 4,
+          proposedText: '<p>Beta changed</p>',
+          previewContent: '<p>Beta changed</p>',
+        },
+      ],
+    });
+    expect(pair.officialHtml).toBe(joinDocumentBlocksToHtml(sections));
+    expect(pair.variantHtml).toBe('<p>Alpha changed</p><p>Beta changed</p>');
+  });
+
   it('buildDocumentVariantPreviewPair keeps other blocks and merges range edit', () => {
     const pair = buildDocumentVariantPreviewPair(sections, 'b2', '<p>Beta</p>', {
       content: '<p>Beta changed</p>',

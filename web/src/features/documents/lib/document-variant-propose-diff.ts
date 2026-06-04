@@ -1,5 +1,5 @@
 import { expandDeletionRangeStart } from '@/features/documents/lib/document-plain-range';
-import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
+import { blockHtmlToPlainTextForDiff } from '@/features/documents/lib/document-plain-text';
 import { findPlainTextChangeBounds } from '@/features/documents/lib/document-variant-preview';
 
 export type ProposeDiffPayload =
@@ -29,8 +29,8 @@ export function resolveProposeDiffPayload(
   nextHtml: string,
 ): ProposeDiffPayload {
   const trimmed = nextHtml.trim();
-  const previousPlain = blockHtmlToPlainText(previousHtml);
-  const bounds = findPlainTextChangeBounds(previousPlain, blockHtmlToPlainText(trimmed));
+  const previousPlain = blockHtmlToPlainTextForDiff(previousHtml);
+  const bounds = findPlainTextChangeBounds(previousPlain, blockHtmlToPlainTextForDiff(trimmed));
 
   if (bounds) {
     let { rangeStart, rangeEnd, proposedText } = bounds;

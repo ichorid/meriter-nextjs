@@ -28,6 +28,12 @@ export interface RichTextEditorProps {
   /** Plain-text UTF-16 spans to highlight as admin-pinned (GDocs editor). */
   lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
   lockedRangeTooltip?: string;
+  /** Open proposal spans in editor plain-text coordinates (yellow highlight). */
+  proposalHighlightRanges?: Array<{
+    rangeStart: number;
+    rangeEnd: number;
+    tooltip: string;
+  }>;
   /** Second toolbar row below formatting controls (e.g. GDocs save/pin). */
   toolbarSecondary?: ReactNode;
 }

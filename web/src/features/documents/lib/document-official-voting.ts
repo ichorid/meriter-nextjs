@@ -11,8 +11,10 @@ export function openDocumentOfficialVoting(args: {
   userId: string;
   docAllowDownvotes: boolean;
   community: Community | null | undefined;
+  returnToProposalsSheet?: boolean;
 }): void {
-  const { documentId, blockId, communityId, userId, docAllowDownvotes, community } = args;
+  const { documentId, blockId, communityId, userId, docAllowDownvotes, community, returnToProposalsSheet } =
+    args;
   openDocumentVariantVoting({
     variantId: buildOfficialBlockVoteTargetId(documentId, blockId),
     communityId,
@@ -22,5 +24,6 @@ export function openDocumentOfficialVoting(args: {
     community,
     targetType: 'document-block-official',
     documentVariantIsOwn: false,
+    returnToProposalsSheet,
   });
 }

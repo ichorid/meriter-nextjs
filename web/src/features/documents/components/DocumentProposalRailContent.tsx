@@ -13,14 +13,14 @@ import { cn } from '@/lib/utils';
 export interface DocumentProposalRailContentProps {
   sections: unknown;
   className?: string;
-  onVariantPreviewSelect?: () => void;
+  onDismissProposalsSheet?: () => void;
 }
 
 /** Shared body for desktop proposal rail and mobile proposals sheet. */
 export function DocumentProposalRailContent({
   sections,
   className,
-  onVariantPreviewSelect,
+  onDismissProposalsSheet,
 }: DocumentProposalRailContentProps) {
   const tGdocs = useTranslations('pages.documents.gdocs');
   const focus = useDocumentCanvasFocusRequired();
@@ -135,7 +135,7 @@ export function DocumentProposalRailContent({
           addToast={focus.addToast}
           t={focus.t}
           layout="compact"
-          onVariantPreviewSelect={onVariantPreviewSelect}
+          onDismissProposalsSheet={onDismissProposalsSheet}
         />
       ) : (
         <p className="px-2 text-center text-xs text-base-content/50">{tGdocs('selectBlock')}</p>

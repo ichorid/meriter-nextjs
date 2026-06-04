@@ -1,46 +1,47 @@
-import {
-  buildBlockPlainSegments,
-  mapGlobalPlainRangeToBlock,
-} from '@/features/documents/lib/document-block-plain-segments';
+import { mergeRangeIntoBlockHtml } from '@/features/documents/lib/document-block-merge';
+import { joinDocumentWithBlockOverride } from '@/features/documents/lib/document-html-structure';
 import { getPrimaryDocumentBlock } from '@/features/documents/lib/document-primary-block';
-import {
-  resolveProposeDiffPayload,
-  type ProposeDiffPayload,
-} from '@/features/documents/lib/document-variant-propose-diff';
 
 export type ProposeMutationPayload = {
   blockId: string;
-} & (
-  | { rangeStart: number; rangeEnd: number; proposedText: string }
-  | { content: string }
-);
+  content: string;
+};
 
 /**
- * Resolve unified-editor diff to the block that owns the edit (global plain offsets).
+ * Single-block propose → full joined document HTML for server-side diff.
  */
+export function resolveBlockProposeMutationPayload(
+  sections: unknown,
+  blockId: string,
+  blockOfficialHtml: string,
+  trimmedEditorHtml: string,
+  selectionRange?: { rangeStart: number; rangeEnd: number },
+): ProposeMutationPayload {
+  const nextBlockHtml =
+    selectionRange != null
+      ? mergeRangeIntoBlockHtml(
+          blockOfficialHtml,
+          selectionRange.rangeStart,
+          selectionRange.rangeEnd,
+          trimmedEditorHtml,
+        )
+      : trimmedEditorHtml;
+
+  return {
+    blockId,
+    content: joinDocumentWithBlockOverride(sections, blockId, nextBlockHtml).trim(),
+  };
+}
+
+/** Unified editor propose → full document HTML for server-side diff. */
 export function resolveProposeMutationPayload(
   sections: unknown,
-  previousHtml: string,
+  _previousHtml: string,
   nextHtml: string,
 ): ProposeMutationPayload {
   const primary = getPrimaryDocumentBlock(sections);
-  const fallbackBlockId = primary?.id ?? '';
-  const diff: ProposeDiffPayload = resolveProposeDiffPayload(previousHtml, nextHtml);
-
-  if (diff.mode === 'full') {
-    return { blockId: fallbackBlockId, content: diff.content };
-  }
-
-  const { segments } = buildBlockPlainSegments(sections);
-  const mapped = mapGlobalPlainRangeToBlock(
-    segments,
-    diff.rangeStart,
-    diff.rangeEnd,
-  );
   return {
-    blockId: mapped?.blockId ?? fallbackBlockId,
-    rangeStart: diff.rangeStart,
-    rangeEnd: diff.rangeEnd,
-    proposedText: diff.proposedText,
+    blockId: primary?.id ?? '',
+    content: nextHtml.trim(),
   };
 }

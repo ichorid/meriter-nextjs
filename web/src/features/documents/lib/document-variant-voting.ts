@@ -10,6 +10,8 @@ export function openDocumentVariantVoting(args: {
   community: Community | null | undefined;
   targetType?: 'document-variant' | 'document-block-official';
   documentVariantIsOwn?: boolean;
+  /** After vote popup closes, reopen mobile proposals sheet if it was dismissed */
+  returnToProposalsSheet?: boolean;
 }): void {
   const {
     variantId,
@@ -20,6 +22,7 @@ export function openDocumentVariantVoting(args: {
     community,
     targetType = 'document-variant',
     documentVariantIsOwn,
+    returnToProposalsSheet,
   } = args;
   const isOwn = documentVariantIsOwn ?? (targetType === 'document-variant' && proposedBy === userId);
   const mode =
@@ -35,5 +38,6 @@ export function openDocumentVariantVoting(args: {
     communityId,
     documentVariantIsOwn: isOwn,
     documentAllowDownvotes: docAllowDownvotes,
+    returnToDocumentProposalsSheet: returnToProposalsSheet === true,
   });
 }
