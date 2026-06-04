@@ -18,7 +18,7 @@ type BlockAlignOp =
   | { op: 'insert'; variant: ParsedStructureBlock }
   | { op: 'delete'; official: ParsedStructureBlock };
 
-/** LCS alignment on block plain-text keys (variant-centric revision view skips deletes). */
+/** LCS alignment on block plain-text keys for joined revision markup. */
 export function alignDocumentBlocksByPlain(
   official: ParsedStructureBlock[],
   variant: ParsedStructureBlock[],
@@ -78,12 +78,20 @@ function wrapBlockAsInsert(html: string): string {
   return trimmed.replace(/^(<[a-z0-9]+)/i, `$1 class="${DOC_REVISION_INSERT_CLASS}"`);
 }
 
+function renderDeletedBlock(officialHtml: string): string {
+  const plain = blockHtmlToPlainText(officialHtml);
+  if (!plain.trim()) {
+    return '';
+  }
+  return mergeRangeIntoBlockHtmlWithRevisionMarks(officialHtml, 0, plain.length, '');
+}
+
 function renderAlignedBlock(op: BlockAlignOp): string {
   if (op.op === 'insert') {
     return wrapBlockAsInsert(op.variant.officialContent);
   }
   if (op.op === 'delete') {
-    return '';
+    return renderDeletedBlock(op.official.officialContent);
   }
 
   const officialHtml = op.official.officialContent;
@@ -126,14 +134,12 @@ export function buildJoinedDocumentRevisionHtml(
 
   const ops = alignDocumentBlocksByPlain(officialBlocks, variantBlocks);
   const joinable = ops.flatMap((op) => {
-    if (op.op === 'delete') {
-      return [];
-    }
     const html = renderAlignedBlock(op);
     if (!html) {
       return [];
     }
-    const blockType = op.variant.blockType;
+    const blockType =
+      op.op === 'delete' ? op.official.blockType : op.variant.blockType;
     return [{ blockType, officialContent: html }];
   });
   if (joinable.length === 0) {
