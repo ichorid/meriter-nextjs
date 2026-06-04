@@ -281,8 +281,29 @@ export function DocumentBlockProposalsPanel({
       }
       await refreshBlockGovernance();
     },
-    onError: (err) => addToast(err.message, 'error'),
   });
+
+  const requestApplyOpenAsAdmin = (variantId: string, confirmStale = false) => {
+    applyOpenMutation.mutate(
+      { variantId, ...(confirmStale ? { confirmStale: true } : {}) },
+      {
+        onError: (err) => {
+          const stale =
+            !confirmStale && err.message.includes('Official text changed');
+          if (stale) {
+            const ok = window.confirm(
+              `${tGdocs('staleApplyTitle')}\n\n${tGdocs('staleApplyBody')}`,
+            );
+            if (ok) {
+              requestApplyOpenAsAdmin(variantId, true);
+            }
+            return;
+          }
+          addToast(err.message, 'error');
+        },
+      },
+    );
+  };
 
   const deleteVariantMutation = trpc.documentVariants.deleteVariant.useMutation({
     onMutate: async ({ variantId }) => {
@@ -599,7 +620,7 @@ export function DocumentBlockProposalsPanel({
                       disabled={applyOpenMutation.isPending}
                       onClick={(e) => {
                         e.stopPropagation();
-                        applyOpenMutation.mutate({ variantId: v.id });
+                        requestApplyOpenAsAdmin(v.id);
                       }}
                     >
                       {t('applyOpenAsAdmin')}

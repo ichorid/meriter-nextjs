@@ -2,7 +2,9 @@ import {
   assertNoOverlapWithOpenRanges,
   buildMergedBlockPreviewContent,
   hashBlockOfficialAtPropose,
+  hashJoinedDocumentAtPropose,
   isStaleVariant,
+  isStaleVariantAgainstDocument,
   mergeRangeIntoBlockHtml,
   normalizeRangeBounds,
 } from '../src/domain/common/document-range.util';
@@ -47,6 +49,20 @@ describe('document-range.util', () => {
     const hash = hashBlockOfficialAtPropose(official);
     expect(isStaleVariant(hash, '<p>Changed</p>')).toBe(true);
     expect(isStaleVariant(hash, official)).toBe(false);
+  });
+
+  it('does not mark stale when joined hash matches multi-block document', () => {
+    const blocks = [
+      { id: 'a', officialContent: '<p>Тест 1</p>' },
+      { id: 'b', officialContent: '<p>Тест 4</p>' },
+    ];
+    const joinedHash = hashJoinedDocumentAtPropose(blocks);
+    expect(
+      isStaleVariantAgainstDocument(joinedHash, blocks, blocks[0]!.officialContent),
+    ).toBe(false);
+    expect(
+      isStaleVariant(joinedHash, blocks[0]!.officialContent!),
+    ).toBe(true);
   });
 
   it('buildMergedBlockPreviewContent matches merge', () => {

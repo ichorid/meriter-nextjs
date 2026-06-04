@@ -40,6 +40,31 @@ export function isStaleVariant(
   return variantHash !== hashBlockOfficialAtPropose(currentOfficialHtml);
 }
 
+/**
+ * Stale check for variants storing `joinedOfficialHash` at propose (current default).
+ * Falls back to single-block hash for legacy variants.
+ */
+export function isStaleVariantAgainstDocument(
+  variantHash: string | undefined,
+  blocks: Array<{ id: string; officialContent?: string }>,
+  anchorBlockOfficialHtml?: string,
+): boolean {
+  if (!variantHash) {
+    return false;
+  }
+  const joinedHash = hashJoinedDocumentAtPropose(blocks);
+  if (variantHash === joinedHash) {
+    return false;
+  }
+  if (anchorBlockOfficialHtml) {
+    const blockHash = hashBlockOfficialAtPropose(anchorBlockOfficialHtml);
+    if (variantHash === blockHash) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export function assertNoOverlapWithOpenRanges(
   start: number,
   end: number,

@@ -46,8 +46,7 @@ import {
 } from '../common/document-proposal-patches.util';
 import { opsToPatches } from '../common/document-document-ops.util';
 import {
-  hashJoinedDocumentAtPropose,
-  isStaleVariant,
+  isStaleVariantAgainstDocument,
   mergeRangeIntoBlockHtml,
   resolveVariantRangeBounds,
 } from '../common/document-range.util';
@@ -279,10 +278,15 @@ export class DocumentVariantService {
       throw new BadRequestException('Manual apply is only for documents in manual mode');
     }
 
+    const blockRows = this.collectDocumentBlockRows(doc);
     const block = this.documentService.findBlock(doc, v.blockId);
     if (
       block &&
-      isStaleVariant(v.officialTextHashAtPropose, String(block.officialContent ?? '')) &&
+      isStaleVariantAgainstDocument(
+        v.officialTextHashAtPropose,
+        blockRows.map((b) => ({ id: b.id, officialContent: b.officialContent })),
+        String(block.officialContent ?? ''),
+      ) &&
       !options?.confirmStale
     ) {
       throw new BadRequestException(
@@ -294,7 +298,11 @@ export class DocumentVariantService {
   }
 
   /** Apply an open variant by admin / document author (voluntary), bypassing vote outcome. */
-  async applyOpenVariantAsAdmin(actorUserId: string, variantId: string): Promise<void> {
+  async applyOpenVariantAsAdmin(
+    actorUserId: string,
+    variantId: string,
+    options?: { confirmStale?: boolean },
+  ): Promise<void> {
     const v = await this.documentService.getVariantById(variantId);
     if (!v) {
       throw new NotFoundException('Variant not found');
@@ -310,7 +318,23 @@ export class DocumentVariantService {
 
     await this.assertCanManageDocument(actorUserId, doc);
 
-    await this.applyVariantToOfficial(actorUserId, v, doc, 'admin');
+    const blockRows = this.collectDocumentBlockRows(doc);
+    const block = this.documentService.findBlock(doc, v.blockId);
+    if (
+      block &&
+      isStaleVariantAgainstDocument(
+        v.officialTextHashAtPropose,
+        blockRows.map((b) => ({ id: b.id, officialContent: b.officialContent })),
+        String(block.officialContent ?? ''),
+      ) &&
+      !options?.confirmStale
+    ) {
+      throw new BadRequestException(
+        'Official text changed since this variant was proposed; confirm apply to continue',
+      );
+    }
+
+    await this.applyVariantToOfficial(actorUserId, v, doc, 'admin', { skipStaleCheck: true });
   }
 
   /** §12.3 — arbitrary official text without a variant (lead / document author). */
@@ -667,10 +691,13 @@ export class DocumentVariantService {
     options?: { skipStaleCheck?: boolean },
   ): Promise<void> {
     const blockRows = this.collectDocumentBlockRows(doc);
-    const currentHash = hashJoinedDocumentAtPropose(
-      blockRows.map((b) => ({ id: b.id, officialContent: b.officialContent })),
-    );
-    if (!options?.skipStaleCheck && v.officialTextHashAtPropose !== currentHash) {
+    if (
+      !options?.skipStaleCheck &&
+      isStaleVariantAgainstDocument(
+        v.officialTextHashAtPropose,
+        blockRows.map((b) => ({ id: b.id, officialContent: b.officialContent })),
+      )
+    ) {
       throw new BadRequestException(
         'Official text changed since this variant was proposed; confirm apply to continue',
       );
@@ -916,9 +943,14 @@ export class DocumentVariantService {
       throw new NotFoundException('Block not found');
     }
     const officialHtml = String(block.officialContent ?? '');
+    const blockRows = this.collectDocumentBlockRows(doc);
     if (
       !options?.skipStaleCheck &&
-      isStaleVariant(v.officialTextHashAtPropose, officialHtml)
+      isStaleVariantAgainstDocument(
+        v.officialTextHashAtPropose,
+        blockRows.map((b) => ({ id: b.id, officialContent: b.officialContent })),
+        officialHtml,
+      )
     ) {
       throw new BadRequestException(
         'Official text changed since this variant was proposed; confirm apply to continue',
@@ -1089,10 +1121,12 @@ export class DocumentVariantService {
         return;
       }
       const freshBlock = this.documentService.findBlock(freshDoc, blockId);
+      const freshBlockRows = this.collectDocumentBlockRows(freshDoc);
       if (
         !options?.skipStaleCheck &&
-        isStaleVariant(
+        isStaleVariantAgainstDocument(
           winner.officialTextHashAtPropose,
+          freshBlockRows.map((b) => ({ id: b.id, officialContent: b.officialContent })),
           String(freshBlock?.officialContent ?? ''),
         )
       ) {

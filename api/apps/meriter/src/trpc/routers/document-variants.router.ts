@@ -405,12 +405,18 @@ export const documentVariantsRouter = router({
     }),
 
   applyOpenAsAdmin: protectedProcedure
-    .input(z.object({ variantId: z.string().min(1) }))
+    .input(
+      z.object({
+        variantId: z.string().min(1),
+        confirmStale: z.boolean().optional(),
+      }),
+    )
     .mutation(async ({ ctx, input }) => {
       try {
         await ctx.documentVariantService.applyOpenVariantAsAdmin(
           ctx.user.id,
           input.variantId,
+          { confirmStale: input.confirmStale },
         );
         return { ok: true as const };
       } catch (err) {
