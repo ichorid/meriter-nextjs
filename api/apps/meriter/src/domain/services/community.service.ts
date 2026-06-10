@@ -756,6 +756,18 @@ export class CommunityService {
       );
     }
 
+    if (dto.description !== undefined) {
+      const current = await this.communityPersistence.findById(communityId);
+      const documentsMode =
+        (current?.settings as { documentsMode?: string } | undefined)
+          ?.documentsMode ?? 'visionOrDescriptionOnly';
+      if (current?.isProject && documentsMode !== 'off') {
+        throw new BadRequestException(
+          'Project description must be edited via the collaborative document, not community update.',
+        );
+      }
+    }
+
     const updateData: any = {
       updatedAt: new Date(),
     };

@@ -50,9 +50,9 @@ import {
 } from '../../../domain/common/document-proposal-patches.util';
 import { hashJoinedDocumentAtPropose, normalizeRangeBounds } from '../../../domain/common/document-range.util';
 import {
+  blockIdForGlobalRange,
   buildSegmentsFromDocument,
   globalRangesOverlap,
-  mergeGlobalRanges,
   proposalGlobalRanges,
   variantGlobalRanges,
 } from '../../../domain/common/document-voting-thread.util';
@@ -158,16 +158,19 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     doc = (await this.deps.documentService.getById(input.documentId))!;
 
     const variantCost = doc.variantCost ?? 1;
+    const variantId = uid();
+    // Wallet part is debited atomically here (balance-checked findOneAndUpdate),
+    // so concurrent proposals cannot overdraw. Compensated on later failure.
     const { quotaAmount, walletAmount } = await this.collectVariantProposalFee(
       userId,
       doc.communityId,
       community,
       variantCost,
+      variantId,
     );
 
     const refs = normalizeDocumentVariantReferences(input.references);
 
-    const variantId = uid();
     const now = new Date();
 
     const waveAnchorId = threadResolution.anchorBlockId;
@@ -190,43 +193,47 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       patchesToOps(persistedPatches, officialHtmlForBlock),
     );
 
-    const created = await this.deps.documentPersistence.insertVariant({
-      id: variantId,
-      documentId: doc.id,
-      blockId,
-      votingThreadId: threadResolution.votingThreadId,
-      proposalScope: proposalScope ?? 'block',
-      patches: persistedPatches,
-      ops: persistedOps,
-      content: persistedContent,
-      ...(hasRange
-        ? {
-            rangeStart,
-            rangeEnd,
-            proposedText,
-            officialTextHashAtPropose,
-          }
-        : { officialTextHashAtPropose }),
-      references: refs,
-      ...(input.proposerComment?.trim()
-        ? { proposerComment: input.proposerComment.trim().slice(0, 500) }
-        : {}),
-      proposedBy: userId,
-      proposedAt: now,
-      status: 'open',
-      rating: 0,
-      costPaid: variantCost,
-      deleted: false,
-      createdAt: now,
-      updatedAt: now,
-    });
+    let created: Awaited<ReturnType<DocumentPersistencePort['insertVariant']>>;
+    try {
+      created = await this.deps.documentPersistence.insertVariant({
+        id: variantId,
+        documentId: doc.id,
+        blockId,
+        votingThreadId: threadResolution.votingThreadId,
+        proposalScope: proposalScope ?? 'block',
+        patches: persistedPatches,
+        ops: persistedOps,
+        content: persistedContent,
+        ...(hasRange
+          ? {
+              rangeStart,
+              rangeEnd,
+              proposedText,
+              officialTextHashAtPropose,
+            }
+          : { officialTextHashAtPropose }),
+        references: refs,
+        ...(input.proposerComment?.trim()
+          ? { proposerComment: input.proposerComment.trim().slice(0, 500) }
+          : {}),
+        proposedBy: userId,
+        proposedAt: now,
+        status: 'open',
+        rating: 0,
+        costPaid: variantCost,
+        deleted: false,
+        createdAt: now,
+        updatedAt: now,
+      });
+    } catch (err) {
+      await this.refundVariantProposalWalletFee(userId, community, walletAmount, variantId);
+      throw err;
+    }
 
-    await this.postCollectVariantProposalFee(
+    await this.recordVariantProposalQuotaUsage(
       userId,
       doc.communityId,
-      community,
       quotaAmount,
-      walletAmount,
       variantId,
     );
 
@@ -289,7 +296,8 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
 
     const segments = buildSegmentsFromDocument(doc);
     const proposalRanges = proposalGlobalRanges(segments, patches);
-    const hours = doc.votingDurationHours ?? 24;
+    // Keep in sync with schema default and DocumentService.isDocumentBlockVotingOpen (48h).
+    const hours = doc.votingDurationHours ?? 48;
     const extendMs = hours * 60 * 60 * 1000;
     const now = new Date();
 
@@ -317,17 +325,18 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       if (thread) {
         await this.deps.documentPersistence.updateVotingThread(thread.id, {
           waveEndsAt,
-          ranges: mergeGlobalRanges(
-            thread.ranges.map((r) => ({
+          ranges: [
+            ...thread.ranges.map((r) => ({
+              blockId: r.blockId ?? anchorBlockId,
               rangeStart: r.rangeStart,
               rangeEnd: r.rangeEnd,
             })),
-            proposalRanges,
-          ).map((r, i) => ({
-            blockId: patches[i]?.blockId ?? anchorBlockId,
-            rangeStart: r.rangeStart,
-            rangeEnd: r.rangeEnd,
-          })),
+            ...proposalRanges.map((r) => ({
+              blockId: blockIdForGlobalRange(segments, r, anchorBlockId),
+              rangeStart: r.rangeStart,
+              rangeEnd: r.rangeEnd,
+            })),
+          ],
         });
       }
       return {
@@ -355,11 +364,18 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
         );
         await this.deps.documentPersistence.updateVotingThread(thread.id, {
           waveEndsAt,
-          ranges: mergeGlobalRanges(threadRanges, proposalRanges).map((r, i) => ({
-            blockId: patches[i]?.blockId ?? anchorBlockId,
-            rangeStart: r.rangeStart,
-            rangeEnd: r.rangeEnd,
-          })),
+          ranges: [
+            ...thread.ranges.map((r) => ({
+              blockId: r.blockId ?? anchorBlockId,
+              rangeStart: r.rangeStart,
+              rangeEnd: r.rangeEnd,
+            })),
+            ...proposalRanges.map((r) => ({
+              blockId: blockIdForGlobalRange(segments, r, anchorBlockId),
+              rangeStart: r.rangeStart,
+              rangeEnd: r.rangeEnd,
+            })),
+          ],
         });
         return {
           votingThreadId: thread.id,
@@ -376,8 +392,8 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       documentId: doc.id,
       status: 'open',
       anchorBlockId,
-      ranges: proposalRanges.map((r, i) => ({
-        blockId: patches[i]?.blockId ?? anchorBlockId,
+      ranges: proposalRanges.map((r) => ({
+        blockId: blockIdForGlobalRange(segments, r, anchorBlockId),
         rangeStart: r.rangeStart,
         rangeEnd: r.rangeEnd,
       })),
@@ -630,11 +646,17 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     );
   }
 
+  /**
+   * Splits the fee into quota/wallet parts and debits the wallet part atomically
+   * (balance-checked single update) so concurrent proposals cannot overdraw.
+   * Quota usage is recorded after the variant is persisted.
+   */
   private async collectVariantProposalFee(
     userId: string,
     communityId: string,
     community: Community,
     variantCost: number,
+    variantId: string,
   ): Promise<{ quotaAmount: number; walletAmount: number }> {
     if (variantCost <= 0) {
       return { quotaAmount: 0, walletAmount: 0 };
@@ -662,25 +684,17 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     }
 
     if (walletAmount > 0) {
-      const wallet = await this.deps.walletService.getWallet(userId, GLOBAL_COMMUNITY_ID);
-      const bal = wallet ? wallet.getBalance() : 0;
-      if (bal < walletAmount) {
-        throw new BadRequestException(
-          `Insufficient wallet merits. Available: ${bal}, Required: ${walletAmount}`,
-        );
-      }
-    }
-
-    if (quotaAmount > 0) {
-      const remainingQuota = await this.getRemainingQuota.forPublicationCreate({
+      const debited = await this.deps.walletService.debitIfSufficient(
         userId,
-        communityId,
-        community: community as CommunityQuotaContext,
-        db: quotaDb,
-      });
-      if (remainingQuota < quotaAmount) {
+        GLOBAL_COMMUNITY_ID,
+        walletAmount,
+        'document_variant_proposal',
+        variantId,
+        'Fee for proposing a document variant',
+      );
+      if (!debited) {
         throw new BadRequestException(
-          `Insufficient quota. Available: ${remainingQuota}, Required: ${quotaAmount}`,
+          `Insufficient wallet merits. Required: ${walletAmount}`,
         );
       }
     }
@@ -688,47 +702,61 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     return { quotaAmount, walletAmount };
   }
 
-  private async postCollectVariantProposalFee(
+  /** Compensating credit when the variant failed to persist after the wallet debit. */
+  private async refundVariantProposalWalletFee(
     userId: string,
-    communityId: string,
     community: Community,
-    quotaAmount: number,
     walletAmount: number,
     variantId: string,
   ): Promise<void> {
-    const currency = community.settings?.currencyNames ?? {
-      singular: 'merit',
-      plural: 'merits',
-      genitive: 'merits',
-    };
-    const globalCommunity = await this.deps.communityService.getCommunity(GLOBAL_COMMUNITY_ID);
-    const feeCurrency = globalCommunity?.settings?.currencyNames ?? currency;
-
-    if (quotaAmount > 0 && this.deps.connection.db) {
-      await this.deps.connection.db.collection('quota_usage').insertOne({
-        id: `quota_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
-        userId,
-        communityId,
-        amountQuota: quotaAmount,
-        usageType: 'document_variant_proposal',
-        referenceId: variantId,
-        createdAt: new Date(),
-      });
+    if (walletAmount <= 0) {
+      return;
     }
-
-    if (walletAmount > 0) {
+    try {
+      const currency = community.settings?.currencyNames ?? {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+      const globalCommunity = await this.deps.communityService.getCommunity(GLOBAL_COMMUNITY_ID);
       await this.deps.walletService.addTransaction(
         userId,
         GLOBAL_COMMUNITY_ID,
-        'debit',
+        'credit',
         walletAmount,
         'personal',
-        'document_variant_proposal',
+        'document_variant_proposal_refund',
         variantId,
-        feeCurrency,
-        'Fee for proposing a document variant',
+        globalCommunity?.settings?.currencyNames ?? currency,
+        'Refund: document variant proposal failed',
+      );
+    } catch (refundErr) {
+      this.logger.error(
+        `Failed to refund variant proposal fee ${variantId} for ${userId}: ${
+          refundErr instanceof Error ? refundErr.message : String(refundErr)
+        }`,
       );
     }
+  }
+
+  private async recordVariantProposalQuotaUsage(
+    userId: string,
+    communityId: string,
+    quotaAmount: number,
+    variantId: string,
+  ): Promise<void> {
+    if (quotaAmount <= 0 || !this.deps.connection.db) {
+      return;
+    }
+    await this.deps.connection.db.collection('quota_usage').insertOne({
+      id: `quota_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+      userId,
+      communityId,
+      amountQuota: quotaAmount,
+      usageType: 'document_variant_proposal',
+      referenceId: variantId,
+      createdAt: new Date(),
+    });
   }
 
   private async notifyVariantProposed(

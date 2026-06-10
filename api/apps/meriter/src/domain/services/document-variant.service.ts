@@ -136,13 +136,23 @@ export class DocumentVariantService {
     if (!record || record.status !== 'closed-winner') {
       return;
     }
-    await this.applyVariantToOfficial(
-      MERITER_DOCUMENT_AUTO_APPLY_USER_ID,
-      record as DocumentBlockVariantSchemaClass,
-      doc,
-      'vote',
-      { skipStaleCheck: true },
-    );
+    try {
+      await this.applyVariantToOfficial(
+        MERITER_DOCUMENT_AUTO_APPLY_USER_ID,
+        record as DocumentBlockVariantSchemaClass,
+        doc,
+        'vote',
+      );
+    } catch (err) {
+      if (this.isStaleApplyError(err)) {
+        await this.notifyAutoApplyStaleBlocked(
+          record as DocumentBlockVariantSchemaClass,
+          doc,
+        );
+        return;
+      }
+      throw err;
+    }
   }
 
   
@@ -228,6 +238,9 @@ export class DocumentVariantService {
     }
 
     const now = new Date();
+    const resolvedVariants = pending.filter(
+      (v) => v.status === 'closed-winner' || v.status === 'closed-not-winner',
+    );
     await this.documentPersistence.updateVariantsStatusByFilter(
       {
         documentId,
@@ -235,7 +248,7 @@ export class DocumentVariantService {
         deleted: false,
         status: { $in: ['closed-winner', 'closed-not-winner'] },
       },
-      'withdrawn',
+      'closed-not-winner',
     );
 
     await this.documentService.updateDocumentBlock(documentId, blockId, (b) => {
@@ -248,6 +261,24 @@ export class DocumentVariantService {
         previousContent: String(b.officialContent ?? ''),
       });
     });
+
+    const community = await this.communityService.getCommunity(doc.communityId);
+    if (community && resolvedVariants.length > 0) {
+      await this.notifyVariantsNotSelected({
+        doc,
+        community,
+        blockId,
+        variants: resolvedVariants,
+        reason: 'official_kept',
+        actorUserId,
+      }).catch((err) => {
+        this.logger.warn(
+          `Failed to notify variants not selected on official win ${documentId}/${blockId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
+    }
   }
 
   /** Apply voting winner (closed-winner) — document owner or community admin. */
@@ -274,9 +305,8 @@ export class DocumentVariantService {
 
     await this.assertCanManageDocument(actorUserId, doc);
 
-    if (doc.mode !== 'manual') {
-      throw new BadRequestException('Manual apply is only for documents in manual mode');
-    }
+    // Allowed in auto mode too: recovery path when auto-apply failed (e.g. stale
+    // or transient error) and the winner is stuck in closed-winner.
 
     const blockRows = this.collectDocumentBlockRows(doc);
     const block = this.documentService.findBlock(doc, v.blockId);
@@ -1080,7 +1110,6 @@ export class DocumentVariantService {
       MERITER_DOCUMENT_AUTO_APPLY_USER_ID,
       documentId,
       blockId,
-      { skipStaleCheck: true },
     );
   }
 
@@ -1130,6 +1159,19 @@ export class DocumentVariantService {
           String(freshBlock?.officialContent ?? ''),
         )
       ) {
+        this.logger.warn(
+          `applyClosedWinnersToOfficial skipped stale winner ${documentId}/${blockId}/${winner.id}; manual apply required`,
+        );
+        await this.notifyAutoApplyStaleBlocked(
+          winner as DocumentBlockVariantSchemaClass,
+          freshDoc,
+        ).catch((notifyErr) => {
+          this.logger.warn(
+            `Failed to notify stale auto-apply block ${documentId}/${blockId}/${winner.id}: ${
+              notifyErr instanceof Error ? notifyErr.message : String(notifyErr)
+            }`,
+          );
+        });
         continue;
       }
       try {
@@ -1271,6 +1313,51 @@ export class DocumentVariantService {
         ...(actorUserId ? { sourceId: actorUserId } : {}),
         metadata,
         title: 'Your variant was not selected',
+        message,
+      });
+    }
+  }
+
+  private isStaleApplyError(err: unknown): boolean {
+    return (
+      err instanceof BadRequestException &&
+      err.message.includes('Official text changed since this variant was proposed')
+    );
+  }
+
+  /** Winner stays closed-winner; lead must apply with confirmStale. */
+  private async notifyAutoApplyStaleBlocked(
+    variant: { id: string; proposedBy: string; blockId: string },
+    doc: MeriterDocumentSchemaClass,
+  ): Promise<void> {
+    const community = await this.communityService.getCommunity(doc.communityId);
+    if (!community) {
+      return;
+    }
+
+    const title = doc.title?.trim() || 'Document';
+    const metadata = {
+      ...this.buildDocumentNotificationMetadata(doc, community, variant.blockId),
+      variantId: variant.id,
+      autoApplyBlocked: true,
+    };
+    const message = `A winning variant on "${title}" could not be auto-applied because the official text changed. Manual apply with confirmation is required on the document page.`;
+
+    const recipientIds = new Set<string>();
+    if (variant.proposedBy) {
+      recipientIds.add(variant.proposedBy);
+    }
+    if (doc.createdBy) {
+      recipientIds.add(doc.createdBy);
+    }
+
+    for (const userId of recipientIds) {
+      await this.notificationService.createNotification({
+        userId,
+        type: 'document_variant_won',
+        source: 'system',
+        metadata,
+        title: 'Winning variant needs manual apply',
         message,
       });
     }

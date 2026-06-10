@@ -383,6 +383,8 @@ export const CommunitySchema = IdentifiableSchema.merge(
   // Granular permission rules - replaces postingRules, votingRules, visibilityRules, meritRules
   permissionRules: z.array(PermissionRuleSchema).optional(),
   settings: CommunitySettingsSchema,
+  votingSettings: CommunityVotingSettingsSchema.optional(),
+  meritSettings: CommunityMeritSettingsSchema.optional(),
   hashtags: z.array(z.string()).default([]),
   hashtagDescriptions: z.record(z.string(), z.string()).optional().default({}),
   isActive: z.boolean().default(true),

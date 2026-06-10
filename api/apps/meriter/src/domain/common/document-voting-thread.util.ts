@@ -34,11 +34,20 @@ export function globalRangesOverlap(
   return false;
 }
 
-export function mergeGlobalRanges(
-  existing: GlobalPlainRange[],
-  added: GlobalPlainRange[],
-): GlobalPlainRange[] {
-  return [...existing, ...added];
+/** Resolve owning block for a global plain-text range via document segments. */
+export function blockIdForGlobalRange(
+  segments: BlockPlainSegment[],
+  range: GlobalPlainRange,
+  fallbackBlockId: string,
+): string {
+  const seg =
+    segments.find(
+      (s) => range.rangeStart >= s.plainStart && range.rangeStart < s.plainEnd,
+    ) ??
+    segments.find(
+      (s) => range.rangeStart >= s.plainStart && range.rangeStart <= s.plainEnd,
+    );
+  return seg?.blockId ?? fallbackBlockId;
 }
 
 export function proposalGlobalRanges(

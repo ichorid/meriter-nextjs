@@ -48,7 +48,7 @@ export const documentsRouter = router({
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const doc = await ctx.documentService.getById(input.id);
-      if (!doc) {
+      if (!doc || doc.deleted) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Document not found',

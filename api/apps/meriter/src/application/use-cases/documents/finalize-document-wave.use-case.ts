@@ -8,10 +8,8 @@ import type { DocumentLiveUpdatesService } from '../../../domain/services/docume
 import type { DocumentService } from '../../../domain/services/document.service';
 import type { NotificationService } from '../../../domain/services/notification.service';
 import type { FinalizeDocumentWavePort } from '../../../domain/ports/finalize-document-wave.port';
-import {
-  rangesOverlap,
-  resolveVariantRangeBounds,
-} from '../../../domain/common/document-range.util';
+import { resolveVariantRangeBounds } from '../../../domain/common/document-range.util';
+import { rangesOverlap } from '../../../domain/common/document-plain-text.util';
 import {
   documentVotingThreadFinalizeLockId,
 } from '../../../domain/common/constants/document-wave-lock.constants';
@@ -201,19 +199,17 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
     }
 
     if (hasPositiveWinner) {
-      if (doc.mode !== 'auto') {
-        await notifyVariantWon(
-          this.deps,
-          winner as DocumentBlockVariantSchemaClass,
-          doc,
-        ).catch((err) => {
-          this.logger.warn(
-            `Failed to notify thread winner ${winner.id}: ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          );
-        });
-      }
+      await notifyVariantWon(
+        this.deps,
+        winner as DocumentBlockVariantSchemaClass,
+        doc,
+      ).catch((err) => {
+        this.logger.warn(
+          `Failed to notify thread winner ${winner.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
       await this.deps.autoApplyThreadWinner(thread.documentId, winner.id);
     }
 
@@ -343,16 +339,14 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
       });
     }
 
-    if (docLean.mode !== 'auto') {
-      for (const winner of winners) {
-        await notifyVariantWon(this.deps, winner, docLean).catch((err) => {
-          this.logger.warn(
-            `Failed to notify variant winner ${winner.id}: ${
-              err instanceof Error ? err.message : String(err)
-            }`,
-          );
-        });
-      }
+    for (const winner of winners) {
+      await notifyVariantWon(this.deps, winner, docLean).catch((err) => {
+        this.logger.warn(
+          `Failed to notify variant winner ${winner.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      });
     }
 
     await this.deps.autoApplyWinner(documentId, blockId);

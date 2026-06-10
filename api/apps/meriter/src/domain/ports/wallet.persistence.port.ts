@@ -87,6 +87,17 @@ export interface WalletPersistencePort {
 
   updateWallet(snapshot: WalletSnapshot, session?: WalletPersistenceSession): Promise<void>;
 
+  /**
+   * Atomic conditional debit: decrements balance only when it is sufficient.
+   * Returns the updated snapshot, or null when the wallet is missing or balance < amount.
+   */
+  debitWalletIfSufficient(
+    userId: string,
+    communityId: string,
+    amount: number,
+    session?: WalletPersistenceSession,
+  ): Promise<WalletSnapshot | null>;
+
   deleteWalletById(walletId: string): Promise<void>;
 
   findWalletsByUserId(userId: string): Promise<WalletSnapshot[]>;

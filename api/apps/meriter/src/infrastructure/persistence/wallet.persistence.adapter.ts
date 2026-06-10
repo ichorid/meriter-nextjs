@@ -77,6 +77,23 @@ export class WalletPersistenceAdapter implements WalletPersistencePort {
     );
   }
 
+  async debitWalletIfSufficient(
+    userId: string,
+    communityId: string,
+    amount: number,
+    session?: WalletPersistenceSession,
+  ): Promise<WalletSnapshot | null> {
+    const doc = await this.walletModel
+      .findOneAndUpdate(
+        { userId, communityId, balance: { $gte: amount } },
+        { $inc: { balance: -amount }, $set: { lastUpdated: new Date() } },
+        { new: true, ...sessionOpts(session) },
+      )
+      .lean()
+      .exec();
+    return doc ? mapWalletDocumentToSnapshot(doc) : null;
+  }
+
   async deleteWalletById(walletId: string): Promise<void> {
     await this.walletModel.deleteOne({ id: walletId });
   }

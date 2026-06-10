@@ -204,6 +204,51 @@ export class WalletService {
     return wallet;
   }
 
+  /**
+   * Atomic balance-checked debit (single findOneAndUpdate): safe under concurrent
+   * spends, unlike addTransaction's read-modify-write. Returns false when the
+   * wallet is missing or balance is insufficient (nothing is written).
+   */
+  async debitIfSufficient(
+    userId: string,
+    communityId: string,
+    amount: number,
+    referenceType: string,
+    referenceId: string,
+    description?: string,
+  ): Promise<boolean> {
+    if (amount <= 0) {
+      return true;
+    }
+    const updated = await this.walletPersistence.debitWalletIfSufficient(
+      userId,
+      communityId,
+      amount,
+    );
+    if (!updated) {
+      return false;
+    }
+
+    const now = new Date();
+    await this.walletPersistence.insertTransaction({
+      id: uid(),
+      walletId: updated.id,
+      type: 'withdrawal',
+      amount: Math.abs(amount),
+      description: description || `withdrawal (${referenceType})`,
+      referenceType,
+      referenceId,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await this.eventBus.publish(
+      new WalletBalanceChangedEvent(updated.id, userId, communityId, amount, 'debit'),
+    );
+
+    return true;
+  }
+
   async getTransactions(
     walletId: string,
     limit: number = 50,

@@ -11,6 +11,7 @@ import {
 } from '../../domain/models/meriter-document/meriter-document.schema';
 import {
   DOCUMENT_WAVE_FINALIZE_LOCKS_COLLECTION,
+  WAVE_FINALIZE_LOCK_STALE_MS,
   documentWaveFinalizeLockId,
 } from '../../domain/common/constants/document-wave-lock.constants';
 import {
@@ -465,7 +466,17 @@ export class DocumentPersistenceAdapter implements DocumentPersistencePort {
       { $setOnInsert: { lockId, createdAt: new Date() } },
       { upsert: true },
     );
-    return acquired.upsertedCount > 0;
+    if (acquired.upsertedCount > 0) {
+      return true;
+    }
+    // Locks have no TTL: a crash between acquire and release would otherwise skip
+    // this block forever. Finalize takes seconds; treat older locks as stale.
+    const staleBefore = new Date(Date.now() - WAVE_FINALIZE_LOCK_STALE_MS);
+    const takeover = await locks.updateOne(
+      { lockId, createdAt: { $lt: staleBefore } },
+      { $set: { createdAt: new Date() } },
+    );
+    return takeover.modifiedCount > 0;
   }
 
   async releaseWaveFinalizeLock(documentId: string, blockId: string): Promise<void> {

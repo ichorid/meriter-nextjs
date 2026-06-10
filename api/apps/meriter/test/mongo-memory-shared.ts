@@ -124,3 +124,22 @@ export async function getSharedMongoMemoryServer(): Promise<MongoMemoryServer> {
 export function getSharedMongoMemoryServerSync(): MongoMemoryServer | undefined {
   return sharedMongod;
 }
+
+/**
+ * Stop the worker-shared mongod and reset module state so a later suite in the
+ * same worker can start a fresh instance. Without an explicit stop, the mongod
+ * child process keeps the Jest worker event loop alive ("Jest did not exit").
+ */
+export async function stopSharedMongoMemoryServer(): Promise<void> {
+  const mongod = sharedMongod ?? (await sharedMongodPromise?.catch(() => undefined));
+  sharedMongod = undefined;
+  sharedMongodPromise = undefined;
+  if (!mongod) {
+    return;
+  }
+  try {
+    await mongod.stop({ doCleanup: true, force: true });
+  } catch {
+    /* best-effort */
+  }
+}
