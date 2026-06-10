@@ -118,6 +118,14 @@ export function LoginForm({
         }
     }, [authError, addToast]);
 
+    // Magic link redeem failure redirects here with ?error=link_expired
+    const urlError = searchParams?.get("error");
+    useEffect(() => {
+        if (urlError === "link_expired") {
+            addToast(t("linkExpired"), "error");
+        }
+    }, [urlError, addToast, t]);
+
     // Helper function to construct redirect URL
     const buildRedirectUrl = (): string => {
         return returnTo || "/meriter/profile";

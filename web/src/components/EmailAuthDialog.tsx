@@ -1,10 +1,12 @@
 /**
  * Email Authentication Dialog
- * 
+ *
  * Flow:
  * 1. Email input
- * 2. Send OTP
- * 3. Verify OTP
+ * 2. Send one-time login link to the email
+ * 3. User clicks the link in the email — the tab where it opens is logged in.
+ *    This dialog polls the session so the original tab logs in too when the
+ *    link is opened on the same device/browser.
  */
 
 "use client";
@@ -21,18 +23,19 @@ import {
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { BrandFormControl } from "@/components/ui";
-import { Loader2, Mail, ArrowLeft } from "lucide-react";
+import { Loader2, Mail, MailCheck, ArrowLeft } from "lucide-react";
 import { isTestAuthMode } from "@/config";
 import { mockEmailAuth } from "@/lib/utils/mock-auth";
+import { trpc } from "@/lib/trpc/client";
 
 interface EmailAuthDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSuccess: (result: { isNewUser: boolean; user: any }) => void;
+    onSuccess: (result: { isNewUser: boolean; user: unknown }) => void;
     onError: (message: string) => void;
 }
 
-type Step = "email" | "otp";
+type Step = "email" | "sent";
 
 export function EmailAuthDialog({
     open,
@@ -40,14 +43,11 @@ export function EmailAuthDialog({
     onSuccess,
     onError,
 }: EmailAuthDialogProps) {
-    // Using a new namespace - keys need to be added to en.json/ru.json
     const t = useTranslations("login.emailDialog");
     const tCommon = useTranslations("common");
-    const tLogin = useTranslations("login");
 
     const [step, setStep] = useState<Step>("email");
     const [email, setEmail] = useState("");
-    const [otpCode, setOtpCode] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState("");
     const [canResendAt, setCanResendAt] = useState<Date | null>(null);
@@ -58,7 +58,6 @@ export function EmailAuthDialog({
         if (!open) {
             setStep("email");
             setEmail("");
-            setOtpCode("");
             setError("");
             setCanResendAt(null);
             setResendCountdown(0);
@@ -82,16 +81,32 @@ export function EmailAuthDialog({
         return () => clearInterval(interval);
     }, [canResendAt]);
 
+    // Once the link is sent, poll the session: if the user opens the magic link
+    // in another tab on this device, the JWT cookie appears and this tab can log in too.
+    const sessionPoll = trpc.users.getMe.useQuery(undefined, {
+        enabled: open && step === "sent",
+        refetchInterval: 3000,
+        retry: false,
+        staleTime: 0,
+        gcTime: 0,
+    });
+
+    useEffect(() => {
+        if (open && step === "sent" && sessionPoll.data) {
+            onSuccess({ isNewUser: false, user: sessionPoll.data });
+            onOpenChange(false);
+        }
+    }, [open, step, sessionPoll.data, onSuccess, onOpenChange]);
+
     const validateEmail = (email: string): string | null => {
-        if (!email) return "Email is required";
-        // Simple regex
+        if (!email) return t("invalidEmail");
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return "Invalid email format";
+            return t("invalidEmail");
         }
         return null;
     };
 
-    const handleSendOtp = async () => {
+    const handleSendLink = async () => {
         const validationError = validateEmail(email);
         if (validationError) {
             setError(validationError);
@@ -102,6 +117,18 @@ export function EmailAuthDialog({
         setError("");
 
         try {
+            if (isTestAuthMode()) {
+                // In test auth mode there is no real mailbox: log in immediately
+                const result = await mockEmailAuth(email);
+                document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
+                onSuccess({
+                    isNewUser: result.isNewUser,
+                    user: result.user,
+                });
+                onOpenChange(false);
+                return;
+            }
+
             const response = await fetch("/api/v1/auth/email/send", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -115,85 +142,22 @@ export function EmailAuthDialog({
             }
 
             if (data.canResendAt) {
-                setCanResendAt(new Date(data.canResendAt * 1000)); // API usually returns seconds timestamp? Service returns seconds timestamp. Yes.
-                // Wait, service returns `canResendAt` as `Math.floor(now.getTime() / 1000) + this.resendCooldownSeconds`.
-                // So it is unix timestamp in seconds.
-                // My code here: `new Date(data.canResendAt * 1000)` handles it correctly.
+                // canResendAt is a unix timestamp in seconds
+                setCanResendAt(new Date(data.canResendAt * 1000));
             }
 
-            setStep("otp");
-        } catch (err: any) {
-            const message = err.message || t("sendFailed");
+            setStep("sent");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : t("sendFailed");
             setError(message);
             onError(message);
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const handleVerifyOtp = async () => {
-        if (!otpCode || otpCode.length !== 6) {
-            setError("Invalid code length");
-            return;
-        }
-
-        setIsLoading(true);
-        setError("");
-
-        const testAuthMode = isTestAuthMode();
-
-        try {
-            if (testAuthMode) {
-                // In test auth mode, use mock authentication
-                const result = await mockEmailAuth(email);
-                
-                // Set JWT cookie manually
-                document.cookie = `jwt=${result.jwt}; path=/; max-age=${365 * 24 * 60 * 60}; SameSite=Lax`;
-                
-                onSuccess({
-                    isNewUser: result.isNewUser,
-                    user: result.user,
-                });
-                onOpenChange(false);
-                setIsLoading(false);
-                return;
-            }
-
-            const response = await fetch("/api/v1/auth/email/verify", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, otpCode }),
-                credentials: "include",
-            });
-
-            const data = await response.json();
-
-            if (!response.ok || !data.success) {
-                throw new Error(data?.error?.message ?? data?.message ?? t("verifyFailed"));
-            }
-
-            onSuccess({
-                isNewUser: data.isNewUser,
-                user: data.user,
-            });
-            onOpenChange(false);
-        } catch (err: any) {
-            const message = err.message || t("verifyFailed");
-            setError(message);
-            onError(message);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handleResend = async () => {
-        setOtpCode("");
-        await handleSendOtp();
     };
 
     const handleBack = () => {
         setStep("email");
-        setOtpCode("");
         setError("");
     };
 
@@ -202,7 +166,7 @@ export function EmailAuthDialog({
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2 pr-8 text-left">
-                        {step === "otp" && (
+                        {step === "sent" && (
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -218,7 +182,7 @@ export function EmailAuthDialog({
                         <span className="min-w-0 flex-1 leading-tight">{t("title")}</span>
                     </DialogTitle>
                     <DialogDescription>
-                        {step === "email" ? t("description") : t("otpDescription")}
+                        {step === "email" ? t("description") : t("sentDescription")}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -241,76 +205,50 @@ export function EmailAuthDialog({
                                     className="h-11 rounded-xl focus-visible:outline-none focus-visible:ring-0"
                                     autoFocus
                                     onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !isLoading) handleSendOtp();
+                                        if (e.key === "Enter" && !isLoading) handleSendLink();
                                     }}
                                 />
                             </BrandFormControl>
                             <Button
-                                onClick={handleSendOtp}
+                                onClick={handleSendLink}
                                 disabled={isLoading || !email}
                                 className="w-full"
                             >
                                 {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
-                                {t("sendCode")}
+                                {t("sendLink")}
                             </Button>
                         </>
                     ) : (
                         <>
-                            <div className="text-sm text-muted-foreground">
-                                Sent to <strong>{email}</strong>
+                            <div className="flex flex-col items-center gap-3 text-center">
+                                <MailCheck className="h-10 w-10 text-primary" />
+                                <p className="text-sm text-muted-foreground">
+                                    {t.rich("sentTo", {
+                                        email,
+                                        b: (chunks) => <strong className="text-foreground">{chunks}</strong>,
+                                    })}
+                                </p>
+                                <p className="text-sm text-muted-foreground">{t("sentHint")}</p>
                             </div>
 
-                            <BrandFormControl
-                                label={t("otpLabel")}
-                                error={error}
-                            >
-                                <Input
-                                    type="text"
-                                    inputMode="numeric"
-                                    pattern="[0-9]*"
-                                    maxLength={6}
-                                    value={otpCode}
-                                    onChange={(e) => {
-                                        const value = e.target.value.replace(/\D/g, "");
-                                        setOtpCode(value);
-                                        setError("");
-                                    }}
-                                    placeholder={t("otpPlaceholder")}
-                                    disabled={isLoading}
-                                    className="h-11 rounded-xl text-center text-2xl tracking-widest focus-visible:outline-none focus-visible:ring-0"
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter" && !isLoading && otpCode.length === 6) {
-                                            handleVerifyOtp();
-                                        }
-                                    }}
-                                />
-                            </BrandFormControl>
+                            <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                {t("waitingForClick")}
+                            </div>
 
-                            <Button
-                                onClick={handleVerifyOtp}
-                                disabled={isLoading || otpCode.length !== 6}
-                                className="w-full"
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        {t("verifying")}
-                                    </>
-                                ) : (
-                                    t("verify")
-                                )}
-                            </Button>
+                            {error && (
+                                <p className="text-sm text-destructive text-center">{error}</p>
+                            )}
 
                             <Button
                                 variant="outline"
-                                onClick={handleResend}
+                                onClick={handleSendLink}
                                 disabled={isLoading || resendCountdown > 0}
                                 className="w-full"
                             >
                                 {resendCountdown > 0
                                     ? t("resendIn", { seconds: resendCountdown })
-                                    : t("resendCode")}
+                                    : t("resendLink")}
                             </Button>
                         </>
                     )}
