@@ -4,10 +4,18 @@ import { useMemo, useState } from 'react';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
-import type { Community } from '@meriter/shared-types';
+import type { DocumentCommunityContext } from '@/features/documents/lib/document-canvas-shared';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/ui/shadcn/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/shadcn/dialog';
 import { DocumentProposalVariantCard } from '@/features/documents/components/DocumentProposalVariantCard';
 import { DocumentProposalVariantRating } from '@/features/documents/components/DocumentProposalVariantRating';
 import { DocumentVariantSuggestion } from '@/features/documents/components/DocumentVariantSuggestion';
@@ -42,6 +50,13 @@ import {
 } from '@/features/documents/lib/document-variant-cache';
 import { cn } from '@/lib/utils';
 
+type DocumentVariantStatus =
+  | 'open'
+  | 'closed-winner'
+  | 'closed-not-winner'
+  | 'applied'
+  | 'withdrawn';
+
 type BlockVariantRow = {
   id: string;
   documentId: string;
@@ -50,7 +65,7 @@ type BlockVariantRow = {
   proposalScope?: 'block' | 'patches';
   patches?: VariantPreviewInput['patches'];
   proposedBy: string;
-  status: string;
+  status: DocumentVariantStatus;
   rating?: number;
   rangeStart?: number;
   rangeEnd?: number;
@@ -72,7 +87,7 @@ export interface DocumentBlockProposalsPanelProps {
   docMode: 'manual' | 'auto';
   docAllowDownvotes: boolean;
   canManageDocument: boolean;
-  community: Community | null;
+  community: DocumentCommunityContext | null;
   votingDurationHours: number;
   waveActive: boolean;
   waveEndsAtMs: number | null;
@@ -115,6 +130,9 @@ export function DocumentBlockProposalsPanel({
   );
   const [showAllVariants, setShowAllVariants] = useState(false);
   const [votesExpandedFor, setVotesExpandedFor] = useState<string | null>(null);
+  const [staleApplyRequest, setStaleApplyRequest] = useState<
+    { kind: 'winner' | 'open'; variantId: string } | null
+  >(null);
 
   const variantsQuery = trpc.documentVariants.listByBlock.useQuery(
     { documentId, blockId: block.id },
@@ -163,7 +181,7 @@ export function DocumentBlockProposalsPanel({
     v: (typeof activeVariants)[number] & { proposedByDisplayName?: string },
   ): DocumentVariantPreviewTarget => {
     const variantInput: VariantPreviewInput = {
-      content: v.content,
+      content: v.content ?? '',
       proposalScope: v.proposalScope,
       patches: v.patches,
       rangeStart: v.rangeStart,
@@ -234,14 +252,15 @@ export function DocumentBlockProposalsPanel({
     return map;
   }, [panelVotes]);
 
-  const refreshBlockGovernance = async () => {
+  const refreshBlockGovernance = async (opts?: { mirror?: boolean }) => {
     await refetchDocumentGovernanceCaches(utils, documentId, block.id, {
       bumpEditorResync: focus?.bumpEditorResync,
+      ...(opts?.mirror && communityId ? { mirrorCommunityId: communityId } : {}),
     });
   };
 
   const applyWinnerMutation = trpc.documentVariants.applyVotingWinner.useMutation({
-    onSuccess: refreshBlockGovernance,
+    onSuccess: () => refreshBlockGovernance({ mirror: true }),
   });
 
   const requestApplyWinner = (variantId: string, confirmStale = false) => {
@@ -252,12 +271,7 @@ export function DocumentBlockProposalsPanel({
           const stale =
             !confirmStale && err.message.includes('Official text changed');
           if (stale) {
-            const ok = window.confirm(
-              `${tGdocs('staleApplyTitle')}\n\n${tGdocs('staleApplyBody')}`,
-            );
-            if (ok) {
-              requestApplyWinner(variantId, true);
-            }
+            setStaleApplyRequest({ kind: 'winner', variantId });
             return;
           }
           addToast(err.message, 'error');
@@ -267,7 +281,7 @@ export function DocumentBlockProposalsPanel({
   };
 
   const applyOfficialWinnerMutation = trpc.documentVariants.applyOfficialVotingWinner.useMutation({
-    onSuccess: refreshBlockGovernance,
+    onSuccess: () => refreshBlockGovernance(),
     onError: (err) => addToast(err.message, 'error'),
   });
 
@@ -279,7 +293,7 @@ export function DocumentBlockProposalsPanel({
       ) {
         focus.clearVariantPreview();
       }
-      await refreshBlockGovernance();
+      await refreshBlockGovernance({ mirror: true });
     },
   });
 
@@ -291,18 +305,24 @@ export function DocumentBlockProposalsPanel({
           const stale =
             !confirmStale && err.message.includes('Official text changed');
           if (stale) {
-            const ok = window.confirm(
-              `${tGdocs('staleApplyTitle')}\n\n${tGdocs('staleApplyBody')}`,
-            );
-            if (ok) {
-              requestApplyOpenAsAdmin(variantId, true);
-            }
+            setStaleApplyRequest({ kind: 'open', variantId });
             return;
           }
           addToast(err.message, 'error');
         },
       },
     );
+  };
+
+  const confirmStaleApply = () => {
+    if (!staleApplyRequest) return;
+    const { kind, variantId } = staleApplyRequest;
+    setStaleApplyRequest(null);
+    if (kind === 'winner') {
+      requestApplyWinner(variantId, true);
+    } else {
+      requestApplyOpenAsAdmin(variantId, true);
+    }
   };
 
   const deleteVariantMutation = trpc.documentVariants.deleteVariant.useMutation({
@@ -692,6 +712,7 @@ export function DocumentBlockProposalsPanel({
                                 userId,
                                 docAllowDownvotes,
                                 community,
+                                documentContext: { documentId, blockId: block.id },
                                 returnToProposalsSheet,
                               });
                             }}
@@ -737,7 +758,7 @@ export function DocumentBlockProposalsPanel({
                 id: v.id,
                 documentId: v.documentId,
                 blockId: v.blockId,
-                content: v.content,
+                content: v.content ?? '',
                 proposedBy: v.proposedBy,
                 status: v.status,
                 rating: v.rating ?? 0,
@@ -777,6 +798,33 @@ export function DocumentBlockProposalsPanel({
       {manualPickAvailable && activeVariants.some((v) => v.status === 'closed-winner') ? (
         <p className="text-[11px] text-base-content/55">{tCanvas('railApplyHint')}</p>
       ) : null}
+
+      <Dialog
+        open={staleApplyRequest != null}
+        onOpenChange={(open) => {
+          if (!open) setStaleApplyRequest(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{tGdocs('staleApplyTitle')}</DialogTitle>
+            <DialogDescription>{tGdocs('staleApplyBody')}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-lg"
+              onClick={() => setStaleApplyRequest(null)}
+            >
+              {tGdocs('staleApplyCancel')}
+            </Button>
+            <Button type="button" className="rounded-lg" onClick={confirmStaleApply}>
+              {tGdocs('staleApplyConfirm')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

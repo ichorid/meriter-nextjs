@@ -8,15 +8,17 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { Community } from '@meriter/shared-types';
-import type { DocBlock, DocTranslate } from '@/features/documents/lib/document-canvas-shared';
+import type {
+  DocBlock,
+  DocTranslate,
+  DocumentCommunityContext,
+} from '@/features/documents/lib/document-canvas-shared';
 import { groupBlocksBySection } from '@/features/documents/lib/document-canvas-shared';
 
 export type DocumentMobileSheet =
   | { kind: 'closed' }
   | { kind: 'blockMenu' }
-  | { kind: 'propose' }
-  | { kind: 'vote'; variantId: string };
+  | { kind: 'propose' };
 
 export type DocumentAdminDialog =
   | { kind: 'closed' }
@@ -73,12 +75,14 @@ export type DocumentSelectionRange = {
 
 export interface DocumentCanvasFocusContextValue {
   documentId: string;
+  /** Document sections snapshot — needed for joined-HTML propose payloads. */
+  sections: unknown;
   docMode: 'manual' | 'auto';
   variantCost: number;
   votingDurationHours: number;
   docAllowDownvotes: boolean;
   canManageDocument: boolean;
-  community: Community | null;
+  community: DocumentCommunityContext | null;
   quotaRemaining: number;
   walletBalance: number;
   globalWalletBalance: number;
@@ -129,12 +133,14 @@ export function useDocumentCanvasFocusRequired(): DocumentCanvasFocusContextValu
 export interface DocumentCanvasFocusProviderProps {
   documentId: string;
   sections: unknown;
+  /** Initial focused block (e.g. from `#block-{id}` deep link). */
+  initialFocusedBlockId?: string | null;
   docMode: 'manual' | 'auto';
   variantCost: number;
   votingDurationHours: number;
   docAllowDownvotes: boolean;
   canManageDocument: boolean;
-  community: Community | null;
+  community: DocumentCommunityContext | null;
   quotaRemaining: number;
   walletBalance: number;
   globalWalletBalance: number;
@@ -147,6 +153,7 @@ export interface DocumentCanvasFocusProviderProps {
 export function DocumentCanvasFocusProvider({
   documentId,
   sections,
+  initialFocusedBlockId = null,
   docMode,
   variantCost,
   votingDurationHours,
@@ -161,7 +168,7 @@ export function DocumentCanvasFocusProvider({
   t,
   children,
 }: DocumentCanvasFocusProviderProps) {
-  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(initialFocusedBlockId);
   const [focusedVariantId, setFocusedVariantId] = useState<string | null>(null);
   const [variantPreview, setVariantPreviewState] = useState<DocumentVariantPreviewTarget | null>(
     null,
@@ -259,6 +266,7 @@ export function DocumentCanvasFocusProvider({
   const value = useMemo<DocumentCanvasFocusContextValue>(
     () => ({
       documentId,
+      sections,
       docMode,
       variantCost,
       votingDurationHours,
@@ -295,6 +303,7 @@ export function DocumentCanvasFocusProvider({
     }),
     [
       documentId,
+      sections,
       docMode,
       variantCost,
       votingDurationHours,

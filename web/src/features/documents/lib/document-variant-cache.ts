@@ -4,21 +4,18 @@ import type { DocSection } from '@/features/documents/lib/document-canvas-shared
 
 type TrpcUtils = ReturnType<typeof trpc.useUtils>;
 
-type BlockVariantRow = { id: string; status: string };
-
-type DocumentThreadsData = {
-  threads: Array<{
-    blockId: string;
-    officialExcerpt: string;
-    waveOpen: boolean;
-    variants: BlockVariantRow[];
-  }>;
-};
+type ListByBlockData = NonNullable<
+  ReturnType<TrpcUtils['documentVariants']['listByBlock']['getData']>
+>;
+type ListByDocumentData = NonNullable<
+  ReturnType<TrpcUtils['documentVariants']['listByDocument']['getData']>
+>;
+type DocumentByIdData = NonNullable<ReturnType<TrpcUtils['documents']['getById']['getData']>>;
 
 export type GovernanceCacheSnapshot = {
-  listByBlock?: BlockVariantRow[];
-  listByDocument?: DocumentThreadsData;
-  document?: { sections?: unknown };
+  listByBlock?: ListByBlockData;
+  listByDocument?: ListByDocumentData;
+  document?: DocumentByIdData;
 };
 
 /** Refetch document + variant queries so the proposals rail updates without waiting for the 20s poll. */
@@ -34,7 +31,11 @@ export async function refetchDocumentGovernanceCaches(
   utils: TrpcUtils,
   documentId: string,
   blockId: string,
-  options?: { bumpEditorResync?: () => void },
+  options?: {
+    bumpEditorResync?: () => void;
+    /** Invalidate community mirror caches (ОБ feed, community card) after official text changed. */
+    mirrorCommunityId?: string;
+  },
 ): Promise<void> {
   await Promise.all([
     utils.documents.getById.refetch({ id: documentId }),
@@ -42,6 +43,15 @@ export async function refetchDocumentGovernanceCaches(
     utils.documentVariants.listByBlock.refetch({ documentId, blockId }),
     utils.documentVariants.getBlockVotingPanel.refetch({ documentId, blockId }),
     utils.documentVariants.getBlockGovernanceHistory.refetch({ documentId, blockId }),
+    ...(options?.mirrorCommunityId
+      ? [
+          utils.communities.getById.invalidate({ id: options.mirrorCommunityId }),
+          utils.communities.getFutureVisions.invalidate(),
+          utils.documents.getOfficialByType.invalidate({
+            communityId: options.mirrorCommunityId,
+          }),
+        ]
+      : []),
   ]);
   if (options?.bumpEditorResync) {
     queueMicrotask(options.bumpEditorResync);
@@ -83,7 +93,7 @@ export function optimisticallyRemoveVariantFromCaches(
     if (filterActiveProposalVariants(nextBlock).length === 0) {
       const prevDoc = utils.documents.getById.getData({ id: documentId });
       if (prevDoc) {
-        snapshot.document = prevDoc as { sections?: unknown };
+        snapshot.document = prevDoc;
         utils.documents.getById.setData(
           { id: documentId },
           patchDocumentBlockWaveClosed(prevDoc, blockId),

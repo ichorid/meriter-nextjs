@@ -24,7 +24,7 @@ export function CommunityDocumentsPageClient({ communityId }: CommunityDocuments
 
   const canManageDocsSettings =
     user?.globalRole === 'superadmin' ||
-    roles.some((r) => r.communityId === communityId && r.role === 'lead');
+    roles.some((r) => r?.communityId === communityId && r?.role === 'lead');
 
   const listQuery = trpc.documents.listByCommunity.useQuery(
     { communityId },

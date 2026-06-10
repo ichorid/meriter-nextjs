@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/shadcn/dialog';
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
+import { refetchDocumentGovernanceCaches } from '@/features/documents/lib/document-variant-cache';
 import { cn } from '@/lib/utils';
 
 type CloseMode = 'by_votes' | 'force';
@@ -71,14 +72,11 @@ export function DocumentCloseVotingDialog() {
       focus?.addToast(t('closeVotingSuccess'), 'success');
       focus?.closeAdminDialog();
       if (blockId) {
-        await Promise.all([
-          utils.documents.getById.refetch({ id: documentId }),
-          utils.documentVariants.listByDocument.refetch({ documentId }),
-          utils.documentVariants.listByBlock.refetch({ documentId, blockId }),
-          utils.documentVariants.getBlockVotingPanel.refetch({ documentId, blockId }),
-          utils.documentVariants.getBlockGovernanceHistory.refetch({ documentId, blockId }),
-        ]);
-        queueMicrotask(() => focus.bumpEditorResync());
+        // Close may apply a winner — refresh mirror caches (ОБ feed, community card) too.
+        await refetchDocumentGovernanceCaches(utils, documentId, blockId, {
+          bumpEditorResync: () => focus?.bumpEditorResync(),
+          mirrorCommunityId: focus?.community?.id,
+        });
       }
     },
     onError: (err) => focus?.addToast(err.message, 'error'),

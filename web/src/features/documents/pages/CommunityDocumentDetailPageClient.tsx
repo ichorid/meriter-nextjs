@@ -38,11 +38,19 @@ export interface CommunityDocumentDetailPageClientProps {
   documentId: string;
 }
 
+function readDeepLinkBlockId(): string | null {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash;
+  if (!hash.startsWith('#block-')) return null;
+  return hash.slice('#block-'.length) || null;
+}
+
 export function CommunityDocumentDetailPageClient({
   communityId,
   documentId,
 }: CommunityDocumentDetailPageClientProps) {
   const router = useRouter();
+  const [deepLinkBlockId] = useState<string | null>(readDeepLinkBlockId);
   const t = useTranslations('pages.documents');
   const addToast = useToastStore((s) => s.addToast);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -116,7 +124,7 @@ export function CommunityDocumentDetailPageClient({
   const userRoleInCommunity =
     user?.globalRole === 'superadmin'
       ? 'superadmin'
-      : (userRoles.find((r) => r.communityId === communityId)?.role ?? null);
+      : (userRoles.find((r) => r?.communityId === communityId)?.role ?? null);
 
   const canManageDocument =
     user?.globalRole === 'superadmin' ||
@@ -214,6 +222,7 @@ export function CommunityDocumentDetailPageClient({
   const focusProps = {
     documentId: doc.id,
     sections: doc.sections,
+    initialFocusedBlockId: deepLinkBlockId,
     docMode: doc.mode,
     variantCost: doc.variantCost ?? 1,
     votingDurationHours: doc.votingDurationHours ?? 48,

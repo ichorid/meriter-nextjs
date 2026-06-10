@@ -1290,7 +1290,8 @@
                 "mobileProposals": "{count} proposals",
                 "staleApplyTitle": "Official text changed",
                 "staleApplyBody": "The passage changed after this proposal was submitted. Apply anyway?",
-                "staleApplyConfirm": "Apply anyway"
+                "staleApplyConfirm": "Apply anyway",
+                "staleApplyCancel": "Cancel"
             }
         },
         "spaces": {

@@ -4,6 +4,7 @@ import { useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { DocumentRichContent } from '@/features/documents/components/DocumentRichContent';
 import { groupBlocksBySection } from '@/features/documents/lib/document-canvas-shared';
+import { selectionRangeInBlock } from '@/features/documents/lib/document-html-structure';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
@@ -75,19 +76,11 @@ export function DocumentUnifiedCanvas({
       if (!root) {
         return;
       }
-      const preRange = document.createRange();
-      preRange.selectNodeContents(root);
-      const range = sel.getRangeAt(0);
-      if (!root.contains(range.commonAncestorContainer)) {
+      const selectionRange = selectionRangeInBlock(root, sel);
+      if (!selectionRange) {
         return;
       }
-      preRange.setEnd(range.startContainer, range.startOffset);
-      const rangeStart = preRange.toString().length;
-      const excerpt = range.toString();
-      const rangeEnd = rangeStart + excerpt.length;
-      if (rangeEnd <= rangeStart) {
-        return;
-      }
+      const { rangeStart, rangeEnd, excerpt } = selectionRange;
       const block = focus.getBlock(blockId);
       if (block?.proposalsLocked) {
         focus.addToast(tGdocs('proposalsLocked'), 'warning');

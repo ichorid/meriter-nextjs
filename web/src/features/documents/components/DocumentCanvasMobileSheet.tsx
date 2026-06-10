@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/shadcn/button';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { DocumentProposeComposer } from '@/features/documents/components/DocumentProposeComposer';
-import { openDocumentVariantVoting } from '@/features/documents/lib/document-variant-voting';
 import { trpc } from '@/lib/trpc/client';
 
 export function DocumentCanvasMobileSheet() {
@@ -50,20 +49,13 @@ export function DocumentCanvasMobileSheet() {
     waveEndsAtMs > Date.now() &&
     variants.some((v) => v.status === 'open');
 
-  const voteVariant =
-    mobileSheet.kind === 'vote'
-      ? variants.find((v) => v.id === mobileSheet.variantId)
-      : null;
-
   const hasBlockMenuContent =
     mobileSheet.kind === 'blockMenu' &&
     !!blockId &&
     (canProposeVariant || proposalsLocked || canManageDocument);
 
   const hasSheetContent =
-    (mobileSheet.kind === 'propose' && !!blockId) ||
-    (mobileSheet.kind === 'vote' && !!blockId && !!voteVariant) ||
-    hasBlockMenuContent;
+    (mobileSheet.kind === 'propose' && !!blockId) || hasBlockMenuContent;
 
   const isOpen =
     isMobile && !!focus && mobileSheet.kind !== 'closed' && hasSheetContent;
@@ -85,27 +77,8 @@ export function DocumentCanvasMobileSheet() {
 
     if (mobileSheet.kind === 'blockMenu' && !hasBlockMenuContent) {
       focus.closeMobileSheet();
-      return;
     }
-
-    if (mobileSheet.kind === 'vote') {
-      if (!blockId) {
-        focus.closeMobileSheet();
-        return;
-      }
-      if (!variantsQuery.isLoading && !voteVariant) {
-        focus.closeMobileSheet();
-      }
-    }
-  }, [
-    focus,
-    isMobile,
-    mobileSheet,
-    blockId,
-    hasBlockMenuContent,
-    voteVariant,
-    variantsQuery.isLoading,
-  ]);
+  }, [focus, isMobile, mobileSheet, blockId, hasBlockMenuContent]);
 
   if (!focus || !isMobile) {
     return null;
@@ -120,11 +93,9 @@ export function DocumentCanvasMobileSheet() {
   const title =
     mobileSheet.kind === 'propose'
       ? tCanvas('sheetPropose')
-      : mobileSheet.kind === 'vote'
-        ? tCanvas('sheetVote')
-        : mobileSheet.kind === 'blockMenu'
-          ? tCanvas('sheetBlockActions')
-          : undefined;
+      : mobileSheet.kind === 'blockMenu'
+        ? tCanvas('sheetBlockActions')
+        : undefined;
 
   return (
     <BottomActionSheet isOpen={isOpen} onClose={closeMobileSheet} title={title}>
@@ -201,27 +172,6 @@ export function DocumentCanvasMobileSheet() {
         />
       ) : null}
 
-      {mobileSheet.kind === 'vote' && blockId && voteVariant ? (
-        <Button
-          type="button"
-          className="h-10 w-full rounded-lg"
-          onClick={() => {
-            const cid = focus.community?.id ?? '';
-            closeMobileSheet();
-            if (!cid) return;
-            openDocumentVariantVoting({
-              variantId: voteVariant.id,
-              communityId: cid,
-              proposedBy: voteVariant.proposedBy,
-              userId: focus.userId,
-              docAllowDownvotes: focus.docAllowDownvotes,
-              community: focus.community,
-            });
-          }}
-        >
-          {tCanvas('sheetVote')}
-        </Button>
-      ) : null}
     </BottomActionSheet>
   );
 }

@@ -1,5 +1,5 @@
-import type { Community } from '@meriter/shared-types';
 import { useUIStore } from '@/stores/ui.store';
+import type { DocumentCommunityContext } from '@/features/documents/lib/document-canvas-shared';
 
 export function openDocumentVariantVoting(args: {
   variantId: string;
@@ -7,9 +7,11 @@ export function openDocumentVariantVoting(args: {
   proposedBy: string;
   userId: string;
   docAllowDownvotes: boolean;
-  community: Community | null | undefined;
+  community: DocumentCommunityContext | null | undefined;
   targetType?: 'document-variant' | 'document-block-official';
   documentVariantIsOwn?: boolean;
+  /** Scope for targeted cache invalidation after the vote */
+  documentContext?: { documentId: string; blockId?: string };
   /** After vote popup closes, reopen mobile proposals sheet if it was dismissed */
   returnToProposalsSheet?: boolean;
 }): void {
@@ -22,6 +24,7 @@ export function openDocumentVariantVoting(args: {
     community,
     targetType = 'document-variant',
     documentVariantIsOwn,
+    documentContext,
     returnToProposalsSheet,
   } = args;
   const isOwn = documentVariantIsOwn ?? (targetType === 'document-variant' && proposedBy === userId);
@@ -38,6 +41,7 @@ export function openDocumentVariantVoting(args: {
     communityId,
     documentVariantIsOwn: isOwn,
     documentAllowDownvotes: docAllowDownvotes,
+    documentContext,
     returnToDocumentProposalsSheet: returnToProposalsSheet === true,
   });
 }

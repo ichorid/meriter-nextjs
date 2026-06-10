@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import DOMPurify from 'dompurify';
+import DOMPurify, { type Config } from 'dompurify';
 import { normalizeOfficialContentForDisplay } from '@/features/documents/lib/block-content-format';
 import { documentRichListProseClass } from '@/features/documents/lib/document-revision-styles';
 import { cn } from '@/lib/utils';
 
 /** Matches TipTap StarterKit + Link output used in RichTextEditor. */
-const PURIFY: DOMPurify.Config = {
+const PURIFY: Config = {
   ALLOWED_TAGS: [
     'p',
     'br',

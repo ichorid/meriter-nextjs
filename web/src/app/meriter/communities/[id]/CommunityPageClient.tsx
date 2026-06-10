@@ -719,17 +719,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
         ? routes.communityDocument(chatId, obDocForHero!.id)
         : undefined;
 
-    const obProposalThreadsQuery = trpc.documentVariants.listByDocument.useQuery(
-        { documentId: obDocForHero?.id ?? '' },
-        { enabled: Boolean(obDocumentHref && obDocForHero?.id) },
-    );
-
-    const futureVisionCollaborativeDocumentHref =
-        obDocumentHref &&
-        obProposalThreadsQuery.isSuccess &&
-        (obProposalThreadsQuery.data?.threads.length ?? 0) > 0
-            ? obDocumentHref
-            : undefined;
+    // Link is shown whenever the member can open the document — not only when
+    // open proposal threads exist (members should reach the document to propose).
+    const futureVisionCollaborativeDocumentHref = obDocumentHref;
 
     /** Hub CTAs: create post / project / event / Birzha publish — participants or leads only, plus superadmin. */
     const canUseCommunityHubWriteActions = Boolean(

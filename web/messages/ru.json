@@ -1290,7 +1290,8 @@
                 "mobileProposals": "{count} предложений",
                 "staleApplyTitle": "Официальный текст изменился",
                 "staleApplyBody": "Фрагмент изменился после отправки предложения. Всё равно применить?",
-                "staleApplyConfirm": "Применить"
+                "staleApplyConfirm": "Применить",
+                "staleApplyCancel": "Отмена"
             }
         },
         "spaces": {

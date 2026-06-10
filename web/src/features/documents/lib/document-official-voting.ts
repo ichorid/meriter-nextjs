@@ -2,7 +2,7 @@
 
 import { openDocumentVariantVoting } from '@/features/documents/lib/document-variant-voting';
 import { buildOfficialBlockVoteTargetId } from '@/features/documents/lib/document-official-vote';
-import type { Community } from '@meriter/shared-types';
+import type { DocumentCommunityContext } from '@/features/documents/lib/document-canvas-shared';
 
 export function openDocumentOfficialVoting(args: {
   documentId: string;
@@ -10,7 +10,7 @@ export function openDocumentOfficialVoting(args: {
   communityId: string;
   userId: string;
   docAllowDownvotes: boolean;
-  community: Community | null | undefined;
+  community: DocumentCommunityContext | null | undefined;
   returnToProposalsSheet?: boolean;
 }): void {
   const { documentId, blockId, communityId, userId, docAllowDownvotes, community, returnToProposalsSheet } =
@@ -24,6 +24,7 @@ export function openDocumentOfficialVoting(args: {
     community,
     targetType: 'document-block-official',
     documentVariantIsOwn: false,
+    documentContext: { documentId, blockId },
     returnToProposalsSheet,
   });
 }

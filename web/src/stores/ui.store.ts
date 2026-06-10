@@ -41,6 +41,8 @@ interface UIState {
   votingCommunityId?: string | null;
   votingDocumentVariantIsOwn?: boolean;
   votingDocumentAllowDownvotes?: boolean;
+  /** Scope for targeted cache invalidation after a document vote */
+  votingDocumentContext?: { documentId: string; blockId?: string } | null;
   /** Reopen mobile «Предложения» sheet after document vote popup closes */
   returnToDocumentProposalsSheet?: boolean;
   activeVotingFormData: VotingFormData | null;
@@ -70,6 +72,7 @@ interface UIActions {
       communityId?: string;
       documentVariantIsOwn?: boolean;
       documentAllowDownvotes?: boolean;
+      documentContext?: { documentId: string; blockId?: string };
       returnToDocumentProposalsSheet?: boolean;
     },
   ) => void;
@@ -96,6 +99,7 @@ const initialState: UIState = {
   votingCommunityId: null,
   votingDocumentVariantIsOwn: false,
   votingDocumentAllowDownvotes: true,
+  votingDocumentContext: null,
   returnToDocumentProposalsSheet: false,
   activeVotingFormData: null,
   activeWithdrawTarget: null,
@@ -127,6 +131,7 @@ export const useUIStore = create<UIState & UIActions>()(
             votingCommunityId: opts?.communityId ?? null,
             votingDocumentVariantIsOwn: opts?.documentVariantIsOwn === true,
             votingDocumentAllowDownvotes: opts?.documentAllowDownvotes !== false,
+            votingDocumentContext: opts?.documentContext ?? null,
             returnToDocumentProposalsSheet: opts?.returnToDocumentProposalsSheet === true,
             activeVotingFormData: { comment: '', delta: 0, error: '', images: [] },
           }),
@@ -139,6 +144,7 @@ export const useUIStore = create<UIState & UIActions>()(
             votingCommunityId: null,
             votingDocumentVariantIsOwn: false,
             votingDocumentAllowDownvotes: true,
+            votingDocumentContext: null,
             activeVotingFormData: null,
           }),
         clearReturnToDocumentProposalsSheet: () =>

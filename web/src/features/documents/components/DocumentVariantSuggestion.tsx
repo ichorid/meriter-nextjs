@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import type { Community } from '@meriter/shared-types';
+import type { DocumentCommunityContext } from '@/features/documents/lib/document-canvas-shared';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
 import { DocumentVariantContextPreview } from '@/features/documents/components/DocumentVariantContextPreview';
@@ -32,7 +32,7 @@ export interface DocumentVariantSuggestionProps {
   docMode: 'manual' | 'auto';
   docAllowDownvotes: boolean;
   canManageDocument: boolean;
-  community: Community | null;
+  community: DocumentCommunityContext | null;
   userId: string;
   addToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
   t: DocTranslate;
@@ -79,11 +79,16 @@ export function DocumentVariantSuggestion({
 
   const withdrawMutation = trpc.documentVariants.withdraw.useMutation({
     onSuccess: async () => {
-      await utils.documents.getById.invalidate({ id: variant.documentId });
-      await utils.documentVariants.listByBlock.invalidate({
-        documentId: variant.documentId,
-        blockId,
-      });
+      await Promise.all([
+        utils.documents.getById.invalidate({ id: variant.documentId }),
+        utils.documentVariants.listByBlock.invalidate({
+          documentId: variant.documentId,
+          blockId,
+        }),
+        utils.documentVariants.listByDocument.invalidate({
+          documentId: variant.documentId,
+        }),
+      ]);
     },
     onError: (err) => addToast(err.message, 'error'),
   });
@@ -127,6 +132,7 @@ export function DocumentVariantSuggestion({
       userId,
       docAllowDownvotes,
       community,
+      documentContext: { documentId: variant.documentId, blockId },
       returnToProposalsSheet: Boolean(onDismissProposalsSheet),
     });
   };

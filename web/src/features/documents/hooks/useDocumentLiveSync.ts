@@ -43,6 +43,10 @@ export function useDocumentLiveSync({
             documentId,
             blockId: event.blockId,
           });
+          void utils.documentVariants.getBlockVotingPanel.invalidate({
+            documentId,
+            blockId: event.blockId,
+          });
         }
       };
 
@@ -69,7 +73,13 @@ export function useDocumentLiveSync({
           return;
       }
     },
-    [documentId, utils.documentVariants.listByBlock, utils.documentVariants.listByDocument, utils.documents.getById],
+    [
+      documentId,
+      utils.documentVariants.listByBlock,
+      utils.documentVariants.listByDocument,
+      utils.documentVariants.getBlockVotingPanel,
+      utils.documents.getById,
+    ],
   );
 
   const handleLiveEvent = useCallback(

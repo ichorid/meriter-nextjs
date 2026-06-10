@@ -49,6 +49,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     votingCommunityId,
     votingDocumentVariantIsOwn,
     votingDocumentAllowDownvotes,
+    votingDocumentContext,
     activeVotingFormData,
     closeVotingPopup,
     updateVotingFormData,
@@ -386,6 +387,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     // Close popup immediately to prevent flash of updated progress bars
     // The optimistic updates will happen in onMutate, but the popup will already be closed
     const targetId = activeVotingTarget;
+    // Captured before handleClose() resets the store.
+    const docCtx = votingDocumentContext;
     const commentText = formData.comment.trim();
     const imagesToSubmit = enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined;
     
@@ -415,9 +418,34 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           direction: isUpvote ? 'up' : 'down',
           comment: commentText,
         });
-        await utils.documentVariants.listByBlock.invalidate();
-        await utils.documentVariants.getBlockVotingPanel.invalidate();
-        await utils.documents.getById.invalidate();
+        // Scoped invalidation when document context is known; global fallback otherwise.
+        await Promise.all(
+          docCtx
+            ? [
+                docCtx.blockId
+                  ? utils.documentVariants.listByBlock.invalidate({
+                      documentId: docCtx.documentId,
+                      blockId: docCtx.blockId,
+                    })
+                  : utils.documentVariants.listByBlock.invalidate(),
+                docCtx.blockId
+                  ? utils.documentVariants.getBlockVotingPanel.invalidate({
+                      documentId: docCtx.documentId,
+                      blockId: docCtx.blockId,
+                    })
+                  : utils.documentVariants.getBlockVotingPanel.invalidate(),
+                utils.documentVariants.listByDocument.invalidate({
+                  documentId: docCtx.documentId,
+                }),
+                utils.documents.getById.invalidate({ id: docCtx.documentId }),
+              ]
+            : [
+                utils.documentVariants.listByBlock.invalidate(),
+                utils.documentVariants.getBlockVotingPanel.invalidate(),
+                utils.documentVariants.listByDocument.invalidate(),
+                utils.documents.getById.invalidate(),
+              ],
+        );
       } else {
         await voteOnVoteMutation.mutateAsync({
           voteId: targetId,

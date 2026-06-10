@@ -1,4 +1,3 @@
-import type { Community } from '@meriter/shared-types';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { canUseWalletForVoting } from '@/components/organisms/VotingPopup/voting-utils';
 import { htmlToPlainText } from '@/features/documents/lib/document-text-diff';
@@ -10,6 +9,21 @@ export const MAX_VISIBLE_VARIANTS = 2;
 export const VARIANT_LIST_SCROLL_THRESHOLD = 12;
 
 export type OfficialContentReason = 'vote' | 'admin' | 'initial';
+
+/**
+ * Structural subset of a community used by the documents feature.
+ * Both the shared-types `Community` and tRPC `communities.getById` output satisfy it,
+ * so components don't depend on the exact serialized shape.
+ */
+export type DocumentCommunityContext = {
+  id: string;
+  typeTag?: string;
+  settings?: { canPayPostFromQuota?: boolean } | null;
+  votingSettings?: {
+    currencySource?: 'quota-and-wallet' | 'quota-only' | 'wallet-only';
+    spendsMerits?: boolean;
+  } | null;
+};
 
 export interface BlockEditHistoryEntry {
   changedAt: string | Date;
@@ -127,7 +141,7 @@ export function variantStatusToneClass(
 export function computeVariantProposalFeeSplit(
   variantCost: number,
   quotaRemaining: number,
-  community: Community | null | undefined,
+  community: DocumentCommunityContext | null | undefined,
 ): { quotaAmount: number; walletAmount: number } {
   if (variantCost <= 0) {
     return { quotaAmount: 0, walletAmount: 0 };
@@ -145,7 +159,7 @@ export function canAffordVariantProposal(
   variantCost: number,
   quotaRemaining: number,
   globalWalletBalance: number,
-  community: Community | null | undefined,
+  community: DocumentCommunityContext | null | undefined,
 ): boolean {
   if (variantCost <= 0) {
     return true;
@@ -173,7 +187,7 @@ export function computeDocumentVariantVoteSplit(args: {
   meritAmount: number;
   direction: 'up' | 'down';
   quotaRemaining: number;
-  community: Community | null | undefined;
+  community: DocumentCommunityContext | null | undefined;
 }): { quotaAmount: number; walletAmount: number } {
   const { meritAmount, direction, quotaRemaining, community } = args;
   if (direction === 'down') {
