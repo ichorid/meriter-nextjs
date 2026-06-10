@@ -43,7 +43,8 @@ import { PasskeySection } from "./PasskeySection";
 import { OAuthButton } from "./OAuthButton";
 import { SmsAuthDialog } from "./SmsAuthDialog";
 import { CallCheckAuthDialog } from "./CallCheckAuthDialog";
-import { EmailAuthDialog } from "./EmailAuthDialog";
+import { EmailAuthDialog, type EmailLinkSentInfo } from "./EmailAuthDialog";
+import { CheckEmailCard } from "./CheckEmailCard";
 
 interface LoginFormProps {
     className?: string;
@@ -82,6 +83,10 @@ export function LoginForm({
     const [smsDialogOpen, setSmsDialogOpen] = useState(false);
     const [callDialogOpen, setCallDialogOpen] = useState(false);
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+
+    // When set, the sign-in link email was sent and the "check your email"
+    // screen replaces the login card until the user clicks the link or goes back.
+    const [emailLinkSent, setEmailLinkSent] = useState<EmailLinkSentInfo | null>(null);
 
     // Get return URL from URL
     const returnTo = searchParams?.get("returnTo");
@@ -205,7 +210,17 @@ export function LoginForm({
                 </div>
             </div>
 
-            {/* Login Card */}
+            {/* "Check your email" screen after the sign-in link was sent */}
+            {emailLinkSent ? (
+                <CheckEmailCard
+                    email={emailLinkSent.email}
+                    canResendAt={emailLinkSent.canResendAt}
+                    onBack={() => setEmailLinkSent(null)}
+                    onLoggedIn={() => {
+                        window.location.href = buildRedirectUrl();
+                    }}
+                />
+            ) : (
             <Card>
                 <CardHeader>
                     <CardTitle>{t("title")}</CardTitle>
@@ -463,6 +478,7 @@ export function LoginForm({
                     </p>
                 </CardFooter>
             </Card>
+            )}
 
             {/* SMS Authentication Dialog - always available in test mode */}
             {(smsEnabled || testAuthMode) && (
@@ -508,6 +524,7 @@ export function LoginForm({
                 <EmailAuthDialog
                     open={emailDialogOpen}
                     onOpenChange={setEmailDialogOpen}
+                    onLinkSent={(info) => setEmailLinkSent(info)}
                     onSuccess={(result) => {
                         let redirectUrl = buildRedirectUrl();
                         if (result?.isNewUser) redirectUrl = welcomeUrlForNewUser();

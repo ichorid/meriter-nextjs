@@ -729,17 +729,21 @@
         "emailDialog": {
             "title": "Sign in with Email",
             "description": "Enter your email and we will send you a sign-in link",
-            "sentDescription": "Check your inbox and open the link from the email",
             "emailLabel": "Email",
             "emailPlaceholder": "your@email.com",
             "sendLink": "Send Link",
             "sending": "Sending...",
-            "resendLink": "Send Again",
-            "resendIn": "Resend in {seconds}s",
-            "sentTo": "We sent a sign-in link to <b>{email}</b>",
-            "sentHint": "Open the email and click the link — you will be signed in automatically. If you don't see it, check your spam folder.",
-            "waitingForClick": "Waiting for you to open the link…",
             "invalidEmail": "Invalid email address",
+            "sendFailed": "Failed to send email"
+        },
+        "checkEmail": {
+            "title": "Check your email",
+            "sentTo": "We sent a sign-in link to <b>{email}</b>",
+            "hint": "Open the email and click the link — you will be signed in automatically. It usually arrives within a minute; if you don't see it, check your spam folder.",
+            "waiting": "Waiting for you to open the link…",
+            "resend": "Send again",
+            "resendIn": "Resend in {seconds}s",
+            "backToLogin": "Back to sign-in",
             "sendFailed": "Failed to send email"
         },
         "linkExpired": "This sign-in link is invalid or has expired. Please request a new one.",
