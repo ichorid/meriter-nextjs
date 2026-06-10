@@ -1,5 +1,5 @@
 /**
- * BC-12 P-4: shared OTP verification attempt logic (SMS + email).
+ * BC-12 P-4: shared OTP verification attempt logic (SMS).
  * inv-24: callers preserve channel-specific TTL at send time; this helper only handles verify attempts.
  */
 
@@ -19,13 +19,6 @@ export type OtpAttemptMessages = {
 export const SMS_OTP_ATTEMPT_MESSAGES: OtpAttemptMessages = {
   notFound: 'No valid OTP found. Please request a new code.',
   maxAttemptsExceeded: 'Maximum verification attempts exceeded. Please request a new code.',
-  invalidCode: (remainingAttempts) =>
-    `Invalid code. ${remainingAttempts} attempts remaining.`,
-};
-
-export const EMAIL_OTP_ATTEMPT_MESSAGES: OtpAttemptMessages = {
-  notFound: 'Invalid or expired code. Please request a new one.',
-  maxAttemptsExceeded: 'Too many failed attempts. Please request a new code.',
   invalidCode: (remainingAttempts) =>
     `Invalid code. ${remainingAttempts} attempts remaining.`,
 };

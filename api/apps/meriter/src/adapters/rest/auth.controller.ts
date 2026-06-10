@@ -14,7 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthProviderService } from '../../api-v1/auth/auth.service';
 import { AuthMagicLinkService } from '../../api-v1/auth/auth-magic-link.service';
 import { SmsProviderService } from '../../api-v1/auth/sms-provider.service';
-import { EmailProviderService } from '../../api-v1/auth/email-provider.service';
+import { EmailLoginLinkService } from '../../infrastructure/auth/email-login-link.service';
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../../infrastructure/auth/cookie-manager';
 import { UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
@@ -49,14 +49,10 @@ import {
   OtpCodeRequiredError,
 } from '../../application/use-cases/auth/verify-sms-otp.use-case';
 import {
-  SendEmailOtpUseCase,
+  SendEmailLoginLinkUseCase,
   EmailAuthDisabledError,
   EmailRequiredError,
-} from '../../application/use-cases/auth/send-email-otp.use-case';
-import {
-  VerifyEmailOtpUseCase,
-  EmailOtpCodeRequiredError,
-} from '../../application/use-cases/auth/verify-email-otp.use-case';
+} from '../../application/use-cases/auth/send-email-login-link.use-case';
 import { RedeemMagicLinkUseCase } from '../../application/use-cases/auth/redeem-magic-link.use-case';
 import {
   VerifyCallCheckUseCase,
@@ -86,8 +82,7 @@ export class AuthController {
   private readonly authenticatePasskeyUseCase: AuthenticatePasskeyUseCase;
   private readonly sendSmsOtpUseCase: SendSmsOtpUseCase;
   private readonly verifySmsOtpUseCase: VerifySmsOtpUseCase;
-  private readonly sendEmailOtpUseCase: SendEmailOtpUseCase;
-  private readonly verifyEmailOtpUseCase: VerifyEmailOtpUseCase;
+  private readonly sendEmailLoginLinkUseCase: SendEmailLoginLinkUseCase;
   private readonly redeemMagicLinkUseCase: RedeemMagicLinkUseCase;
   private readonly verifyCallCheckUseCase: VerifyCallCheckUseCase;
 
@@ -154,7 +149,7 @@ export class AuthController {
     private readonly authService: AuthProviderService,
     private readonly authMagicLinkService: AuthMagicLinkService,
     private readonly smsProviderService: SmsProviderService,
-    private readonly emailProviderService: EmailProviderService,
+    private readonly emailLoginLinkService: EmailLoginLinkService,
     private readonly configService: ConfigService<AppConfig>,
     private readonly cookieManager: CookieManager,
   ) {
@@ -186,15 +181,9 @@ export class AuthController {
       this.authService,
       this.establishSessionUseCase,
     );
-    this.sendEmailOtpUseCase = new SendEmailOtpUseCase(
+    this.sendEmailLoginLinkUseCase = new SendEmailLoginLinkUseCase(
       this.configService,
-      this.emailProviderService,
-    );
-    this.verifyEmailOtpUseCase = new VerifyEmailOtpUseCase(
-      this.configService,
-      this.emailProviderService,
-      this.authService,
-      this.establishSessionUseCase,
+      this.emailLoginLinkService,
     );
     this.redeemMagicLinkUseCase = new RedeemMagicLinkUseCase(
       this.authMagicLinkService,
@@ -754,7 +743,6 @@ export class AuthController {
   ) {
     const appUrl = this.configService.get('app')?.url ?? 'http://localhost';
     const loginUrl = `${appUrl}/meriter/login?error=link_expired`;
-    const profileUrl = `${appUrl}/meriter/profile`;
 
     if (this.isMagicLinkRedeemRateLimited(req)) {
       this.logger.warn('Magic link redeem rate limit exceeded');
@@ -772,7 +760,10 @@ export class AuthController {
       }
 
       this.logger.log(`Magic link auth successful for ${result.channel}`);
-      return res.redirect(302, profileUrl);
+      const destination = result.isNewUser
+        ? `${appUrl}/meriter/welcome`
+        : `${appUrl}/meriter/profile`;
+      return res.redirect(302, destination);
     } catch (error) {
       this.logger.error(`Magic link redeem auth failed: ${error}`);
       return res.redirect(302, loginUrl);
@@ -856,11 +847,15 @@ export class AuthController {
 
   // --- Email Authentication Endpoints ---
 
+  /**
+   * Send a one-time login link to the given email address.
+   * Login completes when the user opens the link (GET /api/v1/auth/link/:token).
+   */
   @Post('email/send')
-  async sendEmailOtp(@Body() body: { email: string }, @Res() res: any) {
+  async sendEmailLoginLink(@Body() body: { email: string }, @Res() res: any) {
     try {
-      this.logger.log(`Email OTP send request for ${body.email}`);
-      const result = await this.sendEmailOtpUseCase.send(body.email);
+      this.logger.log(`Email login link send request for ${body.email}`);
+      const result = await this.sendEmailLoginLinkUseCase.send(body.email);
 
       return res.json({
         success: true,
@@ -879,37 +874,6 @@ export class AuthController {
             ? error.message
             : 'Failed to send Email';
       this.logger.error(`Email send error: ${errorMessage}`, error);
-      throw new InternalServerError(errorMessage);
-    }
-  }
-
-  @Post('email/verify')
-  async verifyEmailOtp(@Body() body: { email: string; otpCode: string }, @Req() req: any, @Res() res: any) {
-    try {
-      const result = await this.verifyEmailOtpUseCase.verify({
-        email: body.email,
-        otpCode: body.otpCode,
-        request: req,
-        response: res,
-      });
-
-      return res.json({
-        success: true,
-        user: result.user,
-        isNewUser: result.isNewUser,
-      });
-    } catch (error) {
-      if (error instanceof ForbiddenException) throw error;
-      if (error instanceof EmailAuthDisabledError) {
-        throw new ForbiddenException(error.message);
-      }
-      const errorMessage =
-        error instanceof EmailOtpCodeRequiredError || error instanceof EmailRequiredError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : 'Failed to verify Email';
-      this.logger.error(`Email verify error: ${errorMessage}`, error);
       throw new InternalServerError(errorMessage);
     }
   }

@@ -35,12 +35,14 @@ export class AuthMagicLinkService {
   /**
    * Create a one-time magic link token for the given channel and target.
    * Returns the token and full URL to include in SMS/email.
+   * Token is short (16 base64url chars, 96 bits) to keep links compact;
+   * brute force is mitigated by TTL, one-time use, and redeem rate limiting.
    */
   async createToken(channel: 'sms' | 'email', target: string): Promise<CreateMagicLinkResult> {
     const magicConfig = this.configService.getOrThrow('magicLink');
     const ttlMs = magicConfig.ttlMinutes * 60 * 1000;
     const expiresAt = new Date(Date.now() + ttlMs);
-    const token = randomBytes(16).toString('hex');
+    const token = randomBytes(12).toString('base64url');
 
     await this.magicLinkModel.create({
       token,
@@ -55,6 +57,18 @@ export class AuthMagicLinkService {
 
     this.logger.log(`Magic link created for ${channel} target (expires ${expiresAt.toISOString()})`);
     return { token, linkUrl };
+  }
+
+  /**
+   * Returns creation time of the most recent link for the given channel/target,
+   * or null when none exists. Used for send-rate limiting.
+   */
+  async getLastCreatedAt(channel: 'sms' | 'email', target: string): Promise<Date | null> {
+    const doc = await this.magicLinkModel
+      .findOne({ channel, target })
+      .sort({ createdAt: -1 })
+      .lean<{ createdAt?: Date }>();
+    return doc?.createdAt ?? null;
   }
 
   /**

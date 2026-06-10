@@ -47,7 +47,7 @@ Structure and layer overview: see @architecture.mdc.
 
 ### API Calls
 - **Primary API pattern**: TanStack Query + tRPC for most authenticated and domain operations (many procedures are `protectedProcedure`; selected reads are `publicProcedure`)
-- **REST (`api-v1` / `/api/v1`)**: Nest modules live under `api/apps/meriter/src/api-v1/`; HTTP routes are mounted under the `/api/v1/...` prefix. Used for selected flows including auth (including fake auth), OAuth redirects/callbacks, WebAuthn/Passkey, SMS OTP, email OTP, magic link redeem, phone call-check endpoints, and runtime/config bootstrap where exposed via REST controllers (not an exhaustive list—see `api-v1/` tree)
+- **REST (`api-v1` / `/api/v1`)**: Nest modules live under `api/apps/meriter/src/api-v1/`; HTTP routes are mounted under the `/api/v1/...` prefix. Used for selected flows including auth (including fake auth), OAuth redirects/callbacks, WebAuthn/Passkey, SMS OTP, email login link (magic link send + redeem), phone call-check endpoints, and runtime/config bootstrap where exposed via REST controllers (not an exhaustive list—see `api-v1/` tree)
 - **File uploads**: tRPC mutations (`uploads.*`) are the primary path; REST upload controller exists for backward compatibility under `/api/v1/uploads/...` (module `api-v1/uploads`) and is marked `@deprecated` in `uploads.controller.ts`
 
 ### Schema Location
@@ -60,7 +60,7 @@ Structure and layer overview: see @architecture.mdc.
 - Variables: camelCase
 
 ## Implemented Feature Surface
-- **Authentication**: JWT/cookie auth; fake auth via tRPC/REST; OAuth-compatible REST auth paths; passkey/WebAuthn; additional REST auth flows include SMS OTP, email OTP, and magic link (see `api-v1/auth`)
+- **Authentication**: JWT/cookie auth; fake auth via tRPC/REST; OAuth-compatible REST auth paths; passkey/WebAuthn; additional REST auth flows include SMS OTP and email magic link (`POST /api/v1/auth/email/send` sends a one-time sign-in link; no email OTP code — see `api-v1/auth`)
 - **Navigation (primary hubs)**: Future Visions (`/meriter/future-visions`), МД / «Биржа» (`/meriter/communities/{marathon-of-good-id}`), Projects (`/meriter/projects`), notifications, profile — details @frontend.mdc
 - **ОБ / Future Visions feed**: `communities.getFutureVisions`; hub cards use `Community` fields `futureVisionText`, `futureVisionTags`, `futureVisionCover` (see `community.schema.ts`); OB posts in the hub — @business-future-vision.mdc
 - **Биржа as showcase**: publications in the **Marathon of Good** community (`marathon-of-good`) — weighted feed, tappalka, investing on posts; Birzha-source posts from projects/communities — @business-content.mdc, @business-investing.mdc

@@ -95,7 +95,7 @@ See @architecture.mdc **Remaining debt** for Tier-3 `@InjectModel` scripts and O
 - Platform dev group is mounted as `platformDev` in appRouter, with implementation file `trpc/routers/platform-dev.router.ts` (superadmin-only procedures).
 
 ### REST (`api-v1`)
-- Used for selected flows (auth/providers, config, passkeys/WebAuthn, SMS/email OTP, phone call-check, magic-link), plus development/test auth endpoints (`fake`, `fake/superadmin`, `mock/:provider`), with shared REST helpers/services under `api-v1/common`.
+- Used for selected flows (auth/providers, config, passkeys/WebAuthn, SMS OTP, email magic link, phone call-check, magic-link redeem), plus development/test auth endpoints (`fake`, `fake/superadmin`, `mock/:provider`), with shared REST helpers/services under `api-v1/common`.
 - Upload REST endpoints are kept for backward compatibility and marked deprecated; prefer tRPC uploads endpoints for new code. Note: permission parity is not complete - `api-v1/uploads/community/:communityId/avatar` currently has a TODO for lead-role enforcement, while tRPC checks lead/superadmin.
 - Reuse domain services and shared helpers where possible; current REST/tRPC layers also use dedicated enrichment/mapping helpers from `api-v1/common`.
 
@@ -135,7 +135,7 @@ Never rely on UI assumptions for security-critical checks.
 - Phase 1 stub: export `NotificationRoutingSchema` from `schemas.ts` (no backend runtime dependency yet).
 - Backend-only schemas: `api/apps/meriter/src/common/schemas/` (e.g. `pagination.schema.ts` — canonical pagination; replace inline router pagination in Phase 1).
 - Most Mongoose models are in `domain/models/**`; additional schemas can also exist in dedicated feature modules (e.g. `updates-conductors/model`).
-- Auth persistence schemas are in `domain/models/auth/**` (`passkey-challenge.schema.ts`, `auth-magic-link.schema.ts`, `sms-otp.schema.ts`, `email-otp.schema.ts`).
+- Auth persistence schemas are in `domain/models/auth/**` (`passkey-challenge.schema.ts`, `auth-magic-link.schema.ts`, `sms-otp.schema.ts`). Email login has no OTP collection — it uses `auth-magic-link` records only.
 - When changing contract shape, update both backend usage and frontend consumers.
 
 ## Service Pattern
