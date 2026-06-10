@@ -18,6 +18,7 @@ import { LoadingState } from "@/components/atoms/LoadingState";
 import { getErrorMessage } from "@/lib/api/errors";
 import { safeMeriterReturnPath } from "@/lib/utils/safe-return-to";
 import { isFakeDataMode, isTestAuthMode } from "@/config";
+import { EMAIL_ONLY_LOGIN } from "@/lib/constants/login-methods";
 import { mockOAuthAuth } from "@/lib/utils/mock-auth";
 import {
     OAUTH_PROVIDERS,
@@ -72,6 +73,13 @@ export function LoginForm({
     const fakeDataMode = isFakeDataMode();
     const testAuthMode = isTestAuthMode();
 
+    // Production UI: email only (AuthWrapper and /meriter/login must both honor this).
+    const resolvedProviders = testAuthMode ? enabledProviders : EMAIL_ONLY_LOGIN.enabledProviders;
+    const resolvedAuthn = testAuthMode ? authnEnabled : EMAIL_ONLY_LOGIN.authnEnabled;
+    const resolvedSms = testAuthMode ? smsEnabled : EMAIL_ONLY_LOGIN.smsEnabled;
+    const resolvedPhone = testAuthMode ? phoneEnabled : EMAIL_ONLY_LOGIN.phoneEnabled;
+    const resolvedEmail = emailEnabled;
+
     const { authenticateFakeUser, authenticateFakeSuperadmin, isLoading, authError, setAuthError } =
         useAuth();
     const addToast = useToastStore((state) => state.addToast);
@@ -100,21 +108,21 @@ export function LoginForm({
     };
 
     // Filter providers if enabledProviders is passed
-    const displayedProviders = enabledProviders
-        ? OAUTH_PROVIDERS.filter((p) => enabledProviders.includes(p.id))
+    const displayedProviders = resolvedProviders
+        ? OAUTH_PROVIDERS.filter((p) => resolvedProviders.includes(p.id))
         : OAUTH_PROVIDERS;
 
     const hasPrimaryAuthColumn =
         displayedProviders.length > 0 ||
-        smsEnabled ||
-        phoneEnabled ||
-        emailEnabled;
+        resolvedSms ||
+        resolvedPhone ||
+        resolvedEmail;
     const showNoAuthProvidersWarning =
         displayedProviders.length === 0 &&
-        !authnEnabled &&
-        !smsEnabled &&
-        !phoneEnabled &&
-        !emailEnabled;
+        !resolvedAuthn &&
+        !resolvedSms &&
+        !resolvedPhone &&
+        !resolvedEmail;
 
     // Show auth error toast when error changes
     useEffect(() => {
@@ -300,7 +308,7 @@ export function LoginForm({
                                     <>
                                         {/* Captive (in-app) browser: only SMS and Email (tg-hint overlay handles instructions) */}
                                         <div className="space-y-2">
-                                            {smsEnabled && (
+                                            {resolvedSms && (
                                                 <Button
                                                     variant="outline"
                                                     className="w-full justify-center"
@@ -311,7 +319,7 @@ export function LoginForm({
                                                     {t("signInWithSms")}
                                                 </Button>
                                             )}
-                                            {emailEnabled && (
+                                            {resolvedEmail && (
                                                 <Button
                                                     variant="outline"
                                                     className="w-full justify-center"
@@ -322,7 +330,7 @@ export function LoginForm({
                                                     {t("signInWithEmail")}
                                                 </Button>
                                             )}
-                                            {(!smsEnabled && !emailEnabled) && (
+                                            {(!resolvedSms && !resolvedEmail) && (
                                                 <p className="text-sm text-muted-foreground text-center">
                                                     {t("noAuthenticationProviders")}
                                                 </p>
@@ -346,7 +354,7 @@ export function LoginForm({
                                                 />
                                             ))}
 
-                                            {smsEnabled && (
+                                            {resolvedSms && (
                                                 <Button
                                                     variant="outline"
                                                     className="w-full justify-center"
@@ -358,7 +366,7 @@ export function LoginForm({
                                                 </Button>
                                             )}
 
-                                            {phoneEnabled && (
+                                            {resolvedPhone && (
                                                 <Button
                                                     variant="outline"
                                                     className="w-full justify-center"
@@ -370,7 +378,7 @@ export function LoginForm({
                                                 </Button>
                                             )}
 
-                                            {emailEnabled && (
+                                            {resolvedEmail && (
                                                 <Button
                                                     variant="outline"
                                                     className="w-full justify-center"
@@ -385,7 +393,7 @@ export function LoginForm({
                                     )}
 
                                     {/* Separator between primary methods and Passkey */}
-                                    {hasPrimaryAuthColumn && authnEnabled && (
+                                    {hasPrimaryAuthColumn && resolvedAuthn && (
                                         <div className="relative">
                                             <div className="absolute inset-0 flex items-center">
                                                 <Separator />
@@ -399,7 +407,7 @@ export function LoginForm({
                                     )}
 
                                     {/* Passkey Authentication */}
-                                    {authnEnabled && (
+                                    {resolvedAuthn && (
                                         <PasskeySection
                                             isLoading={isLoading || isOAuthLoading}
                                             onSuccess={(result) => {
@@ -481,7 +489,7 @@ export function LoginForm({
             )}
 
             {/* SMS Authentication Dialog - always available in test mode */}
-            {(smsEnabled || testAuthMode) && (
+            {(resolvedSms || testAuthMode) && (
                 <SmsAuthDialog
                     open={smsDialogOpen}
                     onOpenChange={setSmsDialogOpen}
@@ -503,7 +511,7 @@ export function LoginForm({
             )}
 
             {/* Phone/Call Authentication Dialog - always available in test mode */}
-            {(phoneEnabled || testAuthMode) && (
+            {(resolvedPhone || testAuthMode) && (
                 <CallCheckAuthDialog
                     open={callDialogOpen}
                     onOpenChange={setCallDialogOpen}
@@ -520,7 +528,7 @@ export function LoginForm({
             )}
 
             {/* Email Authentication Dialog - always available in test mode */}
-            {(emailEnabled || testAuthMode) && (
+            {(resolvedEmail || testAuthMode) && (
                 <EmailAuthDialog
                     open={emailDialogOpen}
                     onOpenChange={setEmailDialogOpen}
