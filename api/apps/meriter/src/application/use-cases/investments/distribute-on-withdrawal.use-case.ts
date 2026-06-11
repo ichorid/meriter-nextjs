@@ -3,7 +3,7 @@ import type {
   PublicationInvestment,
 } from '../../../domain/models/publication/publication.schema';
 import type { CommunityService } from '../../../domain/services/community.service';
-import type { MeritResolverService } from '../../../domain/services/merit-resolver.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import type { NotificationService } from '../../../domain/services/notification.service';
 import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
@@ -23,7 +23,7 @@ export type {
 export type DistributeOnWithdrawalDeps = {
   investmentPersistence: InvestmentPersistencePort;
   walletService: WalletService;
-  meritResolverService: MeritResolverService;
+  walletContextResolverService: WalletContextResolverService;
   communityService: CommunityService;
   notificationService: NotificationService;
   userService: UserService;
@@ -107,10 +107,11 @@ export class DistributeOnWithdrawalUseCase implements DistributeOnWithdrawalPort
 
     const authorAmount = withdrawAmount - distributedTotal;
 
-    const targetCommunityId = this.deps.meritResolverService.getWalletCommunityId(
-      community,
-      'withdrawal',
-    );
+    const targetCommunityId =
+      await this.deps.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'withdrawal',
+      );
     for (const dist of investorDistributions) {
       await this.deps.walletService.addTransaction(
         dist.investorId,

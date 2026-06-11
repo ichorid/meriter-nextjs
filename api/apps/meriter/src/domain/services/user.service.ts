@@ -13,6 +13,7 @@ import type { Community } from '../models/community/community.schema';
 import { uid } from 'uid';
 import { CommunityService } from './community.service';
 import { WalletService } from './wallet.service';
+import { WalletContextResolverService } from './wallet-context-resolver.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
@@ -56,6 +57,7 @@ export class UserService implements OnModuleInit {
     private userCommunityRoleService: UserCommunityRoleService,
     @Inject(PROVISION_BASE_MEMBERSHIP_PORT)
     private readonly provisionBaseMembershipUseCase: ProvisionBaseMembershipPort,
+    private readonly walletContextResolverService: WalletContextResolverService,
   ) {}
 
   async onModuleInit() {
@@ -345,9 +347,14 @@ export class UserService implements OnModuleInit {
       plural: 'merits',
       genitive: 'merits',
     };
+    const walletCommunityId =
+      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'voting',
+      );
     await this.walletService.createOrGetWallet(
       targetUserId,
-      communityId,
+      walletCommunityId,
       currency,
       {
         startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(community),
@@ -418,9 +425,14 @@ export class UserService implements OnModuleInit {
       plural: 'merits',
       genitive: 'merits',
     };
+    const walletCommunityId =
+      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'voting',
+      );
     await this.walletService.createOrGetWallet(
       targetUserId,
-      communityId,
+      walletCommunityId,
       currency,
       {
         startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(community),

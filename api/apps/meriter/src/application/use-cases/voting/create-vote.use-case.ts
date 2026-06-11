@@ -10,7 +10,7 @@ import type { DocumentBlockVariantSchemaClass } from '../../../domain/models/doc
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { DocumentService } from '../../../domain/services/document.service';
 import type { DocumentVariantService } from '../../../domain/services/document-variant.service';
-import type { MeritResolverService } from '../../../domain/services/merit-resolver.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import type { PermissionService } from '../../../domain/services/permission.service';
 import type { PublicationService } from '../../../domain/services/publication.service';
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
@@ -71,7 +71,7 @@ export type CreateVoteUseCaseDeps = {
   voteService: VoteService;
   communityService: CommunityService;
   connection: Connection;
-  meritResolverService: MeritResolverService;
+  walletContextResolverService: WalletContextResolverService;
   walletService: WalletService;
   userService: UserService;
   userCommunityRoleService: UserCommunityRoleService;
@@ -405,10 +405,11 @@ export class CreateVoteUseCase {
       }
     
       // Check wallet balance (global for priority communities, community for local)
-      const walletCommunityId = deps.meritResolverService.getWalletCommunityId(
-        community,
-        'voting',
-      );
+      const walletCommunityId =
+        await deps.walletContextResolverService.resolvePersonalWalletCommunityId(
+          community,
+          'voting',
+        );
       if (walletAmount > 0) {
         const walletBalance = await getWalletBalance(
           userId,
@@ -517,9 +518,14 @@ export class CreateVoteUseCase {
             plural: 'merits',
             genitive: 'merits',
           };
+          const appreciationWalletCommunityId =
+            await deps.walletContextResolverService.resolvePersonalWalletCommunityId(
+              community,
+              'voting',
+            );
           await deps.walletService.addTransaction(
             beneficiaryId,
-            communityId,
+            appreciationWalletCommunityId,
             'credit',
             totalAmount,
             'personal',
@@ -606,7 +612,7 @@ export function createCreateVoteUseCaseFromContext(ctx: {
   voteService: VoteService;
   communityService: CommunityService;
   connection: Connection;
-  meritResolverService: MeritResolverService;
+  walletContextResolverService: WalletContextResolverService;
   walletService: WalletService;
   userService: UserService;
   userCommunityRoleService: UserCommunityRoleService;
@@ -619,7 +625,7 @@ export function createCreateVoteUseCaseFromContext(ctx: {
     voteService: ctx.voteService,
     communityService: ctx.communityService,
     connection: ctx.connection,
-    meritResolverService: ctx.meritResolverService,
+    walletContextResolverService: ctx.walletContextResolverService,
     walletService: ctx.walletService,
     userService: ctx.userService,
     userCommunityRoleService: ctx.userCommunityRoleService,

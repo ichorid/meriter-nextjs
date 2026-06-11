@@ -90,6 +90,7 @@ export const communitiesRouter = router({
           canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
           allowWithdraw: community.settings?.allowWithdraw ?? true,
           forwardRule: community.settings?.forwardRule ?? 'standard',
+          sharedWalletWithProjects: community.settings?.sharedWalletWithProjects ?? false,
           investingEnabled: community.settings?.investingEnabled ?? false,
           investorShareMin: community.settings?.investorShareMin ?? 1,
           investorShareMax: community.settings?.investorShareMax ?? 99,
@@ -369,6 +370,8 @@ export const communitiesRouter = router({
       return createUpdateCommunitySettingsUseCase({
         communityService: ctx.communityService,
         userCommunityRoleService: ctx.userCommunityRoleService,
+        walletContextResolverService: ctx.walletContextResolverService,
+        communityWalletService: ctx.communityWalletService,
       }).execute({
         communityId: input.id,
         data: input.data,
@@ -1147,14 +1150,18 @@ export const communitiesRouter = router({
           });
         }
       }
-      const wallet = await ctx.communityWalletService.getWallet(input.communityId);
+      const walletKey =
+        await ctx.walletContextResolverService.resolveCommunityWalletCommunityId(
+          input.communityId,
+        );
+      const wallet = await ctx.communityWalletService.getWallet(walletKey);
       return (
         wallet ?? {
           balance: 0,
           totalReceived: 0,
           totalDistributed: 0,
           id: '',
-          communityId: input.communityId,
+          communityId: walletKey,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }

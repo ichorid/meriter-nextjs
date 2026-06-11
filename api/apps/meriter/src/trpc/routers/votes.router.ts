@@ -75,21 +75,22 @@ async function processWithdrawal(
       plural: 'merits',
       genitive: 'merits',
     };
-    const targetCommunityId = ctx.meritResolverService.getWalletCommunityId(
-      publicationCommunity,
-      'withdrawal',
-    );
+    const targetCommunityId =
+      await ctx.walletContextResolverService.resolvePersonalWalletCommunityId(
+        publicationCommunity,
+        'withdrawal',
+      );
     return {
       targetCommunityId,
       currency,
     };
   }
 
-  // Credit to wallet: global for priority communities, community for local
-  const targetCommunityId = ctx.meritResolverService.getWalletCommunityId(
-    publicationCommunity,
-    'withdrawal',
-  );
+  const targetCommunityId =
+    await ctx.walletContextResolverService.resolvePersonalWalletCommunityId(
+      publicationCommunity,
+      'withdrawal',
+    );
 
   const targetCommunity =
     targetCommunityId === GLOBAL_COMMUNITY_ID

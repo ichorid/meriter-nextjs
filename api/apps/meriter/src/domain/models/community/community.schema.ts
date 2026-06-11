@@ -53,6 +53,11 @@ export interface CommunitySettings {
    * 'project': Post is forwarded with all votes, original is deleted.
    */
   forwardRule?: 'standard' | 'project';
+  /**
+   * When true, this community and all child isProject communities share one wallet key
+   * (parent communityId) for personal wallets and CommunityWallet.
+   */
+  sharedWalletWithProjects?: boolean;
   /** Enable merit investment in posts */
   investingEnabled?: boolean;
   /** Minimum investor share percentage (1-99) */
@@ -410,6 +415,7 @@ export class CommunitySchemaClass implements Community {
       canPayPostFromQuota: { type: Boolean, default: false },
       allowWithdraw: { type: Boolean, default: true },
       forwardRule: { type: String, enum: ['standard', 'project'], default: 'standard' },
+      sharedWalletWithProjects: { type: Boolean, default: false },
       investingEnabled: { type: Boolean, default: false },
       investorShareMin: { type: Number, default: 1 },
       investorShareMax: { type: Number, default: 99 },

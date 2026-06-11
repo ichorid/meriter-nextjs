@@ -16,8 +16,11 @@ type WithdrawalContext = {
       settings?: Record<string, unknown>;
     }): { awardsMerits: boolean };
   };
-  meritResolverService: {
-    getWalletCommunityId(community: unknown, op: string): string;
+  walletContextResolverService: {
+    resolvePersonalWalletCommunityId(
+      community: unknown,
+      op: 'withdrawal',
+    ): Promise<string>;
   };
   walletService: {
     addTransaction(
@@ -57,17 +60,19 @@ export async function processPublicationWithdrawal(
       plural: 'merits',
       genitive: 'merits',
     };
-    const targetCommunityId = ctx.meritResolverService.getWalletCommunityId(
-      publicationCommunity,
-      'withdrawal',
-    );
+    const targetCommunityId =
+      await ctx.walletContextResolverService.resolvePersonalWalletCommunityId(
+        publicationCommunity,
+        'withdrawal',
+      );
     return { targetCommunityId, currency };
   }
 
-  const targetCommunityId = ctx.meritResolverService.getWalletCommunityId(
-    publicationCommunity,
-    'withdrawal',
-  );
+  const targetCommunityId =
+    await ctx.walletContextResolverService.resolvePersonalWalletCommunityId(
+      publicationCommunity,
+      'withdrawal',
+    );
 
   const targetCommunity =
     targetCommunityId === GLOBAL_COMMUNITY_ID

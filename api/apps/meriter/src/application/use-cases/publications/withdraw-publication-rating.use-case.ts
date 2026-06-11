@@ -4,7 +4,7 @@ import { GLOBAL_COMMUNITY_ID } from '../../../domain/common/constants/global.con
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { CommunityWalletService } from '../../../domain/services/community-wallet.service';
 import type { InvestmentService } from '../../../domain/services/investment.service';
-import type { MeritResolverService } from '../../../domain/services/merit-resolver.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import type { PublicationService } from '../../../domain/services/publication.service';
 import type { VoteService } from '../../../domain/services/vote.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
@@ -16,7 +16,7 @@ export type WithdrawPublicationRatingContext = {
   voteService: VoteService;
   investmentService: InvestmentService;
   communityWalletService: CommunityWalletService;
-  meritResolverService: MeritResolverService;
+  walletContextResolverService: WalletContextResolverService;
   walletService: WalletService;
 };
 
@@ -154,9 +154,13 @@ export class WithdrawPublicationRatingUseCase {
 
     let targetCommunityId: string;
     if (isBirzhaSourcePost && sourceEntityId) {
-      await this.ctx.communityWalletService.createWallet(sourceEntityId);
+      const communityWalletId =
+        await this.ctx.walletContextResolverService.resolveCommunityWalletCommunityId(
+          sourceEntityId,
+        );
+      await this.ctx.communityWalletService.createWallet(communityWalletId);
       await this.ctx.communityWalletService.deposit(
-        sourceEntityId,
+        communityWalletId,
         authorShare,
         'publication_withdrawal',
       );
@@ -200,10 +204,11 @@ export class WithdrawPublicationRatingUseCase {
 
     const effectiveVotingSettings =
       this.ctx.communityService.getEffectiveVotingSettings(publicationCommunity);
-    const targetCommunityId = this.ctx.meritResolverService.getWalletCommunityId(
-      publicationCommunity,
-      'withdrawal',
-    );
+    const targetCommunityId =
+      await this.ctx.walletContextResolverService.resolvePersonalWalletCommunityId(
+        publicationCommunity,
+        'withdrawal',
+      );
 
     if (!effectiveVotingSettings.awardsMerits) {
       return { targetCommunityId };

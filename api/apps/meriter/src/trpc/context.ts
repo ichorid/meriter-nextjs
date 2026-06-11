@@ -35,6 +35,7 @@ import { TappalkaService } from '../domain/services/tappalka.service';
 import { InvestmentService } from '../domain/services/investment.service';
 import { PostClosingService } from '../domain/services/post-closing.service';
 import { MeritResolverService } from '../domain/services/merit-resolver.service';
+import { WalletContextResolverService } from '../domain/services/wallet-context-resolver.service';
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
 import { PlatformSettingsService } from '../domain/services/platform-settings.service';
@@ -91,6 +92,7 @@ export interface CreateContextOptions {
   investmentService: InvestmentService;
   postClosingService: PostClosingService;
   meritResolverService: MeritResolverService;
+  walletContextResolverService: WalletContextResolverService;
   teamJoinRequestService: TeamJoinRequestService;
   teamInvitationService: TeamInvitationService;
   platformSettingsService: PlatformSettingsService;
@@ -159,6 +161,7 @@ export async function createContext(opts: CreateContextOptions) {
     investmentService,
     postClosingService,
     meritResolverService,
+    walletContextResolverService,
     teamJoinRequestService,
     teamInvitationService,
     platformSettingsService,
@@ -276,6 +279,7 @@ export async function createContext(opts: CreateContextOptions) {
     investmentService,
     postClosingService,
     meritResolverService,
+    walletContextResolverService,
     teamJoinRequestService,
     teamInvitationService,
     platformSettingsService,

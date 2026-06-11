@@ -10,7 +10,6 @@ import {
 } from '@meriter/shared-types/merit-transfer';
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../../../domain/common/constants/global.constant';
-import { isPriorityCommunity } from '../../../domain/common/helpers/community.helper';
 import {
   attendeeIdsFromParticipants,
   parseEventParticipantsFromDoc,
@@ -22,6 +21,7 @@ import type {
 } from '../../../domain/ports/create-merit-transfer.port';
 import { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import { WalletService } from '../../../domain/services/wallet.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import type { MeritTransferPersistencePort } from '../../../domain/ports/merit-transfer.persistence.port';
 import type { PublicationPersistencePort } from '../../../domain/ports/publication.persistence.port';
 
@@ -44,6 +44,7 @@ export class CreateMeritTransferUseCase implements CreateMeritTransferPort {
     private readonly walletService: WalletService,
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
+    private readonly walletContextResolverService: WalletContextResolverService,
   ) {}
 
   private toRecord(
@@ -66,18 +67,15 @@ export class CreateMeritTransferUseCase implements CreateMeritTransferPort {
     };
   }
 
-  /**
-   * User wallet key: priority hubs use global storage (G-11), same as wallets.getByCommunity.
-   */
   private async resolveUserWalletCommunityId(contextId: string): Promise<string> {
     const community = await this.communityService.getCommunity(contextId);
     if (!community) {
       throw new NotFoundException('Wallet context community not found');
     }
-    if (isPriorityCommunity(community)) {
-      return GLOBAL_COMMUNITY_ID;
-    }
-    return contextId;
+    return this.walletContextResolverService.resolvePersonalWalletCommunityId(
+      community,
+      'voting',
+    );
   }
 
   private async resolveSourceWalletId(input: MeritTransferCreateInput): Promise<string> {
@@ -247,6 +245,7 @@ export function createCreateMeritTransferUseCase(deps: {
   walletService: WalletService;
   communityService: CommunityService;
   userCommunityRoleService: UserCommunityRoleService;
+  walletContextResolverService: WalletContextResolverService;
 }): CreateMeritTransferUseCase {
   return new CreateMeritTransferUseCase(
     deps.meritTransferPersistence,
@@ -254,5 +253,6 @@ export function createCreateMeritTransferUseCase(deps: {
     deps.walletService,
     deps.communityService,
     deps.userCommunityRoleService,
+    deps.walletContextResolverService,
   );
 }

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { WalletSnapshot } from '../../../domain/aggregates/wallet/wallet.entity';
-import { CommunityService } from '../../../domain/services/community.service';
-import { MeritResolverService } from '../../../domain/services/merit-resolver.service';
+import { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import { WalletService } from '../../../domain/services/wallet.service';
 
 export type WalletBalanceSnapshotDto = Omit<WalletSnapshot, 'lastUpdated'> & {
@@ -18,17 +17,15 @@ export type WalletBalanceSnapshotDto = Omit<WalletSnapshot, 'lastUpdated'> & {
 export class GetWalletBalanceUseCase {
   constructor(
     private readonly walletService: WalletService,
-    private readonly communityService: CommunityService,
-    private readonly meritResolverService: MeritResolverService,
+    private readonly walletContextResolverService: WalletContextResolverService,
   ) {}
 
-  /** inv-20: priority hub communities route to the global wallet. */
+  /** inv-20: priority hub communities route to the global wallet; shared parent+projects use parent id. */
   async resolveWalletCommunityId(communityId: string): Promise<string> {
-    const community = await this.communityService.getCommunity(communityId);
-    if (!community) {
-      return communityId;
-    }
-    return this.meritResolverService.getWalletCommunityId(community, 'voting');
+    return this.walletContextResolverService.resolvePersonalWalletCommunityId(
+      communityId,
+      'voting',
+    );
   }
 
   /** inv-16: wallet entity is authoritative; balances are never negative on read. */

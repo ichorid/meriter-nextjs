@@ -16,6 +16,8 @@ import type { Transaction } from '../../../domain/models/transaction/transaction
 import type { PermissionService } from '../../../domain/services/permission.service';
 import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
+import type { CommunityService } from '../../../domain/services/community.service';
 
 export type MeritHistoryTransactionRowDto = Omit<Transaction, 'createdAt' | 'updatedAt'> & {
   createdAt: string;
@@ -50,6 +52,8 @@ export type GetMeritHistoryTransactionsDeps = {
   walletService: WalletService;
   userService: UserService;
   permissionService: PermissionService;
+  communityService: CommunityService;
+  walletContextResolverService: WalletContextResolverService;
   db: MeritHistoryMongoDb | undefined;
   batchFetchUsers: (userIds: string[]) => Promise<Map<string, unknown>>;
 };
@@ -147,13 +151,25 @@ export class GetMeritHistoryTransactionsUseCase {
 
     const { skip, limit } = resolveMeritHistorySkip(input);
 
+    let resolvedCommunityId = input.communityId;
+    if (resolvedCommunityId) {
+      const community = await this.deps.communityService.getCommunity(resolvedCommunityId);
+      if (community) {
+        resolvedCommunityId =
+          await this.deps.walletContextResolverService.resolvePersonalWalletCommunityId(
+            community,
+            'voting',
+          );
+      }
+    }
+
     const result = await this.deps.walletService.getUserTransactions(
       input.userId,
       'all',
       limit,
       skip,
       {
-        communityId: input.communityId,
+        communityId: resolvedCommunityId,
         category: input.category,
       },
     );

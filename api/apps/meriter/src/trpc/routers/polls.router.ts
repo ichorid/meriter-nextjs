@@ -317,7 +317,7 @@ export const pollsRouter = router({
         communityService: ctx.communityService,
         permissionService: ctx.permissionService,
         walletService: ctx.walletService,
-        meritResolverService: ctx.meritResolverService,
+        walletContextResolverService: ctx.walletContextResolverService,
         connection: ctx.connection,
       }).execute(input);
     }),

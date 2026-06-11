@@ -34,6 +34,7 @@ import { TappalkaService } from '../domain/services/tappalka.service';
 import { InvestmentService } from '../domain/services/investment.service';
 import { PostClosingService } from '../domain/services/post-closing.service';
 import { MeritResolverService } from '../domain/services/merit-resolver.service';
+import { WalletContextResolverService } from '../domain/services/wallet-context-resolver.service';
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
 import { PlatformSettingsService } from '../domain/services/platform-settings.service';
@@ -94,6 +95,7 @@ export class TrpcService {
     private investmentService: InvestmentService,
     private postClosingService: PostClosingService,
     private meritResolverService: MeritResolverService,
+    private walletContextResolverService: WalletContextResolverService,
     private teamJoinRequestService: TeamJoinRequestService,
     private teamInvitationService: TeamInvitationService,
     private platformSettingsService: PlatformSettingsService,
@@ -160,6 +162,7 @@ export class TrpcService {
       investmentService: this.investmentService,
       postClosingService: this.postClosingService,
       meritResolverService: this.meritResolverService,
+      walletContextResolverService: this.walletContextResolverService,
       teamJoinRequestService: this.teamJoinRequestService,
       teamInvitationService: this.teamInvitationService,
       platformSettingsService: this.platformSettingsService,

@@ -14,7 +14,7 @@ import {
 import { InvestmentService, HandlePostCloseResult } from './investment.service';
 import { PublicationService } from './publication.service';
 import { WalletService } from './wallet.service';
-import { MeritResolverService } from './merit-resolver.service';
+import { WalletContextResolverService } from './wallet-context-resolver.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
 import { CommunityWalletService } from './community-wallet.service';
@@ -50,7 +50,7 @@ export class PostClosingService {
     private readonly investmentService: InvestmentService,
     private readonly publicationService: PublicationService,
     private readonly walletService: WalletService,
-    private readonly meritResolverService: MeritResolverService,
+    private readonly walletContextResolverService: WalletContextResolverService,
     private readonly communityService: CommunityService,
     private readonly notificationService: NotificationService,
     private readonly communityWalletService: CommunityWalletService,
@@ -106,17 +106,22 @@ export class PostClosingService {
           (sourceEntityType === 'project' || sourceEntityType === 'community') &&
           sourceEntityId
         ) {
-          await this.communityWalletService.createWallet(sourceEntityId);
+          const communityWalletId =
+            await this.walletContextResolverService.resolveCommunityWalletCommunityId(
+              sourceEntityId,
+            );
+          await this.communityWalletService.createWallet(communityWalletId);
           await this.communityWalletService.deposit(
-            sourceEntityId,
+            communityWalletId,
             authorAmount,
             'publication_close',
           );
         } else {
-          const targetCommunityId = this.meritResolverService.getWalletCommunityId(
-            community,
-            'withdrawal',
-          );
+          const targetCommunityId =
+            await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+              community,
+              'withdrawal',
+            );
           await this.walletService.addTransaction(
             beneficiaryId,
             targetCommunityId,

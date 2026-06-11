@@ -117,6 +117,15 @@ export class WalletPersistenceAdapter implements WalletPersistencePort {
     return rows.map((row) => ({ id: String(row.id), userId: String(row.userId) }));
   }
 
+  async hasPositiveBalanceForCommunity(communityId: string): Promise<boolean> {
+    const row = await this.walletModel
+      .findOne({ communityId, balance: { $gt: 0 } })
+      .select('id')
+      .lean()
+      .exec();
+    return row != null;
+  }
+
   async findWalletOwnersByIds(walletIds: string[]): Promise<WalletOwnerRef[]> {
     const rows = await this.walletModel
       .find({ id: { $in: walletIds } })

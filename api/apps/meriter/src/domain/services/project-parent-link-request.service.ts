@@ -11,6 +11,8 @@ import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
+import { CommunityWalletService } from './community-wallet.service';
+import { WalletContextResolverService } from './wallet-context-resolver.service';
 import type { ProjectParentLinkRequest } from '../models/project-parent-link-request/project-parent-link-request.schema';
 import type { Community } from '../models/community/community.schema';
 import {
@@ -35,6 +37,8 @@ export class ProjectParentLinkRequestService {
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
     private readonly notificationService: NotificationService,
+    private readonly communityWalletService: CommunityWalletService,
+    private readonly walletContextResolverService: WalletContextResolverService,
   ) {}
 
   assertEligibleParentCommunity(parent: Community): void {
@@ -259,10 +263,24 @@ export class ProjectParentLinkRequestService {
       { status: 'cancelled', updatedAt: new Date() },
     );
 
-    await this.communityService.updateCommunity(req.projectId, {
-      parentCommunityId: req.targetParentCommunityId,
-      isPersonalProject: false,
-    });
+    if (parent.settings?.sharedWalletWithProjects === true) {
+      await this.walletContextResolverService.assertProjectEligibleForSharedWallet(
+        req.projectId,
+      );
+      const wallet = await this.communityWalletService.createWallet(
+        req.targetParentCommunityId,
+      );
+      await this.communityService.updateCommunity(req.projectId, {
+        parentCommunityId: req.targetParentCommunityId,
+        isPersonalProject: false,
+        communityWalletId: wallet.id,
+      });
+    } else {
+      await this.communityService.updateCommunity(req.projectId, {
+        parentCommunityId: req.targetParentCommunityId,
+        isPersonalProject: false,
+      });
+    }
 
     const now = new Date();
     const updated = await this.requestPersistence.updateById(requestId, {

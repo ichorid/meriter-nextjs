@@ -416,6 +416,10 @@ export class WalletService {
     return this.walletPersistence.aggregateMeritHistoryDashboard(walletId, category, periodDays);
   }
 
+  async hasPositiveBalanceForCommunity(communityId: string): Promise<boolean> {
+    return this.walletPersistence.hasPositiveBalanceForCommunity(communityId);
+  }
+
   async getCommunityMeritHistoryTransactions(
     contextCommunityId: string,
     category: MeritHistoryFilterKey,

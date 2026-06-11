@@ -379,14 +379,18 @@ export const projectRouter = router({
       if (!project?.isProject) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
       }
-      const wallet = await ctx.communityWalletService.getWallet(input.projectId);
+      const walletKey =
+        await ctx.walletContextResolverService.resolveCommunityWalletCommunityId(
+          input.projectId,
+        );
+      const wallet = await ctx.communityWalletService.getWallet(walletKey);
       return (
         wallet ?? {
           balance: 0,
           totalReceived: 0,
           totalDistributed: 0,
           id: '',
-          communityId: input.projectId,
+          communityId: walletKey,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }

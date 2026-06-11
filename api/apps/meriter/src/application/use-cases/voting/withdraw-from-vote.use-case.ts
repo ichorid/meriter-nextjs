@@ -7,7 +7,7 @@ import { GLOBAL_COMMUNITY_ID } from '../../../domain/common/constants/global.con
 import type { Comment } from '../../../domain/aggregates/comment/comment.entity';
 import { CommentService } from '../../../domain/services/comment.service';
 import { CommunityService } from '../../../domain/services/community.service';
-import { MeritResolverService } from '../../../domain/services/merit-resolver.service';
+import { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import { PublicationService } from '../../../domain/services/publication.service';
 import { VoteService } from '../../../domain/services/vote.service';
 import { WalletService } from '../../../domain/services/wallet.service';
@@ -40,7 +40,7 @@ export class WithdrawFromVoteUseCase {
     private readonly commentService: CommentService,
     private readonly publicationService: PublicationService,
     private readonly communityService: CommunityService,
-    private readonly meritResolverService: MeritResolverService,
+    private readonly walletContextResolverService: WalletContextResolverService,
     private readonly walletService: WalletService,
   ) {}
 
@@ -155,10 +155,11 @@ export class WithdrawFromVoteUseCase {
 
     const effectiveVotingSettings =
       this.communityService.getEffectiveVotingSettings(publicationCommunity);
-    const targetCommunityId = this.meritResolverService.getWalletCommunityId(
-      publicationCommunity,
-      'withdrawal',
-    );
+    const targetCommunityId =
+      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+        publicationCommunity,
+        'withdrawal',
+      );
 
     if (!effectiveVotingSettings.awardsMerits) {
       return { targetCommunityId };
@@ -193,7 +194,7 @@ export function createWithdrawFromVoteUseCase(deps: {
   commentService: CommentService;
   publicationService: PublicationService;
   communityService: CommunityService;
-  meritResolverService: MeritResolverService;
+  walletContextResolverService: WalletContextResolverService;
   walletService: WalletService;
 }): WithdrawFromVoteUseCase {
   return new WithdrawFromVoteUseCase(
@@ -201,7 +202,7 @@ export function createWithdrawFromVoteUseCase(deps: {
     deps.commentService,
     deps.publicationService,
     deps.communityService,
-    deps.meritResolverService,
+    deps.walletContextResolverService,
     deps.walletService,
   );
 }

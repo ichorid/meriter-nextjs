@@ -13,7 +13,6 @@ import {
 } from '../../../domain/common/helpers/publication-source.helper';
 import type { PublicationInvestment } from '../../../domain/models/publication/publication.schema';
 import type { CommunityService } from '../../../domain/services/community.service';
-import type { MeritResolverService } from '../../../domain/services/merit-resolver.service';
 import type { NotificationService } from '../../../domain/services/notification.service';
 import type { PermissionService } from '../../../domain/services/permission.service';
 import type { UserService } from '../../../domain/services/user.service';
@@ -42,7 +41,7 @@ export type InvestInPostResult = {
 export type InvestInPostDeps = {
   investmentPersistence: InvestmentPersistencePort;
   walletService: WalletService;
-  meritResolverService: MeritResolverService;
+  walletContextResolverService: import('../../../domain/services/wallet-context-resolver.service').WalletContextResolverService;
   communityService: CommunityService;
   notificationService: NotificationService;
   userService: UserService;
@@ -73,10 +72,11 @@ export class InvestInPostUseCase {
 
     const community = await this.assertInvestPermission(investorId, post);
 
-    const walletCommunityId = this.deps.meritResolverService.getWalletCommunityId(
-      community,
-      'investment',
-    );
+    const walletCommunityId =
+      await this.deps.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'investment',
+      );
     await this.assertInvestorSolvency(investorId, walletCommunityId, amount);
 
     const currency = community.settings?.currencyNames || {
@@ -260,7 +260,7 @@ export function createInvestInPostUseCase(
 export function createInvestInPostUseCaseFromContext(_ctx: {
   connection: Connection;
   walletService: WalletService;
-  meritResolverService: MeritResolverService;
+  walletContextResolverService: import('../../../domain/services/wallet-context-resolver.service').WalletContextResolverService;
   communityService: CommunityService;
   notificationService: NotificationService;
   userService: UserService;

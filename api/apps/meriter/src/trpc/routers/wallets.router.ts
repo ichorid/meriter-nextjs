@@ -36,13 +36,11 @@ function hasStableCommunityId(community: { id?: unknown }): boolean {
 
 function createGetWalletBalanceUseCase(ctx: {
   walletService: import('../../domain/services/wallet.service').WalletService;
-  communityService: import('../../domain/services/community.service').CommunityService;
-  meritResolverService: import('../../domain/services/merit-resolver.service').MeritResolverService;
+  walletContextResolverService: import('../../domain/services/wallet-context-resolver.service').WalletContextResolverService;
 }): GetWalletBalanceUseCase {
   return new GetWalletBalanceUseCase(
     ctx.walletService,
-    ctx.communityService,
-    ctx.meritResolverService,
+    ctx.walletContextResolverService,
   );
 }
 
@@ -50,6 +48,8 @@ function createMeritHistoryTransactionsDeps(ctx: {
   walletService: import('../../domain/services/wallet.service').WalletService;
   userService: import('../../domain/services/user.service').UserService;
   permissionService: import('../../domain/services/permission.service').PermissionService;
+  communityService: import('../../domain/services/community.service').CommunityService;
+  walletContextResolverService: import('../../domain/services/wallet-context-resolver.service').WalletContextResolverService;
   connection: { db?: import('mongoose').Connection['db'] };
   userEnrichmentService: {
     batchFetchUsers: (userIds: string[]) => Promise<Map<string, unknown>>;
@@ -59,6 +59,8 @@ function createMeritHistoryTransactionsDeps(ctx: {
     walletService: ctx.walletService,
     userService: ctx.userService,
     permissionService: ctx.permissionService,
+    communityService: ctx.communityService,
+    walletContextResolverService: ctx.walletContextResolverService,
     db: ctx.connection.db ?? undefined,
     batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
   };
@@ -180,6 +182,7 @@ export const walletsRouter = router({
         communityService: ctx.communityService,
         userService: ctx.userService,
         userCommunityRoleService: ctx.userCommunityRoleService,
+        walletContextResolverService: ctx.walletContextResolverService,
         db: ctx.connection.db ?? undefined,
         batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
       }).execute({

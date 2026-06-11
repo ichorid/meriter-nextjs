@@ -106,6 +106,8 @@ export interface WalletPersistencePort {
 
   findWalletOwnersByCommunityId(communityId: string): Promise<WalletOwnerRef[]>;
 
+  hasPositiveBalanceForCommunity(communityId: string): Promise<boolean>;
+
   findWalletOwnersByIds(walletIds: string[]): Promise<WalletOwnerRef[]>;
 
   findTransactionByWalletAndReferenceType(

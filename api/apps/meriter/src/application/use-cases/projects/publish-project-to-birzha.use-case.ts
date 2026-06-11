@@ -34,6 +34,7 @@ export type PublishToBirzhaCoreDeps = {
   userService: UserService;
   communityWalletService: CommunityWalletService;
   walletService: WalletService;
+  walletContextResolverService: import('../../../domain/services/wallet-context-resolver.service').WalletContextResolverService;
 };
 
 type ResolvedInvesting = {
@@ -94,12 +95,16 @@ export async function executeBirzhaSourcePublish(
   const postCost = birzha.settings?.postCost ?? 1;
   const funding = params.postCostFunding ?? 'source_community_wallet';
 
-  await deps.communityWalletService.createWallet(params.sourceEntityId);
+  const communityWalletKey =
+    await deps.walletContextResolverService.resolveCommunityWalletCommunityId(
+      params.sourceEntityId,
+    );
+  await deps.communityWalletService.createWallet(communityWalletKey);
 
   if (postCost > 0) {
     if (funding === 'source_community_wallet') {
       await deps.communityWalletService.deductBalance(
-        params.sourceEntityId,
+        communityWalletKey,
         postCost,
         'birzha_post_cost',
       );

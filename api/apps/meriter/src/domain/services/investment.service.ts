@@ -14,7 +14,7 @@ import type {
   ProjectInvestmentEntry,
 } from '../models/community/community.schema';
 import { WalletService } from './wallet.service';
-import { MeritResolverService } from './merit-resolver.service';
+import { WalletContextResolverService } from './wallet-context-resolver.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
 import { UserService } from './user.service';
@@ -165,7 +165,7 @@ export class InvestmentService {
     @Inject(INVESTMENT_PERSISTENCE_PORT)
     private readonly investmentPersistence: InvestmentPersistencePort,
     private walletService: WalletService,
-    private meritResolverService: MeritResolverService,
+    private walletContextResolverService: WalletContextResolverService,
     private communityService: CommunityService,
     private notificationService: NotificationService,
     private userService: UserService,
@@ -233,10 +233,11 @@ export class InvestmentService {
       genitive: 'merits',
     };
 
-    const walletCommunityId = this.meritResolverService.getWalletCommunityId(
-      community,
-      'investment',
-    );
+    const walletCommunityId =
+      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'investment',
+      );
     const wallet = await this.walletService.getWallet(investorId, walletCommunityId);
     const balance = wallet ? wallet.getBalance() : 0;
     if (balance < amount) {

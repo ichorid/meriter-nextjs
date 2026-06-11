@@ -192,6 +192,8 @@ export const CommunitySettingsSchema = z.object({
   canPayPostFromQuota: z.boolean().default(false), // Whether posts can be paid from quota instead of wallet only
   allowWithdraw: z.boolean().default(true), // Whether users can withdraw merits from their own posts
   forwardRule: z.enum(["standard", "project"]).default("standard"), // Forward rule: 'standard' = forward without votes, keep original; 'project' = forward with votes, delete original
+  /** When true, parent community and all child projects share one personal wallet key and CommunityWallet. */
+  sharedWalletWithProjects: z.boolean().default(false),
   // Investment settings
   investingEnabled: z.boolean().default(false),
   investorShareMin: z.number().int().min(1).max(99).default(1),
@@ -810,6 +812,7 @@ export const UpdateCommunityDtoSchema = z.object({
     allowEditByOthers: z.boolean().optional(),
     canPayPostFromQuota: z.boolean().optional(),
     allowWithdraw: z.boolean().optional(),
+    sharedWalletWithProjects: z.boolean().optional(),
     // Investment settings
     investingEnabled: z.boolean().optional(),
     investorShareMin: z.number().int().min(1).max(99).optional(),

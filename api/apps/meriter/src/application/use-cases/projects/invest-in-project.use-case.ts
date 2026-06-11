@@ -6,6 +6,7 @@ import { GLOBAL_COMMUNITY_ID } from '../../../domain/common/constants/global.con
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { CommunityWalletService } from '../../../domain/services/community-wallet.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import type {
   InvestInProjectInput,
   InvestInProjectPort,
@@ -23,6 +24,7 @@ export type InvestInProjectDeps = {
   communityService: CommunityService;
   communityWalletService: CommunityWalletService;
   walletService: WalletService;
+  walletContextResolverService: WalletContextResolverService;
 };
 
 /**
@@ -62,8 +64,12 @@ export class InvestInProjectUseCase implements InvestInProjectPort {
       `Investment in project ${project.name}`,
     );
     await this.deps.communityService.appendProjectInvestment(projectId, userId, amount);
-    await this.deps.communityWalletService.createWallet(projectId);
-    await this.deps.communityWalletService.deposit(projectId, amount, 'investment');
+    const walletKey =
+      await this.deps.walletContextResolverService.resolveCommunityWalletCommunityId(
+        projectId,
+      );
+    await this.deps.communityWalletService.createWallet(walletKey);
+    await this.deps.communityWalletService.deposit(walletKey, amount, 'investment');
   }
 }
 

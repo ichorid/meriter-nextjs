@@ -4,7 +4,7 @@ import type { Community } from '../models/community/community.schema';
 import type { CommunityTappalkaSettings } from '../models/community/community.schema';
 import type { PublicationSnapshot } from '../../common/interfaces/publication-document.interface';
 import { MeritService } from './merit.service';
-import { MeritResolverService } from './merit-resolver.service';
+import { WalletContextResolverService } from './wallet-context-resolver.service';
 import { WalletService } from './wallet.service';
 import { NotificationService } from './notification.service';
 import { CommunityWalletService } from './community-wallet.service';
@@ -62,7 +62,7 @@ export class TappalkaService {
     @Inject(TAPPALKA_PERSISTENCE_PORT)
     private readonly tappalkaPersistence: TappalkaPersistencePort,
     private meritService: MeritService,
-    private meritResolverService: MeritResolverService,
+    private walletContextResolverService: WalletContextResolverService,
     private walletService: WalletService,
     private communityWalletService: CommunityWalletService,
     private notificationService: NotificationService,
@@ -606,8 +606,12 @@ export class TappalkaService {
     const sourceEntityId = post.sourceEntityId as string | undefined;
     if (remainingCost > 0 && sourceEntityId) {
       try {
+        const communityWalletId =
+          await this.walletContextResolverService.resolveCommunityWalletCommunityId(
+            sourceEntityId,
+          );
         await this.communityWalletService.deductBalance(
-          sourceEntityId,
+          communityWalletId,
           remainingCost,
           'tappalka_show_cost',
         );
@@ -667,10 +671,11 @@ export class TappalkaService {
     const community = asCommunity(communityDoc);
     const currency = community.settings.currencyNames;
 
-    const walletCommunityId = this.meritResolverService.getWalletCommunityId(
-      community,
-      'tappalka_reward',
-    );
+    const walletCommunityId =
+      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'tappalka_reward',
+      );
 
     if (remainingCost > 0) {
       await this.walletService.addTransaction(
@@ -739,7 +744,8 @@ export class TappalkaService {
 
         // Award userReward to user's wallet
         const currency = community.settings.currencyNames;
-        const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+        const targetCommunityId =
+          await this.walletContextResolverService.resolvePersonalWalletCommunityId(
           community,
           'tappalka_reward',
         );
@@ -790,10 +796,11 @@ export class TappalkaService {
       });
 
       const currency = community.settings.currencyNames;
-      const targetCommunityId = this.meritResolverService.getWalletCommunityId(
-        community,
-        'tappalka_reward',
-      );
+      const targetCommunityId =
+        await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+          community,
+          'tappalka_reward',
+        );
       await this.walletService.addTransaction(
         userId,
         targetCommunityId,
@@ -854,11 +861,12 @@ export class TappalkaService {
       });
     }
 
-    // Get user's wallet balance (global for priority communities)
-    const walletCommunityId = this.meritResolverService.getWalletCommunityId(
-      asCommunity(community),
-      'tappalka_reward',
-    );
+    // Get user's wallet balance (resolved per community / shared-wallet rules)
+    const walletCommunityId =
+      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+        asCommunity(community),
+        'tappalka_reward',
+      );
     const wallet = await this.walletService.getWallet(userId, walletCommunityId);
     const meritBalance = wallet?.getBalance() ?? 0;
 

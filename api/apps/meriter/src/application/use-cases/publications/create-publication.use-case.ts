@@ -19,6 +19,7 @@ import type {
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import { CommunityId, UserId } from '../../../domain/value-objects';
 import type {
   CreatePublicationExecuteOptions,
@@ -59,6 +60,7 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
     private readonly userService: UserService,
     private readonly communityWalletService: CommunityWalletService,
     private readonly walletService: WalletService,
+    private readonly walletContextResolverService: WalletContextResolverService,
   ) {
     this.getRemainingQuota = createGetRemainingQuotaUseCase({
       communityService: this.communityService,
@@ -147,8 +149,12 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
     }
 
     if (payFromCommunityWallet && dto.sourceEntityId) {
-      await this.communityWalletService.createWallet(dto.sourceEntityId);
-      const cw = await this.communityWalletService.getWallet(dto.sourceEntityId);
+      const communityWalletKey =
+        await this.walletContextResolverService.resolveCommunityWalletCommunityId(
+          dto.sourceEntityId,
+        );
+      await this.communityWalletService.createWallet(communityWalletKey);
+      const cw = await this.communityWalletService.getWallet(communityWalletKey);
       const communityBal = cw?.balance ?? 0;
       if (communityBal < postCost) {
         throw new BadRequestException(
@@ -160,7 +166,7 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
         quotaAmount: 0,
         walletAmount: 0,
         payFromCommunityWallet: true,
-        communityWalletSourceId: dto.sourceEntityId,
+        communityWalletSourceId: communityWalletKey,
       };
     }
 
@@ -453,6 +459,7 @@ export function createCreatePublicationUseCase(deps: {
   userService: UserService;
   communityWalletService: CommunityWalletService;
   walletService: WalletService;
+  walletContextResolverService: WalletContextResolverService;
 }): CreatePublicationUseCase {
   return new CreatePublicationUseCase(
     deps.publicationPersistence,
@@ -464,5 +471,6 @@ export function createCreatePublicationUseCase(deps: {
     deps.userService,
     deps.communityWalletService,
     deps.walletService,
+    deps.walletContextResolverService,
   );
 }

@@ -4,7 +4,9 @@ import type { Community } from '../../../domain/models/community/community.schem
 import { calculateCommunityNeedsSetup } from '../../../domain/common/helpers/community-setup.helper';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../../domain/common/constants/roles.constants';
 import type { CommunityService } from '../../../domain/services/community.service';
+import type { CommunityWalletService } from '../../../domain/services/community-wallet.service';
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 
 export type UpdateCommunitySettingsInput = {
   communityId: string;
@@ -16,6 +18,8 @@ export type UpdateCommunitySettingsInput = {
 export type UpdateCommunitySettingsDeps = {
   communityService: CommunityService;
   userCommunityRoleService: UserCommunityRoleService;
+  walletContextResolverService: WalletContextResolverService;
+  communityWalletService: CommunityWalletService;
 };
 
 function formatUpdatedCommunityResponse(
@@ -45,6 +49,9 @@ function formatUpdatedCommunityResponse(
       editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
       allowEditByOthers: community.settings?.allowEditByOthers ?? false,
       canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
+      allowWithdraw: community.settings?.allowWithdraw ?? true,
+      forwardRule: community.settings?.forwardRule ?? 'standard',
+      sharedWalletWithProjects: community.settings?.sharedWalletWithProjects ?? false,
       investingEnabled: community.settings?.investingEnabled ?? false,
       investorShareMin: community.settings?.investorShareMin ?? 1,
       investorShareMax: community.settings?.investorShareMax ?? 99,
@@ -124,6 +131,13 @@ export class UpdateCommunitySettingsUseCase {
           message: 'investorShareMin must be less than or equal to investorShareMax',
         });
       }
+    }
+
+    if (input.data.settings?.sharedWalletWithProjects === true) {
+      await this.deps.walletContextResolverService.assertCanEnableSharedWallet(
+        input.communityId,
+      );
+      await this.deps.communityWalletService.createWallet(input.communityId);
     }
 
     const community = await this.deps.communityService.updateCommunity(

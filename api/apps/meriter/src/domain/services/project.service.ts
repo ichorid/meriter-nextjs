@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { CommunityService } from './community.service';
 import { CommunityWalletService } from './community-wallet.service';
+import { WalletContextResolverService } from './wallet-context-resolver.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { WalletService } from './wallet.service';
@@ -103,6 +104,7 @@ export class ProjectService {
   constructor(
     private readonly communityService: CommunityService,
     private readonly communityWalletService: CommunityWalletService,
+    private readonly walletContextResolverService: WalletContextResolverService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
     private readonly walletService: WalletService,
@@ -259,10 +261,17 @@ export class ProjectService {
         futureVisionTags: dto.futureVisionTags,
       });
 
-      const wallet = await this.communityWalletService.createWallet(project.id);
-      await this.communityService.updateCommunity(project.id, {
-        communityWalletId: wallet.id,
-      });
+      if (parentExists.settings?.sharedWalletWithProjects === true) {
+        const wallet = await this.communityWalletService.createWallet(parentCommunityId);
+        await this.communityService.updateCommunity(project.id, {
+          communityWalletId: wallet.id,
+        });
+      } else {
+        const wallet = await this.communityWalletService.createWallet(project.id);
+        await this.communityService.updateCommunity(project.id, {
+          communityWalletId: wallet.id,
+        });
+      }
 
       await this.communityService.addMember(project.id, userId);
       await this.userService.addCommunityMembership(userId, project.id);
@@ -317,7 +326,9 @@ export class ProjectService {
       throw new NotFoundException('Not a project');
     }
 
-    const walletBalance = await this.communityWalletService.getBalance(projectId);
+    const walletKey =
+      await this.walletContextResolverService.resolveCommunityWalletCommunityId(projectId);
+    const walletBalance = await this.communityWalletService.getBalance(walletKey);
     const parentCommunity = project.parentCommunityId
       ? await this.communityService.getCommunity(project.parentCommunityId)
       : null;
@@ -866,13 +877,15 @@ export class ProjectService {
       throw new NotFoundException('Project not found');
     }
 
+    const walletKey =
+      await this.walletContextResolverService.resolveCommunityWalletCommunityId(projectId);
     const role = await this.userCommunityRoleService.getRole(userId, projectId);
     const investingEnabled = project.settings?.investingEnabled === true;
 
     if (!role) {
       if (investingEnabled) {
         await this.investInProject(userId, projectId, amount);
-        const balance = await this.communityWalletService.getBalance(projectId);
+        const balance = await this.communityWalletService.getBalance(walletKey);
         return { balance, mode: 'investment' };
       }
       await this.walletService.addTransaction(
@@ -886,8 +899,8 @@ export class ProjectService {
         DEFAULT_CURRENCY,
         'Project wallet top-up (donation)',
       );
-      await this.communityWalletService.createWallet(projectId);
-      const wallet = await this.communityWalletService.deposit(projectId, amount, 'topup');
+      await this.communityWalletService.createWallet(walletKey);
+      const wallet = await this.communityWalletService.deposit(walletKey, amount, 'topup');
       return { balance: wallet.balance, mode: 'donation' };
     }
 
@@ -902,8 +915,8 @@ export class ProjectService {
       DEFAULT_CURRENCY,
       'Project wallet top-up',
     );
-    await this.communityWalletService.createWallet(projectId);
-    const wallet = await this.communityWalletService.deposit(projectId, amount, 'topup');
+    await this.communityWalletService.createWallet(walletKey);
+    const wallet = await this.communityWalletService.deposit(walletKey, amount, 'topup');
     return { balance: wallet.balance, mode: 'member_topup' };
   }
 

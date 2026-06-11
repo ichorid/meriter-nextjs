@@ -848,6 +848,11 @@ export class CommunityService {
         settingsUpdate['settings.allowWithdraw'] = Boolean(dto.settings.allowWithdraw);
         this.logger.log(`Updating allowWithdraw to: ${Boolean(dto.settings.allowWithdraw)} for community ${communityId}`);
       }
+      if ('sharedWalletWithProjects' in dto.settings) {
+        settingsUpdate['settings.sharedWalletWithProjects'] = Boolean(
+          dto.settings.sharedWalletWithProjects,
+        );
+      }
       if (dto.settings.forwardRule !== undefined) {
         settingsUpdate['settings.forwardRule'] = dto.settings.forwardRule;
       }
@@ -1211,6 +1216,15 @@ export class CommunityService {
    */
   async countCommunitiesByQuery(query: Record<string, unknown>): Promise<number> {
     return this.communityPersistence.countByQuery(query);
+  }
+
+  /** Child cooperative projects linked to a parent community. */
+  async listChildProjects(parentCommunityId: string): Promise<Community[]> {
+    return this.listCommunitiesByQuery(
+      { isProject: true, parentCommunityId },
+      500,
+      0,
+    );
   }
 
   async getUserCommunities(userId: string): Promise<Community[]> {

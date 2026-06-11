@@ -4,7 +4,7 @@ import type { CreatePollCastDto } from '@meriter/shared-types';
 import { GLOBAL_COMMUNITY_ID } from '../../../domain/common/constants/global.constant';
 import type { PollCast } from '../../../domain/models/poll/poll-cast.schema';
 import type { CommunityService } from '../../../domain/services/community.service';
-import type { MeritResolverService } from '../../../domain/services/merit-resolver.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import type { PermissionService } from '../../../domain/services/permission.service';
 import type { PollCastService } from '../../../domain/services/poll-cast.service';
 import type { PollService } from '../../../domain/services/poll.service';
@@ -32,7 +32,7 @@ export type CastPollContext = {
   communityService: CommunityService;
   permissionService: PermissionService;
   walletService: WalletService;
-  meritResolverService: MeritResolverService;
+  walletContextResolverService: WalletContextResolverService;
   connection: Connection;
 };
 
@@ -119,10 +119,11 @@ export class CastPollUseCase {
     }
     const walletAmount = totalAmount - quotaAmount;
 
-    const walletCommunityId = this.ctx.meritResolverService.getWalletCommunityId(
-      community,
-      'voting',
-    );
+    const walletCommunityId =
+      await this.ctx.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'voting',
+      );
 
     if (walletAmount > 0) {
       const wallet = await this.ctx.walletService.getWallet(

@@ -11,6 +11,7 @@ import type { CommunityService } from '../../../domain/services/community.servic
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import {
   mapMeritHistoryTransactionRow,
   type MeritHistoryTransactionRowDto,
@@ -45,6 +46,7 @@ export type GetCommunityMeritHistoryDeps = {
   communityService: CommunityService;
   userService: UserService;
   userCommunityRoleService: UserCommunityRoleService;
+  walletContextResolverService: WalletContextResolverService;
   db: MeritHistoryMongoDb | undefined;
   batchFetchUsers: (userIds: string[]) => Promise<Map<string, unknown>>;
 };
@@ -104,8 +106,14 @@ export class GetCommunityMeritHistoryUseCase {
     const category = input.category ?? 'all';
     const { skip, limit } = resolveMeritHistorySkip(input);
 
+    const effectiveContextId =
+      await this.deps.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'voting',
+      );
+
     const result = await this.deps.walletService.getCommunityMeritHistoryTransactions(
-      input.communityId,
+      effectiveContextId,
       category,
       limit,
       skip,

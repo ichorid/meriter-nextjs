@@ -2402,6 +2402,8 @@
             "editWindowMinutesHelp": "How many minutes after publishing participants can edit a post (0 = no limit).",
             "allowEditByOthers": "Allow participants to edit other people's posts",
             "allowWithdraw": "Allow users to withdraw merits from their own posts",
+            "sharedWalletWithProjects": "Shared wallet for community and all its projects",
+            "sharedWalletWithProjectsHelp": "Members and the community operational wallet share one balance across this community and its child projects. Enable before projects accumulate non-zero balances. Quota stays separate per context.",
             "linkedCurrencies": "Linked Currencies",
             "enterCurrencyId": "Enter currency ID",
             "add": "Add",

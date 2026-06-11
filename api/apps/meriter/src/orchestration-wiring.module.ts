@@ -7,7 +7,7 @@ import { DomainModule } from './domain.module';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
 
 import { CommunityService } from './domain/services/community.service';
-import { MeritResolverService } from './domain/services/merit-resolver.service';
+import { WalletContextResolverService } from './domain/services/wallet-context-resolver.service';
 import { NotificationService } from './domain/services/notification.service';
 import { UserService } from './domain/services/user.service';
 import { WalletService } from './domain/services/wallet.service';
@@ -107,7 +107,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
       useFactory: (
         investmentPersistence: InvestmentPersistencePort,
         walletService: WalletService,
-        meritResolverService: MeritResolverService,
+        walletContextResolverService: WalletContextResolverService,
         communityService: CommunityService,
         notificationService: NotificationService,
         userService: UserService,
@@ -115,7 +115,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         new DistributeOnWithdrawalUseCase({
           investmentPersistence,
           walletService,
-          meritResolverService,
+          walletContextResolverService,
           communityService,
           notificationService,
           userService,
@@ -123,7 +123,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
       inject: [
         INVESTMENT_PERSISTENCE_PORT,
         WalletService,
-        MeritResolverService,
+        WalletContextResolverService,
         CommunityService,
         NotificationService,
         UserService,
@@ -134,21 +134,21 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
       useFactory: (
         investmentPersistence: InvestmentPersistencePort,
         walletService: WalletService,
-        meritResolverService: MeritResolverService,
+        walletContextResolverService: WalletContextResolverService,
         communityService: CommunityService,
         distributeOnWithdrawalUseCase: DistributeOnWithdrawalPort,
       ) =>
         new HandlePostCloseUseCase({
           investmentPersistence,
           walletService,
-          meritResolverService,
+          walletContextResolverService,
           communityService,
           distributeOnWithdrawalUseCase,
         }),
       inject: [
         INVESTMENT_PERSISTENCE_PORT,
         WalletService,
-        MeritResolverService,
+        WalletContextResolverService,
         CommunityService,
         DISTRIBUTE_ON_WITHDRAWAL_PORT,
       ],
@@ -161,6 +161,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         walletService: WalletService,
         communityService: CommunityService,
         userCommunityRoleService: UserCommunityRoleService,
+        walletContextResolverService: WalletContextResolverService,
       ) =>
         createCreateMeritTransferUseCase({
           meritTransferPersistence,
@@ -168,6 +169,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
           walletService,
           communityService,
           userCommunityRoleService,
+          walletContextResolverService,
         }),
       inject: [
         MERIT_TRANSFER_PERSISTENCE_PORT,
@@ -175,6 +177,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         WalletService,
         CommunityService,
         UserCommunityRoleService,
+        WalletContextResolverService,
       ],
     },
     {
@@ -240,6 +243,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         userService: UserService,
         communityWalletService: CommunityWalletService,
         walletService: WalletService,
+        walletContextResolverService: WalletContextResolverService,
       ) =>
         createCreatePublicationUseCase({
           publicationPersistence,
@@ -251,6 +255,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
           userService,
           communityWalletService,
           walletService,
+          walletContextResolverService,
         }),
       inject: [
         PUBLICATION_PERSISTENCE_PORT,
@@ -262,6 +267,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         UserService,
         CommunityWalletService,
         WalletService,
+        WalletContextResolverService,
       ],
     },
     {
@@ -273,6 +279,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         userService: UserService,
         communityWalletService: CommunityWalletService,
         walletService: WalletService,
+        walletContextResolverService: WalletContextResolverService,
       ) =>
         createPublishProjectToBirzhaUseCase({
           publicationPersistence,
@@ -281,6 +288,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
           userService,
           communityWalletService,
           walletService,
+          walletContextResolverService,
         }),
       inject: [
         PUBLICATION_PERSISTENCE_PORT,
@@ -289,6 +297,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         UserService,
         CommunityWalletService,
         WalletService,
+        WalletContextResolverService,
       ],
     },
     {
@@ -300,6 +309,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         userService: UserService,
         communityWalletService: CommunityWalletService,
         walletService: WalletService,
+        walletContextResolverService: WalletContextResolverService,
       ) =>
         createPublishCommunityToBirzhaUseCase({
           publicationPersistence,
@@ -308,6 +318,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
           userService,
           communityWalletService,
           walletService,
+          walletContextResolverService,
         }),
       inject: [
         PUBLICATION_PERSISTENCE_PORT,
@@ -316,6 +327,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         UserService,
         CommunityWalletService,
         WalletService,
+        WalletContextResolverService,
       ],
     },
     {
@@ -324,13 +336,20 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         communityService: CommunityService,
         communityWalletService: CommunityWalletService,
         walletService: WalletService,
+        walletContextResolverService: WalletContextResolverService,
       ) =>
         createInvestInProjectUseCase({
           communityService,
           communityWalletService,
           walletService,
+          walletContextResolverService,
         }),
-      inject: [CommunityService, CommunityWalletService, WalletService],
+      inject: [
+        CommunityService,
+        CommunityWalletService,
+        WalletService,
+        WalletContextResolverService,
+      ],
     },
     {
       provide: EXECUTE_PROJECT_PAYOUT_PORT,

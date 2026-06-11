@@ -3,7 +3,7 @@ import type {
   PublicationInvestment,
 } from '../../../domain/models/publication/publication.schema';
 import type { CommunityService } from '../../../domain/services/community.service';
-import type { MeritResolverService } from '../../../domain/services/merit-resolver.service';
+import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
 import type {
   DistributeOnWithdrawalPort,
@@ -24,7 +24,7 @@ export type {
 export type HandlePostCloseDeps = {
   investmentPersistence: InvestmentPersistencePort;
   walletService: WalletService;
-  meritResolverService: MeritResolverService;
+  walletContextResolverService: WalletContextResolverService;
   communityService: CommunityService;
   distributeOnWithdrawalUseCase: DistributeOnWithdrawalPort;
 };
@@ -98,10 +98,11 @@ export class HandlePostCloseUseCase implements HandlePostClosePort {
           plural: 'merits',
           genitive: 'merits',
         };
-        const targetCommunityId = this.deps.meritResolverService.getWalletCommunityId(
-          community,
-          'withdrawal',
-        );
+        const targetCommunityId =
+          await this.deps.walletContextResolverService.resolvePersonalWalletCommunityId(
+            community,
+            'withdrawal',
+          );
 
         let returnedTotal = 0;
         for (let i = 0; i < investments.length; i++) {

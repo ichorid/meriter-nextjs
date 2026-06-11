@@ -1161,7 +1161,7 @@ export const publicationsRouter = router({
         voteService: ctx.voteService,
         investmentService: ctx.investmentService,
         communityWalletService: ctx.communityWalletService,
-        meritResolverService: ctx.meritResolverService,
+        walletContextResolverService: ctx.walletContextResolverService,
         walletService: ctx.walletService,
       }).execute({
         publicationId: input.publicationId,
