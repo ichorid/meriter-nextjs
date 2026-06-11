@@ -87,6 +87,7 @@ import { canUserCreateEvents, type EventCreationMode } from '@/features/events/l
 import { useBirzhaCommunityId } from '@/hooks/useBirzhaCommunityId';
 import { BirzhaTappalkaModal } from '@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal';
 import { isHubPostsFeedPublication } from '@/features/communities/lib/hub-posts-feed-filter';
+import { resolveCommunityHubFeedTab } from '@/features/communities/lib/community-hub-feed-tab';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -417,11 +418,16 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     const showHubFeedTabChrome = communityHubVisibleFeedTabs.length > 1;
 
-    const communityHubFeedTab = useMemo(() => {
-        const v = searchParams?.get('feedTab');
-        if (v === 'projects' || v === 'events' || v === 'birzha') return v;
-        return 'posts' as const;
-    }, [searchParams]);
+    const communityHubFeedTab = useMemo(
+        () => resolveCommunityHubFeedTab(searchParams?.get('feedTab'), communityHubVisibleFeedTabs),
+        [searchParams, communityHubVisibleFeedTabs],
+    );
+
+    useEffect(() => {
+        setShowSearchModal(false);
+        setBOpenFilters(false);
+        document.body.style.overflow = '';
+    }, [communityHubFeedTab]);
 
     // Find the future-vision community ID when on marathon-of-good
     // This must be calculated before useCommunityFeed that uses it

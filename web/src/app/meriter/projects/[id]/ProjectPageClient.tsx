@@ -27,10 +27,11 @@ import { cn } from '@/lib/utils';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { CommunityHubFeedTabBar } from '@/features/communities/components/CommunityHubFeedTabBar';
 import {
-  CommunityHubFeedTabBar,
+  resolveCommunityHubFeedTab,
   type CommunityHubFeedTab,
-} from '@/features/communities/components/CommunityHubFeedTabBar';
+} from '@/features/communities/lib/community-hub-feed-tab';
 import { EventsContextPage } from '@/features/events/pages/EventsContextPage';
 import { ProjectBirzhaPostsPageClient } from '@/app/meriter/projects/[id]/birzha-posts/ProjectBirzhaPostsPageClient';
 
@@ -79,11 +80,10 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
     user && (meInProjectMembers?.role === 'lead' || user.globalRole === 'superadmin'),
   );
 
-  const projectHubFeedTab = useMemo(() => {
-    const v = searchParams?.get('feedTab');
-    if (v === 'events' || v === 'birzha') return v;
-    return 'posts' as const;
-  }, [searchParams]);
+  const projectHubFeedTab = useMemo(
+    () => resolveCommunityHubFeedTab(searchParams?.get('feedTab'), PROJECT_HUB_FEED_TABS),
+    [searchParams],
+  );
 
   /** MVP: collaborative UI is OB-only; project description doc link hidden. */
   const descriptionDocumentHref = undefined;
