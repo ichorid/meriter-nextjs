@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import type { Community } from '../models/community/community.schema';
 import { CommunityService } from './community.service';
@@ -17,6 +17,7 @@ export type CommunityForWalletContext = Pick<
 @Injectable()
 export class WalletContextResolverService {
   constructor(
+    @Inject(forwardRef(() => CommunityService))
     private readonly communityService: CommunityService,
     private readonly meritResolverService: MeritResolverService,
     private readonly communityWalletService: CommunityWalletService,

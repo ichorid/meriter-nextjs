@@ -57,6 +57,7 @@ export class UserService implements OnModuleInit {
     private userCommunityRoleService: UserCommunityRoleService,
     @Inject(PROVISION_BASE_MEMBERSHIP_PORT)
     private readonly provisionBaseMembershipUseCase: ProvisionBaseMembershipPort,
+    @Inject(forwardRef(() => WalletContextResolverService))
     private readonly walletContextResolverService: WalletContextResolverService,
   ) {}
 
