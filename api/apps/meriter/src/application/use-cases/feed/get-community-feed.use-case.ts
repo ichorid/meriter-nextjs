@@ -140,7 +140,6 @@ export class GetCommunityFeedUseCase {
     const {
       page = 1,
       pageSize = 20,
-      skip: providedSkip,
       limit: providedLimit,
       sort = 'score',
       tag,
@@ -155,7 +154,6 @@ export class GetCommunityFeedUseCase {
     } = options;
 
     const limit = providedLimit ?? pageSize;
-    const skip = providedSkip ?? (page - 1) * pageSize;
 
     const community = await this.deps.communityService.getCommunity(communityId);
     const isFutureVision = community?.typeTag === 'future-vision';
@@ -172,36 +170,69 @@ export class GetCommunityFeedUseCase {
 
     const fetchLimit = limit * 2;
     const sortBy = sort === 'recent' ? 'createdAt' : 'score';
+    const feedFilters = {
+      impactArea,
+      stage,
+      beneficiaries,
+      methods,
+      helpNeeded,
+      categories,
+      valueTags,
+    };
+    const MAX_PINNED = 50;
 
-    const [publications, polls] = await Promise.all([
+    const fetchPinned = () =>
+      this.deps.publicationService.getPublicationsByCommunity(
+        communityId,
+        MAX_PINNED,
+        0,
+        sortBy,
+        tag,
+        feedFilters,
+        search,
+        true,
+        { pinnedOnly: true },
+      );
+
+    let pinnedPublications: Publication[] = [];
+    let pinnedCount = 0;
+    if (page === 1) {
+      pinnedPublications = await fetchPinned();
+      pinnedCount = pinnedPublications.length;
+    } else {
+      pinnedCount = (await fetchPinned()).length;
+    }
+
+    const unpinnedSkip =
+      page === 1 ? 0 : Math.max(0, (page - 1) * limit - pinnedCount);
+
+    const [unpinnedPublications, polls] = await Promise.all([
       this.deps.publicationService.getPublicationsByCommunity(
         communityId,
         fetchLimit,
-        skip,
+        unpinnedSkip,
         sortBy,
         tag,
-        {
-          impactArea,
-          stage,
-          beneficiaries,
-          methods,
-          helpNeeded,
-          categories,
-          valueTags,
-        },
+        feedFilters,
         search,
         true,
+        { excludePinned: true },
       ),
       isFutureVision || hasCategoryFilters
         ? Promise.resolve([])
         : this.deps.pollService.getPollsByCommunity(
             communityId,
             fetchLimit,
-            skip,
+            unpinnedSkip,
             sortBy,
             search,
           ),
     ]);
+
+    const publications =
+      page === 1
+        ? [...pinnedPublications, ...unpinnedPublications]
+        : unpinnedPublications;
 
     const { usersMap, communitiesMap, logicalCommunitiesMap } =
       await buildDomainFeedMaps(

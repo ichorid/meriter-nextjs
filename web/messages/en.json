@@ -1746,6 +1746,9 @@
         "beneficiary": "Beneficiary",
         "editHistory": "Edit History",
         "noEditsYet": "No edits yet",
+        "badge": {
+            "pinned": "Pinned"
+        },
         "create": {
             "beneficiary": "Beneficiary",
             "clear": "Clear",
@@ -1814,6 +1817,8 @@
                 "poll": "Poll",
                 "project": "Project"
             },
+            "pinLabel": "Pin post",
+            "pinHelp": "The post stays at the top of the community feed with a «Pinned» badge. Multiple pinned posts are ordered by the current feed sort mode.",
             "investing": {
                 "enable": "Open for investments",
                 "shareLabel": "Investor share (%)",

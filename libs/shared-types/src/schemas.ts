@@ -512,6 +512,8 @@ export const PublicationSchema = IdentifiableSchema.merge(
   ttlWarningNotified: z.boolean().optional().default(false),
   /** True after 24h-before-inactivity-close warning sent. */
   inactivityWarningNotified: z.boolean().optional().default(false),
+  /** Pinned to top of community feed (lead/superadmin only). */
+  isPinned: z.boolean().optional().default(false),
 })
   .merge(EventPublicationFieldsSchema)
   .superRefine(addEventPublicationValidationIssues);
@@ -646,6 +648,8 @@ export const CreatePublicationDtoSchema = z.object({
   postCostFunding: z
     .enum(["source_community_wallet", "caller_global_wallet"])
     .optional(),
+  /** Pinned to top of community feed (lead/superadmin only). */
+  isPinned: z.boolean().optional().default(false),
 })
   .merge(EventOptionalDateFieldsSchema)
   .refine(
@@ -867,6 +871,8 @@ export const UpdatePublicationDtoSchema = z.object({
   // Present only to reject with clear error (immutable)
   investingEnabled: z.boolean().optional(),
   investorSharePercent: z.number().int().min(1).max(99).optional(),
+  /** Pinned to top of community feed (lead/superadmin only). */
+  isPinned: z.boolean().optional(),
 })
   .merge(EventOptionalDateFieldsSchema)
   .strict()
@@ -1190,6 +1196,7 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   authorKind: z.enum(['user', 'community']).optional(),
   authoredCommunityId: z.string().optional(),
   publishedByUserId: z.string().optional(),
+  isPinned: z.boolean().optional().default(false),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(

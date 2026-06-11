@@ -547,6 +547,11 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </Button>
+        {(publication as { isPinned?: boolean }).isPinned ? (
+          <Badge variant="info" size="sm">
+            {tPub('badge.pinned')}
+          </Badge>
+        ) : null}
         {publicationStatus === 'closed' && closeReasonLabel ? (
           <Badge variant="secondary" size="sm">
             Closed · {closeReasonLabel}

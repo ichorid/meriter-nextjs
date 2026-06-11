@@ -57,6 +57,8 @@ interface CommunityHeroCardProps {
   obDocumentFetched?: boolean;
   /** Lead / permitted editor — edit icon opens OB document or documents hub. */
   canEditFutureVisionDocument?: boolean;
+  /** Initial expanded state for the future vision subsection (default: expanded). */
+  defaultFutureVisionSectionOpen?: boolean;
 }
 
 /**
@@ -73,6 +75,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   obDocumentLoading = false,
   obDocumentFetched = false,
   canEditFutureVisionDocument = false,
+  defaultFutureVisionSectionOpen = true,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -129,7 +132,9 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
     !!community.futureVisionText?.trim() ||
     Boolean(obDocument?.id) ||
     (community.futureVisionTags && community.futureVisionTags.length > 0);
-  const [isFutureVisionSectionOpen, setIsFutureVisionSectionOpen] = useState(true);
+  const [isFutureVisionSectionOpen, setIsFutureVisionSectionOpen] = useState(
+    defaultFutureVisionSectionOpen,
+  );
 
   const obPublicationId = community.futureVisionPublicationId;
   const obScore = community.futureVisionPublicationScore ?? 0;

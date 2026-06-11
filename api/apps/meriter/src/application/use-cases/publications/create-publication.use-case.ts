@@ -337,6 +337,15 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
       throw new BadRequestException('helpNeeded array cannot exceed 3 items');
     }
 
+    let isPinned = false;
+    if (dto.isPinned === true) {
+      const isAdmin = await this.communityService.isUserAdmin(dto.communityId, userId);
+      if (!isAdmin) {
+        throw new ForbiddenException('Only community administrators can pin posts');
+      }
+      isPinned = true;
+    }
+
     let postCostBreakdown: PostCostBreakdown | null = null;
     if (processPostCost) {
       if (!this.connection.db) {
@@ -425,6 +434,7 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
       ttlExpiresAt,
       stopLoss: dto.stopLoss ?? 0,
       noAuthorWalletSpend: dto.noAuthorWalletSpend ?? false,
+      isPinned,
       sourceEntityId: dto.sourceEntityId,
       sourceEntityType: dto.sourceEntityType,
       valueTags: dto.valueTags ?? [],

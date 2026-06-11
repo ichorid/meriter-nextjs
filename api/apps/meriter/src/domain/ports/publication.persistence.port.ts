@@ -29,6 +29,8 @@ export interface CommunityPublicationsQuery {
   };
   search?: string;
   hubPostsFeedOnly?: boolean;
+  pinnedOnly?: boolean;
+  excludePinned?: boolean;
 }
 
 export interface ObPostSummary {

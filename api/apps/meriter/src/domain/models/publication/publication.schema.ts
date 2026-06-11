@@ -146,6 +146,8 @@ export interface Publication {
   lastEarnedAt?: Date | null;
   ttlWarningNotified?: boolean;
   inactivityWarningNotified?: boolean;
+  /** Pinned to top of community feed (lead/superadmin only). */
+  isPinned?: boolean;
   /** When `postType === 'event'`: scheduled start (date-only semantics at product layer). */
   eventStartDate?: Date;
   /** When `postType === 'event'`: scheduled end. */
@@ -423,6 +425,9 @@ export class PublicationSchemaClass implements Publication {
   @Prop({ default: false })
   inactivityWarningNotified?: boolean;
 
+  @Prop({ default: false })
+  isPinned?: boolean;
+
   @Prop({ type: Date })
   eventStartDate?: Date;
 
@@ -477,6 +482,8 @@ PublicationSchema.index({ 'metrics.score': -1 });
 PublicationSchema.index({ beneficiaryId: 1 });
 PublicationSchema.index({ communityId: 1, deleted: 1, createdAt: -1 }); // For querying deleted items by community
 PublicationSchema.index({ 'investments.investorId': 1 }); // C-1: efficient investment lookups by investor
+PublicationSchema.index({ communityId: 1, isPinned: 1, createdAt: -1 });
+PublicationSchema.index({ communityId: 1, isPinned: 1, 'metrics.score': -1 });
 PublicationSchema.index({ status: 1 }); // D-1: cron and guards for closed posts
 PublicationSchema.index({ ttlExpiresAt: 1 }); // D-1: TTL cron queries
 PublicationSchema.index({ sourceEntityId: 1 }); // Sprint 3: project posts on Birzha

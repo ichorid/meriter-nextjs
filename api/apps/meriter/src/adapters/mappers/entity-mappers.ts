@@ -177,6 +177,7 @@ export class EntityMappers {
       },
       deleted: snapshot.deleted ?? false,
       deletedAt: snapshot.deletedAt ? snapshot.deletedAt.toISOString() : undefined,
+      isPinned: snapshot.isPinned ?? false,
       createdAt: snapshot.createdAt.toISOString(),
       updatedAt: snapshot.updatedAt.toISOString(),
     };
@@ -344,6 +345,7 @@ export class EntityMappers {
       noAuthorWalletSpend: snapshot.noAuthorWalletSpend ?? false,
       sourceEntityId: snapshot.sourceEntityId,
       sourceEntityType: snapshot.sourceEntityType,
+      isPinned: snapshot.isPinned ?? false,
     };
   }
 
@@ -376,7 +378,7 @@ export class EntityMappers {
     items: FeedItem[],
     sortBy: 'createdAt' | 'score',
   ): FeedItem[] {
-    return [...items].sort((a, b) => {
+    const compare = (a: FeedItem, b: FeedItem): number => {
       if (sortBy === 'score') {
         const scoreA =
           a.type === 'publication' ? a.metrics.score : a.metrics.totalAmount || 0;
@@ -387,7 +389,16 @@ export class EntityMappers {
       const dateA = new Date(a.createdAt).getTime();
       const dateB = new Date(b.createdAt).getTime();
       return dateB - dateA;
-    });
+    };
+
+    const pinned = items.filter(
+      (item) => item.type === 'publication' && item.isPinned === true,
+    );
+    const rest = items.filter(
+      (item) => !(item.type === 'publication' && item.isPinned === true),
+    );
+
+    return [...pinned.sort(compare), ...rest.sort(compare)];
   }
 
   /**

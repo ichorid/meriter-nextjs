@@ -838,6 +838,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             {comms && (
                 <div className="mb-6">
                     <CommunityHeroCard
+                        defaultFutureVisionSectionOpen={false}
                         community={{
                             ...comms,
                             id: comms.id || chatId,

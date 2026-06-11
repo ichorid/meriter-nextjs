@@ -280,6 +280,12 @@ export class PublicationPersistenceAdapter implements PublicationPersistencePort
       mongoQuery.hashtags = query.hashtag;
     }
 
+    if (query.pinnedOnly) {
+      mongoQuery.isPinned = true;
+    } else if (query.excludePinned) {
+      mongoQuery.isPinned = { $ne: true };
+    }
+
     const filters = query.filters;
     if (filters) {
       if (filters.impactArea) mongoQuery.impactArea = filters.impactArea;

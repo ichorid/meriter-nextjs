@@ -260,6 +260,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [ttlDays, setTtlDays] = useState<7 | 14 | 30 | 60 | 90 | null>((initialData as any)?.ttlDays ?? null);
   const [stopLoss, setStopLoss] = useState<number>((initialData as any)?.stopLoss ?? 0);
   const [noAuthorWalletSpend, setNoAuthorWalletSpend] = useState<boolean>((initialData as any)?.noAuthorWalletSpend ?? false);
+  const [isPinned, setIsPinned] = useState<boolean>(
+    Boolean((initialData as { isPinned?: boolean })?.isPinned),
+  );
+  const isCommunityAdmin = community?.isAdmin === true;
   const [openAdvancedSettings, setOpenAdvancedSettings] = useState(true);
   // Support both legacy single image and new multi-image
   const initialImages = initialData?.imageUrl
@@ -577,6 +581,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             stopLoss,
             noAuthorWalletSpend,
             ttlDays: ttlDays ?? undefined,
+            ...(isCommunityAdmin ? { isPinned } : {}),
           },
         });
       } else if (birzhaSourceEntity) {
@@ -637,6 +642,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           actingAsCommunityId: effectiveActingAsCommunityId ?? undefined,
           postCostFunding:
             effectiveActingAsCommunityId && !birzhaSourceEntity ? postCostFunding : undefined,
+          ...(isCommunityAdmin ? { isPinned } : {}),
         } as any); // Type assertion needed until types regenerate
 
         // Clear draft after successful publication
@@ -1278,6 +1284,23 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               onChange={setValueTags}
               disabled={isSubmitting}
             />
+          )}
+
+          {isCommunityAdmin && !birzhaSourceEntity && (
+            <div className="rounded-xl border border-brand-border bg-stitch-surface/40 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="isPinned"
+                  checked={isPinned}
+                  onCheckedChange={(checked) => setIsPinned(checked === true)}
+                  disabled={isSubmitting}
+                />
+                <Label htmlFor="isPinned" className="text-sm font-medium cursor-pointer">
+                  {t('pinLabel')}
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground pl-6">{t('pinHelp')}</p>
+            </div>
           )}
 
           {errors.submit && (

@@ -83,6 +83,8 @@ export interface PublicationDocument {
   lastEarnedAt?: Date | null;
   ttlWarningNotified?: boolean;
   inactivityWarningNotified?: boolean;
+  /** Pinned to top of community feed (lead/superadmin only). */
+  isPinned?: boolean;
   /** Total merits ever credited to this post (votes, author top-up, tappalka wins). Used for closingSummary.totalEarned. */
   lifetimeCredits?: number;
   /** Sprint 3: project/community source when post is on Birzha (e.g. marathon-of-good) */

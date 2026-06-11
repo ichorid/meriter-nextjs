@@ -67,6 +67,7 @@ export interface CreatePublicationDto {
   ttlExpiresAt?: Date | null;
   stopLoss?: number;
   noAuthorWalletSpend?: boolean;
+  isPinned?: boolean;
   eventStartDate?: Date;
   eventEndDate?: Date;
   eventTime?: string;
@@ -452,6 +453,7 @@ export class PublicationService {
     },
     search?: string,
     hubPostsFeedOnly = false,
+    pinOptions?: { pinnedOnly?: boolean; excludePinned?: boolean },
   ): Promise<Publication[]> {
     const docs = await this.publicationPersistence.findPublicationsByCommunity({
       communityId,
@@ -462,6 +464,8 @@ export class PublicationService {
       filters,
       search,
       hubPostsFeedOnly,
+      pinnedOnly: pinOptions?.pinnedOnly,
+      excludePinned: pinOptions?.excludePinned,
     });
     return docs.map((doc) =>
       Publication.fromSnapshot(doc as IPublicationDocument),
@@ -668,6 +672,13 @@ export class PublicationService {
     const authorId = publication.getAuthorId.getValue();
     const communityId = publication.getCommunityId.getValue();
 
+    if (updateData.isPinned !== undefined) {
+      const isAdmin = await this.communityService.isUserAdmin(communityId, userId);
+      if (!isAdmin) {
+        throw new BadRequestException('Only community administrators can pin or unpin posts');
+      }
+    }
+
     // Advanced settings (stopLoss, noAuthorWalletSpend, ttlDays) may be updated by the post author or by lead/superadmin for the publication's community
     const hasAdvancedSettingsUpdate =
       updateData.stopLoss !== undefined ||
@@ -792,6 +803,9 @@ export class PublicationService {
     }
     if (updateData.noAuthorWalletSpend !== undefined) {
       updatePayload.noAuthorWalletSpend = updateData.noAuthorWalletSpend;
+    }
+    if (updateData.isPinned !== undefined) {
+      updatePayload.isPinned = updateData.isPinned;
     }
 
     // Conditionally mutable: ttlDays can only be increased
