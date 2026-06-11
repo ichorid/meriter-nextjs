@@ -117,6 +117,7 @@ const TimelinePostSchema = z.object({
 
 const TimelineSchema = z.object({
   globalWalletCreditPerUser: z.number().int().nonnegative(),
+  communityPersonalWalletCreditPerUser: z.number().int().nonnegative().default(3000),
   communityWalletTopUps: z.array(
     z.object({
       userKey: z.string(),

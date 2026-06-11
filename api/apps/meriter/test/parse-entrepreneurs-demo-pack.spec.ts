@@ -15,7 +15,7 @@ describe('parseEntrepreneursDemoPack', () => {
       (s, t) => s + t.amount,
       0,
     );
-    expect(topUpTotal).toBe(420_000);
+    expect(topUpTotal).toBe(447_480);
 
     const payoutTotal = pack.timeline.polls.reduce(
       (s, p) => s + p.payout.amount,

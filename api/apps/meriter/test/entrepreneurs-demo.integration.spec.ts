@@ -104,9 +104,8 @@ describe('Entrepreneurs demo pack (integration)', () => {
     expect(cw?.balance).toBeDefined();
     expect(result.communityWalletBalance).toBe(cw?.balance);
 
-    // 420k top-ups − 120k payouts − post/poll fees (small)
-    expect(cw!.balance).toBeGreaterThan(290_000);
-    expect(cw!.balance).toBeLessThanOrEqual(300_000);
+    // 447480 top-ups − 120000 payouts
+    expect(cw!.balance).toBe(327_480);
 
     const seedService = app.get(PlatformEntrepreneursDemoSeedService);
     const personas = seedService.getDemoPersonas();

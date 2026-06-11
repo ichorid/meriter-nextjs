@@ -114,6 +114,7 @@ export class PlatformEntrepreneursDemoSeedService {
     await this.seedProjects(pack, userKeyToId, communityId);
     await this.seedGlobalCredits(pack, userKeyToId);
     await this.seedCommunityWalletTopUps(pack, userKeyToId, communityId);
+    await this.seedCommunityPersonalWalletCredits(pack, userKeyToId, communityId);
     const publicationsCreated = await this.seedPublications(
       pack,
       packDir,
@@ -442,6 +443,39 @@ export class PlatformEntrepreneursDemoSeedService {
     }
   }
 
+  private async seedCommunityPersonalWalletCredits(
+    pack: EntrepreneursDemoPack,
+    userKeyToId: Map<string, string>,
+    communityId: string,
+  ): Promise<void> {
+    const targetMin = pack.timeline.communityPersonalWalletCreditPerUser;
+    if (targetMin <= 0) return;
+
+    const personalWalletKey =
+      await this.walletContextResolver.resolvePersonalWalletCommunityId(
+        communityId,
+        'voting',
+      );
+
+    for (const userId of userKeyToId.values()) {
+      const wallet = await this.walletService.getWallet(userId, personalWalletKey);
+      const balance = wallet ? wallet.getBalance() : 0;
+      if (balance >= targetMin) continue;
+
+      await this.walletService.addTransaction(
+        userId,
+        personalWalletKey,
+        'credit',
+        targetMin - balance,
+        'personal',
+        'demo_entrepreneurs_seed',
+        userId,
+        pack.community.settings.currencyNames,
+        'Стартовый баланс для демо-сообщества',
+      );
+    }
+  }
+
   private async seedPublications(
     pack: EntrepreneursDemoPack,
     packDir: string,
@@ -619,6 +653,13 @@ export class PlatformEntrepreneursDemoSeedService {
             'voting',
           );
 
+        await this.ensureDemoWalletBalance(
+          voterId,
+          personalWalletKey,
+          cast.walletAmount,
+          pack,
+        );
+
         await this.walletService.addTransaction(
           voterId,
           personalWalletKey,
@@ -665,6 +706,7 @@ export class PlatformEntrepreneursDemoSeedService {
         communityId,
         'voting',
       );
+    const db = this.connection.db;
 
     for (const v of pack.timeline.postVotes) {
       const voterId = userKeyToId.get(v.voterKey);
@@ -673,20 +715,41 @@ export class PlatformEntrepreneursDemoSeedService {
       const pub = await this.publicationPersistence.findById(v.publicationId);
       if (!pub) continue;
 
-      const w = await this.walletService.getWallet(voterId, personalWalletKey);
-      const bal = w ? w.getBalance() : 0;
-      if (bal < v.walletAmount) {
-        await this.walletService.addTransaction(
+      await this.ensureDemoWalletBalance(
+        voterId,
+        personalWalletKey,
+        v.walletAmount,
+        pack,
+      );
+
+      const existingVote = db
+        ? await db.collection('votes').findOne({
+            targetType: 'publication',
+            targetId: v.publicationId,
+            userId: voterId,
+          })
+        : null;
+
+      if (existingVote) {
+        await db!.collection('votes').updateOne(
+          { id: existingVote.id },
+          {
+            $set: {
+              amountWallet: v.walletAmount,
+              amountQuota: 0,
+              comment: v.comment,
+              direction: 'up',
+            },
+          },
+        );
+        await this.ensurePublicationVoteWalletTransaction(
           voterId,
           personalWalletKey,
-          'credit',
-          v.walletAmount - bal + 100,
-          'personal',
-          'demo_entrepreneurs_seed',
-          voterId,
-          pack.community.settings.currencyNames,
-          'Пополнение для голоса',
+          v.publicationId,
+          v.walletAmount,
+          pack,
         );
+        continue;
       }
 
       await this.voteService.createVote(
@@ -699,12 +762,129 @@ export class PlatformEntrepreneursDemoSeedService {
         v.comment,
         communityId,
       );
+      await this.walletService.addTransaction(
+        voterId,
+        personalWalletKey,
+        'debit',
+        v.walletAmount,
+        'personal',
+        'publication_vote',
+        v.publicationId,
+        pack.community.settings.currencyNames,
+        'Голос за публикацию',
+      );
       await this.publicationService.voteOnPublication(
         v.publicationId,
         voterId,
         v.walletAmount,
         'up',
       );
+    }
+
+    await this.recalculatePublicationMetricsFromVotes(pack);
+  }
+
+  private async ensureDemoWalletBalance(
+    userId: string,
+    walletCommunityId: string,
+    requiredAmount: number,
+    pack: EntrepreneursDemoPack,
+  ): Promise<void> {
+    const w = await this.walletService.getWallet(userId, walletCommunityId);
+    const bal = w ? w.getBalance() : 0;
+    if (bal < requiredAmount) {
+      await this.walletService.addTransaction(
+        userId,
+        walletCommunityId,
+        'credit',
+        requiredAmount - bal + 500,
+        'personal',
+        'demo_entrepreneurs_seed',
+        userId,
+        pack.community.settings.currencyNames,
+        'Пополнение для голоса',
+      );
+    }
+  }
+
+  private async ensurePublicationVoteWalletTransaction(
+    userId: string,
+    walletCommunityId: string,
+    publicationId: string,
+    amount: number,
+    pack: EntrepreneursDemoPack,
+  ): Promise<void> {
+    const db = this.connection.db;
+    if (!db) return;
+
+    const wallet = await this.walletService.getWallet(userId, walletCommunityId);
+    if (!wallet) return;
+    const walletId = wallet.getId.getValue();
+
+    const existingTx = await db.collection('transactions').findOne({
+      walletId,
+      referenceType: 'publication_vote',
+      referenceId: publicationId,
+      type: 'withdrawal',
+    });
+
+    if (!existingTx) {
+      await this.ensureDemoWalletBalance(userId, walletCommunityId, amount, pack);
+      await this.walletService.addTransaction(
+        userId,
+        walletCommunityId,
+        'debit',
+        amount,
+        'personal',
+        'publication_vote',
+        publicationId,
+        pack.community.settings.currencyNames,
+        'Голос за публикацию',
+      );
+      return;
+    }
+
+    if (existingTx.amount !== amount) {
+      await db.collection('transactions').updateOne(
+        { id: existingTx.id },
+        { $set: { amount } },
+      );
+    }
+  }
+
+  private async recalculatePublicationMetricsFromVotes(
+    pack: EntrepreneursDemoPack,
+  ): Promise<void> {
+    const db = this.connection.db;
+    if (!db) return;
+
+    for (const post of pack.timeline.posts) {
+      const votes = await db
+        .collection('votes')
+        .find({ targetType: 'publication', targetId: post.id })
+        .toArray();
+
+      let score = 0;
+      let upvotes = 0;
+      let downvotes = 0;
+      for (const vote of votes) {
+        const amt = (vote.amountWallet ?? 0) + (vote.amountQuota ?? 0);
+        if (vote.direction === 'down') {
+          score -= amt;
+          downvotes += 1;
+        } else {
+          score += amt;
+          upvotes += 1;
+        }
+      }
+
+      await this.publicationPersistence.patchById(post.id, {
+        set: {
+          'metrics.score': score,
+          'metrics.upvotes': upvotes,
+          'metrics.downvotes': downvotes,
+        },
+      });
     }
   }
 
@@ -807,16 +987,11 @@ export class PlatformEntrepreneursDemoSeedService {
       );
       const senderBal = senderWallet ? senderWallet.getBalance() : 0;
       if (senderBal < t.amount) {
-        await this.walletService.addTransaction(
+        await this.ensureDemoWalletBalance(
           senderId,
           personalWalletKey,
-          'credit',
-          t.amount - senderBal + 50,
-          'personal',
-          'demo_entrepreneurs_seed',
-          senderId,
-          pack.community.settings.currencyNames,
-          'Пополнение для перевода',
+          t.amount,
+          pack,
         );
       }
 
@@ -908,11 +1083,11 @@ export class PlatformEntrepreneursDemoSeedService {
           targetType: 'publication',
           targetId: v.publicationId,
           userId: voterId,
-          amountWallet: v.walletAmount,
         },
         {
           $set: {
             comment: v.comment,
+            amountWallet: v.walletAmount,
             createdAt,
             updatedAt: createdAt,
           },
