@@ -44,3 +44,24 @@ export function resolveMeriterSeedDataDir(): string {
   }
   return SEED_DIR_CANDIDATES[0];
 }
+
+const ENTREPRENEURS_DEMO_DIR = 'entrepreneurs-demo';
+
+/** Directory containing entrepreneurs demo pack JSON (bundled under seed-data). */
+export function resolveEntrepreneursDemoPackDir(): string {
+  const candidates = [
+    join(process.cwd(), 'dist', 'apps', 'meriter', 'seed-data', ENTREPRENEURS_DEMO_DIR),
+    join(process.cwd(), 'apps', 'meriter', 'seed-data', ENTREPRENEURS_DEMO_DIR),
+    join(process.cwd(), 'seed-data', ENTREPRENEURS_DEMO_DIR),
+    join(__dirname, '..', '..', 'seed-data', ENTREPRENEURS_DEMO_DIR),
+    join(__dirname, 'seed-data', ENTREPRENEURS_DEMO_DIR),
+  ];
+  for (const dir of candidates) {
+    if (existsSync(join(dir, 'manifest.json'))) {
+      return dir;
+    }
+  }
+  throw new Error(
+    `Entrepreneurs demo pack not found. Tried: ${candidates.join(', ')}`,
+  );
+}

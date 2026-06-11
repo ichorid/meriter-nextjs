@@ -59,6 +59,14 @@ import {
   CallAuthDisabledError,
   CallCheckParamsRequiredError,
 } from '../../application/use-cases/auth/verify-call-check.use-case';
+import {
+  AuthenticateDemoPersonaUseCase,
+  DemoPersonaAuthDisabledError,
+  DemoPersonaNotAllowedError,
+} from '../../application/use-cases/auth/authenticate-demo-persona.use-case';
+import { PlatformSettingsService } from '../../domain/services/platform-settings.service';
+import { PlatformEntrepreneursDemoSeedService } from '../../domain/services/platform-entrepreneurs-demo-seed.service';
+import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 
 /**
  * BC-12 REST auth adapter (Phase 8). Thin transport layer delegating to use cases.
@@ -85,6 +93,7 @@ export class AuthController {
   private readonly sendEmailLoginLinkUseCase: SendEmailLoginLinkUseCase;
   private readonly redeemMagicLinkUseCase: RedeemMagicLinkUseCase;
   private readonly verifyCallCheckUseCase: VerifyCallCheckUseCase;
+  private readonly authenticateDemoPersonaUseCase: AuthenticateDemoPersonaUseCase;
 
   /** IP -> { count, resetAt } for GET /link/:token rate limiting. */
   private readonly magicLinkRateLimit = new Map<string, { count: number; resetAt: number }>();
@@ -152,11 +161,18 @@ export class AuthController {
     private readonly emailLoginLinkService: EmailLoginLinkService,
     private readonly configService: ConfigService<AppConfig>,
     private readonly cookieManager: CookieManager,
+    private readonly platformSettingsService: PlatformSettingsService,
+    private readonly entrepreneursDemoSeedService: PlatformEntrepreneursDemoSeedService,
   ) {
     this.establishSessionUseCase = new EstablishSessionUseCase(
       this.cookieManager,
       this.configService,
       this.authService,
+    );
+    this.authenticateDemoPersonaUseCase = new AuthenticateDemoPersonaUseCase(
+      this.platformSettingsService,
+      this.entrepreneursDemoSeedService,
+      this.establishSessionUseCase,
     );
     this.initiateOAuthUseCase = new InitiateOAuthUseCase(this.configService);
     this.completeOAuthCallbackUseCase = new CompleteOAuthCallbackUseCase(
@@ -368,6 +384,48 @@ export class AuthController {
       const errorStack = error instanceof Error ? error.stack : String(error);
       this.logger.error('Fake superadmin authentication error', errorStack);
       throw new UnauthorizedError('Fake superadmin authentication failed');
+    }
+  }
+
+  @Post('demo-persona')
+  async authenticateDemoPersona(
+    @Req() req: any,
+    @Res() res: any,
+    @Body() body: { authId?: string },
+  ) {
+    const authId = body?.authId?.trim();
+    if (!authId) {
+      throw new UnauthorizedError('authId is required');
+    }
+
+    try {
+      const jwtUser = req.user as { globalRole?: string } | undefined;
+      const result = await this.authenticateDemoPersonaUseCase.authenticate(
+        req,
+        res,
+        authId,
+        { isSuperadmin: jwtUser?.globalRole === GLOBAL_ROLE_SUPERADMIN },
+      );
+
+      return res.json({
+        success: true,
+        data: {
+          user: result.user,
+          hasPendingCommunities: result.hasPendingCommunities,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof DemoPersonaAuthDisabledError ||
+        error instanceof DemoPersonaNotAllowedError
+      ) {
+        throw new ForbiddenException(
+          error instanceof Error ? error.message : 'Demo persona login forbidden',
+        );
+      }
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Demo persona authentication error', errorStack);
+      throw new UnauthorizedError('Demo persona authentication failed');
     }
   }
 

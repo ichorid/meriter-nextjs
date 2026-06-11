@@ -102,6 +102,19 @@ export class EstablishSessionUseCase {
     };
   }
 
+  async authenticateDemoPersona(
+    response: unknown,
+    request: EstablishSessionRequest,
+    authId: string,
+  ): Promise<FakeAuthSessionResult> {
+    const result = await this.authService.authenticateDemoPersona(authId);
+    this.establishJwtSession(response, result.jwt, request);
+    return {
+      user: result.user,
+      hasPendingCommunities: result.hasPendingCommunities,
+    };
+  }
+
   private resolveOrCreateFakeId(
     request: EstablishSessionRequest,
     cookieName: FakeSessionCookieName,

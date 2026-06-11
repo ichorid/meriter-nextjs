@@ -48,6 +48,8 @@ import { ProjectPayoutService } from '../domain/services/project-payout.service'
 import { PlatformWipeService } from '../domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
 import { PlatformDemoEventsSeedService } from '../domain/services/platform-demo-events-seed.service';
+import { PlatformEntrepreneursDemoSeedService } from '../domain/services/platform-entrepreneurs-demo-seed.service';
+import { PlatformDemoPackImportService } from '../domain/services/platform-demo-pack-import.service';
 import { PlatformDatabaseDumpService } from '../domain/services/platform-database-dump.service';
 import { MeritTransferService } from '../domain/services/merit-transfer.service';
 import { EventService } from '../domain/services/event.service';
@@ -105,6 +107,8 @@ export interface CreateContextOptions {
   platformWipeService: PlatformWipeService;
   platformDemoSeedService: PlatformDemoSeedService;
   platformDemoEventsSeedService: PlatformDemoEventsSeedService;
+  platformEntrepreneursDemoSeedService: PlatformEntrepreneursDemoSeedService;
+  platformDemoPackImportService: PlatformDemoPackImportService;
   platformDatabaseDumpService: PlatformDatabaseDumpService;
   meritTransferService: MeritTransferService;
   eventService: EventService;
@@ -174,6 +178,8 @@ export async function createContext(opts: CreateContextOptions) {
     platformWipeService,
     platformDemoSeedService,
     platformDemoEventsSeedService,
+    platformEntrepreneursDemoSeedService,
+    platformDemoPackImportService,
     platformDatabaseDumpService,
     meritTransferService,
     eventService,
@@ -292,6 +298,8 @@ export async function createContext(opts: CreateContextOptions) {
     platformWipeService,
     platformDemoSeedService,
     platformDemoEventsSeedService,
+    platformEntrepreneursDemoSeedService,
+    platformDemoPackImportService,
     platformDatabaseDumpService,
     meritTransferService,
     eventService,

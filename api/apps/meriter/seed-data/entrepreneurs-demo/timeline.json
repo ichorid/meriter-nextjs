@@ -1,0 +1,239 @@
+{
+  "globalWalletCreditPerUser": 150000,
+  "communityWalletTopUps": [
+    { "userKey": "kravtsov_a", "amount": 100000, "dayOffset": -22 },
+    { "userKey": "volkova_ir", "amount": 80000, "dayOffset": -22 },
+    { "userKey": "zhukova_e", "amount": 70000, "dayOffset": -21 },
+    { "userKey": "mamonov_s", "amount": 60000, "dayOffset": -21 },
+    { "userKey": "orlova_n", "amount": 50000, "dayOffset": -20 },
+    { "userKey": "safonova_o", "amount": 60000, "dayOffset": -20 }
+  ],
+  "polls": [
+    {
+      "id": "demo_ent_poll_1",
+      "authorKey": "kravtsov_a",
+      "dayOffset": -20,
+      "expiresDayOffset": -18,
+      "question": "Экстренное распределение 50 000 ₽ из операционного фонда",
+      "description": "Один победитель получает всю сумму. Выберите направление поддержки.",
+      "options": [
+        { "id": "opt_nekrasov", "text": "Дмитрию Некрасову — закрытие кассового разрыва по фурнитуре" },
+        { "id": "opt_lednev", "text": "Артёму Ледневу — пилот EdTech в двух школах" },
+        { "id": "opt_orlova", "text": "Наталье Орловой — фасилитация стратсессии для резидентов" },
+        { "id": "opt_safonova", "text": "Ольге Сафоновой — аванс по аренде второй точки" }
+      ],
+      "casts": [
+        { "userKey": "volkova_ir", "optionId": "opt_nekrasov", "walletAmount": 18 },
+        { "userKey": "mamonov_s", "optionId": "opt_nekrasov", "walletAmount": 14 },
+        { "userKey": "lednev_a", "optionId": "opt_lednev", "walletAmount": 12 },
+        { "userKey": "safonova_o", "optionId": "opt_safonova", "walletAmount": 10 },
+        { "userKey": "orlova_n", "optionId": "opt_orlova", "walletAmount": 8 },
+        { "userKey": "sitnikov_p", "optionId": "opt_nekrasov", "walletAmount": 6 }
+      ],
+      "payout": {
+        "mode": "winner_takes_all",
+        "amount": 50000,
+        "winnerOptionId": "opt_nekrasov",
+        "recipientUserKey": "nekrasov_d",
+        "reportDayOffset": -19
+      }
+    },
+    {
+      "id": "demo_ent_poll_2",
+      "authorKey": "kravtsov_a",
+      "dayOffset": -12,
+      "expiresDayOffset": -10,
+      "question": "Поддержка текущей активности резидентов — 70 000 ₽",
+      "description": "Сумма распределяется пропорционально набранным долям голосов между участниками.",
+      "options": [
+        { "id": "opt_support_volkova", "text": "Ирина Волкова — масштабирование D2C‑каналов" },
+        { "id": "opt_support_mamonov", "text": "Сергей Мамонов — пресейл для двух новых клиентов" },
+        { "id": "opt_support_zhukova", "text": "Елена Жукова — сезонный запас для точек в ТЦ" },
+        { "id": "opt_support_sitnikov", "text": "Павел Ситников — пилот доставки для производителей" },
+        { "id": "opt_support_kisel", "text": "Марина Киселёва — серия POS‑материалов для резидентов" }
+      ],
+      "casts": [
+        { "userKey": "kravtsov_a", "optionId": "opt_support_volkova", "walletAmount": 28 },
+        { "userKey": "nekrasov_d", "optionId": "opt_support_mamonov", "walletAmount": 22 },
+        { "userKey": "orlova_n", "optionId": "opt_support_zhukova", "walletAmount": 19 },
+        { "userKey": "lednev_a", "optionId": "opt_support_sitnikov", "walletAmount": 17 },
+        { "userKey": "safonova_o", "optionId": "opt_support_kisel", "walletAmount": 14 }
+      ],
+      "payout": {
+        "mode": "proportional",
+        "amount": 70000,
+        "shares": [
+          { "userKey": "volkova_ir", "percent": 28 },
+          { "userKey": "mamonov_s", "percent": 22 },
+          { "userKey": "zhukova_e", "percent": 19 },
+          { "userKey": "sitnikov_p", "percent": 17 },
+          { "userKey": "kisel_m", "percent": 14 }
+        ],
+        "reportDayOffset": -11
+      }
+    }
+  ],
+  "meritTransfers": [
+    {
+      "senderKey": "volkova_ir",
+      "receiverKey": "kisel_m",
+      "amount": 15,
+      "comment": "Спасибо за быстрый макет упаковки под маркетплейс — выручила.",
+      "dayOffset": -15
+    },
+    {
+      "senderKey": "mamonov_s",
+      "receiverKey": "lednev_a",
+      "amount": 20,
+      "comment": "За консультацию по архитектуре MVP — сэкономили две итерации.",
+      "dayOffset": -9
+    },
+    {
+      "senderKey": "zhukova_e",
+      "receiverKey": "sitnikov_p",
+      "amount": 12,
+      "comment": "Пилотная неделя доставки для нашей второй точки — всё в срок.",
+      "dayOffset": -6
+    }
+  ],
+  "posts": [
+    {
+      "id": "demo_ent_pub_charter",
+      "authorKey": "kravtsov_a",
+      "dayOffset": -32,
+      "title": "Устав операционного фонда и правила сообщества",
+      "contentFile": "charter.md",
+      "isPinned": false
+    },
+    {
+      "id": "demo_ent_pub_intro_volkova",
+      "authorKey": "volkova_ir",
+      "dayOffset": -30,
+      "title": "Привет! Запускаю бренд уходовой косметики",
+      "content": "Коллеги, я Ирина. Веду D2C‑бренд, сейчас выхожу на два маркетплейса. Ищу партнёров по контенту и обмену опытом по unit‑экономике."
+    },
+    {
+      "id": "demo_ent_pub_intro_nekrasov",
+      "authorKey": "nekrasov_d",
+      "dayOffset": -29,
+      "title": "Мебель на заказ — ищу поставщиков фурнитуры",
+      "content": "Дмитрий, цех в 12 человек. Взяли крупный заказ, упёрлись в закупку фурнитуры. Буду рад контактам и советам по оборотке."
+    },
+    {
+      "id": "demo_ent_pub_intro_mamonov",
+      "authorKey": "mamonov_s",
+      "dayOffset": -28,
+      "title": "IT‑аутстафф для нетехнических основателей",
+      "content": "Сергей, команда из 8 разработчиков. Помогаем собирать MVP без лишней бюрократии. Открыт к коллаборациям с резидентами."
+    },
+    {
+      "id": "demo_ent_pub_horeca_proposal",
+      "authorKey": "zhukova_e",
+      "dayOffset": -25,
+      "title": "Предложение: совместная закупка расходников HoReCa",
+      "content": "Предлагаю объединить закупки одноразовой посуды и упаковки. По предварительным переговорам — экономия 12–18%. Нужны заявки от точек общепита."
+    },
+    {
+      "id": "demo_ent_pub_poll1_announce",
+      "authorKey": "kravtsov_a",
+      "dayOffset": -20,
+      "title": "Голосование: экстренное распределение 50 000 ₽",
+      "content": "Открыт опрос на 48 часов. Один победитель — вся сумма. Обоснуйте выбор в комментариях к этому посту.",
+      "linkedPollId": "demo_ent_poll_1"
+    },
+    {
+      "id": "demo_ent_pub_treasurer_1",
+      "authorKey": "kravtsov_a",
+      "dayOffset": -19,
+      "title": "Отчёт казначея №1 — итоги экстренного распределения",
+      "contentFile": "treasurer-report-1.md"
+    },
+    {
+      "id": "demo_ent_pub_mentor_proposal",
+      "authorKey": "orlova_n",
+      "dayOffset": -16,
+      "title": "Предложение: пул менторских сессий для резидентов",
+      "content": "Хочу запустить ротацию коротких сессий 45 минут: продажи, финмодель, операционка. Фонд может оплатить первые 20 слотов — обсудим формат."
+    },
+    {
+      "id": "demo_ent_pub_poll2_announce",
+      "authorKey": "kravtsov_a",
+      "dayOffset": -12,
+      "title": "Голосование: поддержка текущей активности — 70 000 ₽",
+      "content": "Пропорциональное распределение между пятью направлениями. Опрос завершён — итоги в отчёте казначея.",
+      "linkedPollId": "demo_ent_poll_2"
+    },
+    {
+      "id": "demo_ent_pub_treasurer_2",
+      "authorKey": "kravtsov_a",
+      "dayOffset": -11,
+      "title": "Отчёт казначея №2 — пропорциональное распределение",
+      "contentFile": "treasurer-report-2.md"
+    },
+    {
+      "id": "demo_ent_pub_mamonov_case",
+      "authorKey": "mamonov_s",
+      "dayOffset": -8,
+      "title": "Кейс: как мы закрыли пресейл за 10 дней",
+      "content": "Поделюсь схемой, по которой вывели двух клиентов из «думающих» в оплату. Может быть полезно тем, кто продаёт B2B‑услуги."
+    },
+    {
+      "id": "demo_ent_pub_sitnikov_partner",
+      "authorKey": "sitnikov_p",
+      "dayOffset": -7,
+      "title": "Ищу производителей для пилота доставки",
+      "content": "Готов взять 2–3 локальных производителя на пилот last‑mile с фиксированным SLA. Кто готов — напишите в комментариях."
+    },
+    {
+      "id": "demo_ent_pub_lednev_success",
+      "authorKey": "lednev_a",
+      "dayOffset": -5,
+      "title": "Пилот EdTech: первая школа подключилась",
+      "content": "Спасибо сообществу за поддержку в голосовании. Первая школа дала добро на пилот — начинаем на следующей неделе."
+    },
+    {
+      "id": "demo_ent_pub_treasurer_weekly",
+      "authorKey": "kravtsov_a",
+      "dayOffset": -7,
+      "title": "Еженедельный дайджест операционного фонда",
+      "content": "Кратко: поступления +18 000 ₽, мелкие расходы −3 000 ₽. Детали — в закреплённом посте ниже."
+    },
+    {
+      "id": "demo_ent_pub_treasurer_pinned",
+      "authorKey": "kravtsov_a",
+      "dayOffset": -3,
+      "title": "Состояние операционного фонда — актуально",
+      "contentFile": "treasurer-pinned.md",
+      "isPinned": true
+    }
+  ],
+  "postVotes": [
+    { "publicationId": "demo_ent_pub_charter", "voterKey": "volkova_ir", "walletAmount": 5, "comment": "Чёткие правила — так и должно быть." },
+    { "publicationId": "demo_ent_pub_charter", "voterKey": "nekrasov_d", "walletAmount": 4, "comment": "Поддерживаю прозрачность." },
+    { "publicationId": "demo_ent_pub_charter", "voterKey": "orlova_n", "walletAmount": 3, "comment": "Важно зафиксировать протокол." },
+    { "publicationId": "demo_ent_pub_horeca_proposal", "voterKey": "kravtsov_a", "walletAmount": 6, "comment": "Экономия на закупках — здравый смысл." },
+    { "publicationId": "demo_ent_pub_horeca_proposal", "voterKey": "safonova_o", "walletAmount": 4, "comment": "Нам тоже актуально для точек." },
+    { "publicationId": "demo_ent_pub_horeca_proposal", "voterKey": "mamonov_s", "walletAmount": 2, "comment": "Интересно посмотреть цифры." },
+    { "publicationId": "demo_ent_pub_poll1_announce", "voterKey": "lednev_a", "walletAmount": 3, "comment": "Спасибо за оперативность." },
+    { "publicationId": "demo_ent_pub_poll1_announce", "voterKey": "sitnikov_p", "walletAmount": 2, "comment": "Голосовал за кассовый разрыв — сроки критичны." },
+    { "publicationId": "demo_ent_pub_mentor_proposal", "voterKey": "volkova_ir", "walletAmount": 5, "comment": "Менторство — то, чего не хватает." },
+    { "publicationId": "demo_ent_pub_mentor_proposal", "voterKey": "zhukova_e", "walletAmount": 4, "comment": "Запишусь на слот по операционке." },
+    { "publicationId": "demo_ent_pub_mamonov_case", "voterKey": "lednev_a", "walletAmount": 3, "comment": "Полезная схема, возьму на вооружение." },
+    { "publicationId": "demo_ent_pub_mamonov_case", "voterKey": "kisel_m", "walletAmount": 2, "comment": "B2B — отдельная дисциплина, согласна." },
+    { "publicationId": "demo_ent_pub_lednev_success", "voterKey": "orlova_n", "walletAmount": 4, "comment": "Отличная новость для EdTech!" },
+    { "publicationId": "demo_ent_pub_lednev_success", "voterKey": "nekrasov_d", "walletAmount": 3, "comment": "Рад за коллегу." },
+    { "publicationId": "demo_ent_pub_sitnikov_partner", "voterKey": "zhukova_e", "walletAmount": 2, "comment": "Напишу в личку по производителям." }
+  ],
+  "postComments": [
+    { "publicationId": "demo_ent_pub_intro_volkova", "authorKey": "kisel_m", "dayOffset": -29, "content": "Ирина, могу помочь с визуалом для карточек — напишите." },
+    { "publicationId": "demo_ent_pub_intro_nekrasov", "authorKey": "sitnikov_p", "dayOffset": -28, "content": "Есть контакт оптовика фурнитуры — скину в личку." },
+    { "publicationId": "demo_ent_pub_horeca_proposal", "authorKey": "kravtsov_a", "dayOffset": -24, "content": "Елена, давайте оформим как кооперативный проект." },
+    { "publicationId": "demo_ent_pub_poll1_announce", "authorKey": "nekrasov_d", "dayOffset": -19, "content": "Спасибо за поддержку — фурнитура уже в пути." },
+    { "publicationId": "demo_ent_pub_poll1_announce", "authorKey": "lednev_a", "dayOffset": -19, "content": "Понимаю решение, кассовый разрыв срочнее." },
+    { "publicationId": "demo_ent_pub_mentor_proposal", "authorKey": "mamonov_s", "dayOffset": -15, "content": "Готов выступить с блоком про тех due diligence." }
+  ],
+  "projectsCreatedDayOffset": {
+    "horeca": -22,
+    "mentor": -14
+  }
+}

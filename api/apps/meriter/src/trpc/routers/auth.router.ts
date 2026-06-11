@@ -1,9 +1,16 @@
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
+import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import {
   createEstablishSessionUseCase,
   FakeAuthDisabledError,
 } from '../../application/use-cases/auth/establish-session.use-case';
+import {
+  AuthenticateDemoPersonaUseCase,
+  DemoPersonaAuthDisabledError,
+  DemoPersonaNotAllowedError,
+} from '../../application/use-cases/auth/authenticate-demo-persona.use-case';
 
 export const authRouter = router({
   /**
@@ -79,4 +86,34 @@ export const authRouter = router({
       throw error;
     }
   }),
+
+  /** Login as entrepreneurs demo persona (gated by demoPersonasEnabled or superadmin). */
+  authenticateDemoPersona: publicProcedure
+    .input(z.object({ authId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      const establishSession = createEstablishSessionUseCase({
+        cookieManager: ctx.cookieManager,
+        configService: ctx.configService,
+        authService: ctx.authService,
+      });
+      const useCase = new AuthenticateDemoPersonaUseCase(
+        ctx.platformSettingsService,
+        ctx.platformEntrepreneursDemoSeedService,
+        establishSession,
+      );
+
+      try {
+        return await useCase.authenticate(ctx.req, ctx.res, input.authId, {
+          isSuperadmin: ctx.user?.globalRole === GLOBAL_ROLE_SUPERADMIN,
+        });
+      } catch (error) {
+        if (error instanceof DemoPersonaAuthDisabledError) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: error.message });
+        }
+        if (error instanceof DemoPersonaNotAllowedError) {
+          throw new TRPCError({ code: 'FORBIDDEN', message: error.message });
+        }
+        throw error;
+      }
+    }),
 });

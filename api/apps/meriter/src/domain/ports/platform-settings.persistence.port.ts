@@ -12,6 +12,12 @@ export interface PlatformSettingsRecord {
   collaborativeDocumentsMigrationRevision?: number;
   popularValueTagsThreshold?: number;
   demoSeedVersion?: number;
+  entrepreneursDemoPack?: {
+    version: number;
+    communityId: string;
+    seededAt: string;
+  };
+  demoPersonasEnabled?: boolean;
   updatedAt: Date;
 }
 
@@ -32,6 +38,12 @@ export interface PlatformSettingsUpdateSet {
   decree809TagsRevision?: number;
   popularValueTagsThreshold?: number;
   demoSeedVersion?: number;
+  entrepreneursDemoPack?: {
+    version: number;
+    communityId: string;
+    seededAt: string;
+  };
+  demoPersonasEnabled?: boolean;
   updatedAt?: Date;
 }
 

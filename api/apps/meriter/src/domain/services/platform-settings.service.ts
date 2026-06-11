@@ -179,6 +179,40 @@ export class PlatformSettingsService {
     ]);
   }
 
+  async getEntrepreneursDemoPack(): Promise<
+    PlatformSettings['entrepreneursDemoPack'] | undefined
+  > {
+    const doc = await this.platformSettingsPersistence.findById(PLATFORM_SETTINGS_ID);
+    return doc?.entrepreneursDemoPack;
+  }
+
+  async setEntrepreneursDemoPack(
+    pack: NonNullable<PlatformSettings['entrepreneursDemoPack']>,
+  ): Promise<void> {
+    await this.platformSettingsPersistence.updateWithUpsert(
+      PLATFORM_SETTINGS_ID,
+      { entrepreneursDemoPack: pack, updatedAt: new Date() },
+      this.getBootstrapInput(),
+    );
+  }
+
+  async getDemoPersonasEnabled(): Promise<boolean> {
+    const doc = await this.get();
+    return doc.demoPersonasEnabled === true;
+  }
+
+  async setDemoPersonasEnabled(enabled: boolean): Promise<PlatformSettings> {
+    const doc = await this.platformSettingsPersistence.updateWithUpsert(
+      PLATFORM_SETTINGS_ID,
+      { demoPersonasEnabled: enabled, updatedAt: new Date() },
+      this.getBootstrapInput(),
+    );
+    if (!doc) {
+      throw new Error('Failed to update platform settings');
+    }
+    return doc as PlatformSettings;
+  }
+
   /**
    * Full platform_settings row from dev snapshot JSON (fallback: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP).
    */

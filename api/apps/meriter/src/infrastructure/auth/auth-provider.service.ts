@@ -195,6 +195,39 @@ export class AuthProviderService {
     };
   }
 
+  async authenticateDemoPersona(authId: string): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    jwt: string;
+  }> {
+    const user = await this.userService.getUserByAuthId('demo', authId);
+    if (!user) {
+      throw new Error(`Demo persona not found: ${authId}`);
+    }
+
+    await this.userService.ensureUserInBaseCommunities(user.id);
+
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        authProvider: 'demo',
+        authId,
+        communityTags: user.communityTags || [],
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    this.logger.log(`JWT generated for demo persona ${authId}`);
+
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      jwt: jwtToken,
+    };
+  }
+
   async authenticateGoogle(code: string): Promise<{
     user: User;
     hasPendingCommunities: boolean;

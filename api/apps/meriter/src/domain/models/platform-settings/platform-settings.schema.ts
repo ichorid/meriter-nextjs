@@ -20,6 +20,14 @@ export interface PlatformSettings {
   popularValueTagsThreshold?: number;
   /** Set after demo seed; cleared on platform wipe. */
   demoSeedVersion?: number;
+  /** Entrepreneurs demo pack marker (partial seed, no full wipe). */
+  entrepreneursDemoPack?: {
+    version: number;
+    communityId: string;
+    seededAt: string;
+  };
+  /** When true, demo persona login is allowed (production showcase). */
+  demoPersonasEnabled?: boolean;
   updatedAt: Date;
 }
 
@@ -51,6 +59,23 @@ export class PlatformSettingsSchemaClass implements PlatformSettings {
 
   @Prop({ type: Number, required: false })
   demoSeedVersion?: number;
+
+  @Prop({
+    type: {
+      version: { type: Number, required: true },
+      communityId: { type: String, required: true },
+      seededAt: { type: String, required: true },
+    },
+    required: false,
+  })
+  entrepreneursDemoPack?: {
+    version: number;
+    communityId: string;
+    seededAt: string;
+  };
+
+  @Prop({ type: Boolean, default: false })
+  demoPersonasEnabled?: boolean;
 
   updatedAt!: Date;
 }

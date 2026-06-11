@@ -12,6 +12,7 @@ export type AuthSessionResult = {
 export type AuthProviderPort = {
   authenticateFakeUser(fakeUserId?: string): Promise<AuthSessionResult>;
   authenticateFakeSuperadmin(fakeUserId?: string): Promise<AuthSessionResult>;
+  authenticateDemoPersona(authId: string): Promise<AuthSessionResult>;
   authenticateSms(phoneNumber: string): Promise<AuthSessionResult>;
   authenticateEmail(email: string): Promise<AuthSessionResult>;
   authenticateGoogle(code: string): Promise<AuthSessionResult>;

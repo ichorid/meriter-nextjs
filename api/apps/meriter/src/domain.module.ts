@@ -154,6 +154,8 @@ import { ProjectPayoutService } from './domain/services/project-payout.service';
 import { PlatformWipeService } from './domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from './domain/services/platform-demo-seed.service';
 import { PlatformDemoEventsSeedService } from './domain/services/platform-demo-events-seed.service';
+import { PlatformEntrepreneursDemoSeedService } from './domain/services/platform-entrepreneurs-demo-seed.service';
+import { PlatformDemoPackImportService } from './domain/services/platform-demo-pack-import.service';
 import { PlatformDatabaseDumpService } from './domain/services/platform-database-dump.service';
 import { Decree809TagMigrationService } from './domain/services/decree809-tag-migration.service';
 import { CollaborativeDocumentsMigrationService } from './domain/services/collaborative-documents-migration.service';
@@ -271,6 +273,8 @@ import { EventBus } from './domain/events/event-bus';
     PlatformWipeService,
     PlatformDemoSeedService,
     PlatformDemoEventsSeedService,
+    PlatformEntrepreneursDemoSeedService,
+    PlatformDemoPackImportService,
     PlatformDatabaseDumpService,
     Decree809TagMigrationService,
     CollaborativeDocumentsMigrationService,
@@ -344,6 +348,8 @@ import { EventBus } from './domain/events/event-bus';
     PlatformWipeService,
     PlatformDemoSeedService,
     PlatformDemoEventsSeedService,
+    PlatformEntrepreneursDemoSeedService,
+    PlatformDemoPackImportService,
     PlatformDatabaseDumpService,
     MeritTransferService,
     EventService,
