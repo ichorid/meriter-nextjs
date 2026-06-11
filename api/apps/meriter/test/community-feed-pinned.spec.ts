@@ -8,6 +8,7 @@ import { MeriterModule } from '../src/meriter.module';
 
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { PublicationSchemaClass } from '../src/domain/models/publication/publication.schema';
+import { PollSchemaClass, PollDocument } from '../src/domain/models/poll/poll.schema';
 
 import { PublicationService } from '../src/domain/services/publication.service';
 import { PollService } from '../src/domain/services/poll.service';
@@ -24,6 +25,7 @@ describe('Community feed pinned publications', () => {
   let communityModel: Model<CommunityDocument>;
   let publicationService: PublicationService;
   let feedUseCase: GetCommunityFeedUseCase;
+  let pollModel: Model<PollDocument>;
 
   const communityId = uid();
 
@@ -42,6 +44,7 @@ describe('Community feed pinned publications', () => {
 
     connection = app.get<Connection>(getConnectionToken());
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
+    pollModel = connection.model<PollDocument>(PollSchemaClass.name);
     publicationService = app.get<PublicationService>(PublicationService);
     const pollService = app.get<PollService>(PollService);
     const userService = app.get<UserService>(UserService);
@@ -168,6 +171,70 @@ describe('Community feed pinned publications', () => {
 
     expect(page2.data.map((i) => i.id)).toEqual([unpinnedB, unpinnedC]);
     expect(page2.data.some((i) => (i as { isPinned?: boolean }).isPinned)).toBe(false);
+  });
+
+  it('includes polls when sorting by recent (merged pagination)', async () => {
+    await communityModel.create({
+      id: communityId,
+      name: 'Poll Feed Community',
+      telegramChatId: `chat_${communityId}_${Date.now()}`,
+      members: [],
+      settings: {
+        dailyEmission: 100,
+        currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const publicationModel = connection.model(PublicationSchemaClass.name);
+
+    const day = (n: number) => new Date(`2026-02-${String(n).padStart(2, '0')}T12:00:00.000Z`);
+
+    const pubIds = Array.from({ length: 6 }, () => uid());
+    await publicationModel.create(
+      pubIds.map((id, i) => ({
+        id,
+        communityId,
+        authorId: uid(),
+        content: `Recent pub ${i}`,
+        type: 'text',
+        metrics: { upvotes: 1, downvotes: 0, score: 1, commentCount: 0 },
+        createdAt: day(20 + i),
+        updatedAt: day(20 + i),
+      })),
+    );
+
+    const pollId = uid();
+    await pollModel.create({
+      id: pollId,
+      communityId,
+      authorId: uid(),
+      question: 'Older poll',
+      description: 'Should appear when scrolling recent feed',
+      options: [
+        { id: 'o1', text: 'A', votes: 5, amount: 5, casterCount: 1 },
+      ],
+      expiresAt: day(10),
+      isActive: true,
+      metrics: { totalCasts: 1, casterCount: 1, totalAmount: 5 },
+      createdAt: day(5),
+      updatedAt: day(10),
+    });
+
+    const page1 = await feedUseCase.execute(communityId, {
+      page: 1,
+      pageSize: 5,
+      sort: 'recent',
+    });
+    expect(page1.data.every((i) => i.type === 'publication')).toBe(true);
+
+    const page2 = await feedUseCase.execute(communityId, {
+      page: 2,
+      pageSize: 5,
+      sort: 'recent',
+    });
+    expect(page2.data.some((i) => i.type === 'poll' && i.id === pollId)).toBe(true);
   });
 
   it('PublicationService rejects isPinned update from non-admin via updatePublication', async () => {

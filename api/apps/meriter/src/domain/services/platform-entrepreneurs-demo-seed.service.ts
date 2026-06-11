@@ -125,6 +125,10 @@ export class PlatformEntrepreneursDemoSeedService {
     await this.seedPostComments(pack, userKeyToId, communityId);
     await this.seedPollPayouts(pack, userKeyToId, communityId);
     await this.seedMeritTransfers(pack, userKeyToId, communityId);
+    await this.applyPublicationTimelineTimestamps(pack);
+    await this.applyCommentTimelineTimestamps(pack);
+    await this.applyPostVoteTimelineTimestamps(pack);
+    await this.applyPollCastTimelineTimestamps(pack);
 
     const walletKey =
       await this.walletContextResolver.resolveCommunityWalletCommunityId(communityId);
@@ -451,9 +455,23 @@ export class PlatformEntrepreneursDemoSeedService {
       if (!authorId) continue;
 
       const existing = await this.publicationPersistence.findById(post.id);
-      if (existing) continue;
-
       const content = resolvePostContent(packDir, post);
+      if (existing) {
+        await this.publicationPersistence.patchById(post.id, {
+          set: { content, title: post.title },
+        });
+        await this.publicationService.setPublicationTimestampsForSeed(
+          post.id,
+          this.dayToDate(post.dayOffset),
+        );
+        if (post.isPinned) {
+          await this.publicationPersistence.patchById(post.id, {
+            set: { isPinned: true },
+          });
+        }
+        continue;
+      }
+
       const pub = await this.publicationService.createPublication(authorId, {
         communityId,
         content,
@@ -519,7 +537,20 @@ export class PlatformEntrepreneursDemoSeedService {
       if (!authorId) continue;
 
       const existing = await this.pollPersistence.findById(pollSpec.id);
-      if (existing) continue;
+      if (existing) {
+        await this.connection.db?.collection('polls').updateOne(
+          { id: pollSpec.id },
+          {
+            $set: {
+              isActive: true,
+              createdAt: this.dayToDate(pollSpec.dayOffset),
+              updatedAt: this.dayToDate(pollSpec.expiresDayOffset),
+              expiresAt: this.dayToDate(pollSpec.expiresDayOffset),
+            },
+          },
+        );
+        continue;
+      }
 
       const createdAt = this.dayToDate(pollSpec.dayOffset);
       const expiresAt = this.dayToDate(pollSpec.expiresDayOffset);
@@ -566,7 +597,7 @@ export class PlatformEntrepreneursDemoSeedService {
         description: pollSpec.description,
         options,
         expiresAt,
-        isActive: false,
+        isActive: true,
         metrics: {
           totalCasts,
           casterCount: casterUsers.size,
@@ -608,7 +639,13 @@ export class PlatformEntrepreneursDemoSeedService {
           amountQuota: 0,
           amountWallet: cast.walletAmount,
           communityId,
-          createdAt,
+          createdAt: this.dayToDate(
+            pollSpec.dayOffset +
+              Math.min(
+                pollSpec.expiresDayOffset - pollSpec.dayOffset - 1,
+                1,
+              ),
+          ),
         });
       }
 
@@ -810,6 +847,105 @@ export class PlatformEntrepreneursDemoSeedService {
       login: u.login,
       role: u.role,
     }));
+  }
+
+  private async applyPublicationTimelineTimestamps(
+    pack: EntrepreneursDemoPack,
+  ): Promise<void> {
+    for (const post of pack.timeline.posts) {
+      await this.publicationService.setPublicationTimestampsForSeed(
+        post.id,
+        this.dayToDate(post.dayOffset),
+      );
+    }
+  }
+
+  private async applyCommentTimelineTimestamps(
+    pack: EntrepreneursDemoPack,
+  ): Promise<void> {
+    const db = this.connection.db;
+    if (!db) return;
+
+    for (const c of pack.timeline.postComments) {
+      const authorId = pack.users.find((u) => u.login === c.authorKey)?.id;
+      if (!authorId) continue;
+      const createdAt = this.dayToDate(c.dayOffset);
+      await db.collection('comments').updateMany(
+        {
+          targetType: 'publication',
+          targetId: c.publicationId,
+          authorId,
+        },
+        {
+          $set: {
+            content: c.content,
+            createdAt,
+            updatedAt: createdAt,
+          },
+        },
+      );
+    }
+  }
+
+  private async applyPostVoteTimelineTimestamps(
+    pack: EntrepreneursDemoPack,
+  ): Promise<void> {
+    const db = this.connection.db;
+    if (!db) return;
+
+    const postDayOffset = new Map(
+      pack.timeline.posts.map((p) => [p.id, p.dayOffset]),
+    );
+
+    for (const v of pack.timeline.postVotes) {
+      const voterId = pack.users.find((u) => u.login === v.voterKey)?.id;
+      if (!voterId) continue;
+      const baseOffset = postDayOffset.get(v.publicationId);
+      if (baseOffset === undefined) continue;
+      const createdAt = this.dayToDate(baseOffset + 1);
+      await db.collection('votes').updateMany(
+        {
+          targetType: 'publication',
+          targetId: v.publicationId,
+          userId: voterId,
+          amountWallet: v.walletAmount,
+        },
+        {
+          $set: {
+            comment: v.comment,
+            createdAt,
+            updatedAt: createdAt,
+          },
+        },
+      );
+    }
+  }
+
+  private async applyPollCastTimelineTimestamps(
+    pack: EntrepreneursDemoPack,
+  ): Promise<void> {
+    const db = this.connection.db;
+    if (!db) return;
+
+    for (const pollSpec of pack.timeline.polls) {
+      for (const cast of pollSpec.casts) {
+        const voterId = pack.users.find((u) => u.login === cast.userKey)?.id;
+        if (!voterId) continue;
+        const createdAt = this.dayToDate(
+          pollSpec.dayOffset +
+            Math.min(pollSpec.expiresDayOffset - pollSpec.dayOffset - 1, 1),
+        );
+        await db.collection('poll_casts').updateMany(
+          {
+            pollId: pollSpec.id,
+            userId: voterId,
+            optionId: cast.optionId,
+            amountWallet: cast.walletAmount,
+          },
+          { $set: { createdAt } },
+        );
+      }
+    }
   }
 
   isAllowedDemoPersonaAuthId(authId: string): boolean {

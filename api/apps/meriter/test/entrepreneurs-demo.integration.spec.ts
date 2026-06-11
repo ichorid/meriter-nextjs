@@ -84,7 +84,7 @@ describe('Entrepreneurs demo pack (integration)', () => {
 
     expect(result.communityId).toBe(ENTREPRENEURS_DEMO_COMMUNITY_ID);
     expect(result.usersCreated).toBe(10);
-    expect(result.publicationsCreated).toBeGreaterThan(0);
+    expect(result.publicationsCreated).toBe(13);
     expect(result.pollsCreated).toBe(2);
 
     const walletResolver = app.get(WalletContextResolverService);

@@ -1,6 +1,6 @@
 {
     "name": "@meriter/web",
-    "version": "0.60.0",
+    "version": "0.61.0",
     "main": "index.js",
     "license": "SEE LICENSE IN LICENSE",
     "scripts": {
@@ -84,6 +84,7 @@
         "react-linkify": "1.0.0-alpha",
         "react-markdown": "^9.1.0",
         "react-transition-group": "^4.4.5",
+        "remark-gfm": "^4.0.1",
         "sharp": "^0.33.5",
         "styled-jsx": "^5.1.7",
         "superjson": "^2.2.1",

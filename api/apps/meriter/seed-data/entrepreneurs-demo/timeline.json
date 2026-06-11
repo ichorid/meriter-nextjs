@@ -12,8 +12,8 @@
     {
       "id": "demo_ent_poll_1",
       "authorKey": "kravtsov_a",
-      "dayOffset": -20,
-      "expiresDayOffset": -18,
+      "dayOffset": -21,
+      "expiresDayOffset": -20,
       "question": "Экстренное распределение 50 000 ₽ из операционного фонда",
       "description": "Один победитель получает всю сумму. Выберите направление поддержки.",
       "options": [
@@ -41,8 +41,8 @@
     {
       "id": "demo_ent_poll_2",
       "authorKey": "kravtsov_a",
-      "dayOffset": -12,
-      "expiresDayOffset": -10,
+      "dayOffset": -13,
+      "expiresDayOffset": -12,
       "question": "Поддержка текущей активности резидентов — 70 000 ₽",
       "description": "Сумма распределяется пропорционально набранным долям голосов между участниками.",
       "options": [
@@ -134,14 +134,6 @@
       "content": "Предлагаю объединить закупки одноразовой посуды и упаковки. По предварительным переговорам — экономия 12–18%. Нужны заявки от точек общепита."
     },
     {
-      "id": "demo_ent_pub_poll1_announce",
-      "authorKey": "kravtsov_a",
-      "dayOffset": -20,
-      "title": "Голосование: экстренное распределение 50 000 ₽",
-      "content": "Открыт опрос на 48 часов. Один победитель — вся сумма. Обоснуйте выбор в комментариях к этому посту.",
-      "linkedPollId": "demo_ent_poll_1"
-    },
-    {
       "id": "demo_ent_pub_treasurer_1",
       "authorKey": "kravtsov_a",
       "dayOffset": -19,
@@ -154,14 +146,6 @@
       "dayOffset": -16,
       "title": "Предложение: пул менторских сессий для резидентов",
       "content": "Хочу запустить ротацию коротких сессий 45 минут: продажи, финмодель, операционка. Фонд может оплатить первые 20 слотов — обсудим формат."
-    },
-    {
-      "id": "demo_ent_pub_poll2_announce",
-      "authorKey": "kravtsov_a",
-      "dayOffset": -12,
-      "title": "Голосование: поддержка текущей активности — 70 000 ₽",
-      "content": "Пропорциональное распределение между пятью направлениями. Опрос завершён — итоги в отчёте казначея.",
-      "linkedPollId": "demo_ent_poll_2"
     },
     {
       "id": "demo_ent_pub_treasurer_2",
@@ -182,7 +166,7 @@
       "authorKey": "sitnikov_p",
       "dayOffset": -7,
       "title": "Ищу производителей для пилота доставки",
-      "content": "Готов взять 2–3 локальных производителя на пилот last‑mile с фиксированным SLA. Кто готов — напишите в комментариях."
+      "content": "Готов взять 2–3 локальных производителя на пилот last‑mile с фиксированным SLA. Кто готов — поддержите пост заслугами и кратко опишите формат пилота."
     },
     {
       "id": "demo_ent_pub_lednev_success",
@@ -214,22 +198,18 @@
     { "publicationId": "demo_ent_pub_horeca_proposal", "voterKey": "kravtsov_a", "walletAmount": 6, "comment": "Экономия на закупках — здравый смысл." },
     { "publicationId": "demo_ent_pub_horeca_proposal", "voterKey": "safonova_o", "walletAmount": 4, "comment": "Нам тоже актуально для точек." },
     { "publicationId": "demo_ent_pub_horeca_proposal", "voterKey": "mamonov_s", "walletAmount": 2, "comment": "Интересно посмотреть цифры." },
-    { "publicationId": "demo_ent_pub_poll1_announce", "voterKey": "lednev_a", "walletAmount": 3, "comment": "Спасибо за оперативность." },
-    { "publicationId": "demo_ent_pub_poll1_announce", "voterKey": "sitnikov_p", "walletAmount": 2, "comment": "Голосовал за кассовый разрыв — сроки критичны." },
     { "publicationId": "demo_ent_pub_mentor_proposal", "voterKey": "volkova_ir", "walletAmount": 5, "comment": "Менторство — то, чего не хватает." },
     { "publicationId": "demo_ent_pub_mentor_proposal", "voterKey": "zhukova_e", "walletAmount": 4, "comment": "Запишусь на слот по операционке." },
     { "publicationId": "demo_ent_pub_mamonov_case", "voterKey": "lednev_a", "walletAmount": 3, "comment": "Полезная схема, возьму на вооружение." },
     { "publicationId": "demo_ent_pub_mamonov_case", "voterKey": "kisel_m", "walletAmount": 2, "comment": "B2B — отдельная дисциплина, согласна." },
     { "publicationId": "demo_ent_pub_lednev_success", "voterKey": "orlova_n", "walletAmount": 4, "comment": "Отличная новость для EdTech!" },
     { "publicationId": "demo_ent_pub_lednev_success", "voterKey": "nekrasov_d", "walletAmount": 3, "comment": "Рад за коллегу." },
-    { "publicationId": "demo_ent_pub_sitnikov_partner", "voterKey": "zhukova_e", "walletAmount": 2, "comment": "Напишу в личку по производителям." }
+    { "publicationId": "demo_ent_pub_sitnikov_partner", "voterKey": "zhukova_e", "walletAmount": 2, "comment": "У нас как раз есть контакт по локальным производителям." }
   ],
   "postComments": [
-    { "publicationId": "demo_ent_pub_intro_volkova", "authorKey": "kisel_m", "dayOffset": -29, "content": "Ирина, могу помочь с визуалом для карточек — напишите." },
-    { "publicationId": "demo_ent_pub_intro_nekrasov", "authorKey": "sitnikov_p", "dayOffset": -28, "content": "Есть контакт оптовика фурнитуры — скину в личку." },
+    { "publicationId": "demo_ent_pub_intro_volkova", "authorKey": "kisel_m", "dayOffset": -29, "content": "Ирина, могу помочь с визуалом для карточек — готова подключиться." },
+    { "publicationId": "demo_ent_pub_intro_nekrasov", "authorKey": "sitnikov_p", "dayOffset": -28, "content": "Есть контакт оптовика фурнитуры — готов поделиться деталями." },
     { "publicationId": "demo_ent_pub_horeca_proposal", "authorKey": "kravtsov_a", "dayOffset": -24, "content": "Елена, давайте оформим как кооперативный проект." },
-    { "publicationId": "demo_ent_pub_poll1_announce", "authorKey": "nekrasov_d", "dayOffset": -19, "content": "Спасибо за поддержку — фурнитура уже в пути." },
-    { "publicationId": "demo_ent_pub_poll1_announce", "authorKey": "lednev_a", "dayOffset": -19, "content": "Понимаю решение, кассовый разрыв срочнее." },
     { "publicationId": "demo_ent_pub_mentor_proposal", "authorKey": "mamonov_s", "dayOffset": -15, "content": "Готов выступить с блоком про тех due diligence." }
   ],
   "projectsCreatedDayOffset": {

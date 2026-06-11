@@ -168,7 +168,7 @@ export class GetCommunityFeedUseCase {
       (valueTags && valueTags.length > 0)
     );
 
-    const fetchLimit = limit * 2;
+
     const sortBy = sort === 'recent' ? 'createdAt' : 'score';
     const feedFilters = {
       impactArea,
@@ -206,11 +206,15 @@ export class GetCommunityFeedUseCase {
     const unpinnedSkip =
       page === 1 ? 0 : Math.max(0, (page - 1) * limit - pinnedCount);
 
+    // Merge publications + polls, then paginate. Independent per-source skip breaks
+    // chronological feeds (older polls never surface when recent posts fill the window).
+    const windowSize = unpinnedSkip + limit + limit;
+
     const [unpinnedPublications, polls] = await Promise.all([
       this.deps.publicationService.getPublicationsByCommunity(
         communityId,
-        fetchLimit,
-        unpinnedSkip,
+        windowSize,
+        0,
         sortBy,
         tag,
         feedFilters,
@@ -222,28 +226,40 @@ export class GetCommunityFeedUseCase {
         ? Promise.resolve([])
         : this.deps.pollService.getPollsByCommunity(
             communityId,
-            fetchLimit,
-            unpinnedSkip,
+            windowSize,
+            0,
             sortBy,
             search,
           ),
     ]);
 
-    const publications =
+    const publicationsForMaps =
       page === 1
         ? [...pinnedPublications, ...unpinnedPublications]
         : unpinnedPublications;
 
     const { usersMap, communitiesMap, logicalCommunitiesMap } =
       await buildDomainFeedMaps(
-        publications,
+        publicationsForMaps,
         polls,
         this.deps.userService,
         this.deps.communityService,
       );
 
-    const allFeedItems = EntityMappers.mapPublicationsAndPollsToFeedItems(
-      publications,
+    const pinnedFeedItems =
+      page === 1
+        ? EntityMappers.mapPublicationsAndPollsToFeedItems(
+            pinnedPublications,
+            [],
+            usersMap,
+            communitiesMap,
+            logicalCommunitiesMap,
+            sortBy,
+          )
+        : [];
+
+    const unpinnedFeedItems = EntityMappers.mapPublicationsAndPollsToFeedItems(
+      unpinnedPublications,
       polls,
       usersMap,
       communitiesMap,
@@ -251,18 +267,27 @@ export class GetCommunityFeedUseCase {
       sortBy,
     );
 
-    const feedItems = allFeedItems.slice(0, limit);
+    const sortedUnpinned = EntityMappers.sortFeedItems(unpinnedFeedItems, sortBy);
+
+    const feedItems =
+      page === 1
+        ? [
+            ...pinnedFeedItems,
+            ...sortedUnpinned.slice(0, Math.max(0, limit - pinnedCount)),
+          ]
+        : sortedUnpinned.slice(unpinnedSkip, unpinnedSkip + limit);
+
     const hasMore =
-      allFeedItems.length > limit ||
-      publications.length === fetchLimit ||
-      polls.length === fetchLimit;
+      sortedUnpinned.length > unpinnedSkip + limit ||
+      unpinnedPublications.length === windowSize ||
+      polls.length === windowSize;
 
     return {
       data: feedItems,
       pagination: {
         page,
         pageSize: limit,
-        total: allFeedItems.length,
+        total: sortedUnpinned.length + (page === 1 ? pinnedCount : 0),
         hasMore,
       },
     };

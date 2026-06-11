@@ -109,10 +109,15 @@ export class PublicationPersistenceAdapter implements PublicationPersistencePort
     createdAt: Date,
     ttlExpiresAt: Date | null,
   ): Promise<void> {
-    await this.publicationModel.updateOne(
-      { id },
-      { $set: { createdAt, updatedAt: createdAt, ttlExpiresAt } },
-    );
+    const update: Record<string, unknown> = {
+      createdAt,
+      updatedAt: createdAt,
+    };
+    if (ttlExpiresAt !== undefined) {
+      update.ttlExpiresAt = ttlExpiresAt;
+    }
+    // Bypass Mongoose timestamps middleware so backdated createdAt sticks (demo seeds).
+    await this.publicationModel.collection.updateOne({ id }, { $set: update });
   }
 
   async updateFutureVisionPostContent(
