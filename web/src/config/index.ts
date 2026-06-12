@@ -78,6 +78,16 @@ const envSchema = z.object({
 
   // Monitoring
   NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
+
+  // Guidewell AI tutor / help widget
+  NEXT_PUBLIC_GUIDEWELL_ENABLED: z.string().optional(),
+  NEXT_PUBLIC_GUIDEWELL_API_BASE: optionalString,
+  NEXT_PUBLIC_GUIDEWELL_API_KEY: optionalString,
+  NEXT_PUBLIC_GUIDEWELL_FAB_TEXT: optionalString,
+  NEXT_PUBLIC_GUIDEWELL_FAB_TEXT_RU: optionalString,
+  NEXT_PUBLIC_GUIDEWELL_CHAT: optionalString,
+  NEXT_PUBLIC_GUIDEWELL_AI: z.string().optional(),
+  NEXT_PUBLIC_GUIDEWELL_PRIMARY_COLOR: optionalString,
 });
 // S3 validation removed - S3 is completely optional
 // If S3_ENDPOINT is set but other params are missing, S3 will simply be disabled
@@ -101,6 +111,14 @@ const env = envSchema.parse({
   NEXT_PUBLIC_FAKE_DATA_MODE: process.env.NEXT_PUBLIC_FAKE_DATA_MODE,
   NEXT_PUBLIC_TEST_AUTH_MODE: process.env.NEXT_PUBLIC_TEST_AUTH_MODE,
   NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
+  NEXT_PUBLIC_GUIDEWELL_ENABLED: process.env.NEXT_PUBLIC_GUIDEWELL_ENABLED,
+  NEXT_PUBLIC_GUIDEWELL_API_BASE: process.env.NEXT_PUBLIC_GUIDEWELL_API_BASE,
+  NEXT_PUBLIC_GUIDEWELL_API_KEY: process.env.NEXT_PUBLIC_GUIDEWELL_API_KEY,
+  NEXT_PUBLIC_GUIDEWELL_FAB_TEXT: process.env.NEXT_PUBLIC_GUIDEWELL_FAB_TEXT,
+  NEXT_PUBLIC_GUIDEWELL_FAB_TEXT_RU: process.env.NEXT_PUBLIC_GUIDEWELL_FAB_TEXT_RU,
+  NEXT_PUBLIC_GUIDEWELL_CHAT: process.env.NEXT_PUBLIC_GUIDEWELL_CHAT,
+  NEXT_PUBLIC_GUIDEWELL_AI: process.env.NEXT_PUBLIC_GUIDEWELL_AI,
+  NEXT_PUBLIC_GUIDEWELL_PRIMARY_COLOR: process.env.NEXT_PUBLIC_GUIDEWELL_PRIMARY_COLOR,
 });
 
 // Derive app URL from DOMAIN
@@ -263,6 +281,21 @@ export const config = {
     enabled: !!(env.NEXT_PUBLIC_SENTRY_DSN && env.NEXT_PUBLIC_SENTRY_DSN.trim() !== ''),
   },
 
+  // Guidewell (AI tutor / co-browse help widget)
+  guidewell: {
+    enabled:
+      env.NEXT_PUBLIC_GUIDEWELL_ENABLED === 'true' &&
+      !!(env.NEXT_PUBLIC_GUIDEWELL_API_KEY && env.NEXT_PUBLIC_GUIDEWELL_API_KEY.trim()) &&
+      !!(env.NEXT_PUBLIC_GUIDEWELL_API_BASE && env.NEXT_PUBLIC_GUIDEWELL_API_BASE.trim()),
+    apiBase: (env.NEXT_PUBLIC_GUIDEWELL_API_BASE || '').replace(/\/$/, ''),
+    apiKey: env.NEXT_PUBLIC_GUIDEWELL_API_KEY || '',
+    fabText: env.NEXT_PUBLIC_GUIDEWELL_FAB_TEXT || 'Help',
+    fabTextRu: env.NEXT_PUBLIC_GUIDEWELL_FAB_TEXT_RU || 'Помощь',
+    chat: env.NEXT_PUBLIC_GUIDEWELL_CHAT || 'both',
+    ai: env.NEXT_PUBLIC_GUIDEWELL_AI !== 'false',
+    primaryColor: env.NEXT_PUBLIC_GUIDEWELL_PRIMARY_COLOR || '#A855F7',
+  },
+
   // Messages and Templates
   // Note: These templates use BOT_USERNAME from process.env directly (server-side only)
   // IMPORTANT: This getter is lazy - it only validates when actually accessed
@@ -309,6 +342,7 @@ export type ApiConfig = typeof config.api;
 export type TelegramConfig = typeof config.telegram;
 export type S3Config = typeof config.s3;
 export type FeaturesConfig = typeof config.features;
+export type GuidewellConfig = typeof config.guidewell;
 export type MessagesConfig = typeof config.messages;
 
 // Utility functions

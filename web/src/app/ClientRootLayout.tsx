@@ -15,6 +15,7 @@ import { ClientRouter } from '@/components/ClientRouter';
 import { DevToolsBar } from '@/components/organisms/DevToolsBar/DevToolsBar';
 import { isTestAuthMode } from '@/config';
 import { TelegramHint } from '@/components/TelegramHint';
+import { GuidewellWidget } from '@/components/GuidewellWidget';
 import { CaptiveBrowserProvider } from '@/lib/captive-browser';
 // Import auth debug utilities (only active in development)
 import '@/lib/utils/auth-debug';
@@ -118,6 +119,7 @@ export default function ClientRootLayout({ children, serverLocale }: ClientRootL
           >
             {/* CaptiveBrowserProvider wraps TelegramHint and routed content so captive detection stays in sync. */}
             <CaptiveBrowserProvider>
+              <GuidewellWidget />
               <TelegramHint />
               <Suspense fallback={null}>
                 <ClientRouter />
