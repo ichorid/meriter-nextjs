@@ -17,6 +17,7 @@ import { isTestAuthMode } from '@/config';
 import { TelegramHint } from '@/components/TelegramHint';
 import { GuidewellWidget } from '@/components/GuidewellWidget';
 import { CaptiveBrowserProvider } from '@/lib/captive-browser';
+import type { GuidewellWidgetConfig } from '@/lib/guidewell/parse-guidewell-config';
 // Import auth debug utilities (only active in development)
 import '@/lib/utils/auth-debug';
 
@@ -27,6 +28,7 @@ import { useIntlPortalStore } from '@/stores/intl-portal.store';
 interface ClientRootLayoutProps {
   children: React.ReactNode;
   serverLocale?: Locale;
+  guidewellConfig: GuidewellWidgetConfig;
 }
 
 // Stable fallback values computed once at module load time
@@ -66,7 +68,11 @@ function detectLocale(): Locale {
   }
 }
 
-export default function ClientRootLayout({ children, serverLocale }: ClientRootLayoutProps) {
+export default function ClientRootLayout({
+  children,
+  serverLocale,
+  guidewellConfig,
+}: ClientRootLayoutProps) {
   const initialLocale = serverLocale ?? DEFAULT_LOCALE;
   const initialLocaleRef = useRef(initialLocale);
   const [locale, setLocale] = useState<Locale>(initialLocale);
@@ -119,7 +125,7 @@ export default function ClientRootLayout({ children, serverLocale }: ClientRootL
           >
             {/* CaptiveBrowserProvider wraps TelegramHint and routed content so captive detection stays in sync. */}
             <CaptiveBrowserProvider>
-              <GuidewellWidget />
+              <GuidewellWidget config={guidewellConfig} />
               <TelegramHint />
               <Suspense fallback={null}>
                 <ClientRouter />

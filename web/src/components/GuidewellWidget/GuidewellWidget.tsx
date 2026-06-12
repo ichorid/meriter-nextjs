@@ -3,7 +3,7 @@
 import Script from 'next/script';
 import { useEffect } from 'react';
 import { useLocale } from 'next-intl';
-import config from '@/config';
+import type { GuidewellWidgetConfig } from '@/lib/guidewell/parse-guidewell-config';
 
 function readMeriterTheme(): 'light' | 'dark' {
   if (typeof document === 'undefined') {
@@ -22,11 +22,10 @@ function syncGuidewellHostTheme(): void {
 
 /**
  * Guidewell AI tutor / co-browse widget (global FAB).
- * Loaded on all pages when NEXT_PUBLIC_GUIDEWELL_ENABLED=true and API key is set.
+ * Loaded on all pages when Guidewell is enabled via server runtime env.
  */
-export function GuidewellWidget() {
+export function GuidewellWidget({ config: guidewell }: { config: GuidewellWidgetConfig }) {
   const locale = useLocale();
-  const guidewell = config.guidewell;
 
   useEffect(() => {
     syncGuidewellHostTheme();

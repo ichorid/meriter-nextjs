@@ -181,6 +181,15 @@ services:
     environment:
       - PORT=8001
       - NODE_ENV=production
+      # Guidewell widget (read at runtime by Next.js server — not baked into the client bundle)
+      - NEXT_PUBLIC_GUIDEWELL_ENABLED=${NEXT_PUBLIC_GUIDEWELL_ENABLED:-}
+      - NEXT_PUBLIC_GUIDEWELL_API_BASE=${NEXT_PUBLIC_GUIDEWELL_API_BASE:-}
+      - NEXT_PUBLIC_GUIDEWELL_API_KEY=${NEXT_PUBLIC_GUIDEWELL_API_KEY:-}
+      - NEXT_PUBLIC_GUIDEWELL_FAB_TEXT=${NEXT_PUBLIC_GUIDEWELL_FAB_TEXT:-}
+      - NEXT_PUBLIC_GUIDEWELL_FAB_TEXT_RU=${NEXT_PUBLIC_GUIDEWELL_FAB_TEXT_RU:-}
+      - NEXT_PUBLIC_GUIDEWELL_CHAT=${NEXT_PUBLIC_GUIDEWELL_CHAT:-}
+      - NEXT_PUBLIC_GUIDEWELL_AI=${NEXT_PUBLIC_GUIDEWELL_AI:-}
+      - NEXT_PUBLIC_GUIDEWELL_PRIMARY_COLOR=${NEXT_PUBLIC_GUIDEWELL_PRIMARY_COLOR:-}
     # Security: Web port not exposed to host, only accessible through Caddy
     # ports:
     #   - "8001:8001"

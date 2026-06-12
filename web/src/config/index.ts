@@ -11,6 +11,7 @@
 // Next.js loads .env automatically in development, but in production we rely on env vars
 
 import { z } from 'zod';
+import { parseGuidewellConfig } from '@/lib/guidewell/parse-guidewell-config';
 
 const isBuildTime = process.env.NEXT_PHASE === 'phase-production-build' || process.env.NEXT_PHASE === 'phase-export';
 
@@ -282,19 +283,7 @@ export const config = {
   },
 
   // Guidewell (AI tutor / co-browse help widget)
-  guidewell: {
-    enabled:
-      env.NEXT_PUBLIC_GUIDEWELL_ENABLED === 'true' &&
-      !!(env.NEXT_PUBLIC_GUIDEWELL_API_KEY && env.NEXT_PUBLIC_GUIDEWELL_API_KEY.trim()) &&
-      !!(env.NEXT_PUBLIC_GUIDEWELL_API_BASE && env.NEXT_PUBLIC_GUIDEWELL_API_BASE.trim()),
-    apiBase: (env.NEXT_PUBLIC_GUIDEWELL_API_BASE || '').replace(/\/$/, ''),
-    apiKey: env.NEXT_PUBLIC_GUIDEWELL_API_KEY || '',
-    fabText: env.NEXT_PUBLIC_GUIDEWELL_FAB_TEXT || 'Help',
-    fabTextRu: env.NEXT_PUBLIC_GUIDEWELL_FAB_TEXT_RU || 'Помощь',
-    chat: env.NEXT_PUBLIC_GUIDEWELL_CHAT || 'both',
-    ai: env.NEXT_PUBLIC_GUIDEWELL_AI !== 'false',
-    primaryColor: env.NEXT_PUBLIC_GUIDEWELL_PRIMARY_COLOR || '#A855F7',
-  },
+  guidewell: parseGuidewellConfig(env),
 
   // Messages and Templates
   // Note: These templates use BOT_USERNAME from process.env directly (server-side only)
