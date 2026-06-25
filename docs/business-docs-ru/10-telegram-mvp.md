@@ -647,8 +647,28 @@ Telegram-группа
 
 ---
 
+## 21. Фаза 2: community-web (реализовано в monorepo)
+
+**Продукт:** отдельное Next.js-приложение `@meriter/community-web` на **`community.meriter.pro`**.
+
+**Изоляция от основного Meriter (обязательно):**
+- Отдельный домен, Docker-образ, cookie `meriter_community_session`, tRPC только `/trpc/community/*` (whitelist `communityApp.*`).
+- Бот и `/help` ссылаются **только** на `community.meriter.pro` — никогда на `meriter.pro/meriter/*`.
+- Общий backend: `@meriter/api` + MongoDB (`MERITER_PRODUCT_MODE=telegram_mvp`).
+
+**Маршруты:** `/login`, `/c/{communityId}/feed|projects|documents|events|merit-history|settings`, `/profile`.
+
+**Auth:** Telegram Login Widget → `auth.authenticateTelegram` → отдельная сессия.
+
+**Зеркало:** публикация из веба → карточка в TG-чате (`MirrorPublicationToTelegramUseCase`).
+
+Подробнее: `12-community-web-mvp.md`, runbook: `12-community-web-runbook-ru.md`.
+
+---
+
 ## История документа
 
 | Версия | Дата | Изменения |
 |--------|------|-----------|
+| 1.1 | Июнь 2026 | §21 — фаза 2 community-web |
 | 0.1 | Июнь 2026 | Первый черновик для согласования бизнесом |
