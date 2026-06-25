@@ -8,7 +8,10 @@ import { trpc } from '@/lib/trpc/client';
 function FeedPageInner({ communityId }: { communityId: string }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [pendingNotice, setPendingNotice] = useState(false);
   const utils = trpc.useUtils();
+
+  const communityQuery = trpc.communities.getById.useQuery({ id: communityId });
 
   const feedQuery = trpc.communities.getFeed.useInfiniteQuery(
     { communityId, pageSize: 10, sort: 'recent' },
@@ -20,9 +23,10 @@ function FeedPageInner({ communityId }: { communityId: string }) {
   );
 
   const createMutation = trpc.publications.create.useMutation({
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       setTitle('');
       setContent('');
+      setPendingNotice(result.telegramModerationStatus === 'pending');
       await utils.communities.getFeed.invalidate({ communityId });
     },
   });
@@ -35,8 +39,19 @@ function FeedPageInner({ communityId }: { communityId: string }) {
   return (
     <Shell communityId={communityId} active="feed">
       <div className="space-y-6">
+        {pendingNotice && (
+          <p className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-3 text-sm">
+            Пост отправлен на модерацию. Он появится в ленте после одобрения лидом.
+          </p>
+        )}
+
         <section className="rounded-xl border border-stitch-border bg-stitch-surface p-4 space-y-3">
           <h2 className="font-semibold">Новый пост</h2>
+          {communityQuery.data?.settings?.telegramModerationEnabled && (
+            <p className="text-xs text-stitch-muted">
+              В этом сообществе посты проходят модерацию перед публикацией.
+            </p>
+          )}
           <input
             className="w-full rounded-lg border border-stitch-border bg-stitch-canvas px-3 py-2 text-sm"
             placeholder="Заголовок (необязательно)"

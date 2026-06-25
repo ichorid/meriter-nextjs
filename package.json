@@ -17,6 +17,7 @@
     "test:web:ci": "pnpm --filter @meriter/web test:ci",
     "test": "pnpm test:api && pnpm test:web",
     "test:ci": "pnpm test:api:ci && pnpm test:web:ci",
+    "test:community-web": "pnpm --filter @meriter/community-web test:smoke",
     "test:cleanup-mongo": "pnpm --filter @meriter/api test:cleanup-mongo",
     "lint": "pnpm --filter @meriter/api lint && pnpm --filter @meriter/web lint && pnpm --filter @meriter/community-web lint",
     "lint:fix": "pnpm --filter @meriter/api lint && pnpm --filter @meriter/web lint:fix && pnpm --filter @meriter/community-web lint:fix"

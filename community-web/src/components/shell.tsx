@@ -125,12 +125,26 @@ export function Shell({
   children: React.ReactNode;
   active: string;
 }) {
+  const meQuery = trpc.users.getMe.useQuery();
+  const communityQuery = trpc.communities.getById.useQuery({ id: communityId });
+
+  const isLead =
+    communityQuery.data?.isAdmin === true ||
+    (meQuery.data?.id != null &&
+      (communityQuery.data?.adminIds ?? []).includes(meQuery.data.id));
+
+  const moderationEnabled =
+    communityQuery.data?.settings?.telegramModerationEnabled === true;
+
   const tabs = [
     { href: `/c/${communityId}/feed`, label: 'Лента', id: 'feed' },
     { href: `/c/${communityId}/projects`, label: 'Проекты', id: 'projects' },
     { href: `/c/${communityId}/documents`, label: 'Документы', id: 'documents' },
     { href: `/c/${communityId}/events`, label: 'События', id: 'events' },
     { href: `/c/${communityId}/merit-history`, label: 'Заслуги', id: 'merit-history' },
+    ...(moderationEnabled && isLead
+      ? [{ href: `/c/${communityId}/moderation`, label: 'Модерация', id: 'moderation' }]
+      : []),
     { href: `/c/${communityId}/settings`, label: 'Настройки', id: 'settings' },
   ];
 
