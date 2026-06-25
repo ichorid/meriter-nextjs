@@ -13,6 +13,22 @@ export type AuthProviderPort = {
   authenticateFakeUser(fakeUserId?: string): Promise<AuthSessionResult>;
   authenticateFakeSuperadmin(fakeUserId?: string): Promise<AuthSessionResult>;
   authenticateDemoPersona(authId: string): Promise<AuthSessionResult>;
+  authenticateTelegramWidget(
+    data: {
+      id: number;
+      first_name: string;
+      last_name?: string;
+      username?: string;
+      photo_url?: string;
+      auth_date: number;
+      hash: string;
+    },
+    options?: { skipBaseCommunities?: boolean },
+  ): Promise<
+    AuthSessionResult & {
+      primaryTelegramCommunityId: string | null;
+    }
+  >;
   authenticateSms(phoneNumber: string): Promise<AuthSessionResult>;
   authenticateEmail(email: string): Promise<AuthSessionResult>;
   authenticateGoogle(code: string): Promise<AuthSessionResult>;

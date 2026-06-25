@@ -1,5 +1,30 @@
 /** Russian copy for Telegram MVP bot (product: «Заслуги»). */
 
+export function communityWebFeedUrl(
+  baseUrl: string,
+  communityId: string,
+): string {
+  const root = baseUrl.replace(/\/$/, '');
+  return `${root}/c/${communityId}/feed`;
+}
+
+export function communityWebLoginUrl(baseUrl: string): string {
+  return `${baseUrl.replace(/\/$/, '')}/login`;
+}
+
+export function buildTelegramHelpMessage(
+  communityWebBaseUrl: string,
+  communityId?: string,
+): string {
+  const openLine = communityId
+    ? `\nОткрыть веб: ${communityWebFeedUrl(communityWebBaseUrl, communityId)}`
+    : `\nВход в веб: ${communityWebLoginUrl(communityWebBaseUrl)}`;
+  return (
+    'Команды:\n/баланс — ваш баланс\n/участники — рейтинг с %\n/фонд — общий фонд\n/перевод @user N — перевод\n/перевод N (ответ на сообщение) — перевод\n/post текст — опубликовать пост (лид)\n/help — справка' +
+    openLine
+  );
+}
+
 export const TG_MSG = {
   frozenMember:
     'Ваш доступ к заслугам в этом сообществе приостановлен — вы не в Telegram-группе. Вернитесь в группу, чтобы снова участвовать.',

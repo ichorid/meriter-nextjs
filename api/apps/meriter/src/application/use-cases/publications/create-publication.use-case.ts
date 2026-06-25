@@ -451,7 +451,12 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
     });
 
     await this.eventBus.publish(
-      new PublicationCreatedEvent(publicationId, userId, dto.communityId),
+      new PublicationCreatedEvent(
+        publicationId,
+        userId,
+        dto.communityId,
+        options?.skipTelegramMirror ?? false,
+      ),
     );
 
     this.logger.log(`Publication created successfully: ${publicationId}`);

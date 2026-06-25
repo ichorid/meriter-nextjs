@@ -60,6 +60,7 @@ import { DocumentStructureService } from '../domain/services/document-structure.
 import { DocumentHtmlSyncService } from '../domain/services/document-html-sync.service';
 import { DocumentLiveUpdatesService } from '../domain/services/document-live-updates.service';
 import { PermissionRuleEngine } from '../domain/services/permission-rule-engine.service';
+import { resolveMeriterProductFromRequest } from '../domain/common/constants/product.constants';
 
 export interface CreateContextOptions {
   req: any;
@@ -255,6 +256,7 @@ export async function createContext(opts: CreateContextOptions) {
     req,
     res,
     user,
+    meriterProduct: resolveMeriterProductFromRequest(req),
     userService,
     communityService,
     userCommunityRoleService,

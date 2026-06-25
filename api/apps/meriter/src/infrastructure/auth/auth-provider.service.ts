@@ -56,7 +56,105 @@ export class AuthProviderService {
     return devConfig?.fakeDataMode === true || devConfig?.testAuthMode === true;
   }
 
-  // Telegram authentication methods removed: Telegram is fully disabled in this project.
+  // Telegram authentication for community-web (telegram_mvp product only).
+
+  async authenticateTelegramWidget(
+    data: TelegramAuthData,
+    options?: { skipBaseCommunities?: boolean },
+  ): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    isNewUser: boolean;
+    jwt: string;
+    primaryTelegramCommunityId: string | null;
+  }> {
+    const botToken = this.configService.get('bot')?.token;
+    if (!botToken) {
+      throw new Error('BOT_TOKEN is not configured');
+    }
+
+    if (!this.verifyTelegramAuth(data, botToken)) {
+      throw new Error('Invalid Telegram authentication data');
+    }
+
+    const authId = String(data.id);
+    const username = data.username || `tg_${authId}`;
+    const displayName =
+      [data.first_name, data.last_name].filter(Boolean).join(' ').trim() ||
+      username;
+
+    let user = await this.userService.getUserByAuthId('telegram', authId);
+    const isNewUser = !user;
+
+    user = await this.userService.createOrUpdateUser({
+      authProvider: 'telegram',
+      authId,
+      username,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      displayName,
+      avatarUrl: data.photo_url,
+    });
+
+    if (!user) {
+      throw new Error('Failed to create or update Telegram user');
+    }
+
+    if (!options?.skipBaseCommunities) {
+      await this.userService.ensureUserInBaseCommunities(user.id);
+    }
+
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        authProvider: 'telegram',
+        authId,
+        communityTags: user.communityTags || [],
+        product: 'community',
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    const primaryTelegramCommunityId =
+      await this.resolvePrimaryTelegramCommunityId(user.id);
+
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      isNewUser,
+      jwt: jwtToken,
+      primaryTelegramCommunityId,
+    };
+  }
+
+  private async resolvePrimaryTelegramCommunityId(
+    userId: string,
+  ): Promise<string | null> {
+    const user = await this.userService.getUserById(userId);
+    if (!user?.communityMemberships?.length) return null;
+
+    const communities = await this.communityModel
+      .find({
+        id: { $in: user.communityMemberships },
+        telegramChatId: { $exists: true, $nin: [null, ''] },
+      })
+      .lean();
+
+    if (communities.length === 0) return null;
+
+    const defaultId =
+      this.configService.get('app')?.defaultTelegramCommunityId?.trim();
+    if (defaultId) {
+      const match = communities.find((c) => c.id === defaultId);
+      if (match) return match.id;
+    }
+
+    return communities[0]?.id ?? null;
+  }
+
+  // Legacy note: full Meriter OAuth Telegram remains disabled; community-web uses authenticateTelegramWidget.
 
   async authenticateFakeUser(fakeUserId?: string): Promise<{
     user: User;

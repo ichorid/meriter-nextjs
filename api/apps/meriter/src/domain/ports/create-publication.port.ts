@@ -16,6 +16,8 @@ export type CreatePublicationExecuteOptions = {
    * Default false so legacy callers and interim publications.create router path avoid double charge.
    */
   processPostCost?: boolean;
+  /** When true, web→TG mirror handler skips this publication (bot/hashtag origin). */
+  skipTelegramMirror?: boolean;
 };
 
 export interface CreatePublicationPort {

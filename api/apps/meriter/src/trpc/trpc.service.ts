@@ -62,6 +62,8 @@ import { PermissionRuleEngine } from '../domain/services/permission-rule-engine.
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
+import { communityAppRouter } from '../adapters/trpc/handlers/community-app.router';
+import type { CommunityAppRouter } from '../adapters/trpc/handlers/community-app.router';
 import { JwtVerificationService } from '../common/services/authentication.service';
 
 @Injectable()
@@ -130,6 +132,10 @@ export class TrpcService {
 
   getRouter(): AppRouter {
     return appRouter;
+  }
+
+  getCommunityAppRouter(): CommunityAppRouter {
+    return communityAppRouter;
   }
 
   async createContext(req: any, res: any) {

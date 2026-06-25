@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../../config/configuration';
+import { COMMUNITY_SESSION_COOKIE } from '../../domain/common/constants/product.constants';
 
 const AUTH_SESSION_SAME_SITE = 'lax' as const;
 
@@ -355,6 +356,92 @@ export class CookieManager {
         this.logger.debug(
           `[COOKIE-DEBUG] Skipping domain cookie: reqHost=${reqHost || 'none'}, domainWithoutDot=${domainWithoutDot}, match=${reqHost === domainWithoutDot || (reqHost?.endsWith(`.${domainWithoutDot}`) || false)}`,
         );
+      }
+    }
+  }
+
+  /** Community-web session cookie (isolated from full Meriter `jwt`). */
+  establishCommunityJwtAuth(response: any, jwtToken: string, request: any): void {
+    this.clearCookieVariants(
+      response,
+      COMMUNITY_SESSION_COOKIE,
+      this.getCommunityCookieDomain(request),
+      this.resolveIsProduction(request),
+    );
+    this.setNamedJwtCookie(
+      response,
+      COMMUNITY_SESSION_COOKIE,
+      jwtToken,
+      this.getCommunityCookieDomain(request),
+      this.resolveIsProduction(request),
+      request,
+    );
+  }
+
+  logoutCommunityJwt(response: any, request?: unknown): void {
+    this.clearCookieVariants(
+      response,
+      COMMUNITY_SESSION_COOKIE,
+      request ? this.getCommunityCookieDomain(request) : this.getCommunityCookieDomain(),
+      this.resolveIsProduction(request),
+    );
+  }
+
+  getCommunityCookieDomain(request?: unknown): string | undefined {
+    const configured = this.configService.get('app')?.communityWebBaseUrl;
+    if (configured) {
+      const fromUrl = this.normalizeHostname(configured);
+      if (fromUrl) return fromUrl.startsWith('.') ? fromUrl : `.${fromUrl}`;
+    }
+    if (request) {
+      const host = this.getRequestHostname(request);
+      if (host?.includes('community')) {
+        return host.startsWith('.') ? host : `.${host}`;
+      }
+    }
+    return undefined;
+  }
+
+  private setNamedJwtCookie(
+    response: any,
+    cookieName: string,
+    jwtToken: string,
+    cookieDomain: string | undefined,
+    isProduction: boolean | undefined,
+    request?: any,
+  ): void {
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    const normalizedConfiguredDomain = this.normalizeHostname(cookieDomain);
+
+    const isSecure = request ? this.isRequestSecure(request) : false;
+    const requestHost = request ? this.getRequestHostname(request) : undefined;
+    const shouldForceSecure = Boolean(requestHost);
+
+    const sameSite = AUTH_SESSION_SAME_SITE;
+    const production = isProduction ?? (nodeEnv === 'production' || isSecure || shouldForceSecure);
+    const secure = shouldForceSecure ? true : isSecure || production;
+
+    const cookieOptions: Record<string, unknown> = {
+      httpOnly: true,
+      secure,
+      sameSite,
+      maxAge: 365 * 24 * 60 * 60 * 1000,
+      path: '/',
+    };
+
+    response.cookie(cookieName, jwtToken, cookieOptions);
+
+    if (request && normalizedConfiguredDomain?.startsWith('.')) {
+      const reqHost = this.getRequestHostname(request);
+      const domainWithoutDot = normalizedConfiguredDomain.slice(1);
+      if (
+        reqHost &&
+        (reqHost === domainWithoutDot || reqHost.endsWith(`.${domainWithoutDot}`))
+      ) {
+        response.cookie(cookieName, jwtToken, {
+          ...cookieOptions,
+          domain: normalizedConfiguredDomain,
+        });
       }
     }
   }

@@ -1149,6 +1149,7 @@ export class TgBotsService {
       {
         checkPermissions: true,
         processPostCost: true,
+        skipTelegramMirror: true,
       },
     );
 

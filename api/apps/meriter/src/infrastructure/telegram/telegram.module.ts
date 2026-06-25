@@ -17,6 +17,7 @@ import {
 import { TgBotsService } from '../../domain/services/tg-bots.service';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramBotOrchestratorService } from './telegram-bot.orchestrator.service';
+import { TelegramPublicationMirrorHandler } from './telegram-publication-mirror.handler';
 
 /**
  * BC-19 Telegram infrastructure composition root (Phase 8 / OD-4).
@@ -38,6 +39,7 @@ import { TelegramBotOrchestratorService } from './telegram-bot.orchestrator.serv
   providers: [
     TgBotsService,
     TelegramBotOrchestratorService,
+    TelegramPublicationMirrorHandler,
   ],
   exports: [TgBotsService, TelegramBotOrchestratorService],
 })

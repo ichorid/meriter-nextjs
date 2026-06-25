@@ -148,7 +148,16 @@ async function bootstrap() {
       },
     });
     expressApp.use('/trpc', trpcMiddleware);
-    logger.log('✅ tRPC middleware mounted at /trpc');
+
+    const communityTrpcMiddleware = createExpressMiddleware({
+      router: trpcService.getCommunityAppRouter(),
+      createContext: ({ req, res }) => trpcService.createContext(req, res),
+      onError({ error, path }) {
+        logger.error(`tRPC community error on '${path}':`, error);
+      },
+    });
+    expressApp.use('/trpc/community', communityTrpcMiddleware);
+    logger.log('✅ tRPC middleware mounted at /trpc and /trpc/community');
   } catch (error) {
     logger.error('❌ Failed to mount tRPC middleware at /trpc', error as any);
     throw error;

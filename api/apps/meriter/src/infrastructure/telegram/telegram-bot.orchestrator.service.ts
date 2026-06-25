@@ -45,7 +45,8 @@ import {
 } from '../../domain/ports/create-merit-transfer.port';
 import { createCreateVoteUseCase } from '../../application/use-cases/voting/create-vote.use-case';
 import { GetQuotaUseCase } from '../../application/use-cases/wallets/get-quota.use-case';
-import { TG_EMOJI, TG_MSG } from './telegram-messages.ru';
+import { TG_EMOJI, TG_MSG, buildTelegramHelpMessage } from './telegram-messages.ru';
+import { getCommunityWebBaseUrl } from '../../common/helpers/product-mode.helper';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -257,11 +258,11 @@ export class TelegramBotOrchestratorService {
 
     const trimmed = text.trim();
     if (trimmed.startsWith('/start')) {
-      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.help });
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: this.helpMessage() });
       return;
     }
     if (trimmed === '/help' || trimmed === '/справка') {
-      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.help });
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: this.helpMessage() });
       return;
     }
 
@@ -388,7 +389,7 @@ export class TelegramBotOrchestratorService {
         await this.tgBots.tgReplyMessage({
           reply_to_message_id: message.message_id as number,
           chat_id: chatId,
-          text: TG_MSG.help,
+          text: this.helpMessage(community.id),
         });
         break;
       default:
@@ -769,7 +770,7 @@ export class TelegramBotOrchestratorService {
         type: 'text',
         processPostCost: true,
       },
-      { checkPermissions: true, processPostCost: true },
+      { checkPermissions: true, processPostCost: true, skipTelegramMirror: true },
     );
     const sent = await this.sendPlainMessage(chatId, `📌 ${body.trim().slice(0, 500)}`);
     const messageId = sent?.message_id as number | undefined;
@@ -777,6 +778,16 @@ export class TelegramBotOrchestratorService {
       await this.saveAnchor(community.id, chatId, messageId, pub.getId.getValue(), 'bot_mirror');
     }
     await this.tgBots.tgSend({ tgChatId: userId, text: TG_MSG.postPublished });
+  }
+
+  private helpMessage(communityId?: string): string {
+    if (this.configService.get('app')?.productMode !== 'telegram_mvp') {
+      return TG_MSG.help;
+    }
+    return buildTelegramHelpMessage(
+      getCommunityWebBaseUrl(this.configService),
+      communityId,
+    );
   }
 
   private async sendPlainMessage(chatId: string, text: string): Promise<{ message_id?: number } | null> {

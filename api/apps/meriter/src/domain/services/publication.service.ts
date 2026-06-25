@@ -110,6 +110,7 @@ export class PublicationService {
     return this.createPublicationUseCase.execute(userId, dto, {
       checkPermissions: options?.checkPermissions ?? false,
       processPostCost: options?.processPostCost ?? dto.processPostCost ?? false,
+      skipTelegramMirror: options?.skipTelegramMirror,
     });
   }
 

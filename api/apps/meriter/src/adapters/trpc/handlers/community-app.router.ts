@@ -1,0 +1,138 @@
+import { TelegramAuthDataSchema } from '@meriter/shared-types';
+import { router, protectedProcedure, publicProcedure } from '../../../trpc/trpc';
+import { pickProceduresRouter } from '../community-pick-procedures';
+import { usersRouter } from '../../../trpc/routers/users.router';
+import { communitiesRouter } from '../../../trpc/routers/communities.router';
+import { publicationsRouter } from './publications-procedures.handler';
+import { votesRouter } from '../../../trpc/routers/votes.router';
+import { pollsRouter } from '../../../trpc/routers/polls.router';
+import { walletsRouter } from '../../../trpc/routers/wallets.router';
+import { documentsRouter } from '../../../trpc/routers/documents.router';
+import { documentVariantsRouter } from '../../../trpc/routers/document-variants.router';
+import { eventsRouter } from '../../../trpc/routers/events.router';
+import { projectRouter } from '../../../trpc/routers/project.router';
+import { configRouter } from '../../../trpc/routers/config.router';
+import { uploadsRouter } from '../../../trpc/routers/uploads.router';
+import { meritTransferRouter } from '../../../trpc/routers/merit-transfer.router';
+import { commentsRouter } from '../../../trpc/routers/comments.router';
+import { ResolveTelegramCommunityUseCase } from '../../../application/use-cases/communities/resolve-telegram-community.use-case';
+import { AuthenticateTelegramCommunityUseCase } from '../../../application/use-cases/auth/authenticate-telegram-community.use-case';
+import { CommunitySchemaClass } from '../../../domain/models/community/community.schema';
+
+/**
+ * Whitelisted tRPC surface for `@meriter/community-web`.
+ * Mounted at `/trpc/community` — never exposes full-app routers (tappalka, platformDev, etc.).
+ */
+export const communityAppRouter = router({
+  auth: router({
+    logout: protectedProcedure.mutation(async ({ ctx }) => {
+      ctx.cookieManager.logoutCommunityJwt(ctx.res, ctx.req);
+      return { message: 'Logged out successfully' };
+    }),
+    authenticateTelegram: publicProcedure
+      .input(TelegramAuthDataSchema)
+      .mutation(async ({ ctx, input }) => {
+        const useCase = new AuthenticateTelegramCommunityUseCase(
+          ctx.authService,
+          ctx.cookieManager,
+          ctx.configService,
+        );
+        return useCase.execute(input, ctx.res, ctx.req);
+      }),
+  }),
+
+  users: pickProceduresRouter(usersRouter, ['getMe']),
+
+  communities: pickProceduresRouter(
+    communitiesRouter,
+    ['getById', 'getFeed', 'getHubFeedTabCounts', 'update'],
+    {
+      resolveForTelegramUser: protectedProcedure.query(async ({ ctx }) => {
+        const useCase = new ResolveTelegramCommunityUseCase({
+          userService: ctx.userService,
+          userCommunityRoleService: ctx.userCommunityRoleService,
+          communityModel: ctx.connection.model(CommunitySchemaClass.name),
+          configService: ctx.configService,
+        });
+        return useCase.execute(ctx.user.id);
+      }),
+    },
+  ),
+
+  publications: pickProceduresRouter(publicationsRouter, [
+    'getById',
+    'create',
+    'update',
+    'delete',
+    'restore',
+  ]),
+
+  votes: pickProceduresRouter(votesRouter, [
+    'create',
+    'getByPublicationId',
+    'withdrawFromVote',
+  ]),
+
+  comments: pickProceduresRouter(commentsRouter, [
+    'getByPublicationId',
+    'create',
+  ]),
+
+  polls: pickProceduresRouter(pollsRouter, [
+    'getById',
+    'getByCommunity',
+    'create',
+    'update',
+    'delete',
+    'cast',
+    'getResults',
+    'getMyCasts',
+  ]),
+
+  wallets: pickProceduresRouter(walletsRouter, [
+    'getByCommunity',
+    'getBalance',
+    'getQuota',
+    'getQuotaBatch',
+    'getTransactions',
+    'getCommunityMeritHistory',
+    'getMeritHistoryDashboard',
+  ]),
+
+  documents: pickProceduresRouter(documentsRouter, [
+    'listByCommunity',
+    'getById',
+    'getOfficialByType',
+  ]),
+
+  documentVariants: pickProceduresRouter(documentVariantsRouter, [
+    'listByDocument',
+    'propose',
+  ]),
+
+  events: pickProceduresRouter(eventsRouter, [
+    'createEvent',
+    'updateEvent',
+    'deleteEvent',
+    'getEventsByCommunity',
+    'attend',
+    'unattend',
+    'getInvitePreview',
+    'createInviteLink',
+    'attendViaInvite',
+  ]),
+
+  project: pickProceduresRouter(projectRouter, ['list', 'getById', 'create', 'join']),
+
+  meritTransfer: pickProceduresRouter(meritTransferRouter, [
+    'create',
+    'getByCommunity',
+    'getByUser',
+  ]),
+
+  config: pickProceduresRouter(configRouter, ['getConfig']),
+
+  uploads: pickProceduresRouter(uploadsRouter, ['uploadImage', 'uploadAvatar']),
+});
+
+export type CommunityAppRouter = typeof communityAppRouter;
