@@ -65,6 +65,9 @@ export const communityAppRouter = router({
     'update',
     'delete',
     'restore',
+    'listPendingTelegramModeration',
+    'approveTelegramModeration',
+    'rejectTelegramModeration',
   ]),
 
   votes: pickProceduresRouter(votesRouter, [

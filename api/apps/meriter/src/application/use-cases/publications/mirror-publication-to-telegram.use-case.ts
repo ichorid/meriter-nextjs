@@ -53,6 +53,13 @@ export class MirrorPublicationToTelegramUseCase {
     if (!publication) return;
 
     const snap = publication.toSnapshot();
+    if (snap.telegramModerationStatus === 'pending') {
+      this.logger.debug(
+        `Skip TG mirror for ${publicationId}: awaiting moderation approval`,
+      );
+      return;
+    }
+
     const title = snap.title?.trim();
     const content = snap.content?.trim() ?? '';
     const body = title ? `${title}\n\n${content}` : content;

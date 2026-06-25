@@ -28,6 +28,7 @@ import {
   autoWithdrawPublicationBalanceBeforeDelete,
   processPublicationWithdrawal,
 } from '../../../application/use-cases/publications/publication-withdrawal.orchestrator';
+import { createTelegramModerationUseCaseFromContext } from '../factories/telegram-moderation.factory';
 
 export {
   autoWithdrawPublicationBalanceBeforeDelete,
@@ -758,6 +759,10 @@ export const publicationsRouter = router({
           ? communitiesMap.get(pubSnapCreate.authoredCommunityId)
           : undefined;
 
+      const rawDoc = await ctx.publicationService.getPublicationDocument(
+        publication.getId.getValue(),
+      );
+
       // Map domain entity to API format
       const mappedPublication = EntityMappers.mapPublicationToApi(
         publication,
@@ -776,7 +781,10 @@ export const publicationsRouter = router({
           : undefined,
       );
 
-      return mappedPublication;
+      return {
+        ...mappedPublication,
+        telegramModerationStatus: rawDoc?.telegramModerationStatus ?? null,
+      };
     }),
 
   /**
@@ -1400,5 +1408,40 @@ export const publicationsRouter = router({
         userService: ctx.userService,
         notificationService: ctx.notificationService,
       }).rejectForward(input);
+    }),
+
+  listPendingTelegramModeration: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string().min(1),
+        limit: z.number().int().min(1).max(100).optional(),
+        skip: z.number().int().min(0).optional(),
+      }),
+    )
+    .query(async ({ ctx, input }) => {
+      return createTelegramModerationUseCaseFromContext(ctx).listPending(
+        ctx.user.id,
+        input.communityId,
+        input.limit ?? 50,
+        input.skip ?? 0,
+      );
+    }),
+
+  approveTelegramModeration: protectedProcedure
+    .input(z.object({ publicationId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      return createTelegramModerationUseCaseFromContext(ctx).approve(
+        ctx.user.id,
+        input.publicationId,
+      );
+    }),
+
+  rejectTelegramModeration: protectedProcedure
+    .input(z.object({ publicationId: z.string().min(1) }))
+    .mutation(async ({ ctx, input }) => {
+      return createTelegramModerationUseCaseFromContext(ctx).reject(
+        ctx.user.id,
+        input.publicationId,
+      );
     }),
 });

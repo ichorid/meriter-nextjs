@@ -31,6 +31,8 @@ export interface CommunityPublicationsQuery {
   hubPostsFeedOnly?: boolean;
   pinnedOnly?: boolean;
   excludePinned?: boolean;
+  /** When true (default), hide pending/rejected telegram moderation posts from feed. */
+  feedVisibleOnly?: boolean;
 }
 
 export interface ObPostSummary {

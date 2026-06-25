@@ -126,6 +126,7 @@ export class EntityMappers {
       forwardTargetCommunityId: snapshot.forwardTargetCommunityId || undefined,
       forwardProposedBy: snapshot.forwardProposedBy || undefined,
       forwardProposedAt: snapshot.forwardProposedAt || undefined,
+      telegramModerationStatus: snapshot.telegramModerationStatus ?? null,
       // Project taxonomy (needed for edit prefill + cards outside community feed)
       impactArea: snapshot.impactArea || undefined,
       stage: snapshot.stage || undefined,

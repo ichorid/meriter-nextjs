@@ -109,6 +109,7 @@ export interface Publication {
   forwardTargetCommunityId?: string;
   forwardProposedBy?: string;
   forwardProposedAt?: Date;
+  telegramModerationStatus?: 'pending' | 'approved' | 'rejected' | null;
   deleted?: boolean;
   deletedAt?: Date;
   // Edit history
@@ -300,6 +301,9 @@ export class PublicationSchemaClass implements Publication {
 
   @Prop()
   forwardProposedAt?: Date;
+
+  @Prop({ type: String, enum: ['pending', 'approved', 'rejected'], default: null })
+  telegramModerationStatus?: 'pending' | 'approved' | 'rejected' | null;
 
   @Prop({ default: false })
   deleted?: boolean;

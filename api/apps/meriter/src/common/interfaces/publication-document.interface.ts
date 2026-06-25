@@ -39,6 +39,8 @@ export interface PublicationDocument {
   forwardTargetCommunityId?: string;
   forwardProposedBy?: string;
   forwardProposedAt?: Date;
+  /** Telegram MVP: pending until lead approves when community moderation is on. */
+  telegramModerationStatus?: 'pending' | 'approved' | 'rejected' | null;
   deleted?: boolean;
   deletedAt?: Date;
   editHistory?: Array<{

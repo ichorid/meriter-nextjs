@@ -418,6 +418,17 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
         ? new Date(createdAt.getTime() + dto.ttlDays * 24 * 60 * 60 * 1000)
         : dto.ttlExpiresAt ?? null;
 
+    const skipModeration = options?.skipTelegramMirror === true;
+    const needsTelegramModeration =
+      !skipModeration &&
+      community.settings?.telegramModerationEnabled === true &&
+      (dto.postType ?? 'basic') !== 'event';
+    const telegramModerationStatus = needsTelegramModeration
+      ? ('pending' as const)
+      : null;
+    const skipMirror =
+      (options?.skipTelegramMirror ?? false) || needsTelegramModeration;
+
     await this.publicationPersistence.insertPublication({
       ...publicationSnapshot,
       postType: dto.postType || 'basic',
@@ -438,6 +449,7 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
       sourceEntityId: dto.sourceEntityId,
       sourceEntityType: dto.sourceEntityType,
       valueTags: dto.valueTags ?? [],
+      telegramModerationStatus,
       ...(dto.postType === 'event'
         ? {
             eventStartDate: dto.eventStartDate,
@@ -455,7 +467,7 @@ export class CreatePublicationUseCase implements CreatePublicationPort {
         publicationId,
         userId,
         dto.communityId,
-        options?.skipTelegramMirror ?? false,
+        skipMirror,
       ),
     );
 

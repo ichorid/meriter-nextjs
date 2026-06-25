@@ -437,6 +437,19 @@ export class PublicationService {
     return (await this.publicationPersistence.findById(id)) as IPublicationDocument | null;
   }
 
+  async findPublicationsByQuery(
+    options: Parameters<PublicationPersistencePort['findByQuery']>[0],
+  ) {
+    return this.publicationPersistence.findByQuery(options);
+  }
+
+  async patchPublication(
+    id: string,
+    update: Parameters<PublicationPersistencePort['patchById']>[1],
+  ): Promise<void> {
+    await this.publicationPersistence.patchById(id, update);
+  }
+
   async getPublicationsByCommunity(
     communityId: string,
     limit: number = 20,

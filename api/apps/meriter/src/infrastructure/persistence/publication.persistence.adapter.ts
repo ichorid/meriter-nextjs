@@ -287,8 +287,23 @@ export class PublicationPersistenceAdapter implements PublicationPersistencePort
 
     if (query.pinnedOnly) {
       mongoQuery.isPinned = true;
-    } else if (query.excludePinned) {
+    } else     if (query.excludePinned) {
       mongoQuery.isPinned = { $ne: true };
+    }
+
+    if (query.feedVisibleOnly !== false) {
+      const visibleModeration = {
+        $or: [
+          { telegramModerationStatus: { $exists: false } },
+          { telegramModerationStatus: null },
+          { telegramModerationStatus: 'approved' },
+        ],
+      };
+      if (Array.isArray(mongoQuery.$and)) {
+        mongoQuery.$and.push(visibleModeration);
+      } else {
+        mongoQuery.$and = [visibleModeration];
+      }
     }
 
     const filters = query.filters;
