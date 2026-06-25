@@ -284,24 +284,29 @@ pnpm install
 ```powershell
 # api/.env или корневой .env
 $env:MERITER_PRODUCT_MODE="telegram_mvp"
-$env:TELEGRAM_BOT_ENABLED="true"
-$env:BOT_TOKEN="..."
-$env:BOT_USERNAME="..."
-$env:COMMUNITY_WEB_BASE_URL="https://community-dev.example.com"  # tunnel
+$env:FAKE_DATA_MODE="true"
+$env:COMMUNITY_WEB_DEV_AUTO_SEED="true"
+$env:noAxios="true"
+$env:TELEGRAM_BOT_ENABLED="false"
+# опционально (stable id из seed):
+# $env:DEFAULT_TELEGRAM_COMMUNITY_ID="a1000001-0000-4000-8000-000000000001"
 pnpm dev:api
 ```
 
 **Terminal 2 — community-web:**
 
 ```powershell
-$env:NEXT_PUBLIC_API_URL="http://localhost:8002"
-# опционально для dev без resolve:
-$env:NEXT_PUBLIC_DEFAULT_COMMUNITY_ID="<community-uuid>"
+# NEXT_PUBLIC_API_URL не задавать — same-origin proxy через Next.js
 pnpm dev:community-web
 ```
 
+Re-seed: `pnpm seed:community-web-dev` (из корня monorepo) или кнопка **«Пересоздать демо-данные»** в `/c/{devCommunityId}/settings` (лид, только при `FAKE_DATA_MODE` / `TEST_AUTH_MODE`).
+
+**Демо-данные seed (`[cw-dev]`):** 5 участников (лид + 4), посты в ленте с рейтингом, опрос с голосами, событие с RSVP, проект с постом, вариант документа, P2P-перевод и операции в «Заслуги». **Комментарии не создаются** — общение в Telegram.
+
 - UI: http://localhost:8003  
 - API: http://localhost:8002  
+- Dev-login: `/login` → **Dev: лид** / **Dev: участник** (без Telegram)
 
 ### 6.3. Webhook локально (бот)
 

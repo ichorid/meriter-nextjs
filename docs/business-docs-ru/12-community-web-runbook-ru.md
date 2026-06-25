@@ -55,17 +55,32 @@ COMMUNITY_DOMAIN=community.meriter.pro
 ## 3. Локальная разработка
 
 ```powershell
-# Terminal 1 — API (обязателен для login и tRPC)
+# MongoDB replica set — см. docs/LOCAL_DEVELOPMENT_SETUP.md
+
+# API .env (минимум для dev-stack):
+# MERITER_PRODUCT_MODE=telegram_mvp
+# FAKE_DATA_MODE=true
+# COMMUNITY_WEB_DEV_AUTO_SEED=true
+# noAxios=true
+# TELEGRAM_BOT_ENABLED=false
+
+# Terminal 1 — API (autoseed при старте, если COMMUNITY_WEB_DEV_AUTO_SEED=true)
 pnpm dev:api
 
 # Terminal 2 — community-web
 pnpm dev:community-web
+
+# Явный re-seed контента (два терминала выше должны быть остановлены или Mongo общая):
+pnpm seed:community-web-dev
+pnpm seed:community-web-dev -- --force-content
 ```
+
+**Демо-данные (`[cw-dev]`):** 5 участников, лента с рейтингом, опрос с голосами, событие, проект, вариант документа, перевод заслуг; вкладка **«Пользователи»** (`/c/{id}/members`). Re-seed из UI: **Настройки → «Пересоздать демо-данные»** (лид, dev-режим). **Комментарии не seedятся** — общение в Telegram.
 
 - Web UI: http://localhost:8003  
 - API: http://localhost:8002  
 - **Не задавайте** `NEXT_PUBLIC_API_URL` локально — Next.js проксирует `/trpc/community` на `:8002` (same-origin, без CORS). Шаблон: `community-web/.env.development.local.example`  
-- Dev-вход без Telegram: `FAKE_DATA_MODE=true` или `TEST_AUTH_MODE=true` в API + кнопка «Dev: войти без Telegram» на `/login`
+- Dev-вход без Telegram: `FAKE_DATA_MODE=true` + `MERITER_PRODUCT_MODE=telegram_mvp` → на `/login` кнопки **Dev: войти как лид** / **Dev: войти как участник**; redirect в `/c/{devCommunityId}/feed` без ручного UUID (если включён autoseed или выполнен `pnpm seed:community-web-dev`)
 
 Telegram Login Widget требует публичный HTTPS callback — локально используйте tunnel (ngrok) на `:8003` или тестовый VPS.
 
