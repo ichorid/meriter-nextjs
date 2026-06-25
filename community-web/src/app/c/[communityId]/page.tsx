@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 
-export default function CommunityIndexPage({
+export default async function CommunityIndexPage({
   params,
 }: {
-  params: { communityId: string };
+  params: Promise<{ communityId: string }>;
 }) {
-  redirect(`/c/${params.communityId}/feed`);
+  const { communityId } = await params;
+  redirect(`/c/${communityId}/feed`);
 }

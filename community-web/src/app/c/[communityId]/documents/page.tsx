@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthGate, Shell } from '@/components/shell';
+import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
 function DocumentsInner({ communityId }: { communityId: string }) {
@@ -31,14 +32,11 @@ function DocumentsInner({ communityId }: { communityId: string }) {
   );
 }
 
-export default function DocumentsPage({
-  params,
-}: {
-  params: { communityId: string };
-}) {
+export default function DocumentsPage() {
+  const communityId = useCommunityId();
   return (
     <AuthGate>
-      <DocumentsInner communityId={params.communityId} />
+      <DocumentsInner communityId={communityId} />
     </AuthGate>
   );
 }

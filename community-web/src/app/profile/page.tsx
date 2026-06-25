@@ -5,6 +5,7 @@ import { trpc } from '@/lib/trpc/client';
 
 export default function ProfilePage() {
   const meQuery = trpc.users.getMe.useQuery();
+  const configQuery = trpc.config.getConfig.useQuery();
   const resolveQuery = trpc.communities.resolveForTelegramUser.useQuery(undefined, {
     enabled: !!meQuery.data,
   });
@@ -14,7 +15,14 @@ export default function ProfilePage() {
     },
   });
 
-  const communityId = resolveQuery.data?.communityId;
+  const communityId =
+    resolveQuery.data?.communityId ?? configQuery.data?.devCommunityId ?? null;
+  const communityName =
+    resolveQuery.data?.name ??
+    (communityId && configQuery.data?.devCommunityId === communityId
+      ? 'Dev Telegram Community'
+      : undefined);
+
   const walletQuery = trpc.wallets.getByCommunity.useQuery(
     { communityId: communityId ?? '' },
     { enabled: !!communityId },
@@ -37,7 +45,7 @@ export default function ProfilePage() {
         {communityId && (
           <div className="rounded-xl border border-stitch-border bg-stitch-surface p-4 space-y-2">
             <p className="text-sm text-stitch-muted">Сообщество</p>
-            <p className="font-medium">{resolveQuery.data?.name}</p>
+            <p className="font-medium">{communityName ?? communityId}</p>
             <p className="text-sm">
               Кошелёк: <strong>{walletQuery.data?.balance ?? '…'}</strong> заслуг
             </p>
@@ -53,6 +61,13 @@ export default function ProfilePage() {
               Перейти в ленту →
             </a>
           </div>
+        )}
+        {!communityId && resolveQuery.isSuccess && (
+          <p className="text-sm text-stitch-muted">
+            Сообщество не найдено. Запустите{' '}
+            <code className="text-xs">pnpm seed:community-web-dev</code> или включите{' '}
+            <code className="text-xs">COMMUNITY_WEB_DEV_AUTO_SEED=true</code> в API.
+          </p>
         )}
         <button
           type="button"

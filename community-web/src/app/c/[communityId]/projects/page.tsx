@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AuthGate, Shell } from '@/components/shell';
+import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
 function ProjectCreateForm({ communityId }: { communityId: string }) {
@@ -124,14 +125,11 @@ function ProjectsInner({ communityId }: { communityId: string }) {
   );
 }
 
-export default function ProjectsPage({
-  params,
-}: {
-  params: { communityId: string };
-}) {
+export default function ProjectsPage() {
+  const communityId = useCommunityId();
   return (
     <AuthGate>
-      <ProjectsInner communityId={params.communityId} />
+      <ProjectsInner communityId={communityId} />
     </AuthGate>
   );
 }

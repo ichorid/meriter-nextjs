@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthGate, Shell } from '@/components/shell';
+import { useCommunityProjectParams } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
 function ProjectDetailInner({
@@ -92,16 +93,13 @@ function ProjectDetailInner({
   );
 }
 
-export default function ProjectDetailPage({
-  params,
-}: {
-  params: { communityId: string; projectId: string };
-}) {
+export default function ProjectDetailPage() {
+  const { communityId, projectId } = useCommunityProjectParams();
   return (
     <AuthGate>
       <ProjectDetailInner
-        communityId={params.communityId}
-        projectId={params.projectId}
+        communityId={communityId}
+        projectId={projectId}
       />
     </AuthGate>
   );

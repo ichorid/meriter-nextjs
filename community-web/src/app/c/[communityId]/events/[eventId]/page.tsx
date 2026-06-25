@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthGate, Shell } from '@/components/shell';
+import { useCommunityEventParams } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 import { formatEventDateRange } from '@/lib/format-dates';
 
@@ -172,16 +173,13 @@ function EventDetailInner({
   );
 }
 
-export default function EventDetailPage({
-  params,
-}: {
-  params: { communityId: string; eventId: string };
-}) {
+export default function EventDetailPage() {
+  const { communityId, eventId } = useCommunityEventParams();
   return (
     <AuthGate>
       <EventDetailInner
-        communityId={params.communityId}
-        eventId={params.eventId}
+        communityId={communityId}
+        eventId={eventId}
       />
     </AuthGate>
   );

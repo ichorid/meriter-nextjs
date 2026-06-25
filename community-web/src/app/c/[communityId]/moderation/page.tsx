@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthGate, Shell } from '@/components/shell';
+import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
 function ModerationInner({ communityId }: { communityId: string }) {
@@ -81,14 +82,11 @@ function ModerationInner({ communityId }: { communityId: string }) {
   );
 }
 
-export default function ModerationPage({
-  params,
-}: {
-  params: { communityId: string };
-}) {
+export default function ModerationPage() {
+  const communityId = useCommunityId();
   return (
     <AuthGate>
-      <ModerationInner communityId={params.communityId} />
+      <ModerationInner communityId={communityId} />
     </AuthGate>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AuthGate, Shell } from '@/components/shell';
+import { useCommunityDocumentParams } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
 type DocumentBlock = {
@@ -177,16 +178,13 @@ function DocumentDetailInner({
   );
 }
 
-export default function DocumentDetailPage({
-  params,
-}: {
-  params: { communityId: string; documentId: string };
-}) {
+export default function DocumentDetailPage() {
+  const { communityId, documentId } = useCommunityDocumentParams();
   return (
     <AuthGate>
       <DocumentDetailInner
-        communityId={params.communityId}
-        documentId={params.documentId}
+        communityId={communityId}
+        documentId={documentId}
       />
     </AuthGate>
   );

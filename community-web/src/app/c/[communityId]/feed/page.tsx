@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AuthGate, Shell } from '@/components/shell';
+import { useCommunityId } from '@/lib/use-route-params';
 import { PollSection } from '@/components/poll-section';
 import { trpc } from '@/lib/trpc/client';
 
@@ -115,12 +116,8 @@ function FeedPageInner({ communityId }: { communityId: string }) {
   );
 }
 
-export default function FeedPage({
-  params,
-}: {
-  params: { communityId: string };
-}) {
-  const { communityId } = params;
+export default function FeedPage() {
+  const communityId = useCommunityId();
   return (
     <AuthGate>
       <FeedPageInner communityId={communityId} />

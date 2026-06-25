@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AuthGate, Shell } from '@/components/shell';
+import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 import { formatEventDateRange, fromDatetimeLocalValue } from '@/lib/format-dates';
 
@@ -221,14 +222,11 @@ function EventsInner({ communityId }: { communityId: string }) {
   );
 }
 
-export default function EventsPage({
-  params,
-}: {
-  params: { communityId: string };
-}) {
+export default function EventsPage() {
+  const communityId = useCommunityId();
   return (
     <AuthGate>
-      <EventsInner communityId={params.communityId} />
+      <EventsInner communityId={communityId} />
     </AuthGate>
   );
 }

@@ -2,16 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import { AuthGate, Shell } from '@/components/shell';
+import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
 function SettingsInner({ communityId }: { communityId: string }) {
   const meQuery = trpc.users.getMe.useQuery();
+  const configQuery = trpc.config.getConfig.useQuery();
   const communityQuery = trpc.communities.getById.useQuery({ id: communityId });
   const updateMutation = trpc.communities.update.useMutation({
     onSuccess: () => communityQuery.refetch(),
   });
+  const reseedMutation = trpc.dev.reseedDevData.useMutation({
+    onSuccess: () => {
+      void communityQuery.refetch();
+    },
+  });
 
   const settings = communityQuery.data?.settings;
+  const runtimeConfig = configQuery.data;
+  const devFakeAuth = runtimeConfig?.devFakeAuthEnabled === true;
+  const devCommunityId = runtimeConfig?.devCommunityId;
+  const showDevReseed =
+    devFakeAuth && devCommunityId != null && devCommunityId === communityId;
   const isLead =
     communityQuery.data?.isAdmin === true ||
     (meQuery.data?.id != null &&
@@ -129,19 +141,51 @@ function SettingsInner({ communityId }: { communityId: string }) {
             )}
           </form>
         )}
+
+        {showDevReseed && isLead && (
+          <section className="space-y-3 rounded-xl border border-stitch-border bg-stitch-surface p-4">
+            <h2 className="font-semibold">Локальные демо-данные</h2>
+            <p className="text-sm text-stitch-muted">
+              Пересоздаёт ленту, пользователей, опросы, события, проекты, документы и
+              историю заслуг для локальной разработки. Комментарии не создаются — общение
+              в Telegram.
+            </p>
+            <button
+              type="button"
+              disabled={reseedMutation.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'Удалить текущие демо-данные с меткой [cw-dev] и создать заново?',
+                  )
+                ) {
+                  reseedMutation.mutate({ communityId });
+                }
+              }}
+              className="rounded-lg border border-stitch-border bg-stitch-canvas px-4 py-2 text-sm font-medium text-stitch-text hover:bg-stitch-elevated disabled:opacity-50"
+            >
+              {reseedMutation.isPending ? 'Пересоздание…' : 'Пересоздать демо-данные'}
+            </button>
+            {reseedMutation.isSuccess && (
+              <p className="text-sm text-green-400">
+                Демо-данные обновлены ({reseedMutation.data.usersEnsured} участников).
+              </p>
+            )}
+            {reseedMutation.isError && (
+              <p className="text-sm text-red-400">Не удалось пересоздать демо-данные.</p>
+            )}
+          </section>
+        )}
       </div>
     </Shell>
   );
 }
 
-export default function SettingsPage({
-  params,
-}: {
-  params: { communityId: string };
-}) {
+export default function SettingsPage() {
+  const communityId = useCommunityId();
   return (
     <AuthGate>
-      <SettingsInner communityId={params.communityId} />
+      <SettingsInner communityId={communityId} />
     </AuthGate>
   );
 }

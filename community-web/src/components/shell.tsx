@@ -32,7 +32,10 @@ export function TelegramLoginPanel() {
 
   const redirectAfterAuth = (communityId: string | null | undefined) => {
     const target =
-      communityId || config.defaultCommunityId || undefined;
+      communityId ||
+      config.defaultCommunityId ||
+      runtimeConfig?.devCommunityId ||
+      undefined;
     if (target) {
       router.replace(`/c/${target}/feed`);
     } else {
@@ -123,23 +126,33 @@ export function TelegramLoginPanel() {
         )}
 
       {devFakeAuth && (
-        <button
-          type="button"
-          disabled={fakeAuthMutation.isPending}
-          onClick={() => fakeAuthMutation.mutate()}
-          className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-60"
-        >
-          {fakeAuthMutation.isPending
-            ? 'Вход…'
-            : 'Dev: войти без Telegram'}
-        </button>
+        <div className="space-y-2">
+          <button
+            type="button"
+            disabled={fakeAuthMutation.isPending}
+            onClick={() => fakeAuthMutation.mutate({ persona: 'lead' })}
+            className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-60"
+          >
+            {fakeAuthMutation.isPending ? 'Вход…' : 'Dev: войти как лид'}
+          </button>
+          <button
+            type="button"
+            disabled={fakeAuthMutation.isPending}
+            onClick={() => fakeAuthMutation.mutate({ persona: 'participant' })}
+            className="w-full rounded-lg border border-stitch-border bg-stitch-surface px-4 py-3 text-sm font-semibold text-stitch-text hover:bg-stitch-elevated disabled:opacity-60"
+          >
+            {fakeAuthMutation.isPending ? 'Вход…' : 'Dev: войти как участник'}
+          </button>
+        </div>
       )}
 
-      {devFakeAuth && !config.defaultCommunityId && (
+      {devFakeAuth &&
+        !config.defaultCommunityId &&
+        !runtimeConfig?.devCommunityId && (
         <p className="text-xs text-stitch-muted text-center">
-          Для перехода в сообщество задайте{' '}
-          <code>NEXT_PUBLIC_DEFAULT_COMMUNITY_ID</code> или{' '}
-          <code>DEFAULT_TELEGRAM_COMMUNITY_ID</code> в API.
+          Запустите API с{' '}
+          <code>COMMUNITY_WEB_DEV_AUTO_SEED=true</code> или выполните{' '}
+          <code>pnpm seed:community-web-dev</code>.
         </p>
       )}
 
@@ -202,6 +215,7 @@ export function Shell({
 
   const tabs = [
     { href: `/c/${communityId}/feed`, label: 'Лента', id: 'feed' },
+    { href: `/c/${communityId}/members`, label: 'Пользователи', id: 'members' },
     { href: `/c/${communityId}/projects`, label: 'Проекты', id: 'projects' },
     { href: `/c/${communityId}/documents`, label: 'Документы', id: 'documents' },
     { href: `/c/${communityId}/events`, label: 'События', id: 'events' },

@@ -1,6 +1,7 @@
 'use client';
 
 import { AuthGate, Shell } from '@/components/shell';
+import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
 function formatMeritAmount(amount: number): string {
@@ -134,14 +135,11 @@ function MeritHistoryInner({ communityId }: { communityId: string }) {
   );
 }
 
-export default function MeritHistoryPage({
-  params,
-}: {
-  params: { communityId: string };
-}) {
+export default function MeritHistoryPage() {
+  const communityId = useCommunityId();
   return (
     <AuthGate>
-      <MeritHistoryInner communityId={params.communityId} />
+      <MeritHistoryInner communityId={communityId} />
     </AuthGate>
   );
 }
