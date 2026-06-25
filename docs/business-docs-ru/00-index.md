@@ -33,6 +33,8 @@
 | 07 | `07-users-roles.md` | Пользователи и роли |
 | 08 | `08-mvp-marathon.md` | MVP «Марафон Добра»: специфика |
 | 09 | `09-features-status.md` | Статус фич и бэклог |
+| 10 | `10-telegram-mvp.md` | **Telegram MVP:** бот + обрезанный Meriter для одной группы (согласование с бизнесом) |
+| 11 | `11-telegram-bot-runbook-ru.md` | **Telegram-бот:** установка, webhook, команды, чеклист пилота |
 
 ---
 
