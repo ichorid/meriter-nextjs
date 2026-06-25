@@ -15,12 +15,14 @@ function DocumentsInner({ communityId }: { communityId: string }) {
         )}
         <ul className="space-y-3">
           {(docsQuery.data ?? []).map((doc) => (
-            <li
-              key={doc.id}
-              className="rounded-xl border border-stitch-border bg-stitch-surface p-4"
-            >
-              <p className="font-semibold">{doc.title ?? doc.documentType}</p>
-              <p className="text-xs text-stitch-muted">{doc.documentType}</p>
+            <li key={doc.id}>
+              <a
+                href={`/c/${communityId}/documents/${doc.id}`}
+                className="block rounded-xl border border-stitch-border bg-stitch-surface p-4 hover:border-primary/50 transition-colors"
+              >
+                <p className="font-semibold">{doc.title ?? doc.documentType}</p>
+                <p className="text-xs text-stitch-muted">{doc.documentType}</p>
+              </a>
             </li>
           ))}
         </ul>

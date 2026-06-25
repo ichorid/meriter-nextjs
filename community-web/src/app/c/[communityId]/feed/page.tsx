@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { AuthGate, Shell } from '@/components/shell';
+import { PollSection } from '@/components/poll-section';
 import { trpc } from '@/lib/trpc/client';
 
 function FeedPageInner({ communityId }: { communityId: string }) {
@@ -25,8 +26,6 @@ function FeedPageInner({ communityId }: { communityId: string }) {
       await utils.communities.getFeed.invalidate({ communityId });
     },
   });
-
-  const pollsQuery = trpc.polls.getByCommunity.useQuery({ communityId, pageSize: 10 });
 
   const posts =
     feedQuery.data?.pages.flatMap((p) =>
@@ -95,22 +94,7 @@ function FeedPageInner({ communityId }: { communityId: string }) {
           )}
         </section>
 
-        <section className="space-y-3">
-          <h2 className="font-semibold">Опросы</h2>
-          {(pollsQuery.data?.data ?? []).map((poll) => (
-            <article
-              key={poll.id}
-              className="rounded-xl border border-stitch-border bg-stitch-surface p-4"
-            >
-              <p className="font-medium">{poll.question}</p>
-              <ul className="mt-2 space-y-1 text-sm text-stitch-muted">
-                {(poll.options ?? []).map((opt) => (
-                  <li key={opt.id ?? opt.text}>{opt.text}</li>
-                ))}
-              </ul>
-            </article>
-          ))}
-        </section>
+        <PollSection communityId={communityId} />
       </div>
     </Shell>
   );
