@@ -24,6 +24,10 @@ import {
   UserCommunityRoleSchemaClass,
   UserCommunityRoleDocument,
 } from '../../domain/models/user-community-role/user-community-role.schema';
+import {
+  TelegramPublicationAnchorSchemaClass,
+  TelegramPublicationAnchorDocument,
+} from '../../domain/models/telegram/telegram-publication-anchor.schema';
 import { TelegramInfrastructureModule } from './telegram.module';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import * as TelegramTypes from '@common/extapis/telegram/telegram.types';
@@ -39,6 +43,7 @@ describe('Telegram hashtag-gated publication (integration)', () => {
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
+  let anchorModel: Model<TelegramPublicationAnchorDocument>;
 
   const tgChatId = '-1001234567890';
   const tgAuthorId = '900001';
@@ -76,6 +81,7 @@ describe('Telegram hashtag-gated publication (integration)', () => {
     userModel = moduleRef.get(getModelToken(UserSchemaClass.name));
     publicationModel = moduleRef.get(getModelToken(PublicationSchemaClass.name));
     userCommunityRoleModel = moduleRef.get(getModelToken(UserCommunityRoleSchemaClass.name));
+    anchorModel = moduleRef.get(getModelToken(TelegramPublicationAnchorSchemaClass.name));
   });
 
   afterAll(async () => {
@@ -85,6 +91,7 @@ describe('Telegram hashtag-gated publication (integration)', () => {
 
   beforeEach(async () => {
     await publicationModel.deleteMany({});
+    await anchorModel.deleteMany({});
     await userCommunityRoleModel.deleteMany({});
     await communityModel.deleteMany({});
     await userModel.deleteMany({});
@@ -112,6 +119,7 @@ describe('Telegram hashtag-gated publication (integration)', () => {
     await communityModel.create({
       id: communityId,
       name: 'Telegram Community',
+      telegramChatId: tgChatId,
       members: [authorId],
       settings: {
         currencyNames: { singular: 'merit', plural: 'merits', genitive: 'merits' },
@@ -124,11 +132,6 @@ describe('Telegram hashtag-gated publication (integration)', () => {
       createdAt: now,
       updatedAt: now,
     });
-    // telegramChatId is not on the Mongoose schema (legacy field); persist via raw collection.
-    await communityModel.collection.updateOne(
-      { id: communityId },
-      { $set: { telegramChatId: tgChatId } },
-    );
 
     await userCommunityRoleModel.create({
       id: uid(),
@@ -166,6 +169,13 @@ describe('Telegram hashtag-gated publication (integration)', () => {
     expect(persisted?.communityId).toBe(communityId);
     expect(persisted?.content).toBe(messageText);
     expect(persisted?.hashtags).toEqual([hashtag]);
+
+    const anchor = await anchorModel.findOne({
+      telegramChatId: tgChatId,
+      telegramMessageId: 42,
+    }).lean();
+    expect(anchor?.publicationId).toBe(result.publication.getId.getValue());
+    expect(anchor?.anchorType).toBe('hashtag');
   });
 
   it('ignores group messages without a configured hashtag', async () => {

@@ -91,6 +91,8 @@ export interface CommunitySettings {
   documentVotingDurationHours?: number;
   documentDefaultMode?: 'manual' | 'auto';
   documentAutoApplyTimerHours?: number;
+  /** Telegram MVP: require lead approval before hashtag/bot posts go live. */
+  telegramModerationEnabled?: boolean;
 }
 
 export interface CommunityMeritConversion {
@@ -255,6 +257,10 @@ export interface Community {
   };
   /** Cumulative investments in the project (global merits); used for payout investor pool. */
   projectInvestments?: ProjectInvestmentEntry[];
+  /** Linked Telegram group chat id (stringified). */
+  telegramChatId?: string;
+  /** Set when bot was removed from the linked Telegram group. */
+  telegramFrozenAt?: Date | null;
 }
 
 @Schema({ collection: 'communities', timestamps: true })
@@ -440,10 +446,19 @@ export class CommunitySchemaClass implements Community {
       documentVotingDurationHours: { type: Number, default: 48 },
       documentDefaultMode: { type: String, enum: ['manual', 'auto'], default: 'manual' },
       documentAutoApplyTimerHours: { type: Number, default: 48 },
+      telegramModerationEnabled: { type: Boolean, default: false },
     },
     default: {},
   })
   settings!: CommunitySettings;
+
+  /** Linked Telegram group chat id (stringified). One chat → one community. */
+  @Prop({ type: String, required: false, sparse: true, unique: true })
+  telegramChatId?: string;
+
+  /** Set when bot was removed from the linked Telegram group. */
+  @Prop({ type: Date, required: false })
+  telegramFrozenAt?: Date | null;
 
   @Prop({ type: [String], default: [] })
   hashtags!: string[];
@@ -547,3 +562,4 @@ export const Community = CommunitySchemaClass;
 
 CommunitySchema.index({ isActive: 1 });
 CommunitySchema.index({ isProject: 1 }, { partialFilterExpression: { isProject: true } });
+CommunitySchema.index({ telegramChatId: 1 }, { sparse: true, unique: true });

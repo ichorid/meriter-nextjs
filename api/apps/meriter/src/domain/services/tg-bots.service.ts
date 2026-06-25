@@ -31,6 +31,10 @@ import { encodeTelegramDeepLink, formatDualLinksFromEncoded, formatDualLinks, es
 import { t } from '../../i18n';
 import { UpdateEventItem } from './user-updates.service';
 import { FeatureFlagsService } from '../../common/services/feature-flags.service';
+import {
+  TelegramPublicationAnchorSchemaClass,
+  TelegramPublicationAnchorDocument,
+} from '../models/telegram/telegram-publication-anchor.schema';
 
 /**
  * BC-19 Telegram bot domain service (OD-4).
@@ -48,6 +52,8 @@ export class TgBotsService {
     private userModel: Model<UserDocument>,
     @InjectModel(CommunitySchemaClass.name) // V-12-residual
     private communityModel: Model<CommunityDocument>,
+    @InjectModel(TelegramPublicationAnchorSchemaClass.name)
+    private anchorModel: Model<TelegramPublicationAnchorDocument>,
     private publicationService: PublicationService,
     private userCommunityRoleService: UserCommunityRoleService,
     private featureFlagsService: FeatureFlagsService,
@@ -164,8 +170,8 @@ export class TgBotsService {
       this.logger.debug('Telegram bot is disabled; ignoring webhook update');
       return;
     }
-    // Log all incoming updates for debugging
-    this.logger.log('📨 Received Telegram update:', JSON.stringify(body, null, 2));
+    // Legacy path — webhook ingress uses TelegramBotOrchestratorService
+    this.logger.debug(`Telegram update ${body.update_id}`);
 
     const { message, my_chat_member } = body;
 
@@ -550,22 +556,29 @@ export class TgBotsService {
 
     const { publication, communityId } = result;
     const slug = publication.getId.getValue();
-    const link = `communities/${communityId}?post=${slug}`;
 
     this.logger.log(`✅ Publication created: slug=${slug}, communityId=${communityId}, tgChatId=${tgChatId}`);
-    this.logger.log(`🔗 Generated link: ${link} (using internal community ID, not Telegram chat ID)`);
-
-    const encodedLink = encodeTelegramDeepLink('publication', link);
-    const dualLinks = formatDualLinksFromEncoded(encodedLink, `/meriter/${link}`, BOT_USERNAME, WEB_BASE_URL);
-    const text = `${escapeMarkdownV2(t('updates.publication.saved', 'en'))} \: ${dualLinks}`;
-    this.logger.log(`💬 Sending reply to group ${tgChatId} with text: ${text}`);
 
     if (messageId !== undefined) {
-      await this.tgReplyMessage({
-        reply_to_message_id: messageId,
-        chat_id: tgChatId,
-        text,
-      });
+      if (this.featureFlagsService.isTelegramMvpMode()) {
+        await this.tgReplyMessage({
+          reply_to_message_id: messageId,
+          chat_id: tgChatId,
+          text: 'Пост опубликован.',
+        });
+      } else {
+        const link = `communities/${communityId}?post=${slug}`;
+        this.logger.log(`🔗 Generated link: ${link} (using internal community ID, not Telegram chat ID)`);
+        const encodedLink = encodeTelegramDeepLink('publication', link);
+        const dualLinks = formatDualLinksFromEncoded(encodedLink, `/meriter/${link}`, BOT_USERNAME, WEB_BASE_URL);
+        const text = `${escapeMarkdownV2(t('updates.publication.saved', 'en'))} \: ${dualLinks}`;
+        this.logger.log(`💬 Sending reply to group ${tgChatId} with text: ${text}`);
+        await this.tgReplyMessage({
+          reply_to_message_id: messageId,
+          chat_id: tgChatId,
+          text,
+        });
+      }
     }
   }
 
@@ -1143,7 +1156,45 @@ export class TgBotsService {
       `✅ Publication created with id: ${publication.getId.getValue()}, communityId: ${community.id}`,
     );
 
+    if (_tgMessageId > 0) {
+      await this.savePublicationAnchor(
+        community.id,
+        fromChatId,
+        _tgMessageId,
+        publication.getId.getValue(),
+        'hashtag',
+      );
+    }
+
     return { publication, communityId: community.id };
+  }
+
+  private async savePublicationAnchor(
+    communityId: string,
+    telegramChatId: string,
+    telegramMessageId: number,
+    publicationId: string,
+    anchorType: 'bot_mirror' | 'hashtag',
+  ): Promise<void> {
+    const now = new Date();
+    await this.anchorModel.updateOne(
+      { telegramChatId, telegramMessageId },
+      {
+        $set: {
+          communityId,
+          publicationId,
+          anchorType,
+          updatedAt: now,
+        },
+        $setOnInsert: {
+          id: uid(),
+          telegramChatId,
+          telegramMessageId,
+          createdAt: now,
+        },
+      },
+      { upsert: true },
+    );
   }
 
   private getS3Bucket(): string {

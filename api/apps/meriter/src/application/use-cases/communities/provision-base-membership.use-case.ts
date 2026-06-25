@@ -27,6 +27,7 @@ export type ProvisionBaseMembershipDeps = {
   userCommunityRoleService: UserCommunityRoleService;
   walletService: WalletService;
   platformSettingsService: PlatformSettingsService;
+  productMode?: 'full' | 'telegram_mvp';
 };
 
 /**
@@ -39,6 +40,10 @@ export class ProvisionBaseMembershipUseCase implements ProvisionBaseMembershipPo
   constructor(private readonly deps: ProvisionBaseMembershipDeps) {}
 
   async execute(userId: string): Promise<void> {
+    if (this.deps.productMode === 'telegram_mvp') {
+      this.logger.debug(`Skipping base hub auto-join for user ${userId} (telegram_mvp mode)`);
+      return;
+    }
     this.logger.log(`Ensuring user ${userId} is in base communities`);
 
     const baseCommunities = await Promise.all(

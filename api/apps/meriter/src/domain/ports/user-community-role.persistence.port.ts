@@ -7,6 +7,8 @@ export interface UserCommunityRoleRecord {
   role: 'lead' | 'participant';
   frozenInternalMerits?: number;
   leftAt?: Date | null;
+  membershipStatus?: 'active' | 'frozen';
+  leadGraceUntil?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +58,20 @@ export interface UserCommunityRolePersistencePort {
     userId: string,
     communityId: string,
     frozenInternalMerits: number,
+    updatedAt: Date,
+  ): Promise<void>;
+
+  setMembershipStatus(
+    userId: string,
+    communityId: string,
+    membershipStatus: 'active' | 'frozen',
+    updatedAt: Date,
+  ): Promise<void>;
+
+  setLeadGraceUntil(
+    userId: string,
+    communityId: string,
+    leadGraceUntil: Date | null,
     updatedAt: Date,
   ): Promise<void>;
 

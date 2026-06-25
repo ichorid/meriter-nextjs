@@ -1,0 +1,1236 @@
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { InjectModel, getConnectionToken } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
+import type { Connection } from 'mongoose';
+import { Model } from 'mongoose';
+import { uid } from 'uid';
+import * as TelegramTypes from '@common/extapis/telegram/telegram.types';
+import type { AppConfig } from '../../config/configuration';
+import { FeatureFlagsService } from '../../common/services/feature-flags.service';
+import { TgBotsService } from '../../domain/services/tg-bots.service';
+import { CommunityService } from '../../domain/services/community.service';
+import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
+import { WalletService } from '../../domain/services/wallet.service';
+import { PublicationService } from '../../domain/services/publication.service';
+import { PermissionService } from '../../domain/services/permission.service';
+import { VoteService } from '../../domain/services/vote.service';
+import { UserService } from '../../domain/services/user.service';
+import { WalletContextResolverService } from '../../domain/services/wallet-context-resolver.service';
+import { CommunityWalletService } from '../../domain/services/community-wallet.service';
+import { DocumentService } from '../../domain/services/document.service';
+import { DocumentVariantService } from '../../domain/services/document-variant.service';
+import { TicketService } from '../../domain/services/ticket.service';
+import type { Community } from '../../domain/models/community/community.schema';
+import {
+  CommunitySchemaClass,
+  CommunityDocument,
+} from '../../domain/models/community/community.schema';
+import { UserSchemaClass, UserDocument } from '../../domain/models/user/user.schema';
+import {
+  TelegramPublicationAnchorSchemaClass,
+  TelegramPublicationAnchorDocument,
+} from '../../domain/models/telegram/telegram-publication-anchor.schema';
+import {
+  TelegramBotPendingActionSchemaClass,
+  TelegramBotPendingActionDocument,
+  type TelegramBotPendingActionType,
+} from '../../domain/models/telegram/telegram-bot-pending-action.schema';
+import {
+  USER_COMMUNITY_ROLE_PERSISTENCE_PORT,
+  type UserCommunityRolePersistencePort,
+} from '../../domain/ports/user-community-role.persistence.port';
+import {
+  CREATE_MERIT_TRANSFER_PORT,
+  type CreateMeritTransferPort,
+} from '../../domain/ports/create-merit-transfer.port';
+import { createCreateVoteUseCase } from '../../application/use-cases/voting/create-vote.use-case';
+import { GetQuotaUseCase } from '../../application/use-cases/wallets/get-quota.use-case';
+import { TG_EMOJI, TG_MSG } from './telegram-messages.ru';
+
+const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
+const PENDING_TTL_MS = 15 * 60 * 1000;
+
+type OnboardingPayload = {
+  telegramChatId: string;
+  chatTitle?: string;
+  name?: string;
+  quotaEnabled?: boolean;
+  dailyEmission?: number;
+  hashtag?: string;
+  postCost?: number;
+  moderation?: boolean;
+  welcomeMerits?: number;
+};
+
+@Injectable()
+export class TelegramBotOrchestratorService {
+  private readonly logger = new Logger(TelegramBotOrchestratorService.name);
+
+  constructor(
+    private readonly configService: ConfigService<AppConfig>,
+    private readonly featureFlags: FeatureFlagsService,
+    private readonly tgBots: TgBotsService,
+    private readonly communityService: CommunityService,
+    private readonly userCommunityRoleService: UserCommunityRoleService,
+    private readonly walletService: WalletService,
+    private readonly publicationService: PublicationService,
+    private readonly permissionService: PermissionService,
+    private readonly voteService: VoteService,
+    private readonly userService: UserService,
+    private readonly walletContextResolver: WalletContextResolverService,
+    private readonly communityWalletService: CommunityWalletService,
+    private readonly ticketService: TicketService,
+    private readonly documentService: DocumentService,
+    private readonly documentVariantService: DocumentVariantService,
+    @Inject(USER_COMMUNITY_ROLE_PERSISTENCE_PORT)
+    private readonly rolePersistence: UserCommunityRolePersistencePort,
+    @Inject(CREATE_MERIT_TRANSFER_PORT)
+    private readonly createMeritTransfer: CreateMeritTransferPort,
+    @Inject(getConnectionToken())
+    private readonly connection: Connection,
+    @InjectModel(CommunitySchemaClass.name)
+    private readonly communityModel: Model<CommunityDocument>,
+    @InjectModel(UserSchemaClass.name)
+    private readonly userModel: Model<UserDocument>,
+    @InjectModel(TelegramPublicationAnchorSchemaClass.name)
+    private readonly anchorModel: Model<TelegramPublicationAnchorDocument>,
+    @InjectModel(TelegramBotPendingActionSchemaClass.name)
+    private readonly pendingModel: Model<TelegramBotPendingActionDocument>,
+  ) {}
+
+  async handleUpdate(body: TelegramTypes.Update): Promise<void> {
+    if (!this.featureFlags.isTelegramBotEnabled()) {
+      return;
+    }
+
+    if (body.my_chat_member) {
+      await this.handleMyChatMember(body.my_chat_member);
+      return;
+    }
+    if (body.chat_member) {
+      await this.handleChatMember(body.chat_member);
+      return;
+    }
+    if (body.message_reaction) {
+      await this.handleMessageReaction(body.message_reaction);
+      return;
+    }
+    if (body.callback_query) {
+      await this.handleCallbackQuery(body.callback_query);
+      return;
+    }
+    if (body.message) {
+      await this.handleMessage(body.message);
+    }
+  }
+
+  private async handleMyChatMember(event: Record<string, unknown>): Promise<void> {
+    const chat = event.chat as { id: number; title?: string; username?: string };
+    const oldMember = event.old_chat_member as { status: string };
+    const newMember = event.new_chat_member as { status: string };
+    const from = event.from as { id: number; first_name?: string; username?: string };
+    const chatId = String(chat.id);
+    const oldStatus = oldMember?.status;
+    const newStatus = newMember?.status;
+
+    if (
+      (oldStatus === 'member' || oldStatus === 'administrator') &&
+      (newStatus === 'left' || newStatus === 'kicked')
+    ) {
+      await this.freezeCommunity(chatId);
+      return;
+    }
+
+    if (
+      (oldStatus === 'left' || oldStatus === 'kicked') &&
+      (newStatus === 'member' || newStatus === 'administrator')
+    ) {
+      const existing = await this.findCommunityByChatId(chatId);
+      if (existing?.telegramFrozenAt) {
+        await this.communityModel.updateOne(
+          { id: existing.id },
+          { $set: { telegramFrozenAt: null, updatedAt: new Date() } },
+        );
+        await this.tgBots.tgSend({
+          tgChatId: chatId,
+          text: TG_MSG.groupWelcome(existing.name),
+        });
+        return;
+      }
+      if (existing) {
+        await this.tgBots.tgSend({
+          tgChatId: chatId,
+          text: TG_MSG.groupWelcome(existing.name),
+        });
+        return;
+      }
+      await this.startOnboarding(chatId, String(from.id), chat.title);
+    }
+  }
+
+  private async startOnboarding(
+    telegramChatId: string,
+    initiatorTgId: string,
+    chatTitle?: string,
+  ): Promise<void> {
+    await this.clearPending(String(initiatorTgId));
+    await this.savePending(String(initiatorTgId), 'onboarding_name', {
+      telegramChatId,
+      chatTitle,
+    });
+    await this.tgBots.tgSend({
+      tgChatId: initiatorTgId,
+      text: TG_MSG.onboardingStart,
+    });
+  }
+
+  private async handleChatMember(event: Record<string, unknown>): Promise<void> {
+    const chat = event.chat as { id: number };
+    const oldMember = event.old_chat_member as { status: string; user?: { id: number } };
+    const newMember = event.new_chat_member as {
+      status: string;
+      user?: { id: number; first_name?: string; last_name?: string; username?: string };
+    };
+    const chatId = String(chat.id);
+    const community = await this.findCommunityByChatId(chatId);
+    if (!community || community.telegramFrozenAt) {
+      return;
+    }
+
+    const tgUser = newMember?.user ?? oldMember?.user;
+    if (!tgUser?.id) {
+      return;
+    }
+
+    const oldStatus = oldMember?.status;
+    const newStatus = newMember?.status;
+    const tgUserId = String(tgUser.id);
+
+    if (newStatus === 'member' || newStatus === 'administrator' || newStatus === 'creator') {
+      if (oldStatus === 'left' || oldStatus === 'kicked' || oldStatus === 'restricted') {
+        await this.provisionMember(community, tgUserId, tgUser as { first_name?: string; last_name?: string; username?: string });
+        await this.syncTelegramAdminRole(community, tgUserId, newStatus);
+      } else if (newStatus === 'administrator' || newStatus === 'creator') {
+        await this.syncTelegramAdminRole(community, tgUserId, newStatus);
+      }
+      return;
+    }
+
+    if (newStatus === 'left' || newStatus === 'kicked') {
+      await this.freezeMember(community.id, tgUserId);
+    }
+  }
+
+  private async handleMessage(message: Record<string, unknown>): Promise<void> {
+    const from = message.from as { id: number; first_name?: string; last_name?: string; username?: string };
+    const chat = message.chat as { id: number; type?: string; title?: string };
+    const text = (message.text as string | undefined) ?? (message.caption as string | undefined);
+    const connectedWebsite = message.connected_website;
+
+    if (connectedWebsite || !from || !chat || !text) {
+      return;
+    }
+
+    const userId = String(from.id);
+    const chatId = String(chat.id);
+
+    if (chatId === userId) {
+      await this.handleDirectMessage(userId, text, from);
+      return;
+    }
+
+    await this.handleGroupMessage(message, text, userId, chatId, from);
+  }
+
+  private async handleDirectMessage(
+    tgUserId: string,
+    text: string,
+    from: { first_name?: string; last_name?: string; username?: string },
+  ): Promise<void> {
+    const pending = await this.getPending(tgUserId);
+    if (pending) {
+      const handled = await this.handlePendingInput(tgUserId, text, pending);
+      if (handled) {
+        return;
+      }
+    }
+
+    const trimmed = text.trim();
+    if (trimmed.startsWith('/start')) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.help });
+      return;
+    }
+    if (trimmed === '/help' || trimmed === '/справка') {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.help });
+      return;
+    }
+
+    const amountPending = await this.getPendingByAction(tgUserId, 'confirm_vote_amount');
+    if (amountPending && /^\d+([.,]\d+)?$/.test(trimmed.replace(',', '.'))) {
+      const amount = parseFloat(trimmed.replace(',', '.'));
+      await this.confirmVoteAmount(tgUserId, amountPending.id, amount);
+      return;
+    }
+
+    await this.tgBots.processRecieveMessageFromUser({
+      tgUserId,
+      messageText: text,
+      tgUserName: [from.first_name, from.last_name].filter(Boolean).join(' '),
+    });
+  }
+
+  private async handleGroupMessage(
+    message: Record<string, unknown>,
+    text: string,
+    tgUserId: string,
+    chatId: string,
+    from: { first_name?: string; last_name?: string; username?: string },
+  ): Promise<void> {
+    const community = await this.findCommunityByChatId(chatId);
+    if (!community) {
+      return;
+    }
+    if (community.telegramFrozenAt) {
+      return;
+    }
+
+    const user = await this.provisionMember(community, tgUserId, from);
+    if (!user) {
+      return;
+    }
+    if (await this.isMemberFrozen(user.id, community.id)) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.frozenMember });
+      return;
+    }
+
+    const trimmed = text.trim().toLowerCase();
+    const replyTo = message.reply_to_message as
+      | { message_id?: number; from?: { id: number; first_name?: string; username?: string } }
+      | undefined;
+
+    const transferReplyMatch = trimmed.match(/^\/(перевод|transfer)(?:@\w+)?\s+(\d+(?:[.,]\d+)?)$/i);
+    if (transferReplyMatch && replyTo?.from?.id) {
+      const amount = parseFloat(transferReplyMatch[2].replace(',', '.'));
+      const receiverTgId = String(replyTo.from.id);
+      if (receiverTgId !== tgUserId && Number.isFinite(amount) && amount > 0) {
+        const receiver = await this.ensureTelegramUser(receiverTgId, replyTo.from);
+        await this.startTransferToUser(community, user.id, tgUserId, receiver.id, amount);
+        return;
+      }
+    }
+
+    const cmdMatch = trimmed.match(/^\/(баланс|balance|участники|members|фонд|fund|перевод|transfer|post|help|справка)(?:@\w+)?(?:\s+(.*))?$/i);
+    if (cmdMatch) {
+      const cmd = cmdMatch[1].toLowerCase();
+      const args = cmdMatch[2]?.trim() ?? '';
+      await this.handleGroupCommand(community, user.id, tgUserId, chatId, cmd, args, message);
+      return;
+    }
+
+    if (replyTo?.message_id) {
+      const voteParsed = text.trim().match(/^([+-]?\d+(?:[.,]\d+)?)\s+([\s\S]+)$/);
+      if (voteParsed) {
+        const amount = Math.abs(parseFloat(voteParsed[1].replace(',', '.')));
+        const direction = voteParsed[1].trim().startsWith('-') ? 'down' : 'up';
+        const comment = voteParsed[2].trim();
+        await this.startReplyVote(user.id, tgUserId, community, replyTo.message_id, amount, direction, comment);
+        return;
+      }
+    }
+
+    await this.tgBots.processRecieveMessageFromGroup({
+      tgChatId: chatId,
+      tgUserId,
+      tgAuthorUsername: from.username,
+      tgAuthorName: [from.first_name, from.last_name].filter(Boolean).join(' '),
+      messageText: text,
+      messageId: message.message_id as number,
+      tgChatUsername: (message.chat as { username?: string }).username,
+      replyMessageId: replyTo?.message_id,
+      tgChatName: (message.chat as { title?: string }).title ?? '',
+      firstName: from.first_name,
+      lastName: from.last_name,
+      entities: message.entities as TelegramTypes.Message['entities'],
+    });
+  }
+
+  private async handleGroupCommand(
+    community: Community,
+    userId: string,
+    tgUserId: string,
+    chatId: string,
+    cmd: string,
+    args: string,
+    message: Record<string, unknown>,
+  ): Promise<void> {
+    switch (cmd) {
+      case 'баланс':
+      case 'balance':
+        await this.sendBalance(community, userId, chatId, message.message_id as number);
+        break;
+      case 'участники':
+      case 'members':
+        await this.sendMembers(community, chatId, message.message_id as number);
+        break;
+      case 'фонд':
+      case 'fund':
+        await this.sendFund(community, userId, chatId, message.message_id as number);
+        break;
+      case 'перевод':
+      case 'transfer':
+        await this.startTransfer(community, userId, tgUserId, args);
+        break;
+      case 'post':
+        await this.publishBotMirror(community, userId, chatId, args);
+        break;
+      case 'help':
+      case 'справка':
+        await this.tgBots.tgReplyMessage({
+          reply_to_message_id: message.message_id as number,
+          chat_id: chatId,
+          text: TG_MSG.help,
+        });
+        break;
+      default:
+        break;
+    }
+  }
+
+  private async handleMessageReaction(event: TelegramTypes.MessageReactionUpdated): Promise<void> {
+    const chat = event.chat;
+    const messageId = event.message_id;
+    const user = event.user;
+    const newReactions = event.new_reaction ?? [];
+    const oldReactions = event.old_reaction ?? [];
+
+    if (!user?.id || !chat?.id) {
+      return;
+    }
+
+    const added = newReactions.filter(
+      (nr) => !oldReactions.some((or) => or.emoji === nr.emoji),
+    );
+    if (added.length === 0) {
+      return;
+    }
+
+    const chatId = String(chat.id);
+    const community = await this.findCommunityByChatId(chatId);
+    if (!community || community.telegramFrozenAt) {
+      return;
+    }
+
+    const voter = await this.provisionMember(community, String(user.id), user as { first_name?: string; last_name?: string; username?: string });
+    if (!voter || (await this.isMemberFrozen(voter.id, community.id))) {
+      await this.tgBots.tgSend({ tgChatId: String(user.id), text: TG_MSG.frozenMember });
+      return;
+    }
+
+    const anchor = await this.anchorModel
+      .findOne({ telegramChatId: chatId, telegramMessageId: messageId })
+      .lean();
+    if (!anchor) {
+      return;
+    }
+
+    for (const reaction of added) {
+      const emoji = reaction.emoji ?? '';
+      if (this.isUpEmoji(emoji)) {
+        await this.executeVote(voter.id, anchor.publicationId, 1, 'up', undefined, String(user.id));
+      } else if (this.isHeartEmoji(emoji)) {
+        await this.promptVoteAmount(voter.id, String(user.id), anchor.publicationId, 'up');
+      } else if (this.isDownEmoji(emoji)) {
+        await this.promptVoteAmount(voter.id, String(user.id), anchor.publicationId, 'down');
+      }
+    }
+  }
+
+  private async handleCallbackQuery(query: Record<string, unknown>): Promise<void> {
+    const data = query.data as string | undefined;
+    const from = query.from as { id: number };
+    const id = query.id as string;
+    if (!data || !from?.id) {
+      return;
+    }
+
+    await this.answerCallback(id);
+
+    const tgUserId = String(from.id);
+    const [kind, action, pendingId] = data.split(':');
+    if (kind === 'vote' && pendingId) {
+      if (action === 'yes') {
+        await this.executePendingVote(tgUserId, pendingId);
+      } else {
+        await this.pendingModel.deleteOne({ id: pendingId }).exec();
+        await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.cancelled });
+      }
+      return;
+    }
+    if (kind === 'transfer' && pendingId) {
+      if (action === 'yes') {
+        await this.executePendingTransfer(tgUserId, pendingId);
+      } else {
+        await this.pendingModel.deleteOne({ id: pendingId }).exec();
+        await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.cancelled });
+      }
+    }
+  }
+
+  private async handlePendingInput(
+    tgUserId: string,
+    text: string,
+    pending: TelegramBotPendingActionDocument,
+  ): Promise<boolean> {
+    const payload = (pending.payload ?? {}) as OnboardingPayload;
+    const normalized = text.trim().toLowerCase();
+
+    switch (pending.action as TelegramBotPendingActionType) {
+      case 'onboarding_name':
+        payload.name = text.trim().slice(0, 120);
+        await this.advanceOnboarding(tgUserId, 'onboarding_quota_enabled', payload, TG_MSG.onboardingQuota);
+        return true;
+      case 'onboarding_quota_enabled':
+        payload.quotaEnabled = normalized === 'да' || normalized === 'yes';
+        if (payload.quotaEnabled) {
+          await this.advanceOnboarding(tgUserId, 'onboarding_quota_amount', payload, TG_MSG.onboardingQuotaAmount);
+        } else {
+          payload.dailyEmission = 0;
+          await this.advanceOnboarding(tgUserId, 'onboarding_hashtag', payload, TG_MSG.onboardingHashtag);
+        }
+        return true;
+      case 'onboarding_quota_amount': {
+        const n = parseInt(text.trim(), 10);
+        payload.dailyEmission = Number.isFinite(n) && n > 0 ? n : 5;
+        await this.advanceOnboarding(tgUserId, 'onboarding_hashtag', payload, TG_MSG.onboardingHashtag);
+        return true;
+      }
+      case 'onboarding_hashtag':
+        payload.hashtag = text.trim().replace(/^#/, '').slice(0, 32) || 'идея';
+        await this.advanceOnboarding(tgUserId, 'onboarding_post_cost', payload, TG_MSG.onboardingPostCost);
+        return true;
+      case 'onboarding_post_cost': {
+        const cost = parseFloat(text.trim().replace(',', '.'));
+        payload.postCost = Number.isFinite(cost) && cost >= 0 ? cost : 0;
+        await this.advanceOnboarding(tgUserId, 'onboarding_moderation', payload, TG_MSG.onboardingModeration);
+        return true;
+      }
+      case 'onboarding_moderation':
+        payload.moderation = normalized === 'да' || normalized === 'yes';
+        await this.advanceOnboarding(tgUserId, 'onboarding_welcome_merits', payload, TG_MSG.onboardingWelcome);
+        return true;
+      case 'onboarding_welcome_merits': {
+        const w = parseFloat(text.trim().replace(',', '.'));
+        payload.welcomeMerits = Number.isFinite(w) && w >= 0 ? w : 0;
+        await this.finishOnboarding(tgUserId, payload);
+        return true;
+      }
+      default:
+        return false;
+    }
+  }
+
+  private async advanceOnboarding(
+    tgUserId: string,
+    nextAction: TelegramBotPendingActionType,
+    payload: OnboardingPayload,
+    prompt: string,
+  ): Promise<void> {
+    await this.pendingModel.deleteMany({ telegramUserId: tgUserId }).exec();
+    await this.savePending(tgUserId, nextAction, payload as Record<string, unknown>);
+    await this.tgBots.tgSend({ tgChatId: tgUserId, text: prompt });
+  }
+
+  private async finishOnboarding(tgUserId: string, payload: OnboardingPayload): Promise<void> {
+    await this.clearPending(tgUserId);
+    const initiator = await this.ensureTelegramUser(tgUserId, {});
+    if (!initiator) {
+      return;
+    }
+    const community = await this.communityService.createCommunity({
+      name: payload.name ?? payload.chatTitle ?? 'Telegram-сообщество',
+      description: 'Сообщество Meriter Telegram MVP',
+      typeTag: 'team',
+      settings: {
+        currencyNames: { singular: 'заслуга', plural: 'заслуги', genitive: 'заслуг' },
+        dailyEmission: payload.quotaEnabled ? (payload.dailyEmission ?? 5) : 0,
+        postCost: payload.postCost ?? 0,
+      },
+    });
+
+    await this.communityService.updateCommunity(community.id, {
+      hashtags: [payload.hashtag ?? 'идея'],
+      meritSettings: {
+        quotaEnabled: payload.quotaEnabled ?? false,
+        dailyQuota: payload.dailyEmission ?? 0,
+      },
+    });
+
+    await this.communityModel.updateOne(
+      { id: community.id },
+      {
+        $set: {
+          telegramChatId: payload.telegramChatId,
+          'settings.telegramModerationEnabled': payload.moderation ?? false,
+          updatedAt: new Date(),
+        },
+      },
+    );
+
+    await this.communityService.addMember(community.id, initiator.id);
+    await this.userCommunityRoleService.setRole(initiator.id, community.id, 'lead', true);
+
+    const welcome = payload.welcomeMerits ?? 0;
+    if (welcome > 0) {
+      const currency = community.settings?.currencyNames ?? {
+        singular: 'заслуга',
+        plural: 'заслуги',
+        genitive: 'заслуг',
+      };
+      await this.walletService.createOrGetWallet(initiator.id, community.id, currency, {
+        startingMeritsIfNewWallet: welcome,
+      });
+    }
+
+    await this.tgBots.tgSend({
+      tgChatId: tgUserId,
+      text: TG_MSG.onboardingDone(payload.name ?? community.name),
+    });
+    await this.tgBots.tgSend({
+      tgChatId: payload.telegramChatId,
+      text: TG_MSG.groupWelcome(payload.name ?? community.name),
+    });
+  }
+
+  private async provisionMember(
+    community: Community,
+    tgUserId: string,
+    profile: { first_name?: string; last_name?: string; username?: string },
+  ) {
+    const user = await this.ensureTelegramUser(tgUserId, profile);
+    const role = await this.rolePersistence.findAnyRole(user.id, community.id);
+    if (!role) {
+      await this.communityService.addMember(community.id, user.id);
+      await this.userCommunityRoleService.setRole(user.id, community.id, 'participant', true);
+    } else if (role.membershipStatus === 'frozen') {
+      await this.rolePersistence.setMembershipStatus(user.id, community.id, 'active', new Date());
+    }
+    const currency = community.settings?.currencyNames ?? {
+      singular: 'заслуга',
+      plural: 'заслуги',
+      genitive: 'заслуг',
+    };
+    await this.walletService.createOrGetWallet(user.id, community.id, currency, {
+      startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(community),
+    });
+    return user;
+  }
+
+  private async ensureTelegramUser(
+    tgUserId: string,
+    profile: { first_name?: string; last_name?: string; username?: string },
+  ): Promise<{ id: string; authProvider: string; authId: string; displayName?: string }> {
+    const user = await this.userModel
+      .findOne({ authProvider: 'telegram', authId: tgUserId })
+      .lean();
+    if (!user) {
+      const displayName =
+        [profile.first_name, profile.last_name].filter(Boolean).join(' ') || profile.username || 'Участник';
+      const created = await this.userModel.create({
+        id: uid(),
+        authProvider: 'telegram',
+        authId: tgUserId,
+        displayName,
+        username: profile.username,
+        profile: { bio: '', location: '', website: '', isVerified: false },
+        communityTags: [],
+        communityMemberships: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      return {
+        id: created.id,
+        authProvider: created.authProvider,
+        authId: created.authId,
+        displayName: created.displayName,
+      };
+    }
+    return user;
+  }
+
+  private async freezeMember(communityId: string, tgUserId: string): Promise<void> {
+    const user = await this.userModel
+      .findOne({ authProvider: 'telegram', authId: tgUserId })
+      .lean();
+    if (!user) {
+      return;
+    }
+    await this.rolePersistence.setMembershipStatus(user.id, communityId, 'frozen', new Date());
+  }
+
+  private async freezeCommunity(telegramChatId: string): Promise<void> {
+    const community = await this.findCommunityByChatId(telegramChatId);
+    if (!community) {
+      return;
+    }
+    await this.communityModel.updateOne(
+      { id: community.id },
+      { $set: { telegramFrozenAt: new Date(), updatedAt: new Date() } },
+    );
+    const leads = await this.userCommunityRoleService.getUsersByRole(community.id, 'lead');
+    for (const lead of leads) {
+      const u = await this.userService.getUserById(lead.userId);
+      if (u?.authProvider === 'telegram' && u.authId) {
+        await this.tgBots.tgSend({ tgChatId: u.authId, text: TG_MSG.botRemovedAdmin });
+      }
+    }
+  }
+
+  private async syncTelegramAdminRole(
+    community: Community,
+    tgUserId: string,
+    status: string,
+  ): Promise<void> {
+    const user = await this.ensureTelegramUser(tgUserId, {});
+    const isAdmin = status === 'administrator' || status === 'creator';
+    const role = await this.rolePersistence.findAnyRole(user.id, community.id);
+    if (isAdmin) {
+      await this.userCommunityRoleService.setRole(user.id, community.id, 'lead', true);
+      await this.rolePersistence.setLeadGraceUntil(user.id, community.id, null, new Date());
+      return;
+    }
+    if (role?.role === 'lead') {
+      if (role.leadGraceUntil && role.leadGraceUntil < new Date()) {
+        await this.userCommunityRoleService.setRole(user.id, community.id, 'participant', true);
+        await this.rolePersistence.setLeadGraceUntil(user.id, community.id, null, new Date());
+        return;
+      }
+      const graceUntil = new Date(Date.now() + LEAD_GRACE_MS);
+      await this.rolePersistence.setLeadGraceUntil(user.id, community.id, graceUntil, new Date());
+    }
+  }
+
+  private async isMemberFrozen(userId: string, communityId: string): Promise<boolean> {
+    const role = await this.rolePersistence.findAnyRole(userId, communityId);
+    return role?.membershipStatus === 'frozen';
+  }
+
+  private async findCommunityByChatId(telegramChatId: string): Promise<Community | null> {
+    const doc = await this.communityModel.findOne({ telegramChatId }).lean();
+    return doc as Community | null;
+  }
+
+  async saveAnchor(
+    communityId: string,
+    telegramChatId: string,
+    telegramMessageId: number,
+    publicationId: string,
+    anchorType: 'bot_mirror' | 'hashtag',
+  ): Promise<void> {
+    const now = new Date();
+    await this.anchorModel.updateOne(
+      { telegramChatId, telegramMessageId },
+      {
+        $set: {
+          communityId,
+          publicationId,
+          anchorType,
+          updatedAt: now,
+        },
+        $setOnInsert: {
+          id: uid(),
+          telegramChatId,
+          telegramMessageId,
+          createdAt: now,
+        },
+      },
+      { upsert: true },
+    );
+  }
+
+  private async publishBotMirror(
+    community: Community,
+    userId: string,
+    chatId: string,
+    body: string,
+  ): Promise<void> {
+    const role = await this.userCommunityRoleService.getRole(userId, community.id);
+    if (role?.role !== 'lead') {
+      return;
+    }
+    if (!body.trim()) {
+      return;
+    }
+    const pub = await this.publicationService.createPublication(
+      userId,
+      {
+        communityId: community.id,
+        title: body.trim().slice(0, 100),
+        content: body.trim(),
+        type: 'text',
+        processPostCost: true,
+      },
+      { checkPermissions: true, processPostCost: true },
+    );
+    const sent = await this.sendPlainMessage(chatId, `📌 ${body.trim().slice(0, 500)}`);
+    const messageId = sent?.message_id as number | undefined;
+    if (messageId) {
+      await this.saveAnchor(community.id, chatId, messageId, pub.getId.getValue(), 'bot_mirror');
+    }
+    await this.tgBots.tgSend({ tgChatId: userId, text: TG_MSG.postPublished });
+  }
+
+  private async sendPlainMessage(chatId: string, text: string): Promise<{ message_id?: number } | null> {
+    const token = this.configService.get('bot')?.token;
+    if (!token || this.configService.get('noAxios')) {
+      return { message_id: Math.floor(Math.random() * 100000) };
+    }
+    try {
+      const Axios = (await import('axios')).default;
+      const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
+      const res = await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
+        chat_id: chatId,
+        text,
+      });
+      return res.data?.result ?? null;
+    } catch (e) {
+      this.logger.warn('sendPlainMessage failed', e);
+      return null;
+    }
+  }
+
+  private async answerCallback(callbackQueryId: string): Promise<void> {
+    const token = this.configService.get('bot')?.token;
+    if (!token || this.configService.get('noAxios')) {
+      return;
+    }
+    try {
+      const Axios = (await import('axios')).default;
+      const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
+      await Axios.post(`${apiUrl}/bot${token}/answerCallbackQuery`, {
+        callback_query_id: callbackQueryId,
+      });
+    } catch {
+      /* ignore */
+    }
+  }
+
+  private createVoteUseCase(_voterId: string) {
+    return createCreateVoteUseCase({
+      publicationService: this.publicationService,
+      documentService: this.documentService,
+      documentVariantService: this.documentVariantService,
+      permissionService: this.permissionService,
+      voteService: this.voteService,
+      communityService: this.communityService,
+      connection: this.connection,
+      walletContextResolverService: this.walletContextResolver,
+      walletService: this.walletService,
+      userService: this.userService,
+      userCommunityRoleService: this.userCommunityRoleService,
+    });
+  }
+
+  private async executeVote(
+    voterId: string,
+    publicationId: string,
+    amount: number,
+    direction: 'up' | 'down',
+    comment?: string,
+    notifyTgId?: string,
+  ): Promise<void> {
+    try {
+      const uc = this.createVoteUseCase(voterId);
+      if (direction === 'up') {
+        await uc.execute({
+          userId: voterId,
+          targetType: 'publication',
+          targetId: publicationId,
+          quotaAmount: amount,
+          walletAmount: 0,
+          direction: 'up',
+          comment: comment ?? '',
+        });
+      } else {
+        await uc.execute({
+          userId: voterId,
+          targetType: 'publication',
+          targetId: publicationId,
+          quotaAmount: 0,
+          walletAmount: amount,
+          direction: 'down',
+          comment: comment ?? '',
+        });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : TG_MSG.insufficientMerits;
+      if (notifyTgId) {
+        await this.tgBots.tgSend({ tgChatId: notifyTgId, text: msg });
+      }
+    }
+  }
+
+  private async promptVoteAmount(
+    voterId: string,
+    tgUserId: string,
+    publicationId: string,
+    direction: 'up' | 'down',
+  ): Promise<void> {
+    const pendingId = uid();
+    await this.pendingModel.create({
+      id: pendingId,
+      telegramUserId: tgUserId,
+      action: 'confirm_vote_amount',
+      payload: { voterId, publicationId, direction },
+      expiresAt: new Date(Date.now() + PENDING_TTL_MS),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.enterAmount });
+  }
+
+  private async confirmVoteAmount(
+    tgUserId: string,
+    pendingId: string,
+    amount: number,
+  ): Promise<void> {
+    const pending = await this.pendingModel.findOne({ id: pendingId, telegramUserId: tgUserId }).lean();
+    if (!pending) {
+      return;
+    }
+    const payload = pending.payload as { voterId: string; publicationId: string; direction: 'up' | 'down' };
+    await this.pendingModel.deleteOne({ id: pendingId }).exec();
+    await this.executeVote(
+      payload.voterId,
+      payload.publicationId,
+      amount,
+      payload.direction,
+      undefined,
+      tgUserId,
+    );
+  }
+
+  private async startReplyVote(
+    voterId: string,
+    tgUserId: string,
+    community: Community,
+    replyMessageId: number,
+    amount: number,
+    direction: 'up' | 'down',
+    comment: string,
+  ): Promise<void> {
+    const anchor = await this.anchorModel
+      .findOne({ telegramChatId: community.telegramChatId, telegramMessageId: replyMessageId })
+      .lean();
+    if (!anchor) {
+      return;
+    }
+    const pendingId = uid();
+    await this.pendingModel.create({
+      id: pendingId,
+      telegramUserId: tgUserId,
+      action: 'confirm_vote_amount',
+      payload: { voterId, publicationId: anchor.publicationId, direction, comment, amount },
+      expiresAt: new Date(Date.now() + PENDING_TTL_MS),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await this.sendCallbackPrompt(
+      tgUserId,
+      TG_MSG.voteConfirm(amount, direction),
+      `vote:yes:${pendingId}`,
+      `vote:no:${pendingId}`,
+    );
+  }
+
+  private async executePendingVote(tgUserId: string, pendingId: string): Promise<void> {
+    const pending = await this.pendingModel.findOne({ id: pendingId, telegramUserId: tgUserId }).lean();
+    if (!pending) {
+      return;
+    }
+    const payload = pending.payload as {
+      voterId: string;
+      publicationId: string;
+      direction: 'up' | 'down';
+      comment?: string;
+      amount?: number;
+    };
+    await this.pendingModel.deleteOne({ id: pendingId }).exec();
+    const amount = payload.amount ?? 1;
+    await this.executeVote(
+      payload.voterId,
+      payload.publicationId,
+      amount,
+      payload.direction,
+      payload.comment,
+      tgUserId,
+    );
+  }
+
+  private async startTransfer(
+    community: Community,
+    senderId: string,
+    tgUserId: string,
+    args: string,
+  ): Promise<void> {
+    const match = args.match(/@?(\w+)\s+(\d+(?:[.,]\d+)?)/);
+    if (!match) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: 'Формат: /перевод @username 5 или ответ на сообщение: /перевод 5',
+      });
+      return;
+    }
+    const username = match[1];
+    const amount = parseFloat(match[2].replace(',', '.'));
+    const receiver = await this.userModel
+      .findOne({
+        $or: [{ username }, { displayName: new RegExp(`^${username}$`, 'i') }],
+      })
+      .lean();
+    if (!receiver) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: 'Получатель не найден в Meriter.' });
+      return;
+    }
+    await this.startTransferToUser(community, senderId, tgUserId, receiver.id, amount);
+  }
+
+  private async startTransferToUser(
+    community: Community,
+    senderId: string,
+    tgUserId: string,
+    receiverId: string,
+    amount: number,
+  ): Promise<void> {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: 'Укажите положительную сумму.' });
+      return;
+    }
+    if (senderId === receiverId) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: 'Нельзя переводить заслуги самому себе.' });
+      return;
+    }
+    const receiver = await this.userService.getUserById(receiverId);
+    const pendingId = uid();
+    await this.pendingModel.create({
+      id: pendingId,
+      telegramUserId: tgUserId,
+      action: 'confirm_transfer',
+      payload: { senderId, receiverId, amount, communityId: community.id },
+      expiresAt: new Date(Date.now() + PENDING_TTL_MS),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await this.sendCallbackPrompt(
+      tgUserId,
+      TG_MSG.transferConfirm(amount, receiver?.displayName ?? 'участник'),
+      `transfer:yes:${pendingId}`,
+      `transfer:no:${pendingId}`,
+    );
+  }
+
+  private async executePendingTransfer(tgUserId: string, pendingId: string): Promise<void> {
+    const pending = await this.pendingModel.findOne({ id: pendingId, telegramUserId: tgUserId }).lean();
+    if (!pending) {
+      return;
+    }
+    const payload = pending.payload as {
+      senderId: string;
+      receiverId: string;
+      amount: number;
+      communityId: string;
+    };
+    await this.pendingModel.deleteOne({ id: pendingId }).exec();
+    try {
+      await this.createMeritTransfer.execute({
+        senderId: payload.senderId,
+        receiverId: payload.receiverId,
+        amount: payload.amount,
+        communityContextId: payload.communityId,
+      });
+      const walletCommunityId = await this.walletContextResolver.resolvePersonalWalletCommunityId(
+        (await this.communityService.getCommunity(payload.communityId))!,
+        'voting',
+      );
+      const balance = await this.readWalletBalance(payload.senderId, walletCommunityId);
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: TG_MSG.transferDone(payload.amount, balance),
+      });
+      const receiver = await this.userService.getUserById(payload.receiverId);
+      if (receiver?.authProvider === 'telegram' && receiver.authId) {
+        const sender = await this.userService.getUserById(payload.senderId);
+        await this.tgBots.tgSend({
+          tgChatId: receiver.authId,
+          text: TG_MSG.transferReceived(payload.amount, sender?.displayName ?? 'участник'),
+        });
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : TG_MSG.insufficientMerits;
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: msg });
+    }
+  }
+
+  private async sendCallbackPrompt(
+    tgUserId: string,
+    text: string,
+    yesData: string,
+    noData: string,
+  ): Promise<void> {
+    const token = this.configService.get('bot')?.token;
+    if (!token || this.configService.get('noAxios')) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: `${text} (ответьте «да» или «нет»)` });
+      return;
+    }
+    try {
+      const Axios = (await import('axios')).default;
+      const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
+      await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
+        chat_id: tgUserId,
+        text,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: 'Да', callback_data: yesData },
+            { text: 'Нет', callback_data: noData },
+          ]],
+        },
+      });
+    } catch {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text });
+    }
+  }
+
+  private async sendBalance(
+    community: Community,
+    userId: string,
+    chatId: string,
+    _replyTo: number,
+  ): Promise<void> {
+    const { wallet, pct, quota, quotaMax } = await this.getMemberStats(community, userId);
+    const text = TG_MSG.balanceSelf(community.name, wallet, quota, quotaMax, pct);
+    await this.sendPlainMessage(chatId, text);
+  }
+
+  private async readWalletBalance(userId: string, walletCommunityId: string): Promise<number> {
+    const w = await this.walletService.getWallet(userId, walletCommunityId);
+    return w?.getBalance() ?? 0;
+  }
+
+  private async sendMembers(community: Community, chatId: string, _replyTo: number): Promise<void> {
+    const memberIds = await this.rolePersistence.distinctActiveMemberUserIds(community.id);
+    const lines: string[] = [TG_MSG.membersHeader];
+    const wallets: number[] = [];
+    const walletCommunityId = await this.walletContextResolver.resolvePersonalWalletCommunityId(
+      community,
+      'voting',
+    );
+    for (const uid of memberIds.slice(0, 30)) {
+      const bal = await this.readWalletBalance(uid, walletCommunityId);
+      wallets.push(bal);
+    }
+    const total = wallets.reduce((a, b) => a + b, 0) || 1;
+    for (let i = 0; i < Math.min(memberIds.length, 30); i++) {
+      const u = await this.userService.getUserById(memberIds[i]);
+      const pct = (wallets[i] / total) * 100;
+      lines.push(TG_MSG.memberLine(u?.displayName ?? memberIds[i], wallets[i], pct));
+    }
+    await this.sendPlainMessage(chatId, lines.join('\n'));
+  }
+
+  private async sendFund(
+    community: Community,
+    userId: string,
+    chatId: string,
+    replyTo: number,
+  ): Promise<void> {
+    if (!community.communityWalletId) {
+      await this.tgBots.tgReplyMessage({
+        reply_to_message_id: replyTo,
+        chat_id: chatId,
+        text: TG_MSG.fundNone,
+      });
+      return;
+    }
+    const balance = await this.communityWalletService.getBalance(community.id);
+    const shares = community.isProject
+      ? await this.ticketService.getProjectShares(community.id)
+      : [];
+    const row = shares.find((s) => s.userId === userId);
+    const yourShare = row?.sharePercent ?? 0;
+    await this.tgBots.tgReplyMessage({
+      reply_to_message_id: replyTo,
+      chat_id: chatId,
+      text: TG_MSG.fundInfo(balance, yourShare),
+    });
+  }
+
+  private async getMemberStats(community: Community, userId: string) {
+    const walletCommunityId = await this.walletContextResolver.resolvePersonalWalletCommunityId(
+      community,
+      'voting',
+    );
+    const wallet = await this.readWalletBalance(userId, walletCommunityId);
+    const quotaUc = new GetQuotaUseCase(this.communityService, this.permissionService, this.connection);
+    let quota = 0;
+    let quotaMax = 0;
+    try {
+      const q = await quotaUc.getQuota({ viewerId: userId, userId, communityId: community.id });
+      quota = q.remaining;
+      quotaMax = q.dailyQuota;
+    } catch {
+      /* quota disabled */
+    }
+    const memberIds = await this.rolePersistence.distinctActiveMemberUserIds(community.id);
+    let total = 0;
+    for (const mid of memberIds) {
+      total += await this.readWalletBalance(mid, walletCommunityId);
+    }
+    const pct = total > 0 ? (wallet / total) * 100 : 0;
+    return { wallet, quota, quotaMax, pct };
+  }
+
+  private async savePending(
+    tgUserId: string,
+    action: TelegramBotPendingActionType,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
+    const now = new Date();
+    await this.pendingModel.create({
+      id: uid(),
+      telegramUserId: tgUserId,
+      action,
+      payload,
+      expiresAt: new Date(now.getTime() + PENDING_TTL_MS),
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+
+  private async getPending(tgUserId: string) {
+    return this.pendingModel
+      .findOne({ telegramUserId: tgUserId, expiresAt: { $gt: new Date() } })
+      .sort({ createdAt: -1 })
+      .exec();
+  }
+
+  private async getPendingByAction(tgUserId: string, action: TelegramBotPendingActionType) {
+    return this.pendingModel
+      .findOne({ telegramUserId: tgUserId, action, expiresAt: { $gt: new Date() } })
+      .lean();
+  }
+
+  private async clearPending(tgUserId: string): Promise<void> {
+    await this.pendingModel.deleteMany({ telegramUserId: tgUserId }).exec();
+  }
+
+  private isUpEmoji(emoji: string): boolean {
+    return emoji === TG_EMOJI.up || emoji === TG_EMOJI.upAlt || emoji === '👍';
+  }
+
+  private isHeartEmoji(emoji: string): boolean {
+    return emoji === TG_EMOJI.heart || emoji === TG_EMOJI.heartFull || emoji.startsWith('❤');
+  }
+
+  private isDownEmoji(emoji: string): boolean {
+    return emoji === TG_EMOJI.down;
+  }
+}

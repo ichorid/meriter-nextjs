@@ -1,10 +1,12 @@
 import { Global, Module } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
 import { getConnectionToken } from '@nestjs/mongoose';
 import type { Connection } from 'mongoose';
 
 import { DomainModule } from './domain.module';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
+import type { AppConfig } from './config/configuration';
 
 import { CommunityService } from './domain/services/community.service';
 import { WalletContextResolverService } from './domain/services/wallet-context-resolver.service';
@@ -188,6 +190,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         userCommunityRoleService: UserCommunityRoleService,
         walletService: WalletService,
         platformSettingsService: PlatformSettingsService,
+        configService: ConfigService<AppConfig>,
       ) =>
         createProvisionBaseMembershipUseCase({
           userPersistence,
@@ -195,6 +198,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
           userCommunityRoleService,
           walletService,
           platformSettingsService,
+          productMode: configService.get('app')?.productMode ?? 'full',
         }),
       inject: [
         USER_PERSISTENCE_PORT,
@@ -202,6 +206,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         UserCommunityRoleService,
         WalletService,
         PlatformSettingsService,
+        ConfigService,
       ],
     },
     {

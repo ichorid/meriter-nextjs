@@ -105,6 +105,10 @@ import {
   DocumentBlockVariantSchemaClass,
   DocumentBlockVariantSchema,
 } from './domain/models/document-block-variant/document-block-variant.schema';
+import {
+  TelegramPublicationAnchorSchemaClass,
+  TelegramPublicationAnchorSchema,
+} from './domain/models/telegram/telegram-publication-anchor.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -218,6 +222,10 @@ import { EventBus } from './domain/events/event-bus';
       {
         name: DocumentBlockVariantSchemaClass.name,
         schema: DocumentBlockVariantSchema,
+      },
+      {
+        name: TelegramPublicationAnchorSchemaClass.name,
+        schema: TelegramPublicationAnchorSchema,
       },
     ]),
   ],

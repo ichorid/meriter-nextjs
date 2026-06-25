@@ -12,7 +12,10 @@ import {
   type UserCommunityRoleRecord,
 } from '../../domain/ports/user-community-role.persistence.port';
 
-const activeMembershipFilter = { leftAt: null } as const;
+const activeMembershipFilter = {
+  leftAt: null,
+  membershipStatus: { $ne: 'frozen' as const },
+} as const;
 
 @Injectable()
 export class UserCommunityRolePersistenceAdapter implements UserCommunityRolePersistencePort {
@@ -124,6 +127,7 @@ export class UserCommunityRolePersistenceAdapter implements UserCommunityRolePer
           $set: {
             role: input.role,
             updatedAt: input.updatedAt,
+            membershipStatus: 'active',
           },
           $unset: { leftAt: 1 },
           $setOnInsert: {
@@ -171,6 +175,34 @@ export class UserCommunityRolePersistenceAdapter implements UserCommunityRolePer
             updatedAt,
           },
         },
+      )
+      .exec();
+  }
+
+  async setMembershipStatus(
+    userId: string,
+    communityId: string,
+    membershipStatus: 'active' | 'frozen',
+    updatedAt: Date,
+  ): Promise<void> {
+    await this.userCommunityRoleModel
+      .updateOne(
+        { userId, communityId },
+        { $set: { membershipStatus, updatedAt } },
+      )
+      .exec();
+  }
+
+  async setLeadGraceUntil(
+    userId: string,
+    communityId: string,
+    leadGraceUntil: Date | null,
+    updatedAt: Date,
+  ): Promise<void> {
+    await this.userCommunityRoleModel
+      .updateOne(
+        { userId, communityId },
+        { $set: { leadGraceUntil, updatedAt } },
       )
       .exec();
   }

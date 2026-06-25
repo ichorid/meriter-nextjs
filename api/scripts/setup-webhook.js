@@ -95,7 +95,17 @@ async function setWebhook(botToken, botUsername, appUrl) {
     console.log('🔧 Setting webhook...');
     console.log(`   URL: ${webhookUrl}\n`);
     
-    const url = `https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`;
+    const allowedUpdates = [
+        'message',
+        'my_chat_member',
+        'chat_member',
+        'callback_query',
+        'message_reaction',
+    ].join(',');
+    const url =
+        `https://api.telegram.org/bot${botToken}/setWebhook` +
+        `?url=${encodeURIComponent(webhookUrl)}` +
+        `&allowed_updates=${encodeURIComponent(allowedUpdates)}`;
     
     try {
         const response = await makeRequest(url);

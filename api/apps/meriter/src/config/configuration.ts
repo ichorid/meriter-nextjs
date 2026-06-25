@@ -216,6 +216,8 @@ export interface AppConfig {
     port: number;
     /** Node environment (from NODE_ENV env var, default: 'development') */
     env: 'development' | 'production' | 'test';
+    /** Product mode: full platform or telegram_mvp (single-community bot-first). */
+    productMode: 'full' | 'telegram_mvp';
   };
 
   /** JWT authentication settings */
@@ -352,6 +354,8 @@ export default (): AppConfig => {
       url: deriveAppUrl(),
       port: parseInt(env.PORT || '8002', 10) || 8002,
       env: nodeEnv,
+      productMode:
+        env.MERITER_PRODUCT_MODE === 'telegram_mvp' ? 'telegram_mvp' : 'full',
     },
     jwt: {
       secret: env.JWT_SECRET || (fakeDataMode ? 'fake-dev-secret' : ''),
