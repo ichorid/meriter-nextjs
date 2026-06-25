@@ -213,6 +213,37 @@ services:
       - /tmp
       - /var/tmp
 
+  community-web:
+    image: ghcr.io/ichorid/meriter-nextjs-community-web:${VERSION_COMMUNITY_WEB:-latest}
+    container_name: meriter-community-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PORT=8003
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=
+      - NEXT_PUBLIC_DEFAULT_COMMUNITY_ID=${NEXT_PUBLIC_DEFAULT_COMMUNITY_ID:-}
+    networks:
+      - meriter-frontend-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8003 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+
   caddy:
     image: caddy:2.7-alpine
     container_name: meriter-caddy
@@ -232,6 +263,8 @@ services:
       - meriter-backend-network
     depends_on:
       web:
+        condition: service_healthy
+      community-web:
         condition: service_healthy
       api:
         condition: service_healthy

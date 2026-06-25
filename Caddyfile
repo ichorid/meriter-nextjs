@@ -102,3 +102,42 @@
     encode gzip
 }
 
+# Community-web (Telegram MVP) — isolated product on subdomain
+{$COMMUNITY_DOMAIN:community.meriter.pro} {
+    log {
+        output stdout
+        level INFO
+    }
+
+    handle /api* {
+        reverse_proxy api:8002 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+        encode gzip
+    }
+
+    handle /trpc* {
+        reverse_proxy api:8002 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+        encode gzip
+    }
+
+    handle {
+        reverse_proxy community-web:8003 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    encode gzip
+}
+
