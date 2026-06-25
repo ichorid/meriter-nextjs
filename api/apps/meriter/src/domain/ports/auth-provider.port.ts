@@ -11,6 +11,9 @@ export type AuthSessionResult = {
 
 export type AuthProviderPort = {
   authenticateFakeUser(fakeUserId?: string): Promise<AuthSessionResult>;
+  authenticateFakeCommunityUser(fakeUserId?: string): Promise<
+    AuthSessionResult & { primaryTelegramCommunityId: string | null }
+  >;
   authenticateFakeSuperadmin(fakeUserId?: string): Promise<AuthSessionResult>;
   authenticateDemoPersona(authId: string): Promise<AuthSessionResult>;
   authenticateTelegramWidget(

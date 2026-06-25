@@ -8,6 +8,7 @@ import {
 
 export type PublicRuntimeConfig = {
   botUsername: string | null;
+  devFakeAuthEnabled: boolean;
   oauth: {
     google: boolean;
     yandex: boolean;
@@ -97,6 +98,9 @@ export class GetRuntimeConfigUseCase {
 
     return {
       botUsername,
+      devFakeAuthEnabled:
+        (this.configService.get('dev')?.fakeDataMode ?? false) ||
+        (this.configService.get('dev')?.testAuthMode ?? false),
       oauth,
       authn,
       sms,

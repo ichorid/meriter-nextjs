@@ -220,6 +220,65 @@ export class AuthProviderService {
     };
   }
 
+  /** Dev-only login for community-web (no global hub auto-join, community JWT product). */
+  async authenticateFakeCommunityUser(fakeUserId?: string): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    jwt: string;
+    primaryTelegramCommunityId: string | null;
+  }> {
+    if (!this.isFakeDataMode()) {
+      throw new Error('Fake data mode is not enabled');
+    }
+
+    const authId =
+      fakeUserId ||
+      `community_fake_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    const sessionNumber = fakeUserId
+      ? fakeUserId.split('_').pop()?.substring(0, 6) || 'dev'
+      : 'dev';
+    const username = `communitydev_${sessionNumber}`;
+    const displayName = `Community Dev ${sessionNumber}`;
+
+    const user = await this.userService.createOrUpdateUser({
+      authProvider: 'fake',
+      authId,
+      username,
+      firstName: 'Community',
+      lastName: 'Dev',
+      displayName,
+      avatarUrl: undefined,
+    });
+
+    if (!user) {
+      throw new Error('Failed to create fake community user');
+    }
+
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        authProvider: 'fake',
+        authId,
+        communityTags: user.communityTags || [],
+        product: 'community',
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    const primaryTelegramCommunityId =
+      await this.resolvePrimaryTelegramCommunityId(user.id);
+
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: false,
+      jwt: jwtToken,
+      primaryTelegramCommunityId,
+    };
+  }
+
   async authenticateFakeSuperadmin(fakeUserId?: string): Promise<{
     user: User;
     hasPendingCommunities: boolean;

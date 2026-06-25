@@ -21,6 +21,7 @@ export const configRouter = router({
 
     return {
       botUsername: runtimeConfig.botUsername,
+      devFakeAuthEnabled: runtimeConfig.devFakeAuthEnabled,
       oauth: runtimeConfig.oauth,
       authn: runtimeConfig.authn,
       sms: runtimeConfig.sms,

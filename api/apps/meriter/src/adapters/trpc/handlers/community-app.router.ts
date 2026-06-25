@@ -17,6 +17,7 @@ import { meritTransferRouter } from '../../../trpc/routers/merit-transfer.router
 import { commentsRouter } from '../../../trpc/routers/comments.router';
 import { ResolveTelegramCommunityUseCase } from '../../../application/use-cases/communities/resolve-telegram-community.use-case';
 import { AuthenticateTelegramCommunityUseCase } from '../../../application/use-cases/auth/authenticate-telegram-community.use-case';
+import { AuthenticateFakeCommunityUseCase } from '../../../application/use-cases/auth/authenticate-fake-community.use-case';
 import { CommunitySchemaClass } from '../../../domain/models/community/community.schema';
 
 /**
@@ -39,6 +40,16 @@ export const communityAppRouter = router({
         );
         return useCase.execute(input, ctx.res, ctx.req);
       }),
+    authenticateFake: publicProcedure.mutation(async ({ ctx }) => {
+      const useCase = new AuthenticateFakeCommunityUseCase(
+        ctx.authService,
+        ctx.cookieManager,
+        ctx.configService,
+        ctx.userService,
+        ctx.userCommunityRoleService,
+      );
+      return useCase.execute(ctx.req, ctx.res);
+    }),
   }),
 
   users: pickProceduresRouter(usersRouter, ['getMe']),
