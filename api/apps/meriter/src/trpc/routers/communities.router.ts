@@ -102,6 +102,9 @@ export const communitiesRouter = router({
           commentMode:
             community.settings?.commentMode ??
             (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all'),
+          eventCreation: community.settings?.eventCreation ?? 'members',
+          telegramModerationEnabled:
+            community.settings?.telegramModerationEnabled ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
