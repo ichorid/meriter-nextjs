@@ -23,7 +23,7 @@
 1. **Cookie:** `meriter_community_session` (не `jwt` основного Meriter).
 2. **tRPC:** клиент бьёт в `/trpc/community` с заголовком `X-Meriter-Product: community`.
 3. **Router:** `communityAppRouter` — whitelist процедур (нет `platformDev`, `tappalka`, …).
-4. **CI:** `pnpm --filter @meriter/community-web check:isolation` — grep на `meriter.pro/meriter`.
+4. **CI:** `pnpm --filter @meriter/community-web check:isolation` + `check:product-scope` — grep на `meriter.pro/meriter` и Birzha/invest/tappalka.
 5. **Middleware Next.js:** блок `return_to` на основной домен.
 
 ---
@@ -62,7 +62,13 @@
 /c/[communityId]/events
 /c/[communityId]/merit-history
 /c/[communityId]/settings
+/c/[communityId]/moderation   # лид, если telegramModerationEnabled
+/c/[communityId]/projects/[projectId]
+/c/[communityId]/events/[eventId]
+/c/[communityId]/documents/[documentId]
 ```
+
+**API (moderation):** `publications.listPendingTelegramModeration`, `approveTelegramModeration`, `rejectTelegramModeration` — только в `communityAppRouter`.
 
 ---
 

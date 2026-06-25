@@ -130,7 +130,7 @@ node scripts/setup-webhook.js set
    - квота (да/нет, затем число в день);
    - хэштег для постов;
    - стоимость поста (0 = бесплатно);
-   - модерация (да/нет — **флаг сохраняется**, полный approve-flow — в бэклоге);
+   - модерация (да/нет — флаг `telegramModerationEnabled`; approve/reject — вкладка `/moderation` в community-web);
    - приветственные заслуги новым участникам.
 4. В группу придёт приветствие с командами.
 5. Участники появляются в Meriter при событии `chat_member` (вход в группу).
@@ -246,7 +246,7 @@ npx jest apps/meriter/src/infrastructure/telegram/telegram-hashtag-publication.s
 
 | Тема | Статус |
 |------|--------|
-| Модерация постов (pending до approve) | Флаг `telegramModerationEnabled` сохраняется; полный flow не реализован |
+| Модерация постов (pending до approve) | `telegramModerationEnabled` + community-web `/moderation` + API approve/reject |
 | Lead-команды смены квоты/postCost в боте | Не реализовано — онбординг + API |
 | Rate limit на DM confirm | Не реализован |
 | `message_reaction` | Зависит от клиента/группы; есть fallback reply-голос |

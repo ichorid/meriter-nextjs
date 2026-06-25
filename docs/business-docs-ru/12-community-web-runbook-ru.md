@@ -82,13 +82,18 @@ Healthcheck: `wget http://127.0.0.1:8003` внутри контейнера.
 
 ---
 
-## 5. Проверка изоляции
+## 5. Проверка изоляции и product scope
 
 ```bash
 pnpm --filter @meriter/community-web check:isolation
+pnpm --filter @meriter/community-web check:product-scope
+pnpm --filter @meriter/community-web test:smoke
 ```
 
-Ожидание: **0** вхождений `meriter.pro/meriter` в `community-web/src`.
+Ожидание:
+
+- **0** вхождений `meriter.pro/meriter` в `community-web/src`
+- **0** упоминаний Birzha / tappalka / invest / `publishToBirzha` в коде community-web
 
 Ручная проверка:
 
@@ -98,13 +103,13 @@ pnpm --filter @meriter/community-web check:isolation
 
 ---
 
-## 6. Smoke test (DoD P2.0)
+## 6. Smoke test (DoD P2.0–P2.3)
 
 1. Лид входит на community-web через Telegram Login.  
 2. Создаёт пост в `/c/{id}/feed`.  
-3. В TG-группе появляется карточка `📌 …`.  
-4. 👍 на карточке в TG начисляет заслуги.  
-5. `pnpm check:isolation` проходит.
+3. При **выключенной** модерации: в TG-группе появляется карточка `📌 …`.  
+4. При **включенной** модерации (`settings.telegramModerationEnabled`): пост в `/c/{id}/moderation` → «Одобрить» → лента + зеркало в TG.  
+5. `pnpm check:isolation` и `pnpm check:product-scope` проходят.
 
 ---
 
