@@ -65,6 +65,7 @@ import type { AppRouter } from './router';
 import { communityAppRouter } from '../adapters/trpc/handlers/community-app.router';
 import type { CommunityAppRouter } from '../adapters/trpc/handlers/community-app.router';
 import { JwtVerificationService } from '../common/services/authentication.service';
+import { SeedCommunityWebDevUseCase } from '../application/use-cases/dev/seed-community-web-dev.use-case';
 
 @Injectable()
 export class TrpcService {
@@ -128,6 +129,7 @@ export class TrpcService {
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
     private authenticationService: JwtVerificationService,
+    private seedCommunityWebDevUseCase: SeedCommunityWebDevUseCase,
   ) {}
 
   getRouter(): AppRouter {
@@ -201,6 +203,7 @@ export class TrpcService {
       configService: this.configService,
       cookieManager: this.cookieManager,
       authenticationService: this.authenticationService,
+      seedCommunityWebDevUseCase: this.seedCommunityWebDevUseCase,
     });
   }
 }

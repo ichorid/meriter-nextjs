@@ -61,6 +61,7 @@ import { DocumentHtmlSyncService } from '../domain/services/document-html-sync.s
 import { DocumentLiveUpdatesService } from '../domain/services/document-live-updates.service';
 import { PermissionRuleEngine } from '../domain/services/permission-rule-engine.service';
 import { resolveMeriterProductFromRequest } from '../domain/common/constants/product.constants';
+import { SeedCommunityWebDevUseCase } from '../application/use-cases/dev/seed-community-web-dev.use-case';
 
 export interface CreateContextOptions {
   req: any;
@@ -124,6 +125,7 @@ export interface CreateContextOptions {
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
   authenticationService: JwtVerificationService;
+  seedCommunityWebDevUseCase: SeedCommunityWebDevUseCase;
 }
 
 /**
@@ -196,6 +198,7 @@ export async function createContext(opts: CreateContextOptions) {
     cookieManager,
     pollCastService,
     authenticationService,
+    seedCommunityWebDevUseCase,
   } = opts;
 
   const logger = new Logger('tRPC-Context');
@@ -315,6 +318,7 @@ export async function createContext(opts: CreateContextOptions) {
     connection,
     configService,
     cookieManager,
+    seedCommunityWebDevUseCase,
   };
 }
 

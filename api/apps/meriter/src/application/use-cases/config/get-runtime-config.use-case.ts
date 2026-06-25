@@ -5,10 +5,15 @@ import {
   PERMISSION_GATES_PORT,
   PermissionGatesPort,
 } from '../../../domain/ports/permission-gates.port';
+import {
+  resolveDevCommunityId,
+} from '../../../domain/common/constants/community-web-dev.constants';
+import { isTelegramMvpMode } from '../../../common/helpers/product-mode.helper';
 
 export type PublicRuntimeConfig = {
   botUsername: string | null;
   devFakeAuthEnabled: boolean;
+  devCommunityId: string | null;
   oauth: {
     google: boolean;
     yandex: boolean;
@@ -96,11 +101,21 @@ export class GetRuntimeConfigUseCase {
       loginInviteForm: this.configService.get('features.loginInviteForm', false),
     } satisfies PublicRuntimeConfig['features'];
 
+    const devFakeAuthEnabled =
+      (this.configService.get('dev')?.fakeDataMode ?? false) ||
+      (this.configService.get('dev')?.testAuthMode ?? false);
+
+    const devCommunityId =
+      devFakeAuthEnabled && isTelegramMvpMode(this.configService)
+        ? resolveDevCommunityId(
+            this.configService.get('app')?.defaultTelegramCommunityId,
+          )
+        : null;
+
     return {
       botUsername,
-      devFakeAuthEnabled:
-        (this.configService.get('dev')?.fakeDataMode ?? false) ||
-        (this.configService.get('dev')?.testAuthMode ?? false),
+      devFakeAuthEnabled,
+      devCommunityId,
       oauth,
       authn,
       sms,

@@ -4,8 +4,20 @@ import type { AppConfig } from '../../../config/configuration';
 import type { AuthProviderPort } from '../../../domain/ports/auth-provider.port';
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import type { UserService } from '../../../domain/services/user.service';
+import type { WalletService } from '../../../domain/services/wallet.service';
 import type { CookieManager } from '../../../infrastructure/auth/cookie-manager';
 import { isTelegramMvpMode } from '../../../common/helpers/product-mode.helper';
+import {
+  COMMUNITY_WEB_DEV_LEAD_AUTH_ID,
+  COMMUNITY_WEB_DEV_PARTICIPANT_AUTH_ID,
+  resolveDevCommunityId,
+} from '../../../domain/common/constants/community-web-dev.constants';
+
+export type CommunityWebDevPersona = 'lead' | 'participant';
+
+export type AuthenticateFakeCommunityInput = {
+  persona?: CommunityWebDevPersona;
+};
 
 export type AuthenticateFakeCommunityResult = {
   user: unknown;
@@ -17,6 +29,12 @@ type EstablishSessionRequest = {
   cookies?: Record<string, string | undefined>;
 };
 
+const DEV_CURRENCY = {
+  singular: 'заслуга',
+  plural: 'заслуги',
+  genitive: 'заслуг',
+} as const;
+
 @Injectable()
 export class AuthenticateFakeCommunityUseCase {
   constructor(
@@ -25,6 +43,7 @@ export class AuthenticateFakeCommunityUseCase {
     private readonly configService: ConfigService<AppConfig>,
     private readonly userService: UserService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
+    private readonly walletService: WalletService,
   ) {}
 
   private isFakeAuthEnabled(): boolean {
@@ -34,6 +53,7 @@ export class AuthenticateFakeCommunityUseCase {
   }
 
   async execute(
+    input: AuthenticateFakeCommunityInput,
     request: EstablishSessionRequest,
     response: unknown,
   ): Promise<AuthenticateFakeCommunityResult> {
@@ -49,19 +69,24 @@ export class AuthenticateFakeCommunityUseCase {
       );
     }
 
-    const fakeUserId = this.resolveOrCreateFakeId(request);
-    const result = await this.authService.authenticateFakeCommunityUser(fakeUserId);
+    const persona = input.persona ?? 'participant';
+    const authId = this.resolveAuthId(persona, request);
+    const role = persona === 'lead' ? 'lead' : 'participant';
 
-    const defaultCommunityId =
-      this.configService.get('app')?.defaultTelegramCommunityId?.trim() || null;
-    if (defaultCommunityId) {
-      await this.ensureDevCommunityMembership(result.user.id, defaultCommunityId);
-    }
+    const result = await this.authService.authenticateFakeCommunityUser(authId);
+
+    const communityId = resolveDevCommunityId(
+      this.configService.get('app')?.defaultTelegramCommunityId,
+    );
+
+    await this.ensureDevCommunityMembership(result.user.id, communityId, role);
+    await this.walletService.createOrGetWallet(
+      result.user.id,
+      communityId,
+      DEV_CURRENCY,
+    );
 
     this.cookieManager.establishCommunityJwtAuth(response, result.jwt, request);
-
-    const communityId =
-      result.primaryTelegramCommunityId ?? defaultCommunityId ?? null;
 
     return {
       user: result.user,
@@ -70,27 +95,39 @@ export class AuthenticateFakeCommunityUseCase {
     };
   }
 
-  private resolveOrCreateFakeId(request: EstablishSessionRequest): string {
+  private resolveAuthId(
+    persona: CommunityWebDevPersona,
+    request: EstablishSessionRequest,
+  ): string {
+    if (persona === 'lead') {
+      return COMMUNITY_WEB_DEV_LEAD_AUTH_ID;
+    }
+    if (persona === 'participant') {
+      return COMMUNITY_WEB_DEV_PARTICIPANT_AUTH_ID;
+    }
+
     const existing = request.cookies?.community_fake_user_id;
     if (existing) return existing;
 
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 9);
-    return `community_fake_${timestamp}_${random}`;
+    return COMMUNITY_WEB_DEV_PARTICIPANT_AUTH_ID;
   }
 
   private async ensureDevCommunityMembership(
     userId: string,
     communityId: string,
+    role: 'lead' | 'participant',
   ): Promise<void> {
     const memberships = await this.userService.getUserCommunities(userId);
     if (!memberships.includes(communityId)) {
       await this.userService.addCommunityMembership(userId, communityId);
     }
 
-    const role = await this.userCommunityRoleService.getRole(userId, communityId);
-    if (!role) {
-      await this.userCommunityRoleService.setRole(userId, communityId, 'participant');
+    const currentRole = await this.userCommunityRoleService.getRole(
+      userId,
+      communityId,
+    );
+    if (currentRole?.role !== role) {
+      await this.userCommunityRoleService.setRole(userId, communityId, role);
     }
   }
 }

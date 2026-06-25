@@ -159,6 +159,8 @@ import { PlatformWipeService } from './domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from './domain/services/platform-demo-seed.service';
 import { PlatformDemoEventsSeedService } from './domain/services/platform-demo-events-seed.service';
 import { PlatformEntrepreneursDemoSeedService } from './domain/services/platform-entrepreneurs-demo-seed.service';
+import { CommunityWebDevSeedService } from './domain/services/community-web-dev-seed.service';
+import { CommunityWebDevAutoseedService } from './domain/services/community-web-dev-autoseed.service';
 import { PlatformDemoPackImportService } from './domain/services/platform-demo-pack-import.service';
 import { PlatformDatabaseDumpService } from './domain/services/platform-database-dump.service';
 import { Decree809TagMigrationService } from './domain/services/decree809-tag-migration.service';
@@ -282,6 +284,8 @@ import { EventBus } from './domain/events/event-bus';
     PlatformDemoSeedService,
     PlatformDemoEventsSeedService,
     PlatformEntrepreneursDemoSeedService,
+    CommunityWebDevSeedService,
+    CommunityWebDevAutoseedService,
     PlatformDemoPackImportService,
     PlatformDatabaseDumpService,
     Decree809TagMigrationService,
@@ -357,6 +361,8 @@ import { EventBus } from './domain/events/event-bus';
     PlatformDemoSeedService,
     PlatformDemoEventsSeedService,
     PlatformEntrepreneursDemoSeedService,
+    CommunityWebDevSeedService,
+    CommunityWebDevAutoseedService,
     PlatformDemoPackImportService,
     PlatformDatabaseDumpService,
     MeritTransferService,
