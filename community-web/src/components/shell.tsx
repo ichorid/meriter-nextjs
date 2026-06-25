@@ -27,17 +27,30 @@ function isCaptiveBrowser(): boolean {
 export function TelegramLoginPanel() {
   const router = useRouter();
   const utils = trpc.useUtils();
-  const { data: runtimeConfig } = trpc.config.getConfig.useQuery();
+  const configQuery = trpc.config.getConfig.useQuery();
+  const runtimeConfig = configQuery.data;
+
+  const redirectAfterAuth = (communityId: string | null | undefined) => {
+    const target =
+      communityId || config.defaultCommunityId || undefined;
+    if (target) {
+      router.replace(`/c/${target}/feed`);
+    } else {
+      router.replace('/profile');
+    }
+  };
+
   const authMutation = trpc.auth.authenticateTelegram.useMutation({
     onSuccess: async (result) => {
       await utils.users.getMe.invalidate();
-      const communityId =
-        result.communityId || config.defaultCommunityId || undefined;
-      if (communityId) {
-        router.replace(`/c/${communityId}/feed`);
-      } else {
-        router.replace('/profile');
-      }
+      redirectAfterAuth(result.communityId);
+    },
+  });
+
+  const fakeAuthMutation = trpc.auth.authenticateFake.useMutation({
+    onSuccess: async (result) => {
+      await utils.users.getMe.invalidate();
+      redirectAfterAuth(result.communityId);
     },
   });
 
@@ -69,17 +82,68 @@ export function TelegramLoginPanel() {
   }, [runtimeConfig?.botUsername]);
 
   const captive = typeof window !== 'undefined' && isCaptiveBrowser();
+  const devFakeAuth = runtimeConfig?.devFakeAuthEnabled === true;
+  const apiUnreachable = configQuery.isError;
+  const showTelegramWidget =
+    !captive && Boolean(runtimeConfig?.botUsername) && !apiUnreachable;
 
   return (
     <div className="space-y-4">
+      {configQuery.isLoading && (
+        <p className="text-center text-sm text-stitch-muted">Загрузка…</p>
+      )}
+
+      {apiUnreachable && (
+        <p className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300 text-center">
+          Не удалось связаться с API. Запустите{' '}
+          <code className="text-xs">pnpm dev:api</code> на порту 8002.
+        </p>
+      )}
+
       {captive && (
         <div className="rounded-xl border border-stitch-border bg-stitch-surface p-4 text-sm text-stitch-muted">
           Откройте эту страницу во внешнем браузере (Safari, Chrome), чтобы войти
           через Telegram.
         </div>
       )}
-      <div id="telegram-login-widget" className="flex justify-center min-h-[44px]" />
-      {authMutation.isError && (
+
+      {showTelegramWidget && (
+        <div id="telegram-login-widget" className="flex justify-center min-h-[44px]" />
+      )}
+
+      {!configQuery.isLoading &&
+        !apiUnreachable &&
+        !runtimeConfig?.botUsername &&
+        !devFakeAuth && (
+          <p className="text-center text-sm text-stitch-muted">
+            Виджет Telegram недоступен: задайте{' '}
+            <code className="text-xs">BOT_USERNAME</code> и{' '}
+            <code className="text-xs">BOT_TOKEN</code> в API.
+          </p>
+        )}
+
+      {devFakeAuth && (
+        <button
+          type="button"
+          disabled={fakeAuthMutation.isPending}
+          onClick={() => fakeAuthMutation.mutate()}
+          className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-primary/90 disabled:opacity-60"
+        >
+          {fakeAuthMutation.isPending
+            ? 'Вход…'
+            : 'Dev: войти без Telegram'}
+        </button>
+      )}
+
+      {devFakeAuth && !config.defaultCommunityId && (
+        <p className="text-xs text-stitch-muted text-center">
+          Для перехода в сообщество задайте{' '}
+          <code>NEXT_PUBLIC_DEFAULT_COMMUNITY_ID</code> или{' '}
+          <code>DEFAULT_TELEGRAM_COMMUNITY_ID</code> в API.
+        </p>
+      )}
+
+      {(authMutation.isError || fakeAuthMutation.isError) && (
         <p className="text-sm text-red-400 text-center">
           Не удалось войти. Попробуйте снова.
         </p>

@@ -55,7 +55,7 @@ COMMUNITY_DOMAIN=community.meriter.pro
 ## 3. Локальная разработка
 
 ```powershell
-# Terminal 1 — API
+# Terminal 1 — API (обязателен для login и tRPC)
 pnpm dev:api
 
 # Terminal 2 — community-web
@@ -64,7 +64,8 @@ pnpm dev:community-web
 
 - Web UI: http://localhost:8003  
 - API: http://localhost:8002  
-- Для tRPC без Caddy задайте `NEXT_PUBLIC_API_URL=http://localhost:8002`
+- **Не задавайте** `NEXT_PUBLIC_API_URL` локально — Next.js проксирует `/trpc/community` на `:8002` (same-origin, без CORS). Шаблон: `community-web/.env.development.local.example`  
+- Dev-вход без Telegram: `FAKE_DATA_MODE=true` или `TEST_AUTH_MODE=true` в API + кнопка «Dev: войти без Telegram» на `/login`
 
 Telegram Login Widget требует публичный HTTPS callback — локально используйте tunnel (ngrok) на `:8003` или тестовый VPS.
 
