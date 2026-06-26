@@ -18,9 +18,9 @@
 | **Голос 👍** | Реакция на якорное сообщение → +1 заслуга (квота → кошелёк) |
 | **Голос ❤️ / 🤡** | Реакция → бот просит сумму **ответом в группе** на своё сообщение (ephemeral ~60 с) |
 | **Голос reply** | Ответ на пост: `+3 комментарий` или `-2 комментарий` → сразу в группе (ephemeral успех/ошибка) |
-| **Баланс** | `/баланс` — кошелёк, квота, **% от пула** |
-| **Участники** | `/участники` — топ до 30 человек с балансом и **%** |
-| **Фонд** | `/фонд` — если у сообщества/проекта есть `CommunityWallet` |
+| **Баланс** | `/баланс` — кошелёк, квота, **% от пула** (ответ ephemeral ~60 с) |
+| **Участники** | `/участники` — топ до 30 человек с балансом и **%** (ephemeral) |
+| **Фонд** | `/фонд` — если у сообщества/проекта есть `CommunityWallet` (ephemeral) |
 | **Перевод** | Только **в группе**: `/перевод @username 5` или **ответ** на сообщение: `/перевод 5` — сразу, без подтверждения в личке |
 | **Ack публикации** | По умолчанию **выкл**; лид включает в онбординге или `/settings` |
 | **Ephemeral-ответы** | Переводы, голоса, ошибки — короткие reply в группе, удаляются через ~60 с |
@@ -133,7 +133,7 @@ node scripts/setup-webhook.js set
 | **Allow Groups** | **On** | Бота можно добавить в группу |
 | **Group Privacy** | **Off** (Disable) | Бот видит все сообщения: `#хэштег`, reply-голоса, команды |
 | **Restrict bot usage** (Access) | **Off** | Иначе бот отвечает только владельцу и выбранным пользователям — в группе «тишина» |
-| Права админа в группе | Рекомендуется | События `chat_member` (вход участников) |
+| Права админа в группе | **Обязательно** для реакций (`message_reaction`); рекомендуется также для `chat_member` |
 
 Команды в BotFather: `/setprivacy` → Disable; `/setjoingroups` → Enable.
 
@@ -297,7 +297,7 @@ npx jest apps/meriter/src/infrastructure/telegram/telegram-hashtag-publication.s
 | Бот не отвечает | `TELEGRAM_BOT_ENABLED=true`, API доступен по HTTPS, `setup-webhook.js check`, **Caddy запущен** (`meriter-caddy`) |
 | **Тишина в группе** | Онбординг завершён? `communities.telegramChatId` совпадает с chat id; **Group Privacy Off**, **Restrict bot usage Off** |
 | **`/баланс` в личке → «войдите в Meriter»** | Устаревшее поведение legacy-пути; после фикса orchestrator — баланс по TG без веб-логина |
-| Нет реакций | `allowed_updates` содержит `message_reaction`; privacy mode Off |
+| Нет реакций | **Бот — администратор группы**; `allowed_updates` содержит `message_reaction` и `message_reaction_count` (`setup-webhook.js set`); privacy mode Off |
 | Хэштег не создаёт пост | `telegramChatId` у community; хэштег в `community.hashtags`; пользователь в группе |
 | «Community not found» | Группа не прошла онбординг или chat id не совпадает |
 | Команды не видны | Писать в **группе**, не в канале; бот не muted |

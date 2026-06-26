@@ -144,6 +144,15 @@ async function checkWebhook(botToken) {
                 console.log(`   ⚠️  Last error: ${info.last_error_message || 'Unknown'}`);
                 console.log(`      Date: ${lastErrorDate.toISOString()}`);
             }
+            if (Array.isArray(info.allowed_updates)) {
+                console.log(`   Allowed updates: ${info.allowed_updates.join(', ')}`);
+                const required = ['message_reaction', 'message_reaction_count'];
+                for (const key of required) {
+                    if (!info.allowed_updates.includes(key)) {
+                        console.log(`   ⚠️  Missing ${key} — reactions will not work; run: node scripts/setup-webhook.js set`);
+                    }
+                }
+            }
         } else {
             console.log('ℹ️  No webhook configured (using long polling mode)');
         }
@@ -167,6 +176,7 @@ async function setWebhook(botToken, botUsername, appUrl) {
         'chat_member',
         'callback_query',
         'message_reaction',
+        'message_reaction_count',
     ].join(',');
     const url =
         `https://api.telegram.org/bot${botToken}/setWebhook` +

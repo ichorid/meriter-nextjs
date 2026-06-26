@@ -16,6 +16,14 @@ export interface Update {
   chat_member?: any;
   chat_join_request?: any;
   message_reaction?: MessageReactionUpdated;
+  message_reaction_count?: MessageReactionCountUpdated;
+}
+
+export interface MessageReactionCountUpdated {
+  chat: { id: number; type?: string; title?: string };
+  message_id: number;
+  date: number;
+  reactions?: Array<{ type?: string; emoji?: string; total_count?: number }>;
 }
 
 export interface MessageReactionUpdated {

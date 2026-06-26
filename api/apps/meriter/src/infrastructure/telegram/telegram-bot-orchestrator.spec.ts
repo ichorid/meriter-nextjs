@@ -223,9 +223,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
   it('DM /balance replies with balance text, not web login', async () => {
     await seedLinkedCommunity();
     const legacySpy = jest.spyOn(tgBotsService, 'processRecieveMessageFromUser');
-    const plainSpy = jest
-      .spyOn(orchestrator as unknown as { sendPlainMessage: (...args: unknown[]) => Promise<unknown> }, 'sendPlainMessage')
-      .mockResolvedValue({ message_id: 1 });
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
 
     await webhookController.handleWebhook(botUsername, {
       update_id: 10,
@@ -244,17 +242,15 @@ describe('TelegramBotOrchestrator (integration)', () => {
     } as TelegramTypes.Update);
 
     expect(legacySpy).not.toHaveBeenCalled();
-    expect(plainSpy).toHaveBeenCalled();
-    const sentText = String(plainSpy.mock.calls.at(-1)?.[1] ?? '');
+    expect(ephemeralSpy).toHaveBeenCalled();
+    const sentText = String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '');
     expect(sentText).toContain('Кошелёк');
     expect(sentText).not.toContain('/meriter/login');
   });
 
   it('DM /баланс (Russian alias) still works', async () => {
     await seedLinkedCommunity();
-    const plainSpy = jest
-      .spyOn(orchestrator as unknown as { sendPlainMessage: (...args: unknown[]) => Promise<unknown> }, 'sendPlainMessage')
-      .mockResolvedValue({ message_id: 1 });
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
 
     await webhookController.handleWebhook(botUsername, {
       update_id: 10,
@@ -272,8 +268,8 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    expect(plainSpy).toHaveBeenCalled();
-    const sentText = String(plainSpy.mock.calls.at(-1)?.[1] ?? '');
+    expect(ephemeralSpy).toHaveBeenCalled();
+    const sentText = String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '');
     expect(sentText).toContain('Кошелёк');
   });
 
@@ -281,9 +277,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
     const { userId } = await seedLinkedCommunity();
     await userModel.updateOne({ id: userId }, { $set: { displayName: 'Пётр Тестов' } });
 
-    const plainSpy = jest
-      .spyOn(orchestrator as unknown as { sendPlainMessage: (...args: unknown[]) => Promise<unknown> }, 'sendPlainMessage')
-      .mockResolvedValue({ message_id: 1 });
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
 
     await webhookController.handleWebhook(botUsername, {
       update_id: 13,
@@ -301,8 +295,8 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    expect(plainSpy).toHaveBeenCalled();
-    const sentText = String(plainSpy.mock.calls.at(-1)?.[1] ?? '');
+    expect(ephemeralSpy).toHaveBeenCalled();
+    const sentText = String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '');
     expect(sentText).toContain('Пётр Тестов');
     expect(sentText).not.toContain('• Участник:');
   });
@@ -334,7 +328,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
   });
 
   it('group /баланс without linked community replies with groupNotLinked', async () => {
-    const replySpy = jest.spyOn(tgBotsService, 'tgReplyMessage');
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
 
     await webhookController.handleWebhook(botUsername, {
       update_id: 12,
@@ -352,7 +346,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    expect(replySpy).toHaveBeenCalledWith(
+    expect(ephemeralSpy).toHaveBeenCalledWith(
       expect.objectContaining({ text: TG_MSG.groupNotLinked }),
     );
   });
@@ -537,6 +531,26 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
     expect(ephemeralSpy).toHaveBeenCalledWith(
       expect.objectContaining({ text: TG_MSG.voteSuccess(1, 'up') }),
+    );
+  });
+
+  it('message_reaction 👍🏻 (skin tone) triggers upvote', async () => {
+    const { messageId } = await seedPublicationWithAnchor();
+    const executeMock = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+
+    await webhookController.handleWebhook(
+      botUsername,
+      messageReactionUpdate('👍🏻', messageId, 34),
+    );
+
+    expect(executeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ walletAmount: 1, direction: 'up' }),
     );
   });
 });
