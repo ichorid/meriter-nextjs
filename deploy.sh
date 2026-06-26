@@ -56,4 +56,9 @@ fi
 echo "[deploy] Cleaning old images..."
 docker image prune -f
 
+if [ -f .env ] && grep -qE '^TELEGRAM_BOT_ENABLED=true' .env; then
+  echo "[deploy] Registering Telegram webhook..."
+  docker compose run --rm bot-webhook-init || echo "[deploy] WARNING: bot-webhook-init failed (check BOT_TOKEN, BOT_USERNAME, DOMAIN)"
+fi
+
 echo "[deploy] Done."

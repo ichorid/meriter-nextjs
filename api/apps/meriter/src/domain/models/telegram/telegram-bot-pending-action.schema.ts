@@ -5,6 +5,7 @@ export type TelegramBotPendingActionType =
   | 'confirm_vote_amount'
   | 'confirm_transfer'
   | 'onboarding_name'
+  | 'onboarding_future_vision'
   | 'onboarding_quota_enabled'
   | 'onboarding_quota_amount'
   | 'onboarding_hashtag'

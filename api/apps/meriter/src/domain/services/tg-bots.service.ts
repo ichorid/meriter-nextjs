@@ -99,7 +99,7 @@ export class TgBotsService {
       if (!events || events.length === 0) return;
 
       const text = this.formatUpdatesList(events, locale);
-      await this.tgSend({ tgChatId, text });
+      await this.tgSend({ tgChatId, text, parseMode: 'MarkdownV2' });
     } catch (e) {
       this.logger.error('Failed to send user updates', e as any);
     }
@@ -577,6 +577,7 @@ export class TgBotsService {
           reply_to_message_id: messageId,
           chat_id: tgChatId,
           text,
+          parseMode: 'MarkdownV2',
         });
       }
     }
@@ -637,14 +638,26 @@ export class TgBotsService {
       });
     }
   }
-  async tgReplyMessage({ reply_to_message_id, chat_id, text }: { reply_to_message_id: number; chat_id: string | number; text: string }) {
+  async tgReplyMessage({
+    reply_to_message_id,
+    chat_id,
+    text,
+    parseMode,
+  }: {
+    reply_to_message_id: number;
+    chat_id: string | number;
+    text: string;
+    parseMode?: 'MarkdownV2';
+  }) {
     try {
-      const params = {
+      const params: Record<string, unknown> = {
         reply_to_message_id,
         chat_id,
         text,
-        parse_mode: "MarkdownV2",
       };
+      if (parseMode) {
+        params.parse_mode = parseMode;
+      }
 
       return await Promise.all([
         ,
@@ -745,7 +758,15 @@ export class TgBotsService {
     }
   }
 
-  async tgSend({ tgChatId, text }: { tgChatId: string | number; text: string }) {
+  async tgSend({
+    tgChatId,
+    text,
+    parseMode,
+  }: {
+    tgChatId: string | number;
+    text: string;
+    parseMode?: 'MarkdownV2';
+  }) {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       this.logger.debug('Telegram bot is disabled; skipping tgSend');
       return "ok";
@@ -759,7 +780,10 @@ export class TgBotsService {
       return "ok";
     }
     this.logger.log(`Sending Telegram message`);
-    const params = { chat_id: tgChatId, text, parse_mode: "MarkdownV2" };
+    const params: Record<string, unknown> = { chat_id: tgChatId, text };
+    if (parseMode) {
+      params.parse_mode = parseMode;
+    }
     try {
       const noAxios = this.configService.get('noAxios');
       if (!noAxios) {

@@ -113,11 +113,30 @@ node scripts/setup-webhook.js set
 
 Проверка: `setup-webhook.js check` — pending updates = 0, без last_error.
 
-### 4.4. Настройки BotFather (рекомендуется)
+### 4.4. Настройки BotFather (обязательно)
 
-- **Group Privacy:** **Off** (бот видит все сообщения группы — нужно для хэштегов и команд)
-- **Allow Groups:** включено
-- В группе бот должен быть **администратором** (для `chat_member` и стабильного онбординга)
+В @BotFather → `/mybots` → ваш бот → **Bot Settings**:
+
+| Настройка | Нужное значение | Зачем |
+|-----------|-----------------|--------|
+| **Allow Groups** | **On** | Бота можно добавить в группу |
+| **Group Privacy** | **Off** (Disable) | Бот видит все сообщения: `#хэштег`, reply-голоса, команды |
+| **Restrict bot usage** (Access) | **Off** | Иначе бот отвечает только владельцу и выбранным пользователям — в группе «тишина» |
+| Права админа в группе | Рекомендуется | События `chat_member` (вход участников) |
+
+Команды в BotFather: `/setprivacy` → Disable; `/setjoingroups` → Enable.
+
+**После смены Group Privacy:** удалите бота из группы и добавьте снова — в личку придёт мастер онбординга.
+
+### 4.5. Standalone vs полный Meriter
+
+| Режим | Env | Бот |
+|-------|-----|-----|
+| **Standalone (только бот)** | `TELEGRAM_BOT_ENABLED=true`, API + MongoDB + HTTPS | Команды `/баланс`, `#хэштег`, голоса — **без веба** |
+| **Полный Meriter + бот** | `MERITER_PRODUCT_MODE=full` (или не задан), web поднят | Бот работает так же; веб не обязателен для команд в TG |
+| **Изоляция от глобальных хабов** | `MERITER_PRODUCT_MODE=telegram_mvp` | TG-пользователи не auto-join в ОБ/Биржу/…; опционально community-web |
+
+Для standalone достаточно `TELEGRAM_BOT_ENABLED=true` — **не** требуется логин на `meriter.pro`.
 
 ---
 
@@ -260,7 +279,9 @@ npx jest apps/meriter/src/infrastructure/telegram/telegram-hashtag-publication.s
 
 | Симптом | Что проверить |
 |---------|----------------|
-| Бот не отвечает | `TELEGRAM_BOT_ENABLED=true`, API доступен по HTTPS, `setup-webhook.js check` |
+| Бот не отвечает | `TELEGRAM_BOT_ENABLED=true`, API доступен по HTTPS, `setup-webhook.js check`, **Caddy запущен** (`meriter-caddy`) |
+| **Тишина в группе** | Онбординг завершён? `communities.telegramChatId` совпадает с chat id; **Group Privacy Off**, **Restrict bot usage Off** |
+| **`/баланс` в личке → «войдите в Meriter»** | Устаревшее поведение legacy-пути; после фикса orchestrator — баланс по TG без веб-логина |
 | Нет реакций | `allowed_updates` содержит `message_reaction`; privacy mode Off |
 | Хэштег не создаёт пост | `telegramChatId` у community; хэштег в `community.hashtags`; пользователь в группе |
 | «Community not found» | Группа не прошла онбординг или chat id не совпадает |
@@ -275,8 +296,9 @@ npx jest apps/meriter/src/infrastructure/telegram/telegram-hashtag-publication.s
 ## 12. Production deploy (кратко)
 
 1. Образ API с env из §3.
-2. `node scripts/setup-webhook.js set` после выката.
-3. Один chat → одно сообщество (`telegramChatId` unique sparse).
-4. Мониторинг: webhook `last_error`, latency POST `/api/telegram/hooks/*`.
+2. `./deploy.sh` на VPS поднимает все сервисы включая **Caddy**; при `TELEGRAM_BOT_ENABLED=true` автоматически запускается `bot-webhook-init`.
+3. Вручную: `docker compose run --rm bot-webhook-init` или `node scripts/setup-webhook.js set` из каталога `api/`.
+4. Один chat → одно сообщество (`telegramChatId` unique sparse).
+5. Мониторинг: webhook `last_error`, latency POST `/api/telegram/hooks/*`.
 
 **Не пушить секреты:** `BOT_TOKEN` только в secrets / `.env` (не в git).

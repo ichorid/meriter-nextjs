@@ -54,6 +54,72 @@ function makeRequest(url) {
     });
 }
 
+function makePostRequest(url, body) {
+    return new Promise((resolve, reject) => {
+        const parsedUrl = new URL(url);
+        const payload = JSON.stringify(body);
+        const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+        const req = protocol.request(
+            {
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+                path: `${parsedUrl.pathname}${parsedUrl.search}`,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload),
+                },
+            },
+            (res) => {
+                let data = '';
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    try {
+                        resolve(JSON.parse(data));
+                    } catch (e) {
+                        reject(new Error(`Failed to parse response: ${e.message}`));
+                    }
+                });
+            },
+        );
+
+        req.on('error', reject);
+        req.write(payload);
+        req.end();
+    });
+}
+
+const BOT_COMMANDS = [
+    { command: 'balance', description: 'Ваш баланс и квота' },
+    { command: 'members', description: 'Рейтинг участников' },
+    { command: 'fund', description: 'Общий фонд' },
+    { command: 'transfer', description: 'Перевод заслуг' },
+    { command: 'post', description: 'Опубликовать пост (лид)' },
+    { command: 'help', description: 'Справка по командам' },
+];
+
+async function setBotCommands(botToken) {
+    console.log('📋 Registering bot commands (English)...\n');
+    const apiBase = `https://api.telegram.org/bot${botToken}/setMyCommands`;
+    const scopes = [
+        { type: 'default' },
+        { type: 'all_group_chats' },
+        { type: 'all_private_chats' },
+    ];
+
+    for (const scope of scopes) {
+        const response = await makePostRequest(apiBase, { commands: BOT_COMMANDS, scope });
+        if (!response.ok) {
+            throw new Error(response.description || `setMyCommands failed for scope ${scope.type}`);
+        }
+        console.log(`   ✅ scope: ${scope.type}`);
+    }
+    console.log('');
+}
+
 async function checkWebhook(botToken) {
     console.log('🔍 Checking webhook status...\n');
     
@@ -115,6 +181,8 @@ async function setWebhook(botToken, botUsername, appUrl) {
         }
         
         console.log('✅ Webhook successfully configured!\n');
+
+        await setBotCommands(botToken);
         
         // Verify the configuration
         await checkWebhook(botToken);
