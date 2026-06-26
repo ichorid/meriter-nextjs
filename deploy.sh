@@ -3,6 +3,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+# Serialize deploys (CI + manual) so concurrent `docker compose up` does not fail rs-init / recreate.
+DEPLOY_LOCK_FILE="${DEPLOY_LOCK_FILE:-$(dirname "$0")/.deploy.lock}"
+exec 9>"$DEPLOY_LOCK_FILE"
+echo "[deploy] Waiting for deploy lock..."
+if ! flock -w "${DEPLOY_LOCK_WAIT_SEC:-600}" 9; then
+  echo "[deploy] ERROR: timed out waiting for deploy lock (${DEPLOY_LOCK_WAIT_SEC:-600}s)"
+  exit 1
+fi
+echo "[deploy] Deploy lock acquired"
+
 # Prints why Mongo / rs-init failed (health log, container logs, one mongosh probe). No secrets.
 deploy_mongo_diagnostics() {
   echo "[deploy] ========== diagnostics: mongo / api =========="
@@ -47,8 +57,19 @@ echo "[deploy] Pulling images..."
 docker compose pull
 
 echo "[deploy] Recreating containers..."
-if ! docker compose up -d; then
-  echo "[deploy] docker compose up -d failed"
+compose_up_ok=false
+for attempt in 1 2 3; do
+  if docker compose up -d; then
+    compose_up_ok=true
+    break
+  fi
+  echo "[deploy] docker compose up -d failed (attempt ${attempt}/3)"
+  if [ "$attempt" -lt 3 ]; then
+    sleep 15
+  fi
+done
+if [ "$compose_up_ok" != "true" ]; then
+  echo "[deploy] docker compose up -d failed after retries"
   deploy_mongo_diagnostics
   exit 1
 fi

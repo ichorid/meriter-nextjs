@@ -87,8 +87,6 @@ export class UserAuthIdentityPersistenceAdapter
             provider: row.provider,
             authId: row.authId,
             linkedAt: now,
-            createdAt: now,
-            updatedAt: now,
           },
         },
         upsert: true,
