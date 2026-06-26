@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CommunityBottomNav } from '@/components/community-bottom-nav';
@@ -15,6 +15,9 @@ declare global {
     onTelegramAuth?: (user: Record<string, unknown>) => void;
   }
 }
+
+const TELEGRAM_WIDGET_LOAD_ERROR =
+  'Не удалось загрузить вход через Telegram. Проверьте домен в BotFather (/setdomain) и обновите страницу.';
 
 function isCaptiveBrowser(): boolean {
   if (typeof window === 'undefined') return false;
@@ -31,6 +34,7 @@ function isCaptiveBrowser(): boolean {
 export function TelegramLoginPanel() {
   const router = useRouter();
   const utils = trpc.useUtils();
+  const [widgetLoadFailed, setWidgetLoadFailed] = useState(false);
   const configQuery = trpc.config.getConfig.useQuery();
   const runtimeConfig = configQuery.data;
 
@@ -71,11 +75,13 @@ export function TelegramLoginPanel() {
   }, [authMutation]);
 
   useEffect(() => {
-    const botUsername = runtimeConfig?.botUsername;
+    const botUsername = runtimeConfig?.botUsername?.replace(/^@/, '');
     if (!botUsername) return;
 
+    setWidgetLoadFailed(false);
     const container = document.getElementById('telegram-login-widget');
-    if (!container || container.querySelector('script')) return;
+    if (!container) return;
+    container.replaceChildren();
 
     const script = document.createElement('script');
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
@@ -85,6 +91,7 @@ export function TelegramLoginPanel() {
     script.setAttribute('data-radius', '8');
     script.setAttribute('data-request-access', 'write');
     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    script.onerror = () => setWidgetLoadFailed(true);
     container.appendChild(script);
   }, [runtimeConfig?.botUsername]);
 
@@ -92,7 +99,7 @@ export function TelegramLoginPanel() {
   const devFakeAuth = runtimeConfig?.devFakeAuthEnabled === true;
   const apiUnreachable = configQuery.isError;
   const showTelegramWidget =
-    !captive && Boolean(runtimeConfig?.botUsername) && !apiUnreachable;
+    !captive && Boolean(runtimeConfig?.botUsername) && !apiUnreachable && !widgetLoadFailed;
 
   return (
     <div className="space-y-4">
@@ -116,6 +123,12 @@ export function TelegramLoginPanel() {
 
       {showTelegramWidget && (
         <div id="telegram-login-widget" className="flex justify-center min-h-[44px]" />
+      )}
+
+      {widgetLoadFailed && (
+        <p className="rounded-xl border border-stitch-border bg-stitch-surface px-4 py-3 text-sm text-stitch-muted text-center">
+          {TELEGRAM_WIDGET_LOAD_ERROR}
+        </p>
       )}
 
       {!configQuery.isLoading &&

@@ -74,6 +74,14 @@ if [ "$compose_up_ok" != "true" ]; then
   exit 1
 fi
 
+echo "[deploy] Reloading Caddy (CSP / routing from Caddyfile)..."
+if docker compose ps --status running caddy 2>/dev/null | grep -q caddy; then
+  docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null \
+    || docker compose restart caddy
+else
+  echo "[deploy] Caddy not running; skip reload"
+fi
+
 echo "[deploy] Cleaning old images..."
 docker image prune -f
 

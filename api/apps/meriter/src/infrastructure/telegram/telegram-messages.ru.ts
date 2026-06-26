@@ -19,7 +19,7 @@ export function buildCommunityUsageRules(input: CommunityUsageRulesInput): strin
     `• ❤️ = бот попросит сумму ответом в группе\n` +
     `• 🤡 = минус с кошелька (бот попросит сумму ответом в группе)\n` +
     `• Reply +N текст или -N текст — голос с комментарием\n` +
-    `• /balance /members /transfer /fund /post /help /settings\n\n` +
+    `• /balance /members /transfer /help /settings\n\n` +
     `Заслуги — не деньги.`
   );
 }
@@ -67,7 +67,7 @@ export function buildTelegramHelpMessage(
       })}\n\n`
     : `${buildCommunityUsageRules({ communityName: 'сообщество', hashtags: options?.hashtags })}\n\n`;
 
-  return `${rulesBlock}Команды:\n/balance — баланс и квота\n/members — рейтинг участников\n/fund — общий фонд\n/transfer — перевод заслуг (в группе)\n/post — опубликовать пост (лид)\n/settings — настройки бота (лид)\n/help — эта справка${openLine}`;
+  return `${rulesBlock}Команды:\n/balance — баланс и квота\n/members — рейтинг участников\n/transfer — перевод заслуг (в группе)\n/settings — настройки бота (лид)\n/help — эта справка${openLine}`;
 }
 
 export const TG_VOTE_DEFAULT_COMMENT = 'В Telegram-группе';
@@ -108,9 +108,6 @@ export const TG_MSG = {
   membersHeader: 'Участники (активные):',
   memberLine: (display: string, wallet: number, pct: number) =>
     `• ${display}: ${wallet} (${pct.toFixed(1)}%)`,
-  fundNone: 'Общий фонд для этого сообщества не настроен.',
-  fundInfo: (balance: number, yourShare: number) =>
-    `Общий фонд: ${balance} заслуг\nВаша доля: ${yourShare.toFixed(1)}%`,
   onboardingStart:
     'Добро пожаловать! Вы добавили бота Meriter. Как называется ваше сообщество? (отправьте название)',
   onboardingFutureVision:
@@ -131,7 +128,6 @@ export const TG_MSG = {
   onboardingWelcome: 'Приветственные заслуги новым участникам? (0 = не начислять)',
   botRemovedAdmin:
     'Бот удалён из группы. Сообщество заморожено — траты и начисления заслуг остановлены.',
-  postPublished: 'Пост опубликован.',
   enterAmount: 'Введите количество заслуг (число):',
   enterAmountSelfUp:
     'Введите количество заслуг (число). На свой пост — только с кошелька.',

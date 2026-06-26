@@ -95,9 +95,7 @@ function makePostRequest(url, body) {
 const BOT_COMMANDS = [
     { command: 'balance', description: 'Ваш баланс и квота' },
     { command: 'members', description: 'Рейтинг участников' },
-    { command: 'fund', description: 'Общий фонд' },
     { command: 'transfer', description: 'Перевод заслуг' },
-    { command: 'post', description: 'Опубликовать пост (лид)' },
     { command: 'help', description: 'Справка по командам' },
 ];
 

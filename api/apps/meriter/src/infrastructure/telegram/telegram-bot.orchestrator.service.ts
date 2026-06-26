@@ -70,7 +70,7 @@ const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
 const FUTURE_VISION_MAX_LENGTH = 10000;
 const BOT_CMD_REGEX =
-  /^\/(баланс|balance|участники|members|фонд|fund|перевод|transfer|post|help|справка|settings|настройки)(?:@\w+)?(?:\s+(.*))?$/i;
+  /^\/(баланс|balance|участники|members|перевод|transfer|help|справка|settings|настройки)(?:@\w+)?(?:\s+(.*))?$/i;
 
 type BotCommandContext = {
   community: Community;
@@ -529,7 +529,6 @@ export class TelegramBotOrchestratorService {
     args: string,
   ): Promise<void> {
     const { community, userId, tgUserId, replyChatId, message, replyInGroup } = ctx;
-    const chatId = community.telegramChatId ?? replyChatId;
 
     switch (cmd) {
       case 'баланс':
@@ -539,14 +538,6 @@ export class TelegramBotOrchestratorService {
       case 'участники':
       case 'members':
         await this.sendMembers(community, replyChatId, message?.message_id as number | undefined);
-        break;
-      case 'фонд':
-      case 'fund':
-        if (replyInGroup && message?.message_id) {
-          await this.sendFund(community, userId, replyChatId, message.message_id as number);
-        } else {
-          await this.sendFundDirect(community, userId, replyChatId);
-        }
         break;
       case 'перевод':
       case 'transfer':
@@ -558,9 +549,6 @@ export class TelegramBotOrchestratorService {
           groupChatId: replyChatId,
           replyToMessageId: message?.message_id as number | undefined,
         });
-        break;
-      case 'post':
-        await this.publishBotMirror(community, userId, chatId, args);
         break;
       case 'settings':
       case 'настройки':
@@ -1092,38 +1080,6 @@ export class TelegramBotOrchestratorService {
     );
   }
 
-  private async publishBotMirror(
-    community: Community,
-    userId: string,
-    chatId: string,
-    body: string,
-  ): Promise<void> {
-    const role = await this.userCommunityRoleService.getRole(userId, community.id);
-    if (role?.role !== 'lead') {
-      return;
-    }
-    if (!body.trim()) {
-      return;
-    }
-    const pub = await this.publicationService.createPublication(
-      userId,
-      {
-        communityId: community.id,
-        title: body.trim().slice(0, 100),
-        content: body.trim(),
-        type: 'text',
-        processPostCost: true,
-      },
-      { checkPermissions: true, processPostCost: true, skipTelegramMirror: true },
-    );
-    const sent = await this.sendPlainMessage(chatId, `📌 ${body.trim().slice(0, 500)}`);
-    const messageId = sent?.message_id as number | undefined;
-    if (messageId) {
-      await this.saveAnchor(community.id, chatId, messageId, pub.getId.getValue(), 'bot_mirror');
-    }
-    await this.tgBots.tgSend({ tgChatId: userId, text: TG_MSG.postPublished });
-  }
-
   private async helpMessage(communityId?: string): Promise<string> {
     if (!communityId) {
       return buildTelegramHelpMessage(getCommunityWebBaseUrl(this.configService));
@@ -1150,25 +1106,6 @@ export class TelegramBotOrchestratorService {
       text,
       reply_to_message_id: replyToMessageId,
     });
-  }
-
-  private async sendPlainMessage(chatId: string, text: string): Promise<{ message_id?: number } | null> {
-    const token = this.configService.get('bot')?.token;
-    if (!token || this.configService.get('noAxios')) {
-      return { message_id: Math.floor(Math.random() * 100000) };
-    }
-    try {
-      const Axios = (await import('axios')).default;
-      const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
-      const res = await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
-        chat_id: chatId,
-        text,
-      });
-      return res.data?.result ?? null;
-    } catch (e) {
-      this.logger.warn('sendPlainMessage failed', e);
-      return null;
-    }
   }
 
   private async answerCallback(callbackQueryId: string): Promise<void> {
@@ -1701,43 +1638,6 @@ export class TelegramBotOrchestratorService {
       lines.push(TG_MSG.memberLine(label, wallets[i], pct));
     }
     await this.sendBotEphemeral(chatId, lines.join('\n'), replyTo);
-  }
-
-  private async sendFundDirect(
-    community: Community,
-    userId: string,
-    chatId: string,
-  ): Promise<void> {
-    if (!community.communityWalletId) {
-      await this.sendBotEphemeral(chatId, TG_MSG.fundNone);
-      return;
-    }
-    const balance = await this.communityWalletService.getBalance(community.id);
-    const shares = community.isProject
-      ? await this.ticketService.getProjectShares(community.id)
-      : [];
-    const row = shares.find((s) => s.userId === userId);
-    const yourShare = row?.sharePercent ?? 0;
-    await this.sendBotEphemeral(chatId, TG_MSG.fundInfo(balance, yourShare));
-  }
-
-  private async sendFund(
-    community: Community,
-    userId: string,
-    chatId: string,
-    replyTo: number,
-  ): Promise<void> {
-    if (!community.communityWalletId) {
-      await this.sendBotEphemeral(chatId, TG_MSG.fundNone, replyTo);
-      return;
-    }
-    const balance = await this.communityWalletService.getBalance(community.id);
-    const shares = community.isProject
-      ? await this.ticketService.getProjectShares(community.id)
-      : [];
-    const row = shares.find((s) => s.userId === userId);
-    const yourShare = row?.sharePercent ?? 0;
-    await this.sendBotEphemeral(chatId, TG_MSG.fundInfo(balance, yourShare), replyTo);
   }
 
   private async getMemberStats(community: Community, userId: string) {
