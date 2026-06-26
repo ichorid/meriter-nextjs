@@ -78,6 +78,7 @@ type BotCommandContext = {
   tgUserId: string;
   replyChatId: string;
   message?: Record<string, unknown>;
+  triggerMessageId?: number;
   replyInGroup: boolean;
 };
 
@@ -283,7 +284,12 @@ export class TelegramBotOrchestratorService {
     const chatId = String(chat.id);
 
     if (chatId === userId) {
-      await this.handleDirectMessage(userId, text, from);
+      await this.handleDirectMessage(
+        userId,
+        text,
+        from,
+        message.message_id as number | undefined,
+      );
       return;
     }
 
@@ -294,6 +300,7 @@ export class TelegramBotOrchestratorService {
     tgUserId: string,
     text: string,
     from: { first_name?: string; last_name?: string; username?: string },
+    triggerMessageId?: number,
   ): Promise<void> {
     const pending = await this.getPending(tgUserId);
     if (pending) {
@@ -315,10 +322,12 @@ export class TelegramBotOrchestratorService {
         return;
       }
       await this.sendBotEphemeral(tgUserId, await this.helpMessage());
+      this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
       return;
     }
     if (trimmed === '/help' || trimmed === '/справка') {
       await this.sendBotEphemeral(tgUserId, await this.helpMessage());
+      this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
       return;
     }
 
@@ -336,6 +345,7 @@ export class TelegramBotOrchestratorService {
         from,
         cmdMatch[1].toLowerCase(),
         cmdMatch[2]?.trim() ?? '',
+        triggerMessageId,
       );
       return;
     }
@@ -371,6 +381,7 @@ export class TelegramBotOrchestratorService {
           chat_id: chatId,
           text: hint,
         });
+        this.scheduleEphemeralUserMessage(chatId, message.message_id as number);
       }
       return;
     }
@@ -381,6 +392,7 @@ export class TelegramBotOrchestratorService {
           chat_id: chatId,
           text: TG_MSG.communityFrozen,
         });
+        this.scheduleEphemeralUserMessage(chatId, message.message_id as number);
       }
       return;
     }
@@ -409,6 +421,7 @@ export class TelegramBotOrchestratorService {
           groupChatId: chatId,
           replyToMessageId: message.message_id as number,
         });
+        this.scheduleEphemeralUserMessage(chatId, message.message_id as number);
         return;
       }
     }
@@ -480,6 +493,7 @@ export class TelegramBotOrchestratorService {
     from: { first_name?: string; last_name?: string; username?: string },
     cmd: string,
     args: string,
+    triggerMessageId?: number,
   ): Promise<void> {
     const user = await this.ensureTelegramUser(tgUserId, from);
     const linkedCount = await this.countLinkedTelegramCommunities(user.id);
@@ -516,6 +530,7 @@ export class TelegramBotOrchestratorService {
         userId: user.id,
         tgUserId,
         replyChatId: tgUserId,
+        triggerMessageId,
         replyInGroup: false,
       },
       cmd,
@@ -528,9 +543,11 @@ export class TelegramBotOrchestratorService {
     cmd: string,
     args: string,
   ): Promise<void> {
-    const { community, userId, tgUserId, replyChatId, message, replyInGroup } = ctx;
+    const { community, userId, tgUserId, replyChatId, message, triggerMessageId, replyInGroup } =
+      ctx;
 
-    switch (cmd) {
+    try {
+      switch (cmd) {
       case 'баланс':
       case 'balance':
         await this.sendBalance(community, userId, replyChatId, message?.message_id as number | undefined);
@@ -570,6 +587,11 @@ export class TelegramBotOrchestratorService {
       }
       default:
         break;
+      }
+    } finally {
+      const userMessageId =
+        (message?.message_id as number | undefined) ?? triggerMessageId;
+      this.scheduleEphemeralUserMessage(replyChatId, userMessageId);
     }
   }
 
@@ -1106,6 +1128,14 @@ export class TelegramBotOrchestratorService {
       text,
       reply_to_message_id: replyToMessageId,
     });
+  }
+
+  /** Auto-delete user's bot command after the same TTL as bot replies. */
+  private scheduleEphemeralUserMessage(chatId: string, messageId?: number): void {
+    if (messageId == null) {
+      return;
+    }
+    this.tgBots.tgScheduleDeleteMessage(chatId, messageId);
   }
 
   private async answerCallback(callbackQueryId: string): Promise<void> {

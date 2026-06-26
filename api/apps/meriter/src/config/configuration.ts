@@ -361,7 +361,7 @@ export default (): AppConfig => {
       productMode:
         env.MERITER_PRODUCT_MODE === 'telegram_mvp' ? 'telegram_mvp' : 'full',
       communityWebBaseUrl:
-        env.COMMUNITY_WEB_BASE_URL?.trim() || 'https://community.meriter.pro',
+        env.COMMUNITY_WEB_BASE_URL?.trim() || deriveAppUrl(),
       defaultTelegramCommunityId: env.DEFAULT_TELEGRAM_COMMUNITY_ID?.trim() || undefined,
     },
     jwt: {

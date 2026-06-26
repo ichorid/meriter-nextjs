@@ -713,6 +713,21 @@ export class TgBotsService {
     }
   }
 
+  /** Delete a message after TTL (e.g. user's /balance command in group). */
+  tgScheduleDeleteMessage(
+    chat_id: string | number,
+    message_id: number,
+    deleteAfterSec: number = TG_BOT_EPHEMERAL_TTL_SEC,
+  ): void {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      return;
+    }
+    const ttlMs = deleteAfterSec * 1000;
+    setTimeout(() => {
+      void this.tgDeleteMessage(chat_id, message_id);
+    }, ttlMs);
+  }
+
   async tgReplyEphemeral({
     chat_id,
     reply_to_message_id,

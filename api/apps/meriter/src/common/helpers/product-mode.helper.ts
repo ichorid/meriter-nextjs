@@ -10,7 +10,14 @@ export function isTelegramMvpMode(
 export function getCommunityWebBaseUrl(
   configService: ConfigService<AppConfig>,
 ): string {
-  const configured = configService.get('app')?.communityWebBaseUrl;
-  if (configured) return configured.replace(/\/$/, '');
+  const app = configService.get('app');
+  const configured = app?.communityWebBaseUrl?.trim();
+  if (configured) {
+    return configured.replace(/\/$/, '');
+  }
+  const appUrl = app?.url?.trim();
+  if (appUrl) {
+    return appUrl.replace(/\/$/, '');
+  }
   return 'https://community.meriter.pro';
 }

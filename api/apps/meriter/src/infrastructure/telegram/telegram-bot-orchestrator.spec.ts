@@ -224,6 +224,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
     await seedLinkedCommunity();
     const legacySpy = jest.spyOn(tgBotsService, 'processRecieveMessageFromUser');
     const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+    const scheduleDeleteSpy = jest.spyOn(tgBotsService, 'tgScheduleDeleteMessage');
 
     await webhookController.handleWebhook(botUsername, {
       update_id: 10,
@@ -243,9 +244,35 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
     expect(legacySpy).not.toHaveBeenCalled();
     expect(ephemeralSpy).toHaveBeenCalled();
+    expect(scheduleDeleteSpy).toHaveBeenCalledWith(tgUserId, 1);
     const sentText = String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '');
     expect(sentText).toContain('Кошелёк');
     expect(sentText).not.toContain('/meriter/login');
+  });
+
+  it('group /balance schedules ephemeral delete for user command', async () => {
+    await seedLinkedCommunity();
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+    const scheduleDeleteSpy = jest.spyOn(tgBotsService, 'tgScheduleDeleteMessage');
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 14,
+      message: {
+        message_id: 55,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        text: '/balance',
+      },
+    } as TelegramTypes.Update);
+
+    expect(ephemeralSpy).toHaveBeenCalled();
+    expect(scheduleDeleteSpy).toHaveBeenCalledWith(tgChatId, 55);
   });
 
   it('DM /баланс (Russian alias) still works', async () => {
