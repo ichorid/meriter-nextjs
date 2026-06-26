@@ -48,6 +48,7 @@ import { GetQuotaUseCase } from '../../application/use-cases/wallets/get-quota.u
 import { ResolveTelegramCommunityUseCase } from '../../application/use-cases/communities/resolve-telegram-community.use-case';
 import {
   TG_MSG,
+  TG_VOTE_DEFAULT_COMMENT,
   buildGroupWelcomeMessage,
   buildOnboardingDoneMessage,
   buildTelegramHelpMessage,
@@ -881,6 +882,7 @@ export class TelegramBotOrchestratorService {
         currencyNames: { singular: 'заслуга', plural: 'заслуги', genitive: 'заслуг' },
         dailyEmission: payload.quotaEnabled ? (payload.dailyEmission ?? 5) : 0,
         postCost: payload.postCost ?? 0,
+        allowWithdraw: false,
       },
     });
 
@@ -899,6 +901,7 @@ export class TelegramBotOrchestratorService {
           telegramChatId: payload.telegramChatId,
           'settings.telegramModerationEnabled': payload.moderation ?? false,
           'settings.telegramPublicationAckEnabled': payload.telegramPublicationAckEnabled ?? false,
+          'settings.allowWithdraw': false,
           updatedAt: new Date(),
         },
       },
@@ -1219,7 +1222,7 @@ export class TelegramBotOrchestratorService {
         quotaAmount: split.quotaAmount,
         walletAmount: split.walletAmount,
         direction,
-        comment: comment ?? '',
+        comment: comment?.trim() ? comment.trim() : TG_VOTE_DEFAULT_COMMENT,
       });
       if (groupFeedback) {
         await this.tgBots.tgReplyEphemeral({

@@ -28,6 +28,7 @@ import {
   getRemainingQuota,
   getWalletBalance,
   shouldUseProjectInstantAppreciation,
+  shouldUseTelegramInstantWalletMirror,
   ticketHasWorkAccepted,
 } from './create-vote.helpers';
 
@@ -431,6 +432,37 @@ export class CreateVoteUseCase {
           direction,
           totalMeritVoteAmount,
         );
+      const useTelegramInstantWalletMirror =
+        input.targetType === 'publication' &&
+        !useProjectInstantAppreciation &&
+        shouldUseTelegramInstantWalletMirror(
+          community,
+          publicationDoc,
+          totalMeritVoteAmount,
+        );
+      const telegramMirrorBeneficiaryId =
+        useTelegramInstantWalletMirror && publicationDoc
+          ? publicationDoc.postType === 'ticket'
+            ? (publicationDoc.beneficiaryId ?? publicationDoc.authorId)
+            : publicationDoc.authorId
+          : null;
+      const mirrorAuthorWallet =
+        useTelegramInstantWalletMirror &&
+        !!telegramMirrorBeneficiaryId &&
+        telegramMirrorBeneficiaryId !== userId;
+
+      if (mirrorAuthorWallet && direction === 'down') {
+        const authorBalance = await getWalletBalance(
+          telegramMirrorBeneficiaryId!,
+          walletCommunityId,
+          deps.walletService,
+        );
+        if (authorBalance < totalMeritVoteAmount) {
+          throw new BadRequestException(
+            `Insufficient author wallet balance. Available: ${authorBalance}, Requested: ${totalMeritVoteAmount}`,
+          );
+        }
+      }
     
       if (community.isProject === true && totalMeritVoteAmount > 0) {
         const actor = await deps.userService.getUserById(userId);
@@ -534,6 +566,52 @@ export class CreateVoteUseCase {
             currency,
             `Project appreciation for publication ${input.targetId}`,
           );
+          await deps.publicationService.voteOnPublication(
+            input.targetId,
+            userId,
+            totalAmount,
+            direction,
+          );
+        } else if (useTelegramInstantWalletMirror && publicationDoc) {
+          const currency = community.settings?.currencyNames || {
+            singular: 'merit',
+            plural: 'merits',
+            genitive: 'merits',
+          };
+          const mirrorWalletCommunityId =
+            await deps.walletContextResolverService.resolvePersonalWalletCommunityId(
+              community,
+              'voting',
+            );
+          if (mirrorAuthorWallet && telegramMirrorBeneficiaryId) {
+            if (direction === 'up') {
+              await deps.walletService.addTransaction(
+                telegramMirrorBeneficiaryId,
+                mirrorWalletCommunityId,
+                'credit',
+                totalAmount,
+                'personal',
+                'telegram_vote_mirror',
+                input.targetId,
+                currency,
+                `Telegram vote mirror credit for publication ${input.targetId}`,
+              );
+            } else {
+              const debited = await deps.walletService.debitIfSufficient(
+                telegramMirrorBeneficiaryId,
+                mirrorWalletCommunityId,
+                totalAmount,
+                'telegram_vote_mirror',
+                input.targetId,
+                `Telegram vote mirror debit for publication ${input.targetId}`,
+              );
+              if (!debited) {
+                throw new BadRequestException(
+                  'Insufficient author wallet balance for downvote',
+                );
+              }
+            }
+          }
           await deps.publicationService.voteOnPublication(
             input.targetId,
             userId,

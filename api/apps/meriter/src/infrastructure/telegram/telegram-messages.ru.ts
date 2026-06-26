@@ -70,6 +70,8 @@ export function buildTelegramHelpMessage(
   return `${rulesBlock}Команды:\n/balance — баланс и квота\n/members — рейтинг участников\n/fund — общий фонд\n/transfer — перевод заслуг (в группе)\n/post — опубликовать пост (лид)\n/settings — настройки бота (лид)\n/help — эта справка${openLine}`;
 }
 
+export const TG_VOTE_DEFAULT_COMMENT = 'В Telegram-группе';
+
 export const TG_MSG = {
   frozenMember:
     'Ваш доступ к заслугам в этом сообществе приостановлен — вы не в Telegram-группе. Вернитесь в группу, чтобы снова участвовать.',

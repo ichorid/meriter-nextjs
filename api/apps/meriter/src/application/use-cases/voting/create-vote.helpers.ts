@@ -1,6 +1,9 @@
 import { NotFoundException } from '@nestjs/common';
 import type { Connection } from 'mongoose';
-import { isPriorityCommunity } from '../../../domain/common/helpers/community.helper';
+import {
+  isPriorityCommunity,
+  isTelegramLinkedCommunity,
+} from '../../../domain/common/helpers/community.helper';
 import {
   getCommunityIdForDocumentVoteTarget,
   isDocumentVoteTargetType,
@@ -105,6 +108,18 @@ export function ticketHasWorkAccepted(
   doc: { ticketActivityLog?: Array<{ action?: string }> } | null | undefined,
 ): boolean {
   return (doc?.ticketActivityLog ?? []).some((e) => e.action === 'work_accepted');
+}
+
+/** Telegram MVP: up/down votes mirror to author wallet immediately (no post withdraw). */
+export function shouldUseTelegramInstantWalletMirror(
+  community: { telegramChatId?: string | null } | null | undefined,
+  publicationDoc: unknown | null | undefined,
+  totalAmount: number,
+): boolean {
+  if (!publicationDoc || totalAmount <= 0) {
+    return false;
+  }
+  return isTelegramLinkedCommunity(community);
 }
 
 export function shouldUseProjectInstantAppreciation(

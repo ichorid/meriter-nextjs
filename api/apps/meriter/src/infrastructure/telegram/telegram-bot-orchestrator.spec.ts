@@ -39,7 +39,7 @@ import {
 import { TelegramInfrastructureModule } from './telegram.module';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramBotOrchestratorService } from './telegram-bot.orchestrator.service';
-import { TG_MSG } from './telegram-messages.ru';
+import { TG_MSG, TG_VOTE_DEFAULT_COMMENT } from './telegram-messages.ru';
 import * as TelegramTypes from '@common/extapis/telegram/telegram.types';
 
 describe('TelegramBotOrchestrator (integration)', () => {
@@ -527,6 +527,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
         quotaAmount: 0,
         walletAmount: 1,
         direction: 'up',
+        comment: TG_VOTE_DEFAULT_COMMENT,
       }),
     );
     expect(ephemeralSpy).toHaveBeenCalledWith(
@@ -550,7 +551,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
 
     expect(executeMock).toHaveBeenCalledWith(
-      expect.objectContaining({ walletAmount: 1, direction: 'up' }),
+      expect.objectContaining({ walletAmount: 1, direction: 'up', comment: TG_VOTE_DEFAULT_COMMENT }),
     );
   });
 });

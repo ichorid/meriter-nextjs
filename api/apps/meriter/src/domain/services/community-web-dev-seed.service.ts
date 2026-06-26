@@ -264,6 +264,7 @@ export class CommunityWebDevSeedService {
         'settings.pollCost': 0,
         'settings.dailyEmission': 10,
         'settings.telegramModerationEnabled': true,
+        'settings.allowWithdraw': false,
         'settings.eventCreation': 'members',
         updatedAt: new Date(),
       },

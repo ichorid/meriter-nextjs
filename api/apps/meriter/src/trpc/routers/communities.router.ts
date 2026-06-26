@@ -13,6 +13,7 @@ import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_SUPERADMIN 
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 import { isEligibleNonProjectBirzhaSourceCommunity } from '../../domain/common/constants/birzha-source-entity.constants';
+import { effectiveAllowWithdraw } from '../../domain/common/helpers/community.helper';
 import { isProjectCommunity } from '../../domain/services/community.service';
 import { createCreateCommunityUseCase } from '../../application/use-cases/communities/create-community.use-case';
 import { createAcceptCommunityInviteUseCase } from '../../application/use-cases/communities/accept-community-invite.use-case';
@@ -88,7 +89,7 @@ export const communitiesRouter = router({
           editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
           allowEditByOthers: community.settings?.allowEditByOthers ?? false,
           canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
-          allowWithdraw: community.settings?.allowWithdraw ?? true,
+          allowWithdraw: effectiveAllowWithdraw(community),
           forwardRule: community.settings?.forwardRule ?? 'standard',
           sharedWalletWithProjects: community.settings?.sharedWalletWithProjects ?? false,
           investingEnabled: community.settings?.investingEnabled ?? false,

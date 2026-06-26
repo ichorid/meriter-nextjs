@@ -85,6 +85,12 @@ export class WithdrawPublicationRatingUseCase {
         message: 'Withdrawals are disabled in this community',
       });
     }
+    if (postCommunity?.telegramChatId) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Withdrawals are disabled for Telegram-linked communities',
+      });
+    }
 
     const sourceEntityType = pubDoc?.sourceEntityType;
     const sourceEntityId = pubDoc?.sourceEntityId as string | undefined;
