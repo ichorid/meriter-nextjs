@@ -128,7 +128,7 @@ function SettingsInner({ communityId }: { communityId: string }) {
             <button
               type="submit"
               disabled={updateMutation.isPending}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+              className="min-h-[44px] w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50 sm:w-auto"
             >
               Сохранить
             </button>
@@ -162,7 +162,7 @@ function SettingsInner({ communityId }: { communityId: string }) {
                   reseedMutation.mutate({ communityId });
                 }
               }}
-              className="rounded-lg border border-stitch-border bg-stitch-canvas px-4 py-2 text-sm font-medium text-stitch-text hover:bg-stitch-elevated disabled:opacity-50"
+              className="min-h-[44px] w-full rounded-lg border border-stitch-border bg-stitch-canvas px-4 py-2 text-sm font-medium text-stitch-text hover:bg-stitch-elevated disabled:opacity-50 sm:w-auto"
             >
               {reseedMutation.isPending ? 'Пересоздание…' : 'Пересоздать демо-данные'}
             </button>

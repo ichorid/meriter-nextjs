@@ -48,14 +48,14 @@ function ModerationInner({ communityId }: { communityId: string }) {
               <p className="text-xs text-stitch-muted">
                 {item.meta?.author?.name ?? 'Участник'}
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <button
                   type="button"
                   disabled={approveMutation.isPending}
                   onClick={() =>
                     approveMutation.mutate({ publicationId: item.id })
                   }
-                  className="rounded-lg bg-primary px-3 py-1.5 text-sm text-white disabled:opacity-50"
+                  className="min-h-[44px] rounded-lg bg-primary px-3 py-2 text-sm text-white disabled:opacity-50 sm:flex-1"
                 >
                   Одобрить
                 </button>
@@ -65,7 +65,7 @@ function ModerationInner({ communityId }: { communityId: string }) {
                   onClick={() =>
                     rejectMutation.mutate({ publicationId: item.id })
                   }
-                  className="rounded-lg border border-stitch-border px-3 py-1.5 text-sm text-red-400 disabled:opacity-50"
+                  className="min-h-[44px] rounded-lg border border-stitch-border px-3 py-2 text-sm text-red-400 disabled:opacity-50 sm:flex-1"
                 >
                   Отклонить
                 </button>

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Manrope } from 'next/font/google';
 import { TrpcProvider } from '@/lib/trpc/provider';
 import './globals.css';
@@ -11,6 +11,12 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: 'Meriter — сообщество',
   description: 'Заслуги вашего Telegram-сообщества',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({

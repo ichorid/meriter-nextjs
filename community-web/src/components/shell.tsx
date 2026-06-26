@@ -1,9 +1,13 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { CommunityBottomNav } from '@/components/community-bottom-nav';
 import { trpc } from '@/lib/trpc/client';
 import { config } from '@/config';
+import { buildCommunityTabs } from '@/lib/community-nav';
+import { initTelegramWebApp } from '@/lib/telegram-webapp';
 import { cn } from '@/lib/utils';
 
 declare global {
@@ -213,46 +217,55 @@ export function Shell({
   const moderationEnabled =
     communityQuery.data?.settings?.telegramModerationEnabled === true;
 
-  const tabs = [
-    { href: `/c/${communityId}/feed`, label: 'Лента', id: 'feed' },
-    { href: `/c/${communityId}/members`, label: 'Пользователи', id: 'members' },
-    { href: `/c/${communityId}/projects`, label: 'Проекты', id: 'projects' },
-    { href: `/c/${communityId}/documents`, label: 'Документы', id: 'documents' },
-    { href: `/c/${communityId}/events`, label: 'События', id: 'events' },
-    { href: `/c/${communityId}/merit-history`, label: 'Заслуги', id: 'merit-history' },
-    ...(moderationEnabled && isLead
-      ? [{ href: `/c/${communityId}/moderation`, label: 'Модерация', id: 'moderation' }]
-      : []),
-    { href: `/c/${communityId}/settings`, label: 'Настройки', id: 'settings' },
-  ];
+  const tabs = buildCommunityTabs(communityId, { isLead, moderationEnabled });
+
+  const pendingQuery = trpc.publications.listPendingTelegramModeration.useQuery(
+    { communityId },
+    { enabled: moderationEnabled && isLead },
+  );
+  const moderationPendingCount = pendingQuery.data?.length ?? 0;
+
+  useEffect(() => {
+    initTelegramWebApp();
+  }, []);
 
   return (
     <div className="min-h-screen bg-stitch-canvas">
-      <header className="sticky top-0 z-10 border-b border-stitch-border bg-stitch-sidebar/95 backdrop-blur">
+      <header className="sticky top-0 z-10 border-b border-stitch-border bg-stitch-sidebar/95 backdrop-blur pt-[env(safe-area-inset-top)]">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
           <span className="font-extrabold tracking-tight text-stitch-text">Meriter</span>
-          <a href="/profile" className="text-sm text-stitch-muted hover:text-primary">
+          <Link href="/profile" className="text-sm text-stitch-muted hover:text-primary">
             Профиль
-          </a>
+          </Link>
         </div>
-        <nav className="mx-auto flex max-w-3xl gap-1 overflow-x-auto px-2 pb-2">
+        <nav
+          aria-label="Навигация сообщества"
+          className="mx-auto hidden max-w-3xl flex-wrap gap-1 px-2 pb-2 md:flex"
+        >
           {tabs.map((tab) => (
-            <a
+            <Link
               key={tab.id}
               href={tab.href}
               className={cn(
-                'whitespace-nowrap rounded-lg px-3 py-1.5 text-sm',
+                'whitespace-nowrap rounded-lg px-3 py-2 text-sm min-h-[44px] inline-flex items-center',
                 active === tab.id
                   ? 'bg-primary text-white'
                   : 'text-stitch-muted hover:bg-stitch-surface',
               )}
             >
               {tab.label}
-            </a>
+            </Link>
           ))}
         </nav>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-6">{children}</main>
+      <main className="mx-auto max-w-3xl px-4 py-6 pb-[calc(var(--shell-bottom-nav-height)+env(safe-area-inset-bottom)+1.5rem)] md:pb-6">
+        {children}
+      </main>
+      <CommunityBottomNav
+        tabs={tabs}
+        activeId={active}
+        moderationPendingCount={moderationPendingCount}
+      />
     </div>
   );
 }

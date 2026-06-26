@@ -138,7 +138,7 @@ function PollCreateForm({ communityId }: { communityId: string }) {
           onChange={(e) => setHours(e.target.value)}
         />
       </label>
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           disabled={createMutation.isPending}
@@ -156,14 +156,14 @@ function PollCreateForm({ communityId }: { communityId: string }) {
               expiresAt,
             });
           }}
-          className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="min-h-[44px] rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50 sm:flex-1"
         >
           Опубликовать опрос
         </button>
         <button
           type="button"
           onClick={() => setOpen(false)}
-          className="rounded-lg px-4 py-2 text-sm text-stitch-muted hover:bg-stitch-canvas"
+          className="min-h-[44px] rounded-lg px-4 py-2 text-sm text-stitch-muted hover:bg-stitch-canvas sm:flex-1"
         >
           Отмена
         </button>
@@ -348,7 +348,7 @@ function PollCard({
       </ul>
 
       {canCast && selectedOptionId && (
-        <div className="flex flex-wrap items-center gap-2 pt-1">
+        <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap sm:items-center">
           <label className="text-sm text-stitch-muted">
             Заслуг
             <input
@@ -363,7 +363,7 @@ function PollCard({
             type="button"
             disabled={castMutation.isPending}
             onClick={handleCast}
-            className="rounded-lg bg-primary px-3 py-1.5 text-sm text-white disabled:opacity-50"
+            className="min-h-[44px] rounded-lg bg-primary px-3 py-2 text-sm text-white disabled:opacity-50 sm:w-auto w-full"
           >
             Проголосовать
           </button>
@@ -392,7 +392,7 @@ export function PollSection({ communityId }: { communityId: string }) {
 
   return (
     <section className="space-y-3">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-semibold">Опросы</h2>
         <PollCreateForm communityId={communityId} />
       </div>
