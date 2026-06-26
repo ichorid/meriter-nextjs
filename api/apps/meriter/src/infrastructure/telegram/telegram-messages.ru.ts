@@ -16,10 +16,10 @@ export function buildCommunityUsageRules(input: CommunityUsageRulesInput): strin
     `Правила:\n` +
     `• Публикация: #${hashtag} в тексте сообщения\n` +
     `• 👍 = +1 заслуга автору (на чужих — квота/кошелёк; на своих — только кошелёк)\n` +
-    `• ❤️ = бот спросит сумму в личке\n` +
-    `• 🤡 = минус с кошелька (бот спросит сумму в личке)\n` +
+    `• ❤️ = бот попросит сумму ответом в группе\n` +
+    `• 🤡 = минус с кошелька (бот попросит сумму ответом в группе)\n` +
     `• Reply +N текст или -N текст — голос с комментарием\n` +
-    `• /balance /members /transfer /fund /post /help\n\n` +
+    `• /balance /members /transfer /fund /post /help /settings\n\n` +
     `Заслуги — не деньги.`
   );
 }
@@ -67,7 +67,7 @@ export function buildTelegramHelpMessage(
       })}\n\n`
     : `${buildCommunityUsageRules({ communityName: 'сообщество', hashtags: options?.hashtags })}\n\n`;
 
-  return `${rulesBlock}Команды:\n/balance — баланс и квота\n/members — рейтинг участников\n/fund — общий фонд\n/transfer — перевод заслуг\n/post — опубликовать пост (лид)\n/help — эта справка${openLine}`;
+  return `${rulesBlock}Команды:\n/balance — баланс и квота\n/members — рейтинг участников\n/fund — общий фонд\n/transfer — перевод заслуг (в группе)\n/post — опубликовать пост (лид)\n/settings — настройки бота (лид)\n/help — эта справка${openLine}`;
 }
 
 export const TG_MSG = {
@@ -80,12 +80,26 @@ export const TG_MSG = {
     direction === 'up'
       ? `Подтвердить начисление ${amount} заслуг автору?`
       : `Подтвердить списание ${amount} заслуг с автора?`,
-  transferConfirm: (amount: number, name: string) =>
-    `Перевести ${amount} заслуг пользователю ${name}?`,
   transferDone: (amount: number, balance: number) =>
     `Готово. Переведено ${amount} заслуг. Ваш баланс: ${balance}.`,
-  transferReceived: (amount: number, fromName: string) =>
-    `Вам перевели ${amount} заслуг от ${fromName}.`,
+  transferDoneGroup: (amount: number, receiverName: string, balance: number) =>
+    `Переведено ${amount} заслуг → ${receiverName}. Ваш баланс: ${balance}.`,
+  transferUseGroup:
+    'Перевод заслуг доступен только в группе: ответьте на сообщение участника командой /transfer 5 или /transfer @username 5.',
+  transferErrorSelf: 'Нельзя переводить заслуги самому себе.',
+  transferErrorAmount: 'Укажите положительную сумму.',
+  transferErrorReceiver: 'Получатель не найден в Meriter.',
+  transferErrorFormat:
+    'Формат: /transfer @username 5 или ответ на сообщение: /transfer 5',
+  voteSuccess: (amount: number, direction: 'up' | 'down') =>
+    direction === 'up'
+      ? `Начислено ${amount} заслуг автору.`
+      : `Списано ${amount} заслуг с автора.`,
+  reactionPostNotFound: 'Пост не найден в Meriter — голосовать можно только по сохранённым публикациям.',
+  voteAmountGroupPrompt: 'Ответьте числом на это сообщение — сколько заслуг начислить?',
+  voteAmountGroupPromptSelf:
+    'Ответьте числом на это сообщение — сколько заслуг начислить? (на свой пост — только с кошелька)',
+  voteAmountGroupPromptDown: 'Ответьте числом на это сообщение — сколько заслуг списать?',
   balanceSelf: (name: string, wallet: number, quota: number, quotaMax: number, pct: number) =>
     `Ваши заслуги в «${name}»\n\nКошелёк: ${wallet}\nКвота сегодня: ${quota} из ${quotaMax}\nДоля от общего пула: ${pct.toFixed(1)}%`,
   membersHeader: 'Участники (активные):',
@@ -109,6 +123,8 @@ export const TG_MSG = {
   onboardingPostCost: 'Стоимость публикации поста в заслугах? (0 = бесплатно)',
   onboardingModeration:
     'Нужна модерация постов перед публикацией? «да» или «нет»',
+  onboardingPublicationAck:
+    'Уведомлять в группе о сохранении постов с хэштегом? «да» или «нет» (по умолчанию — нет)',
   onboardingWelcome: 'Приветственные заслуги новым участникам? (0 = не начислять)',
   botRemovedAdmin:
     'Бот удалён из группы. Сообщество заморожено — траты и начисления заслуг остановлены.',
@@ -131,6 +147,14 @@ export const TG_MSG = {
   onboardingInProgress: 'Мастер настройки не завершён. Продолжите в личке с ботом.',
   multipleLinkedCommunities:
     'У вас несколько Telegram-сообществ. Используйте команды в соответствующей группе.',
+  settingsLeadOnly: 'Настройки бота доступны только лиду сообщества.',
+  settingsUseGroup: 'Настройки бота доступны в группе: /settings (только лид).',
+  settingsLead: (ackEnabled: boolean) =>
+    `Настройки бота Meriter.\n\nУведомление о сохранении поста в группе: ${ackEnabled ? 'включено' : 'выключено'}.`,
+  settingsAckUpdated: (enabled: boolean) =>
+    enabled
+      ? 'Уведомления о сохранении постов включены.'
+      : 'Уведомления о сохранении постов выключены.',
 } as const;
 
 export const TG_EMOJI = {

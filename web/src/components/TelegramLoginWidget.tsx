@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { config } from '@/config';
 
 declare global {
@@ -15,6 +15,7 @@ type TelegramLoginWidgetProps = {
   linkMode?: boolean;
   onSuccess: (result: { isNewUser: boolean }) => void;
   onError: (message: string) => void;
+  onLoadFailed?: () => void;
 };
 
 export function TelegramLoginWidget({
@@ -23,8 +24,10 @@ export function TelegramLoginWidget({
   linkMode = false,
   onSuccess,
   onError,
+  onLoadFailed,
 }: TelegramLoginWidgetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const containerId = `meriter-telegram-login-${useId().replace(/:/g, '')}`;
 
   useEffect(() => {
     window.onTelegramAuth = async (user) => {
@@ -65,7 +68,7 @@ export function TelegramLoginWidget({
       return;
     }
 
-    const container = document.getElementById('meriter-telegram-login-widget');
+    const container = document.getElementById(containerId);
     if (!container || container.querySelector('script')) {
       return;
     }
@@ -78,8 +81,11 @@ export function TelegramLoginWidget({
     script.setAttribute('data-radius', '8');
     script.setAttribute('data-request-access', 'write');
     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    script.onerror = () => {
+      onLoadFailed?.();
+    };
     container.appendChild(script);
-  }, [botUsername, disabled]);
+  }, [botUsername, containerId, disabled, onLoadFailed]);
 
   if (!botUsername) {
     return null;
@@ -87,7 +93,7 @@ export function TelegramLoginWidget({
 
   return (
     <div
-      id="meriter-telegram-login-widget"
+      id={containerId}
       className="flex min-h-[44px] justify-center"
       aria-busy={isSubmitting}
     />

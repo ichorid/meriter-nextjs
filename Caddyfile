@@ -37,7 +37,7 @@
         # Content Security Policy - adjust based on your app's needs
         # Allow self, Telegram API, and common CDNs
         # Guidewell widget: script + API/WebSocket (must match NEXT_PUBLIC_GUIDEWELL_API_BASE)
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.telegram.org https://fonts.googleapis.com https://backend-ambered-tidepool-6732.fly.dev; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.telegram.org https://backend-ambered-tidepool-6732.fly.dev wss://backend-ambered-tidepool-6732.fly.dev; frame-src 'self' https://oauth.telegram.org;"
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://api.telegram.org https://fonts.googleapis.com https://backend-ambered-tidepool-6732.fly.dev; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.telegram.org https://backend-ambered-tidepool-6732.fly.dev wss://backend-ambered-tidepool-6732.fly.dev; frame-src 'self' https://oauth.telegram.org;"
         
         # Remove server header for security
         -Server

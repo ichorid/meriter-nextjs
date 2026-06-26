@@ -685,6 +685,7 @@
         "telegramWidget": {
             "instructions": "Click the button below to sign in with Telegram"
         },
+        "telegramWidgetUnavailable": "Telegram sign-in could not load. Check that this site is allowed in BotFather (/setdomain) and try refreshing the page.",
         "hint": {
             "agreeToTerms": "By clicking the button and confirming login, I agree to the",
             "termsOfService": "Terms of Service",

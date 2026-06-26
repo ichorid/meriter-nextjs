@@ -10,5 +10,12 @@ export const EMAIL_ONLY_LOGIN = {
 } as const;
 
 export function resolveLoginProviders(oauth?: { telegram?: boolean }): string[] {
-    return oauth?.telegram ? ['telegram'] : [];
+  return oauth?.telegram ? ['telegram'] : [];
+}
+
+export function isTelegramLoginEnabled(
+  oauth: { telegram?: boolean } | undefined,
+  botUsername: string | null | undefined,
+): boolean {
+  return Boolean(oauth?.telegram && botUsername?.trim());
 }

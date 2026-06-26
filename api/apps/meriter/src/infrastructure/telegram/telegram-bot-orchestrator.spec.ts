@@ -458,42 +458,61 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
   });
 
-  it('message_reaction ❤️ on own post prompts amount in DM with self-vote hint', async () => {
+  it('message_reaction ❤️ prompts amount in group with ephemeral reply', async () => {
     const { messageId } = await seedPublicationWithAnchor();
-    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1001);
+    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend');
 
     await webhookController.handleWebhook(
       botUsername,
       messageReactionUpdate('❤️', messageId, 30),
     );
 
-    expect(tgSendSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ tgChatId: tgUserId, text: TG_MSG.enterAmountSelfUp }),
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chat_id: tgChatId,
+        reply_to_message_id: messageId,
+        text: TG_MSG.voteAmountGroupPromptSelf,
+      }),
+    );
+    expect(tgSendSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text: TG_MSG.enterAmountSelfUp }),
     );
     const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
     expect(pending?.action).toBe('confirm_vote_amount');
+    expect((pending?.payload as { promptMessageId?: number }).promptMessageId).toBe(1001);
   });
 
-  it('message_reaction ❤️ falls back to group reply when DM fails', async () => {
+  it('message_reaction ❤️ falls back to DM when group ephemeral fails', async () => {
     const { messageId } = await seedPublicationWithAnchor();
-    jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(false);
-    const replySpy = jest.spyOn(tgBotsService, 'tgReplyMessage').mockResolvedValue(undefined);
+    jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(null);
+    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
 
     await webhookController.handleWebhook(
       botUsername,
       messageReactionUpdate('❤️', messageId, 31),
     );
 
-    expect(replySpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        chat_id: tgChatId,
-        reply_to_message_id: messageId,
-        text: TG_MSG.voteAmountGroupHint(botUsername, true),
-      }),
+    expect(tgSendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ tgChatId: tgUserId, text: TG_MSG.enterAmountSelfUp }),
     );
   });
 
-  it('message_reaction 👍 on own post votes wallet-only', async () => {
+  it('message_reaction without anchor replies ephemerally in group', async () => {
+    await seedLinkedCommunity();
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+
+    await webhookController.handleWebhook(
+      botUsername,
+      messageReactionUpdate('👍', 404, 33),
+    );
+
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ text: TG_MSG.reactionPostNotFound }),
+    );
+  });
+
+  it('message_reaction 👍 on own post votes wallet-only and sends group feedback', async () => {
     const { messageId } = await seedPublicationWithAnchor();
     const executeMock = jest.fn().mockResolvedValue(undefined);
     jest
@@ -502,6 +521,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
         'createVoteUseCase',
       )
       .mockReturnValue({ execute: executeMock });
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
 
     await webhookController.handleWebhook(
       botUsername,
@@ -514,6 +534,9 @@ describe('TelegramBotOrchestrator (integration)', () => {
         walletAmount: 1,
         direction: 'up',
       }),
+    );
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ text: TG_MSG.voteSuccess(1, 'up') }),
     );
   });
 });

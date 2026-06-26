@@ -685,6 +685,7 @@
         "telegramWidget": {
             "instructions": "Нажмите кнопку ниже для входа через Telegram"
         },
+        "telegramWidgetUnavailable": "Не удалось загрузить вход через Telegram. Проверьте домен в BotFather (/setdomain) и обновите страницу.",
         "hint": {
             "agreeToTerms": "Нажимая на кнопку и подтверждая вход в систему, я принимаю",
             "termsOfService": "Условия обслуживания",

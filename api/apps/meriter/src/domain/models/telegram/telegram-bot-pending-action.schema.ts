@@ -3,7 +3,6 @@ import { Document } from 'mongoose';
 
 export type TelegramBotPendingActionType =
   | 'confirm_vote_amount'
-  | 'confirm_transfer'
   | 'onboarding_name'
   | 'onboarding_future_vision'
   | 'onboarding_quota_enabled'
@@ -11,6 +10,7 @@ export type TelegramBotPendingActionType =
   | 'onboarding_hashtag'
   | 'onboarding_post_cost'
   | 'onboarding_moderation'
+  | 'onboarding_publication_ack'
   | 'onboarding_welcome_merits'
   | 'onboarding_confirm';
 

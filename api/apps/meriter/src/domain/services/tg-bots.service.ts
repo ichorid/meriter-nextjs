@@ -27,14 +27,16 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import * as stream from "stream";
 
-import { encodeTelegramDeepLink, formatDualLinksFromEncoded, formatDualLinks, escapeMarkdownV2 } from '../../common/helpers/telegram';
-import { t } from '../../i18n';
+import { formatDualLinks, escapeMarkdownV2 } from '../../common/helpers/telegram';
 import { UpdateEventItem } from './user-updates.service';
 import { FeatureFlagsService } from '../../common/services/feature-flags.service';
 import {
   TelegramPublicationAnchorSchemaClass,
   TelegramPublicationAnchorDocument,
 } from '../models/telegram/telegram-publication-anchor.schema';
+
+/** Default lifetime for bot messages that should not clutter group history. */
+export const TG_BOT_EPHEMERAL_TTL_SEC = 60;
 
 /**
  * BC-19 Telegram bot domain service (OD-4).
@@ -560,24 +562,16 @@ export class TgBotsService {
     this.logger.log(`✅ Publication created: slug=${slug}, communityId=${communityId}, tgChatId=${tgChatId}`);
 
     if (messageId !== undefined) {
-      if (this.featureFlagsService.isTelegramMvpMode()) {
-        await this.tgReplyMessage({
+      const communityDoc = await this.communityModel
+        .findOne({ id: communityId })
+        .select({ settings: 1 })
+        .lean();
+      const ackEnabled = communityDoc?.settings?.telegramPublicationAckEnabled === true;
+      if (ackEnabled) {
+        await this.tgReplyEphemeral({
           reply_to_message_id: messageId,
           chat_id: tgChatId,
-          text: 'Пост опубликован.',
-        });
-      } else {
-        const link = `communities/${communityId}?post=${slug}`;
-        this.logger.log(`🔗 Generated link: ${link} (using internal community ID, not Telegram chat ID)`);
-        const encodedLink = encodeTelegramDeepLink('publication', link);
-        const dualLinks = formatDualLinksFromEncoded(encodedLink, `/meriter/${link}`, BOT_USERNAME, WEB_BASE_URL);
-        const text = `${escapeMarkdownV2(t('updates.publication.saved', 'en'))} \: ${dualLinks}`;
-        this.logger.log(`💬 Sending reply to group ${tgChatId} with text: ${text}`);
-        await this.tgReplyMessage({
-          reply_to_message_id: messageId,
-          chat_id: tgChatId,
-          text,
-          parseMode: 'MarkdownV2',
+          text: 'Пост сохранён.',
         });
       }
     }
@@ -648,37 +642,101 @@ export class TgBotsService {
     chat_id: string | number;
     text: string;
     parseMode?: 'MarkdownV2';
-  }) {
-    try {
-      const params: Record<string, unknown> = {
-        reply_to_message_id,
-        chat_id,
-        text,
-      };
-      if (parseMode) {
-        params.parse_mode = parseMode;
-      }
+  }): Promise<number | null> {
+    return this.tgSendMessage({ chat_id, text, parseMode, reply_to_message_id });
+  }
 
-      return await Promise.all([
-        ,
-        /*    SentTGMessageLog.create({
-          toUserTgId: chat_id,
-          text,
-          tgChatId: chat_id,
-          meta: params,
-          ts: Date.now(),
-        })*/ !((this.configService.get as any)('noAxios') as boolean | undefined) &&
-        Axios.get(BOT_URL + "/sendMessage", {
-          params,
-        }),
-      ]);
+  async tgSendMessage({
+    chat_id,
+    text,
+    parseMode,
+    reply_to_message_id,
+  }: {
+    chat_id: string | number;
+    text: string;
+    parseMode?: 'MarkdownV2';
+    reply_to_message_id?: number;
+  }): Promise<number | null> {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      return null;
+    }
+    const nodeEnv = this.configService.get('NODE_ENV', 'development');
+    if (String(chat_id).length < 4 && nodeEnv !== 'test') {
+      return null;
+    }
+    const botToken = (this.configService.get as (key: string) => string | undefined)('bot.token');
+    if (!botToken) {
+      return null;
+    }
+    const params: Record<string, unknown> = { chat_id, text };
+    if (parseMode) {
+      params.parse_mode = parseMode;
+    }
+    if (reply_to_message_id != null) {
+      params.reply_to_message_id = reply_to_message_id;
+    }
+    try {
+      const noAxios = this.configService.get('noAxios');
+      if (noAxios) {
+        return 1;
+      }
+      const res = await Axios.get(BOT_URL + '/sendMessage', { params });
+      const messageId = res.data?.result?.message_id;
+      return typeof messageId === 'number' ? messageId : null;
     } catch (e) {
       this.logger.error(
-        "error",
+        'tgSendMessage failed',
         { reply_to_message_id, chat_id, text },
-        (e as any)?.response?.data
+        (e as { response?: { data?: unknown } })?.response?.data,
+      );
+      return null;
+    }
+  }
+
+  async tgDeleteMessage(chat_id: string | number, message_id: number): Promise<void> {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      return;
+    }
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) {
+      return;
+    }
+    try {
+      await Axios.get(BOT_URL + '/deleteMessage', {
+        params: { chat_id, message_id },
+      });
+    } catch (e) {
+      this.logger.debug(
+        'tgDeleteMessage failed (message may already be gone)',
+        (e as { response?: { data?: unknown } })?.response?.data,
       );
     }
+  }
+
+  async tgReplyEphemeral({
+    chat_id,
+    reply_to_message_id,
+    text,
+    deleteAfterSec,
+  }: {
+    chat_id: string | number;
+    text: string;
+    reply_to_message_id?: number;
+    deleteAfterSec?: number;
+  }): Promise<number | null> {
+    const messageId = await this.tgSendMessage({
+      chat_id,
+      text,
+      reply_to_message_id,
+    });
+    if (messageId == null) {
+      return null;
+    }
+    const ttlMs = (deleteAfterSec ?? TG_BOT_EPHEMERAL_TTL_SEC) * 1000;
+    setTimeout(() => {
+      void this.tgDeleteMessage(chat_id, messageId);
+    }, ttlMs);
+    return messageId;
   }
 
   async tgSetHook() {

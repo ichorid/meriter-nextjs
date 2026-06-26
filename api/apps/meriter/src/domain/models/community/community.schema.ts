@@ -93,6 +93,8 @@ export interface CommunitySettings {
   documentAutoApplyTimerHours?: number;
   /** Telegram MVP: require lead approval before hashtag/bot posts go live. */
   telegramModerationEnabled?: boolean;
+  /** Telegram MVP: bot replies in group when a hashtag post is saved (default off). */
+  telegramPublicationAckEnabled?: boolean;
 }
 
 export interface CommunityMeritConversion {
@@ -447,6 +449,7 @@ export class CommunitySchemaClass implements Community {
       documentDefaultMode: { type: String, enum: ['manual', 'auto'], default: 'manual' },
       documentAutoApplyTimerHours: { type: Number, default: 48 },
       telegramModerationEnabled: { type: Boolean, default: false },
+      telegramPublicationAckEnabled: { type: Boolean, default: false },
     },
     default: {},
   })

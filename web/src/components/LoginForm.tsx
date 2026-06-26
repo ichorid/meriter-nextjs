@@ -18,7 +18,7 @@ import { LoadingState } from "@/components/atoms/LoadingState";
 import { getErrorMessage } from "@/lib/api/errors";
 import { safeMeriterReturnPath } from "@/lib/utils/safe-return-to";
 import { isFakeDataMode, isTestAuthMode } from "@/config";
-import { EMAIL_ONLY_LOGIN } from "@/lib/constants/login-methods";
+import { EMAIL_ONLY_LOGIN, isTelegramLoginEnabled } from "@/lib/constants/login-methods";
 import { mockOAuthAuth } from "@/lib/utils/mock-auth";
 import {
     OAUTH_PROVIDERS,
@@ -91,6 +91,7 @@ export function LoginForm({
 
     // Local loading state for OAuth authentication
     const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+    const [telegramWidgetFailed, setTelegramWidgetFailed] = useState(false);
 
     // State for auth dialogs
     const [smsDialogOpen, setSmsDialogOpen] = useState(false);
@@ -117,11 +118,11 @@ export function LoginForm({
         ? OAUTH_PROVIDERS.filter((p) => resolvedProviders.includes(p.id))
         : OAUTH_PROVIDERS;
 
+    const oauthTelegramEnabled = displayedProviders.some((p) => p.id === "telegram");
     const hasTelegramLogin =
         !testAuthMode &&
         !captiveBrowser &&
-        displayedProviders.some((p) => p.id === 'telegram') &&
-        Boolean(botUsername);
+        isTelegramLoginEnabled({ telegram: oauthTelegramEnabled }, botUsername);
 
     const hasPrimaryAuthColumn =
         displayedProviders.filter((p) => p.id !== 'telegram').length > 0 ||
@@ -369,10 +370,11 @@ export function LoginForm({
                                                 />
                                             ))}
 
-                                            {hasTelegramLogin && botUsername && (
+                                            {hasTelegramLogin && botUsername && !telegramWidgetFailed && (
                                                 <TelegramLoginWidget
                                                     botUsername={botUsername}
                                                     disabled={isLoading || isOAuthLoading}
+                                                    onLoadFailed={() => setTelegramWidgetFailed(true)}
                                                     onSuccess={(result) => {
                                                         let redirectUrl = buildRedirectUrl();
                                                         if (result.isNewUser) {
@@ -389,6 +391,12 @@ export function LoginForm({
                                                         addToast(resolveApiErrorToastMessage(msg), "error");
                                                     }}
                                                 />
+                                            )}
+
+                                            {hasTelegramLogin && telegramWidgetFailed && (
+                                                <p className="text-center text-sm text-muted-foreground">
+                                                    {t("telegramWidgetUnavailable")}
+                                                </p>
                                             )}
 
                                             {resolvedSms && (
