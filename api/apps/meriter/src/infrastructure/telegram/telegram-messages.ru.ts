@@ -1,5 +1,7 @@
 /** Russian copy for Telegram MVP bot (product: «Заслуги»). */
 
+import type { TelegramWebLinkStyle } from '../../common/helpers/product-mode.helper';
+
 export type CommunityUsageRulesInput = {
   communityName: string;
   hashtags?: string[];
@@ -39,13 +41,24 @@ export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): strin
 export function communityWebFeedUrl(
   baseUrl: string,
   communityId: string,
+  linkStyle: TelegramWebLinkStyle = 'community-web',
 ): string {
   const root = baseUrl.replace(/\/$/, '');
+  if (linkStyle === 'meriter-web') {
+    return `${root}/meriter/communities/${communityId}`;
+  }
   return `${root}/c/${communityId}/feed`;
 }
 
-export function communityWebLoginUrl(baseUrl: string): string {
-  return `${baseUrl.replace(/\/$/, '')}/login`;
+export function communityWebLoginUrl(
+  baseUrl: string,
+  linkStyle: TelegramWebLinkStyle = 'community-web',
+): string {
+  const root = baseUrl.replace(/\/$/, '');
+  if (linkStyle === 'meriter-web') {
+    return `${root}/meriter/login`;
+  }
+  return `${root}/login`;
 }
 
 export function buildTelegramHelpMessage(
@@ -54,11 +67,13 @@ export function buildTelegramHelpMessage(
     communityId?: string;
     communityName?: string;
     hashtags?: string[];
+    linkStyle?: TelegramWebLinkStyle;
   },
 ): string {
+  const linkStyle = options?.linkStyle ?? 'community-web';
   const openLine = options?.communityId
-    ? `\n\nОткрыть веб: ${communityWebFeedUrl(communityWebBaseUrl, options.communityId)}`
-    : `\n\nВход в веб: ${communityWebLoginUrl(communityWebBaseUrl)}`;
+    ? `\n\nОткрыть веб: ${communityWebFeedUrl(communityWebBaseUrl, options.communityId, linkStyle)}`
+    : `\n\nВход в веб: ${communityWebLoginUrl(communityWebBaseUrl, linkStyle)}`;
 
   const rulesBlock = options?.communityName
     ? `${buildCommunityUsageRules({

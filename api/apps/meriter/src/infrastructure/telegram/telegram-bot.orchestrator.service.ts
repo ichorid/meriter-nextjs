@@ -64,7 +64,7 @@ import {
   formatTelegramMemberLabel,
   isGenericTelegramMemberDisplayName,
 } from './telegram-member-label';
-import { getCommunityWebBaseUrl } from '../../common/helpers/product-mode.helper';
+import { getTelegramWebLinkContext } from '../../common/helpers/product-mode.helper';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -1103,17 +1103,19 @@ export class TelegramBotOrchestratorService {
   }
 
   private async helpMessage(communityId?: string): Promise<string> {
+    const { baseUrl, linkStyle } = getTelegramWebLinkContext(this.configService);
     if (!communityId) {
-      return buildTelegramHelpMessage(getCommunityWebBaseUrl(this.configService));
+      return buildTelegramHelpMessage(baseUrl, { linkStyle });
     }
     const community = await this.communityService.getCommunity(communityId);
     if (!community) {
-      return buildTelegramHelpMessage(getCommunityWebBaseUrl(this.configService));
+      return buildTelegramHelpMessage(baseUrl, { linkStyle });
     }
-    return buildTelegramHelpMessage(getCommunityWebBaseUrl(this.configService), {
+    return buildTelegramHelpMessage(baseUrl, {
       communityId: community.id,
       communityName: community.name,
       hashtags: community.hashtags,
+      linkStyle,
     });
   }
 
