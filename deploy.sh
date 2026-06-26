@@ -27,16 +27,18 @@ deploy_mongo_diagnostics() {
   echo "[deploy] ========== end diagnostics =========="
 }
 
-# Dev CI publishes web-dev-latest / api-dev-latest (and full-sha tags). Use those on dev VPS.
+# Dev CI publishes web-dev-latest / api-dev-latest / community-web-dev-latest (and full-sha tags). Use those on dev VPS.
 if [ "${USE_DEV_IMAGE_TAGS:-}" = "true" ]; then
   export VERSION_WEB="web-dev-latest"
   export VERSION_API="api-dev-latest"
-  echo "[deploy] Using dev rolling image tags: ${VERSION_WEB}, ${VERSION_API}"
+  export VERSION_COMMUNITY_WEB="community-web-dev-latest"
+  echo "[deploy] Using dev rolling image tags: ${VERSION_WEB}, ${VERSION_API}, ${VERSION_COMMUNITY_WEB}"
 # Stage/prod: pin to short SHA tags (see build-and-push release job)
 elif [ -n "${COMMIT_SHA:-}" ]; then
   export VERSION_WEB="sha-${COMMIT_SHA}"
   export VERSION_API="sha-${COMMIT_SHA}"
-  echo "[deploy] Using SHA-based image tags: ${VERSION_WEB}"
+  export VERSION_COMMUNITY_WEB="sha-${COMMIT_SHA}"
+  echo "[deploy] Using SHA-based image tags: ${VERSION_WEB}, ${VERSION_API}, ${VERSION_COMMUNITY_WEB}"
 else
   echo "[deploy] No COMMIT_SHA / USE_DEV_IMAGE_TAGS; using compose defaults (often :latest)"
 fi

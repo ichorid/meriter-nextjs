@@ -12,7 +12,7 @@ inputs:
     description: 'Short commit SHA for image tag (stage/prod release builds)'
     required: false
   use-dev-image-tags:
-    description: 'Set true for dev branch deploys (web-dev-latest / api-dev-latest)'
+    description: 'Set true for dev branch deploys (web-dev-latest / api-dev-latest / community-web-dev-latest)'
     required: false
     default: 'false'
 
