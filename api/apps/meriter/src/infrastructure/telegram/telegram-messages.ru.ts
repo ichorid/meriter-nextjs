@@ -1,5 +1,41 @@
 /** Russian copy for Telegram MVP bot (product: «Заслуги»). */
 
+export type CommunityUsageRulesInput = {
+  communityName: string;
+  hashtags?: string[];
+};
+
+export function primaryCommunityHashtag(hashtags?: string[]): string {
+  const tag = (hashtags?.[0] ?? 'идея').replace(/^#/, '').trim();
+  return tag || 'идея';
+}
+
+export function buildCommunityUsageRules(input: CommunityUsageRulesInput): string {
+  const hashtag = primaryCommunityHashtag(input.hashtags);
+  return (
+    `Правила:\n` +
+    `• Публикация: #${hashtag} в тексте сообщения\n` +
+    `• 👍 = +1 заслуга автору (на чужих — квота/кошелёк; на своих — только кошелёк)\n` +
+    `• ❤️ = бот спросит сумму в личке\n` +
+    `• 🤡 = минус с кошелька (бот спросит сумму в личке)\n` +
+    `• Reply +N текст или -N текст — голос с комментарием\n` +
+    `• /balance /members /transfer /fund /post /help\n\n` +
+    `Заслуги — не деньги.`
+  );
+}
+
+export function buildOnboardingDoneMessage(input: CommunityUsageRulesInput): string {
+  return `Сообщество «${input.communityName}» настроено.\n\n${buildCommunityUsageRules(input)}`;
+}
+
+export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): string {
+  return (
+    `Meriter подключён к «${input.communityName}».\n\n` +
+    `Голосуйте реакциями на посты бота и сообщения с хэштегом.\n\n` +
+    buildCommunityUsageRules(input)
+  );
+}
+
 export function communityWebFeedUrl(
   baseUrl: string,
   communityId: string,
@@ -14,15 +50,24 @@ export function communityWebLoginUrl(baseUrl: string): string {
 
 export function buildTelegramHelpMessage(
   communityWebBaseUrl: string,
-  communityId?: string,
+  options?: {
+    communityId?: string;
+    communityName?: string;
+    hashtags?: string[];
+  },
 ): string {
-  const openLine = communityId
-    ? `\nОткрыть веб: ${communityWebFeedUrl(communityWebBaseUrl, communityId)}`
-    : `\nВход в веб: ${communityWebLoginUrl(communityWebBaseUrl)}`;
-  return (
-    'Команды:\n/balance — ваш баланс\n/members — рейтинг с %\n/fund — общий фонд\n/transfer @user N — перевод\n/transfer N (ответ на сообщение) — перевод\n/post текст — опубликовать пост (лид)\n/help — справка' +
-    openLine
-  );
+  const openLine = options?.communityId
+    ? `\n\nОткрыть веб: ${communityWebFeedUrl(communityWebBaseUrl, options.communityId)}`
+    : `\n\nВход в веб: ${communityWebLoginUrl(communityWebBaseUrl)}`;
+
+  const rulesBlock = options?.communityName
+    ? `${buildCommunityUsageRules({
+        communityName: options.communityName,
+        hashtags: options.hashtags,
+      })}\n\n`
+    : `${buildCommunityUsageRules({ communityName: 'сообщество', hashtags: options?.hashtags })}\n\n`;
+
+  return `${rulesBlock}Команды:\n/balance — баланс и квота\n/members — рейтинг участников\n/fund — общий фонд\n/transfer — перевод заслуг\n/post — опубликовать пост (лид)\n/help — эта справка${openLine}`;
 }
 
 export const TG_MSG = {
@@ -65,16 +110,18 @@ export const TG_MSG = {
   onboardingModeration:
     'Нужна модерация постов перед публикацией? «да» или «нет»',
   onboardingWelcome: 'Приветственные заслуги новым участникам? (0 = не начислять)',
-  onboardingDone: (name: string) =>
-    `Сообщество «${name}» настроено. Правила:\n• 👍 = +1 заслуга\n• ❤️ = спросить сумму в личке\n• 🤡 = минус (только с кошелька)\n• Reply +N текст — голос с комментарием\n• /balance /members /transfer\n\nЗаслуги — не деньги.`,
-  groupWelcome: (name: string) =>
-    `Meriter подключён к «${name}». Голосуйте реакциями на посты бота и сообщения с хэштегом. Команды: /balance /members /transfer /post`,
   botRemovedAdmin:
     'Бот удалён из группы. Сообщество заморожено — траты и начисления заслуг остановлены.',
-  help:
-    'Команды:\n/balance — ваш баланс\n/members — рейтинг с %\n/fund — общий фонд\n/transfer @user N — перевод\n/transfer N (ответ на сообщение) — перевод\n/post текст — опубликовать пост (лид)\n/help — справка',
   postPublished: 'Пост опубликован.',
   enterAmount: 'Введите количество заслуг (число):',
+  enterAmountSelfUp:
+    'Введите количество заслуг (число). На свой пост — только с кошелька.',
+  voteAmountDmFailed: (botUsername: string) =>
+    `Не удалось написать вам в личку. Откройте @${botUsername}, нажмите Start, затем повторите реакцию.`,
+  voteAmountGroupHint: (botUsername: string, isSelfPost: boolean) =>
+    isSelfPost
+      ? `Для голоса откройте @${botUsername} в личке (Start) и введите сумму заслуг. На свой пост — только с кошелька.`
+      : `Для голоса откройте @${botUsername} в личке (Start) и введите сумму заслуг.`,
   cancelled: 'Отменено.',
   unknownCommand: 'Не понял команду. /help — справка.',
   noLinkedCommunity:

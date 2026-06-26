@@ -352,6 +352,7 @@ export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   communityTags: z.array(z.string()).default([]),
   communityMemberships: z.array(z.string()).default([]),
   authenticators: z.array(AuthenticatorSchema).default([]), // Available passkeys
+  linkedProviders: z.array(z.string()).optional(),
 });
 
 export const CommunitySchema = IdentifiableSchema.merge(

@@ -8,3 +8,7 @@ export const EMAIL_ONLY_LOGIN = {
     smsEnabled: false,
     phoneEnabled: false,
 } as const;
+
+export function resolveLoginProviders(oauth?: { telegram?: boolean }): string[] {
+    return oauth?.telegram ? ['telegram'] : [];
+}

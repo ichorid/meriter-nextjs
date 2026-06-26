@@ -24,6 +24,18 @@ import {
   TelegramBotPendingActionSchemaClass,
   TelegramBotPendingActionDocument,
 } from '../../domain/models/telegram/telegram-bot-pending-action.schema';
+import {
+  TelegramPublicationAnchorSchemaClass,
+  TelegramPublicationAnchorDocument,
+} from '../../domain/models/telegram/telegram-publication-anchor.schema';
+import {
+  UserAuthIdentitySchemaClass,
+  UserAuthIdentityDocument,
+} from '../../domain/models/user-auth-identity/user-auth-identity.schema';
+import {
+  PublicationSchemaClass,
+  PublicationDocument,
+} from '../../domain/models/publication/publication.schema';
 import { TelegramInfrastructureModule } from './telegram.module';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramBotOrchestratorService } from './telegram-bot.orchestrator.service';
@@ -42,6 +54,9 @@ describe('TelegramBotOrchestrator (integration)', () => {
   let userModel: Model<UserDocument>;
   let userCommunityRoleModel: Model<UserCommunityRoleDocument>;
   let pendingModel: Model<TelegramBotPendingActionDocument>;
+  let anchorModel: Model<TelegramPublicationAnchorDocument>;
+  let publicationModel: Model<PublicationDocument>;
+  let identityModel: Model<UserAuthIdentityDocument>;
 
   const tgChatId = '-1009876543210';
   const tgUserId = '900002';
@@ -82,6 +97,9 @@ describe('TelegramBotOrchestrator (integration)', () => {
     userModel = moduleRef.get(getModelToken(UserSchemaClass.name));
     userCommunityRoleModel = moduleRef.get(getModelToken(UserCommunityRoleSchemaClass.name));
     pendingModel = moduleRef.get(getModelToken(TelegramBotPendingActionSchemaClass.name));
+    anchorModel = moduleRef.get(getModelToken(TelegramPublicationAnchorSchemaClass.name));
+    publicationModel = moduleRef.get(getModelToken(PublicationSchemaClass.name));
+    identityModel = moduleRef.get(getModelToken(UserAuthIdentitySchemaClass.name));
   });
 
   afterAll(async () => {
@@ -91,6 +109,9 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
   beforeEach(async () => {
     await pendingModel.deleteMany({});
+    await anchorModel.deleteMany({});
+    await publicationModel.deleteMany({});
+    await identityModel.deleteMany({});
     await userCommunityRoleModel.deleteMany({});
     await communityModel.deleteMany({});
     await userModel.deleteMany({});
@@ -142,6 +163,61 @@ describe('TelegramBotOrchestrator (integration)', () => {
     });
 
     return { communityId, userId };
+  }
+
+  async function seedPublicationWithAnchor(messageId = 99) {
+    const { communityId, userId } = await seedLinkedCommunity();
+    const now = new Date();
+    const publicationId = uid();
+
+    await publicationModel.create({
+      id: publicationId,
+      authorId: userId,
+      communityId,
+      content: '#идея Test post',
+      type: 'text',
+      hashtags: ['идея'],
+      postType: 'basic',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await anchorModel.create({
+      id: uid(),
+      communityId,
+      telegramChatId: tgChatId,
+      telegramMessageId: messageId,
+      publicationId,
+      anchorType: 'hashtag',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { communityId, userId, publicationId, messageId };
+  }
+
+  function messageReactionUpdate(
+    emoji: string,
+    messageId: number,
+    updateId: number,
+    oldReaction: Array<{ type?: string; emoji?: string }> = [],
+  ): TelegramTypes.Update {
+    return {
+      update_id: updateId,
+      message_reaction: {
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Linked TG Community' },
+        message_id: messageId,
+        user: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        date: Math.floor(Date.now() / 1000),
+        old_reaction: oldReaction,
+        new_reaction: [{ type: 'emoji', emoji }],
+      },
+    } as TelegramTypes.Update;
   }
 
   it('DM /balance replies with balance text, not web login', async () => {
@@ -379,6 +455,65 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
     expect(tgSendSpy).toHaveBeenCalledWith(
       expect.objectContaining({ parseMode: 'MarkdownV2' }),
+    );
+  });
+
+  it('message_reaction ❤️ on own post prompts amount in DM with self-vote hint', async () => {
+    const { messageId } = await seedPublicationWithAnchor();
+    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+
+    await webhookController.handleWebhook(
+      botUsername,
+      messageReactionUpdate('❤️', messageId, 30),
+    );
+
+    expect(tgSendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ tgChatId: tgUserId, text: TG_MSG.enterAmountSelfUp }),
+    );
+    const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
+    expect(pending?.action).toBe('confirm_vote_amount');
+  });
+
+  it('message_reaction ❤️ falls back to group reply when DM fails', async () => {
+    const { messageId } = await seedPublicationWithAnchor();
+    jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(false);
+    const replySpy = jest.spyOn(tgBotsService, 'tgReplyMessage').mockResolvedValue(undefined);
+
+    await webhookController.handleWebhook(
+      botUsername,
+      messageReactionUpdate('❤️', messageId, 31),
+    );
+
+    expect(replySpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chat_id: tgChatId,
+        reply_to_message_id: messageId,
+        text: TG_MSG.voteAmountGroupHint(botUsername, true),
+      }),
+    );
+  });
+
+  it('message_reaction 👍 on own post votes wallet-only', async () => {
+    const { messageId } = await seedPublicationWithAnchor();
+    const executeMock = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+
+    await webhookController.handleWebhook(
+      botUsername,
+      messageReactionUpdate('👍', messageId, 32),
+    );
+
+    expect(executeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quotaAmount: 0,
+        walletAmount: 1,
+        direction: 'up',
+      }),
     );
   });
 });

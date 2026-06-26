@@ -60,7 +60,7 @@ export class AuthProviderService {
 
   async authenticateTelegramWidget(
     data: TelegramAuthData,
-    options?: { skipBaseCommunities?: boolean },
+    options?: { skipBaseCommunities?: boolean; meriterSession?: boolean },
   ): Promise<{
     user: User;
     hasPendingCommunities: boolean;
@@ -111,7 +111,7 @@ export class AuthProviderService {
         authProvider: 'telegram',
         authId,
         communityTags: user.communityTags || [],
-        product: 'community',
+        ...(options?.meriterSession ? {} : { product: 'community' }),
       },
       jwtSecret,
       '365d',
@@ -127,6 +127,24 @@ export class AuthProviderService {
       jwt: jwtToken,
       primaryTelegramCommunityId,
     };
+  }
+
+  async linkTelegramWidgetToUser(userId: string, data: TelegramAuthData): Promise<void> {
+    const botToken = this.configService.get('bot')?.token;
+    if (!botToken) {
+      throw new Error('BOT_TOKEN is not configured');
+    }
+    if (!this.verifyTelegramAuth(data, botToken)) {
+      throw new Error('Invalid Telegram authentication data');
+    }
+
+    const authId = String(data.id);
+    const existing = await this.userService.getUserByAuthId('telegram', authId);
+    if (existing && existing.id !== userId) {
+      throw new Error('Этот Telegram уже привязан к другому аккаунту');
+    }
+
+    await this.userService.linkIdentity(userId, 'telegram', authId);
   }
 
   private async resolvePrimaryTelegramCommunityId(

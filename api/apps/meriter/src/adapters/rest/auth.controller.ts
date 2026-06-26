@@ -9,6 +9,7 @@ import {
   UseGuards,
   Logger,
   ForbiddenException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthProviderService } from '../../api-v1/auth/auth.service';
@@ -64,9 +65,12 @@ import {
   DemoPersonaAuthDisabledError,
   DemoPersonaNotAllowedError,
 } from '../../application/use-cases/auth/authenticate-demo-persona.use-case';
+import { AuthenticateTelegramMeriterUseCase } from '../../application/use-cases/auth/authenticate-telegram-meriter.use-case';
 import { PlatformSettingsService } from '../../domain/services/platform-settings.service';
 import { PlatformEntrepreneursDemoSeedService } from '../../domain/services/platform-entrepreneurs-demo-seed.service';
+import { UserService } from '../../domain/services/user.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
+import { TelegramAuthDataSchema } from '@meriter/shared-types';
 
 /**
  * BC-12 REST auth adapter (Phase 8). Thin transport layer delegating to use cases.
@@ -94,6 +98,7 @@ export class AuthController {
   private readonly redeemMagicLinkUseCase: RedeemMagicLinkUseCase;
   private readonly verifyCallCheckUseCase: VerifyCallCheckUseCase;
   private readonly authenticateDemoPersonaUseCase: AuthenticateDemoPersonaUseCase;
+  private readonly authenticateTelegramMeriterUseCase: AuthenticateTelegramMeriterUseCase;
 
   /** IP -> { count, resetAt } for GET /link/:token rate limiting. */
   private readonly magicLinkRateLimit = new Map<string, { count: number; resetAt: number }>();
@@ -163,6 +168,7 @@ export class AuthController {
     private readonly cookieManager: CookieManager,
     private readonly platformSettingsService: PlatformSettingsService,
     private readonly entrepreneursDemoSeedService: PlatformEntrepreneursDemoSeedService,
+    private readonly userService: UserService,
   ) {
     this.establishSessionUseCase = new EstablishSessionUseCase(
       this.cookieManager,
@@ -204,6 +210,8 @@ export class AuthController {
     this.redeemMagicLinkUseCase = new RedeemMagicLinkUseCase(
       this.authMagicLinkService,
       this.authService,
+      this.userService,
+      this.configService,
       this.establishSessionUseCase,
     );
     this.verifyCallCheckUseCase = new VerifyCallCheckUseCase(
@@ -212,9 +220,84 @@ export class AuthController {
       this.authService,
       this.establishSessionUseCase,
     );
+    this.authenticateTelegramMeriterUseCase = new AuthenticateTelegramMeriterUseCase(
+      this.authService,
+      this.cookieManager,
+      this.configService,
+    );
   }
 
-  // Telegram authentication endpoints removed: Telegram is fully disabled in this project.
+  @Post('telegram/widget')
+  async authenticateTelegramWidget(@Body() body: Record<string, unknown>, @Req() req: any, @Res() res: any) {
+    try {
+      const result = await this.authenticateTelegramMeriterUseCase.execute(body, res, req);
+      return res.json({
+        success: true,
+        user: result.user,
+        isNewUser: result.isNewUser,
+      });
+    } catch (error) {
+      if (error instanceof ForbiddenException || error instanceof UnauthorizedException) {
+        throw error;
+      }
+      const errorStack = error instanceof Error ? error.stack : String(error);
+      this.logger.error('Telegram widget authentication error', errorStack);
+      throw new UnauthorizedError('Telegram authentication failed');
+    }
+  }
+
+  @Post('link/email')
+  @UseGuards(UserGuard)
+  async linkEmail(@Body() body: { email?: string }, @Req() req: any, @Res() res: any) {
+    const email = body.email?.trim().toLowerCase();
+    if (!email) {
+      throw new UnauthorizedError('Email is required');
+    }
+
+    const userId = req.user?.id as string | undefined;
+    if (!userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const existing = await this.userService.getUserByAuthId('email', email);
+    if (existing && existing.id !== userId) {
+      return res.status(409).json({
+        success: false,
+        message:
+          'Этот email уже привязан к другому аккаунту. Войдите по почте и привяжите Telegram в профиле.',
+      });
+    }
+
+    const linked = await this.userService.getLinkedProviders(userId);
+    if (linked.includes('email')) {
+      return res.json({ success: true, alreadyLinked: true });
+    }
+
+    const result = await this.emailLoginLinkService.sendLoginLink(email, { linkToUserId: userId });
+    return res.json({ success: true, alreadyLinked: false, ...result });
+  }
+
+  @Post('link/telegram')
+  @UseGuards(UserGuard)
+  async linkTelegram(@Body() body: Record<string, unknown>, @Req() req: any, @Res() res: any) {
+    const userId = req.user?.id as string | undefined;
+    if (!userId) {
+      throw new UnauthorizedError('Authentication required');
+    }
+
+    const parsed = TelegramAuthDataSchema.safeParse(body);
+    if (!parsed.success) {
+      throw new UnauthorizedError('Invalid Telegram auth payload');
+    }
+
+    try {
+      await this.authService.linkTelegramWidgetToUser(userId, parsed.data);
+      return res.json({ success: true });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to link Telegram';
+      return res.status(409).json({ success: false, message });
+    }
+  }
 
   @Post('logout')
   async logout(@Res() res: any) {
@@ -819,7 +902,7 @@ export class AuthController {
 
       this.logger.log(`Magic link auth successful for ${result.channel}`);
       const destination = result.isNewUser
-        ? `${appUrl}/meriter/welcome`
+        ? `${appUrl}/meriter/welcome/link-account`
         : `${appUrl}/meriter/profile`;
       return res.redirect(302, destination);
     } catch (error) {

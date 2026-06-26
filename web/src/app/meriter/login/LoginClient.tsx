@@ -4,7 +4,7 @@ import { LoginForm } from '@/components/LoginForm';
 import { VersionDisplay } from '@/components/organisms';
 import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
 import { useCaptiveBrowser } from '@/lib/captive-browser';
-import { EMAIL_ONLY_LOGIN } from '@/lib/constants/login-methods';
+import { EMAIL_ONLY_LOGIN, resolveLoginProviders } from '@/lib/constants/login-methods';
 import { Loader2 } from 'lucide-react';
 
 export default function PageMeriterLogin() {
@@ -12,6 +12,8 @@ export default function PageMeriterLogin() {
     const { config: runtimeConfig, isLoading, error } = useRuntimeConfig();
 
     const emailEnabled = runtimeConfig?.email?.enabled ?? false;
+    const enabledProviders = resolveLoginProviders(runtimeConfig?.oauth);
+    const botUsername = runtimeConfig?.botUsername ?? null;
 
     const { isCaptive: captiveBrowser } = useCaptiveBrowser();
 
@@ -38,7 +40,9 @@ export default function PageMeriterLogin() {
             <div className="w-full max-w-md">
                 <LoginForm
                     {...EMAIL_ONLY_LOGIN}
+                    enabledProviders={enabledProviders}
                     emailEnabled={emailEnabled}
+                    botUsername={botUsername}
                     captiveBrowser={captiveBrowser}
                 />
 

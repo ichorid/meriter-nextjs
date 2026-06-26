@@ -15,6 +15,7 @@ import { ProfileContentCards } from '@/components/organisms/Profile/ProfileConte
 import { useProfileData } from '@/hooks/useProfileData';
 import { ProfileMeritsActivityPanel } from '@/components/organisms/Profile/ProfileMeritsActivityPanel';
 import { ProfileMeritsHeroStrip } from '@/components/organisms/Profile/ProfileMeritsHeroStrip';
+import { LinkedProvidersSection } from '@/components/organisms/Profile/LinkedProvidersSection';
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityCard } from '@/components/organisms/CommunityCard';
 import { CardSkeleton } from '@/components/ui/LoadingSkeleton';
@@ -208,6 +209,12 @@ function ProfilePageComponent() {
               ) : undefined
             }
           />
+        )}
+
+        {!isEditing && (
+          <div>
+            <LinkedProvidersSection />
+          </div>
         )}
 
         {/* Merit Statistics */}

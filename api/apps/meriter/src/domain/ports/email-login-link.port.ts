@@ -8,5 +8,8 @@ export type EmailLoginLinkSendResult = {
 };
 
 export type EmailLoginLinkPort = {
-  sendLoginLink(email: string): Promise<EmailLoginLinkSendResult>;
+  sendLoginLink(
+    email: string,
+    options?: { linkToUserId?: string },
+  ): Promise<EmailLoginLinkSendResult>;
 };

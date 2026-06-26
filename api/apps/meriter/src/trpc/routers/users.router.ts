@@ -19,7 +19,10 @@ export const usersRouter = router({
       });
     }
 
-    return JwtService.mapUserToV1Format(user);
+    return JwtService.mapUserToV1Format({
+      ...user,
+      linkedProviders: await ctx.userService.getLinkedProviders(ctx.user.id),
+    });
   }),
 
   /**

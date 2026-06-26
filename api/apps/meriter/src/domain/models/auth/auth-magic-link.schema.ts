@@ -23,6 +23,10 @@ export class AuthMagicLink {
 
   @Prop()
   usedAt?: Date;
+
+  /** When set, redeem links this identity to an existing user instead of login-as-new. */
+  @Prop()
+  linkToUserId?: string;
 }
 
 export const AuthMagicLinkSchema = SchemaFactory.createForClass(AuthMagicLink);

@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { MagicLinkAuthPort } from '../../../domain/ports/magic-link-auth.port';
 import type { RedeemMagicLinkResult as MagicLinkTokenRedeemResult } from '../../../domain/ports/magic-link-auth.port';
 import type { AuthProviderPort } from '../../../domain/ports/auth-provider.port';
+import { UserService } from '../../../domain/services/user.service';
+import { JwtService } from '../../../common/utils/jwt-service.util';
+import { AppConfig } from '../../../config/configuration';
 import { EstablishSessionUseCase } from './establish-session.use-case';
 
 export type RedeemMagicLinkResult = {
@@ -10,18 +14,13 @@ export type RedeemMagicLinkResult = {
   channel: MagicLinkTokenRedeemResult['channel'];
 };
 
-/**
- * BC-12 inv-24: magic link redeem + session establishment.
- * Token validation and mark-used delegate to AuthMagicLinkService (15-minute TTL via
- * magicLink.ttlMinutes, default 15; distinct from SMS OTP 5-minute TTL).
- * Web routes /a/[token] and /auth/link/[token] both proxy to GET /api/v1/auth/link/:token
- * (Phase 7 consolidation).
- */
 @Injectable()
 export class RedeemMagicLinkUseCase {
   constructor(
     private readonly authMagicLinkService: MagicLinkAuthPort,
     private readonly authService: AuthProviderPort,
+    private readonly userService: UserService,
+    private readonly configService: ConfigService<AppConfig>,
     private readonly establishSessionUseCase: EstablishSessionUseCase,
   ) {}
 
@@ -33,6 +32,40 @@ export class RedeemMagicLinkUseCase {
     const tokenResult = await this.authMagicLinkService.redeem(params.token);
     if (!tokenResult) {
       return null;
+    }
+
+    if (tokenResult.linkToUserId && tokenResult.channel === 'email') {
+      const existing = await this.userService.getUserByAuthId('email', tokenResult.target);
+      if (existing && existing.id !== tokenResult.linkToUserId) {
+        return null;
+      }
+
+      await this.userService.linkIdentity(
+        tokenResult.linkToUserId,
+        'email',
+        tokenResult.target,
+      );
+
+      const user = await this.userService.getUserById(tokenResult.linkToUserId);
+      if (!user) {
+        return null;
+      }
+
+      const jwt = JwtService.generateTokenFromConfig(
+        user.id,
+        user.authProvider,
+        user.authId,
+        user.communityTags || [],
+        this.configService,
+      );
+
+      this.establishSessionUseCase.establishJwtSession(params.response, jwt, params.request);
+
+      return {
+        user,
+        isNewUser: false,
+        channel: tokenResult.channel,
+      };
     }
 
     const authResult =
@@ -48,7 +81,7 @@ export class RedeemMagicLinkUseCase {
 
     return {
       user: authResult.user,
-      isNewUser: authResult.isNewUser,
+      isNewUser: authResult.isNewUser ?? false,
       channel: tokenResult.channel,
     };
   }
@@ -57,11 +90,15 @@ export class RedeemMagicLinkUseCase {
 export function createRedeemMagicLinkUseCase(deps: {
   authMagicLinkService: MagicLinkAuthPort;
   authService: AuthProviderPort;
+  userService: UserService;
+  configService: ConfigService<AppConfig>;
   establishSessionUseCase: EstablishSessionUseCase;
 }): RedeemMagicLinkUseCase {
   return new RedeemMagicLinkUseCase(
     deps.authMagicLinkService,
     deps.authService,
+    deps.userService,
+    deps.configService,
     deps.establishSessionUseCase,
   );
 }

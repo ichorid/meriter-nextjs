@@ -26,12 +26,24 @@ export type AuthProviderPort = {
       auth_date: number;
       hash: string;
     },
-    options?: { skipBaseCommunities?: boolean },
+    options?: { skipBaseCommunities?: boolean; meriterSession?: boolean },
   ): Promise<
     AuthSessionResult & {
       primaryTelegramCommunityId: string | null;
     }
   >;
+  linkTelegramWidgetToUser(
+    userId: string,
+    data: {
+      id: number;
+      first_name: string;
+      last_name?: string;
+      username?: string;
+      photo_url?: string;
+      auth_date: number;
+      hash: string;
+    },
+  ): Promise<void>;
   authenticateSms(phoneNumber: string): Promise<AuthSessionResult>;
   authenticateEmail(email: string): Promise<AuthSessionResult>;
   authenticateGoogle(code: string): Promise<AuthSessionResult>;

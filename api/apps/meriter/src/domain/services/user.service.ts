@@ -25,6 +25,10 @@ import {
   USER_PERSISTENCE_PORT,
   type UserPersistencePort,
 } from '../ports/user.persistence.port';
+import {
+  USER_AUTH_IDENTITY_PERSISTENCE_PORT,
+  type UserAuthIdentityPersistencePort,
+} from '../ports/user-auth-identity.persistence.port';
 
 export interface CreateUserDto {
   authProvider: string;
@@ -49,6 +53,8 @@ export class UserService implements OnModuleInit {
   constructor(
     @Inject(USER_PERSISTENCE_PORT)
     private readonly userPersistence: UserPersistencePort,
+    @Inject(USER_AUTH_IDENTITY_PERSISTENCE_PORT)
+    private readonly authIdentityPersistence: UserAuthIdentityPersistencePort,
     @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
     @Inject(forwardRef(() => WalletService))
@@ -78,6 +84,48 @@ export class UserService implements OnModuleInit {
       }
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Failed to drop legacy index: ${errorMessage}`);
+    }
+
+    await this.migrateLegacyAuthIdentities();
+  }
+
+  private async migrateLegacyAuthIdentities(): Promise<void> {
+    try {
+      const identityCount = await this.authIdentityPersistence.countAll();
+      if (identityCount > 0) {
+        return;
+      }
+
+      this.logger.log('Migrating legacy user authProvider/authId into user_auth_identities');
+      const batchSize = 500;
+      let skip = 0;
+      let inserted = 0;
+
+      for (;;) {
+        const users = await this.userPersistence.findAll(batchSize, skip);
+        if (users.length === 0) {
+          break;
+        }
+
+        const rows = users
+          .filter((u) => u.authProvider && u.authId)
+          .map((u) => ({
+            userId: u.id,
+            provider: u.authProvider,
+            authId: u.authId,
+          }));
+
+        inserted += await this.authIdentityPersistence.bulkInsertFromLegacyUsers(rows);
+        skip += users.length;
+        if (users.length < batchSize) {
+          break;
+        }
+      }
+
+      this.logger.log(`Legacy auth identity migration complete (${inserted} inserted)`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Legacy auth identity migration skipped/failed: ${errorMessage}`);
     }
   }
 
@@ -138,7 +186,49 @@ export class UserService implements OnModuleInit {
     authProvider: string,
     authId: string,
   ): Promise<User | null> {
+    const identity = await this.authIdentityPersistence.findByProviderAuth(
+      authProvider,
+      authId,
+    );
+    if (identity) {
+      const userByIdentity = (await this.userPersistence.findById(identity.userId)) as User | null;
+      if (userByIdentity) {
+        return userByIdentity;
+      }
+    }
     return (await this.userPersistence.findByAuth(authProvider, authId)) as User | null;
+  }
+
+  async getLinkedProviders(userId: string): Promise<string[]> {
+    return this.authIdentityPersistence.findProvidersByUserId(userId);
+  }
+
+  async linkIdentity(
+    userId: string,
+    provider: string,
+    authId: string,
+  ): Promise<void> {
+    await this.authIdentityPersistence.linkIdentity(userId, provider, authId);
+  }
+
+  async findOrCreateByIdentity(
+    provider: string,
+    authId: string,
+    profile: {
+      username?: string;
+      firstName?: string;
+      lastName?: string;
+      displayName?: string;
+    },
+  ): Promise<User> {
+    return this.createOrUpdateUser({
+      authProvider: provider,
+      authId,
+      username: profile.username,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      displayName: profile.displayName,
+    });
   }
 
   async getUserByToken(token: string): Promise<User | null> {
@@ -156,13 +246,10 @@ export class UserService implements OnModuleInit {
 
 
   async createOrUpdateUser(dto: CreateUserDto, token?: string): Promise<User> {
-    // Check if user exists
-    let user = await this.userPersistence.findByAuth(dto.authProvider, dto.authId);
+    let user = await this.getUserByAuthId(dto.authProvider, dto.authId);
 
     if (user) {
-      // Update existing user
-      // Note: $set preserves fields not in updateData (e.g., communityTags, communityMemberships)
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         username: dto.username,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -181,7 +268,6 @@ export class UserService implements OnModuleInit {
         updateData.token = token;
       }
 
-      // Update profile fields if provided (using dot notation for nested fields)
       if (
         dto.bio !== undefined ||
         dto.location !== undefined ||
@@ -197,13 +283,8 @@ export class UserService implements OnModuleInit {
           updateData['profile.isVerified'] = dto.isVerified;
       }
 
-      await this.userPersistence.updateByAuth(
-        dto.authProvider,
-        dto.authId,
-        updateData,
-      );
-      // Re-fetch user to get updated data including preserved communityTags and communityMemberships
-      user = await this.userPersistence.findByAuth(dto.authProvider, dto.authId);
+      await this.userPersistence.updateById(user.id, updateData);
+      user = await this.userPersistence.findById(user.id);
     } else {
       // Create new user
       const newUser: any = {
@@ -250,6 +331,8 @@ export class UserService implements OnModuleInit {
     if (!user) {
       throw new Error(`User not found after createOrUpdateUser`);
     }
+
+    await this.authIdentityPersistence.linkIdentity(user.id, dto.authProvider, dto.authId);
 
     return user as User;
   }

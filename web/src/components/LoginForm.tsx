@@ -42,6 +42,7 @@ import { resolveApiErrorToastMessage } from "@/lib/i18n/api-error-toast";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { PasskeySection } from "./PasskeySection";
 import { OAuthButton } from "./OAuthButton";
+import { TelegramLoginWidget } from "./TelegramLoginWidget";
 import { SmsAuthDialog } from "./SmsAuthDialog";
 import { CallCheckAuthDialog } from "./CallCheckAuthDialog";
 import { EmailAuthDialog, type EmailLinkSentInfo } from "./EmailAuthDialog";
@@ -54,6 +55,7 @@ interface LoginFormProps {
     smsEnabled?: boolean;
     phoneEnabled?: boolean;
     emailEnabled?: boolean;
+    botUsername?: string | null;
     /** When true (in-app/captive browser), show only SMS and Email and a banner to open in system browser */
     captiveBrowser?: boolean;
 }
@@ -65,6 +67,7 @@ export function LoginForm({
     smsEnabled = false,
     phoneEnabled = false,
     emailEnabled = false,
+    botUsername = null,
     captiveBrowser = false,
 }: LoginFormProps) {
     const searchParams = useSearchParams();
@@ -73,8 +76,10 @@ export function LoginForm({
     const fakeDataMode = isFakeDataMode();
     const testAuthMode = isTestAuthMode();
 
-    // Production UI: email only (AuthWrapper and /meriter/login must both honor this).
-    const resolvedProviders = testAuthMode ? enabledProviders : EMAIL_ONLY_LOGIN.enabledProviders;
+    // Production UI: email + optional Telegram from runtime config.
+    const resolvedProviders = testAuthMode
+        ? enabledProviders
+        : enabledProviders ?? EMAIL_ONLY_LOGIN.enabledProviders;
     const resolvedAuthn = testAuthMode ? authnEnabled : EMAIL_ONLY_LOGIN.authnEnabled;
     const resolvedSms = testAuthMode ? smsEnabled : EMAIL_ONLY_LOGIN.smsEnabled;
     const resolvedPhone = testAuthMode ? phoneEnabled : EMAIL_ONLY_LOGIN.phoneEnabled;
@@ -112,13 +117,21 @@ export function LoginForm({
         ? OAUTH_PROVIDERS.filter((p) => resolvedProviders.includes(p.id))
         : OAUTH_PROVIDERS;
 
+    const hasTelegramLogin =
+        !testAuthMode &&
+        !captiveBrowser &&
+        displayedProviders.some((p) => p.id === 'telegram') &&
+        Boolean(botUsername);
+
     const hasPrimaryAuthColumn =
-        displayedProviders.length > 0 ||
+        displayedProviders.filter((p) => p.id !== 'telegram').length > 0 ||
+        hasTelegramLogin ||
         resolvedSms ||
         resolvedPhone ||
         resolvedEmail;
     const showNoAuthProvidersWarning =
-        displayedProviders.length === 0 &&
+        displayedProviders.filter((p) => p.id !== 'telegram').length === 0 &&
+        !hasTelegramLogin &&
         !resolvedAuthn &&
         !resolvedSms &&
         !resolvedPhone &&
@@ -342,7 +355,9 @@ export function LoginForm({
                                     {/* OAuth + phone/email (phone/email independent of OAuth) */}
                                     {hasPrimaryAuthColumn && (
                                         <div className="space-y-2">
-                                            {displayedProviders.map((provider) => (
+                                            {displayedProviders
+                                                .filter((provider) => provider.id !== 'telegram')
+                                                .map((provider) => (
                                                 <OAuthButton
                                                     key={provider.id}
                                                     provider={provider}
@@ -353,6 +368,28 @@ export function LoginForm({
                                                     })}
                                                 />
                                             ))}
+
+                                            {hasTelegramLogin && botUsername && (
+                                                <TelegramLoginWidget
+                                                    botUsername={botUsername}
+                                                    disabled={isLoading || isOAuthLoading}
+                                                    onSuccess={(result) => {
+                                                        let redirectUrl = buildRedirectUrl();
+                                                        if (result.isNewUser) {
+                                                            redirectUrl = '/meriter/welcome/link-account';
+                                                            const safe = safeMeriterReturnPath(returnTo);
+                                                            if (safe) {
+                                                                redirectUrl += `?returnTo=${encodeURIComponent(safe)}`;
+                                                            }
+                                                        }
+                                                        window.location.href = redirectUrl;
+                                                    }}
+                                                    onError={(msg) => {
+                                                        setAuthError(msg);
+                                                        addToast(resolveApiErrorToastMessage(msg), "error");
+                                                    }}
+                                                />
+                                            )}
 
                                             {resolvedSms && (
                                                 <Button

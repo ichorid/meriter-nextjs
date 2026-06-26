@@ -60,6 +60,7 @@ export class JwtService {
     communityTags?: string[];
     communityMemberships?: string[];
     authenticators?: unknown[];
+    linkedProviders?: string[];
     createdAt?: Date;
     updatedAt?: Date;
   }): User {
@@ -95,6 +96,7 @@ export class JwtService {
       communityTags: user.communityTags || [],
       communityMemberships: user.communityMemberships || [],
       authenticators: user.authenticators || [],
+      linkedProviders: user.linkedProviders,
       createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
       updatedAt: user.updatedAt?.toISOString() || new Date().toISOString(),
     } as User;

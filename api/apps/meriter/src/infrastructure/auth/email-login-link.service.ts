@@ -19,10 +19,15 @@ export class EmailLoginLinkService {
         private readonly authMagicLinkService: AuthMagicLinkService,
     ) {}
 
-    async sendLoginLink(email: string): Promise<EmailLoginLinkSendResult> {
+    async sendLoginLink(
+        email: string,
+        options?: { linkToUserId?: string },
+    ): Promise<EmailLoginLinkSendResult> {
         await this.checkRateLimit(email);
 
-        const { linkUrl } = await this.authMagicLinkService.createToken('email', email);
+        const { linkUrl } = await this.authMagicLinkService.createToken('email', email, {
+            linkToUserId: options?.linkToUserId,
+        });
         const ttlMinutes = this.configService.getOrThrow('magicLink').ttlMinutes;
 
         const emailConfig = this.configService.get('email');

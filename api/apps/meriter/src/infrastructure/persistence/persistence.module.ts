@@ -99,6 +99,10 @@ import {
   UserSchemaClass,
 } from '../../domain/models/user/user.schema';
 import {
+  UserAuthIdentitySchema,
+  UserAuthIdentitySchemaClass,
+} from '../../domain/models/user-auth-identity/user-auth-identity.schema';
+import {
   UserSettingsSchema,
   UserSettingsSchemaClass,
 } from '../../domain/models/user-settings.schema';
@@ -127,6 +131,7 @@ import { teamJoinRequestPersistenceProvider } from './team-join-request.persiste
 import { ticketPersistenceProvider } from './ticket.persistence.adapter';
 import { userCommunityRolePersistenceProvider } from './user-community-role.persistence.adapter';
 import { userPersistenceProvider } from './user.persistence.adapter';
+import { userAuthIdentityPersistenceProvider } from './user-auth-identity.persistence.adapter';
 import { userSettingsPersistenceProvider } from './user-settings.persistence.adapter';
 import { walletPersistenceProvider } from './wallet.persistence.adapter';
 import { votePersistenceProvider } from './vote.persistence.adapter';
@@ -156,6 +161,7 @@ import { votePersistenceProvider } from './vote.persistence.adapter';
       { name: CommunityInviteSchemaClass.name, schema: CommunityInviteSchema },
       { name: UserCommunityRoleSchemaClass.name, schema: UserCommunityRoleSchema },
       { name: UserSchemaClass.name, schema: UserSchema },
+      { name: UserAuthIdentitySchemaClass.name, schema: UserAuthIdentitySchema },
       { name: MeritTransferSchemaClass.name, schema: MeritTransferSchema },
       { name: TeamInvitationSchemaClass.name, schema: TeamInvitationSchema },
       { name: TeamJoinRequestSchemaClass.name, schema: TeamJoinRequestSchema },
@@ -184,6 +190,7 @@ import { votePersistenceProvider } from './vote.persistence.adapter';
     communityInvitePersistenceProvider,
     userCommunityRolePersistenceProvider,
     userPersistenceProvider,
+    userAuthIdentityPersistenceProvider,
     meritTransferPersistenceProvider,
     investmentPersistenceProvider,
     ticketPersistenceProvider,
@@ -212,6 +219,7 @@ import { votePersistenceProvider } from './vote.persistence.adapter';
     communityInvitePersistenceProvider,
     userCommunityRolePersistenceProvider,
     userPersistenceProvider,
+    userAuthIdentityPersistenceProvider,
     meritTransferPersistenceProvider,
     investmentPersistenceProvider,
     ticketPersistenceProvider,

@@ -766,18 +766,19 @@ export class TgBotsService {
     tgChatId: string | number;
     text: string;
     parseMode?: 'MarkdownV2';
-  }) {
+  }): Promise<boolean> {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       this.logger.debug('Telegram bot is disabled; skipping tgSend');
-      return "ok";
+      return false;
     }
-    //console.log(tgChatId, text )
     const nodeEnv = this.configService.get('NODE_ENV', 'development');
-    if (String(tgChatId).length < 4 && nodeEnv !== "test") return;
+    if (String(tgChatId).length < 4 && nodeEnv !== 'test') {
+      return false;
+    }
     const botToken = (this.configService.get as any)('bot.token') as string | undefined;
     if (!botToken) {
       this.logger.warn('BOT_TOKEN is empty; Telegram send skipped');
-      return "ok";
+      return false;
     }
     this.logger.log(`Sending Telegram message`);
     const params: Record<string, unknown> = { chat_id: tgChatId, text };
@@ -787,8 +788,9 @@ export class TgBotsService {
     try {
       const noAxios = this.configService.get('noAxios');
       if (!noAxios) {
-        await Axios.get(BOT_URL + "/sendMessage", { params });
+        await Axios.get(BOT_URL + '/sendMessage', { params });
       }
+      return true;
     } catch (e) {
       const anyErr: any = e;
       const description = anyErr?.response?.data?.description;
@@ -797,9 +799,8 @@ export class TgBotsService {
       } else {
         this.logger.error(anyErr);
       }
+      return false;
     }
-
-    return "ok";
   }
 
   //BOT ADDED TO GROUP

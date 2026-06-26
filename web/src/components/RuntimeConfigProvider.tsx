@@ -2,7 +2,7 @@
 
 import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
 import { AuthWrapper } from '@/components/AuthWrapper';
-import { EMAIL_ONLY_LOGIN } from '@/lib/constants/login-methods';
+import { EMAIL_ONLY_LOGIN, resolveLoginProviders } from '@/lib/constants/login-methods';
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 
@@ -29,13 +29,21 @@ export function RuntimeConfigProvider({
         [runtimeConfig?.email?.enabled]
     );
 
+    const enabledProviders = useMemo(
+        () => resolveLoginProviders(runtimeConfig?.oauth),
+        [runtimeConfig?.oauth]
+    );
+
+    const botUsername = runtimeConfig?.botUsername ?? null;
+
     return (
         <AuthWrapper
-            enabledProviders={EMAIL_ONLY_LOGIN.enabledProviders}
+            enabledProviders={enabledProviders}
             authnEnabled={EMAIL_ONLY_LOGIN.authnEnabled}
             smsEnabled={EMAIL_ONLY_LOGIN.smsEnabled}
             phoneEnabled={EMAIL_ONLY_LOGIN.phoneEnabled}
             emailEnabled={emailEnabled}
+            botUsername={botUsername}
         >
             {children}
         </AuthWrapper>

@@ -15,6 +15,7 @@ export interface CreateMagicLinkResult {
 export interface RedeemMagicLinkResult {
   channel: 'sms' | 'email';
   target: string;
+  linkToUserId?: string;
 }
 
 /**
@@ -38,7 +39,11 @@ export class AuthMagicLinkService {
    * Token is short (16 base64url chars, 96 bits) to keep links compact;
    * brute force is mitigated by TTL, one-time use, and redeem rate limiting.
    */
-  async createToken(channel: 'sms' | 'email', target: string): Promise<CreateMagicLinkResult> {
+  async createToken(
+    channel: 'sms' | 'email',
+    target: string,
+    options?: { linkToUserId?: string },
+  ): Promise<CreateMagicLinkResult> {
     const magicConfig = this.configService.getOrThrow('magicLink');
     const ttlMs = magicConfig.ttlMinutes * 60 * 1000;
     const expiresAt = new Date(Date.now() + ttlMs);
@@ -49,6 +54,7 @@ export class AuthMagicLinkService {
       channel,
       target,
       expiresAt,
+      linkToUserId: options?.linkToUserId,
     });
 
     const baseUrl = magicConfig.baseUrl.replace(/\/$/, '');
@@ -86,6 +92,10 @@ export class AuthMagicLinkService {
     await doc.save();
 
     this.logger.log(`Magic link redeemed for ${doc.channel}`);
-    return { channel: doc.channel, target: doc.target };
+    return {
+      channel: doc.channel,
+      target: doc.target,
+      linkToUserId: doc.linkToUserId,
+    };
   }
 }
