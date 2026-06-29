@@ -267,6 +267,8 @@ export interface Community {
   projectInvestments?: ProjectInvestmentEntry[];
   /** Linked Telegram group chat id (stringified). */
   telegramChatId?: string;
+  /** Message id of the pinned mini-app launch link in the Telegram group. */
+  telegramPinnedMiniAppMessageId?: number;
   /** Set when bot was removed from the linked Telegram group. */
   telegramFrozenAt?: Date | null;
 }
@@ -471,6 +473,10 @@ export class CommunitySchemaClass implements Community {
   /** Linked Telegram group chat id (stringified). One chat → one community. */
   @Prop({ type: String, required: false, sparse: true, unique: true })
   telegramChatId?: string;
+
+  /** Pinned mini-app launch link message in the linked Telegram group. */
+  @Prop({ type: Number, required: false })
+  telegramPinnedMiniAppMessageId?: number;
 
   /** Set when bot was removed from the linked Telegram group. */
   @Prop({ type: Date, required: false })

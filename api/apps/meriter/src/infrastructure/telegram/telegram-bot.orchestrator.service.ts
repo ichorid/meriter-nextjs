@@ -83,7 +83,7 @@ const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
 const FUTURE_VISION_MAX_LENGTH = 10000;
 const BOT_CMD_REGEX =
-  /^\/(баланс|balance|участники|members|help|справка|settings|настройки|guide|гайд)(?:@\w+)?(?:\s+(.*))?$/i;
+  /^\/(баланс|balance|участники|members|help|справка|settings|настройки|guide|гайд|linkandpin|link)(?:@\w+)?(?:\s+(.*))?$/i;
 
 type BotCommandContext = {
   community: Community;
@@ -579,6 +579,22 @@ export class TelegramBotOrchestratorService {
         }
         break;
       }
+      case 'linkandpin':
+        await this.sendMiniAppLink(community, replyChatId, {
+          pin: true,
+          replyToMessageId: replyInGroup
+            ? (message?.message_id as number | undefined)
+            : undefined,
+        });
+        break;
+      case 'link':
+        await this.sendMiniAppLink(community, replyChatId, {
+          pin: false,
+          replyToMessageId: replyInGroup
+            ? (message?.message_id as number | undefined)
+            : undefined,
+        });
+        break;
       default:
         break;
       }
@@ -1098,6 +1114,59 @@ export class TelegramBotOrchestratorService {
     await this.sendGroupMiniAppLinkPrompt(chatId, usageInput.botUsername, communityId);
   }
 
+  private async sendMiniAppLink(
+    community: Community,
+    chatId: string,
+    options: { pin: boolean; replyToMessageId?: number },
+  ): Promise<void> {
+    const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '').trim();
+    if (!botUsername) {
+      if (options.replyToMessageId != null) {
+        await this.sendBotEphemeral(chatId, TG_MSG.miniAppLinkUnavailable, options.replyToMessageId);
+      } else {
+        await this.tgBots.tgSend({ tgChatId: chatId, text: TG_MSG.miniAppLinkUnavailable });
+      }
+      return;
+    }
+
+    if (options.pin && community.telegramPinnedMiniAppMessageId != null) {
+      await this.tgBots.tgUnpinChatMessage(chatId, community.telegramPinnedMiniAppMessageId);
+    }
+
+    if (options.replyToMessageId != null) {
+      await this.tgBots.tgReplyMessage({
+        chat_id: chatId,
+        reply_to_message_id: options.replyToMessageId,
+        text: TG_MSG.groupMiniAppLinkHint,
+      });
+    } else {
+      await this.tgBots.tgSend({ tgChatId: chatId, text: TG_MSG.groupMiniAppLinkHint });
+    }
+
+    const linkMessageId = await this.tgBots.tgSendMessage({
+      chat_id: chatId,
+      text: buildTelegramMiniAppStartLink(botUsername, community.id),
+    });
+    if (linkMessageId == null) {
+      return;
+    }
+
+    if (options.pin) {
+      const pinned = await this.tgBots.tgPinChatMessage(chatId, linkMessageId);
+      if (pinned) {
+        await this.communityModel.updateOne(
+          { id: community.id },
+          {
+            $set: {
+              telegramPinnedMiniAppMessageId: linkMessageId,
+              updatedAt: new Date(),
+            },
+          },
+        );
+      }
+    }
+  }
+
   private async sendGroupMiniAppLinkPrompt(
     chatId: string,
     botUsername?: string,
@@ -1107,17 +1176,11 @@ export class TelegramBotOrchestratorService {
     if (!clean || !communityId?.trim()) {
       return;
     }
-    await this.tgBots.tgSend({
-      tgChatId: chatId,
-      text: TG_MSG.groupMiniAppLinkHint,
-    });
-    const messageId = await this.tgBots.tgSendMessage({
-      chat_id: chatId,
-      text: buildTelegramMiniAppStartLink(clean, communityId),
-    });
-    if (messageId != null) {
-      await this.tgBots.tgPinChatMessage(chatId, messageId);
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      return;
     }
+    await this.sendMiniAppLink(community, chatId, { pin: true });
   }
 
   private buildCommunityUsageInput(

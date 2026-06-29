@@ -9,6 +9,7 @@ describe('buildTelegramGuideMessage', () => {
     expect(text).toContain('<i>Если у группы длинное название');
     expect(text).toContain('<i>(Хэштег может быть другой');
     expect(text).toContain('/guide — этот гайд в личку');
+    expect(text).toContain('/link — ссылка');
     expect(text.length).toBeLessThan(4096);
   });
 });

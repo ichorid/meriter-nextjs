@@ -713,6 +713,37 @@ export class TgBotsService {
     }
   }
 
+  async tgUnpinChatMessage(
+    chat_id: string | number,
+    message_id?: number,
+  ): Promise<boolean> {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      return false;
+    }
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) {
+      return true;
+    }
+    const botToken = (this.configService.get as (key: string) => string | undefined)('bot.token');
+    if (!botToken) {
+      return false;
+    }
+    try {
+      const params: Record<string, unknown> = { chat_id };
+      if (message_id != null) {
+        params.message_id = message_id;
+      }
+      await Axios.get(BOT_URL + '/unpinChatMessage', { params });
+      return true;
+    } catch (e) {
+      this.logger.debug(
+        'tgUnpinChatMessage failed (message may already be unpinned)',
+        (e as { response?: { data?: unknown } })?.response?.data,
+      );
+      return false;
+    }
+  }
+
   async tgPinChatMessage(
     chat_id: string | number,
     message_id: number,

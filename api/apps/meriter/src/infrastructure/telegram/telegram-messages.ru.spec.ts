@@ -85,6 +85,7 @@ describe('telegram group welcome copy', () => {
     });
     expect(text).toContain('/balance — ваши заслуги');
     expect(text).toContain('/guide — подробный гайд');
+    expect(text).toContain('/link — ссылка');
     expect(text).toContain('1. Отправляйте сообщения с #идея');
     expect(text).not.toContain('Заслуги — внутренняя валюта');
   });

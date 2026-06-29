@@ -719,6 +719,73 @@ describe('TelegramBotOrchestrator (integration)', () => {
     expect(updated?.settings?.telegramReactionNoHashtagHintEnabled).toBe(false);
   });
 
+  it('group /link posts mini-app launch link without pinning', async () => {
+    await seedLinkedCommunity();
+    const sendMessageSpy = jest.spyOn(tgBotsService, 'tgSendMessage').mockResolvedValue(2002);
+    const replySpy = jest.spyOn(tgBotsService, 'tgReplyMessage').mockResolvedValue(2001);
+    const pinSpy = jest.spyOn(tgBotsService, 'tgPinChatMessage');
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 44,
+      message: {
+        message_id: 59,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        text: '/link',
+      },
+    } as TelegramTypes.Update);
+
+    expect(replySpy).toHaveBeenCalledWith(
+      expect.objectContaining({ text: TG_MSG.groupMiniAppLinkHint, reply_to_message_id: 59 }),
+    );
+    expect(sendMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining('startapp=') }),
+    );
+    expect(pinSpy).not.toHaveBeenCalled();
+  });
+
+  it('group /linkandpin replaces pinned mini-app link message', async () => {
+    const { communityId } = await seedLinkedCommunity();
+    await communityModel.updateOne(
+      { id: communityId },
+      { $set: { telegramPinnedMiniAppMessageId: 1000 } },
+    );
+    const unpinSpy = jest.spyOn(tgBotsService, 'tgUnpinChatMessage').mockResolvedValue(true);
+    const sendMessageSpy = jest.spyOn(tgBotsService, 'tgSendMessage').mockResolvedValue(2003);
+    const pinSpy = jest.spyOn(tgBotsService, 'tgPinChatMessage').mockResolvedValue(true);
+    jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 45,
+      message: {
+        message_id: 60,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        text: '/linkandpin',
+      },
+    } as TelegramTypes.Update);
+
+    expect(unpinSpy).toHaveBeenCalledWith(tgChatId, 1000);
+    expect(sendMessageSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining('startapp=') }),
+    );
+    expect(pinSpy).toHaveBeenCalledWith(tgChatId, 2003);
+    const updated = await communityModel.findOne({ id: communityId }).lean();
+    expect(updated?.telegramPinnedMiniAppMessageId).toBe(2003);
+  });
+
   it('lead can update community name via settings edit in DM', async () => {
     const { communityId } = await seedLeadCommunity();
     const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(undefined);
