@@ -57,6 +57,8 @@ import {
   settingsEditFieldToAction,
   isSettingsEditField,
   primaryCommunityHashtag,
+  buildTelegramVoterDisplayName,
+  buildVoteAmountGroupMentionMessage,
   type SettingsEditField,
   mapTelegramUserFacingError,
   voteAmountButtonLabels,
@@ -679,7 +681,13 @@ export class TelegramBotOrchestratorService {
           String(user.id),
           anchor.publicationId,
           'up',
-          { groupChatId: chatId, replyToMessageId: messageId },
+          {
+            groupChatId: chatId,
+            replyToMessageId: messageId,
+            voterFirstName: (user as { first_name?: string }).first_name,
+            voterLastName: (user as { last_name?: string }).last_name,
+            voterUsername: (user as { username?: string }).username,
+          },
         );
       } else if (isTelegramDownvoteEmoji(emoji)) {
         await this.promptVoteAmount(
@@ -687,7 +695,13 @@ export class TelegramBotOrchestratorService {
           String(user.id),
           anchor.publicationId,
           'down',
-          { groupChatId: chatId, replyToMessageId: messageId },
+          {
+            groupChatId: chatId,
+            replyToMessageId: messageId,
+            voterFirstName: (user as { first_name?: string }).first_name,
+            voterLastName: (user as { last_name?: string }).last_name,
+            voterUsername: (user as { username?: string }).username,
+          },
         );
       } else {
         this.logger.debug('message_reaction: emoji not mapped to vote action', {
@@ -1427,11 +1441,44 @@ export class TelegramBotOrchestratorService {
     context?: {
       groupChatId?: string;
       replyToMessageId?: number;
+      voterFirstName?: string;
+      voterLastName?: string;
+      voterUsername?: string;
     },
   ): Promise<void> {
     const pendingId = uid();
-    const promptText =
-      direction === 'down' ? TG_MSG.voteAmountDmPromptDown : TG_MSG.voteAmountDmPrompt;
+
+    if (!context?.groupChatId || context.replyToMessageId == null) {
+      await this.pendingModel.create({
+        id: pendingId,
+        telegramUserId: tgUserId,
+        action: 'confirm_vote_amount',
+        payload: { voterId, publicationId, direction },
+        expiresAt: new Date(Date.now() + PENDING_TTL_MS),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
+      const dmSent = await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: direction === 'down' ? TG_MSG.voteAmountDmPromptDown : TG_MSG.voteAmountDmPrompt,
+      });
+      if (!dmSent) {
+        await this.pendingModel.deleteOne({ id: pendingId }).exec();
+        const botUsername =
+          this.configService.get('bot')?.username?.replace(/^@/, '') ?? 'meriterbot';
+        await this.tgBots.tgSend({
+          tgChatId: tgUserId,
+          text: TG_MSG.voteAmountDmFailed(botUsername),
+        });
+      }
+      return;
+    }
+
+    const displayName = buildTelegramVoterDisplayName({
+      firstName: context.voterFirstName,
+      lastName: context.voterLastName,
+      username: context.voterUsername,
+    });
 
     await this.pendingModel.create({
       id: pendingId,
@@ -1441,21 +1488,23 @@ export class TelegramBotOrchestratorService {
         voterId,
         publicationId,
         direction,
-        groupChatId: context?.groupChatId,
-        reactedMessageId: context?.replyToMessageId,
+        groupChatId: context.groupChatId,
+        reactedMessageId: context.replyToMessageId,
       },
       expiresAt: new Date(Date.now() + PENDING_TTL_MS),
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    const sent = await this.sendVoteAmountDmPromptWithKeyboard(
-      tgUserId,
+    const promptMessageId = await this.sendVoteAmountGroupPromptWithKeyboard(
+      context.groupChatId,
+      context.replyToMessageId,
       pendingId,
-      promptText,
+      Number.parseInt(tgUserId, 10),
+      displayName,
       direction,
     );
-    if (sent) {
+    if (promptMessageId != null) {
       return;
     }
 
@@ -1670,23 +1719,36 @@ export class TelegramBotOrchestratorService {
     }
   }
 
-  private async sendVoteAmountDmPromptWithKeyboard(
-    tgUserId: string,
+  private async sendVoteAmountGroupPromptWithKeyboard(
+    chatId: string,
+    replyToMessageId: number,
     pendingId: string,
-    promptText: string,
+    tgUserId: number,
+    displayName: string,
     direction: 'up' | 'down',
-  ): Promise<boolean> {
+  ): Promise<number | null> {
+    const { text, entities } = buildVoteAmountGroupMentionMessage(
+      tgUserId,
+      displayName,
+      direction,
+    );
     const token = this.configService.get('bot')?.token;
     if (!token || this.configService.get('noAxios')) {
-      return Boolean(await this.tgBots.tgSend({ tgChatId: tgUserId, text: promptText }));
+      return this.tgBots.tgReplyEphemeral({
+        chat_id: chatId,
+        reply_to_message_id: replyToMessageId,
+        text,
+      });
     }
     const [l1, l2, l3] = voteAmountButtonLabels(direction);
     try {
       const Axios = (await import('axios')).default;
       const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
       const res = await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
-        chat_id: tgUserId,
-        text: promptText,
+        chat_id: chatId,
+        reply_to_message_id: replyToMessageId,
+        text,
+        entities,
         reply_markup: {
           inline_keyboard: [
             [
@@ -1697,10 +1759,21 @@ export class TelegramBotOrchestratorService {
           ],
         },
       });
-      return typeof res.data?.result?.message_id === 'number';
+      const messageId = res.data?.result?.message_id;
+      if (typeof messageId === 'number') {
+        setTimeout(() => {
+          void this.tgBots.tgDeleteMessage(chatId, messageId);
+        }, TG_BOT_EPHEMERAL_TTL_SEC * 1000);
+        return messageId;
+      }
     } catch {
-      return Boolean(await this.tgBots.tgSend({ tgChatId: tgUserId, text: promptText }));
+      /* fallback below */
     }
+    return this.tgBots.tgReplyEphemeral({
+      chat_id: chatId,
+      reply_to_message_id: replyToMessageId,
+      text,
+    });
   }
 
   private async sendCallbackPrompt(

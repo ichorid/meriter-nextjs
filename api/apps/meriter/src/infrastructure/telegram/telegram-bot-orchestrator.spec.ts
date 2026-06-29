@@ -554,36 +554,44 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
   });
 
-  it('message_reaction ❤️ prompts amount in DM with keyboard, not in group', async () => {
+  it('message_reaction ❤️ prompts amount in group with mention and reply to post', async () => {
     const { messageId } = await seedPublicationWithAnchor(99, { otherAuthor: true });
-    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral');
-    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1001);
+    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend');
 
     await webhookController.handleWebhook(
       botUsername,
       messageReactionUpdate('❤️', messageId, 30),
     );
 
-    expect(ephemeralSpy).not.toHaveBeenCalledWith(
-      expect.objectContaining({ text: TG_MSG.voteAmountDmPrompt }),
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chat_id: tgChatId,
+        reply_to_message_id: messageId,
+        text: expect.stringContaining('TG User'),
+      }),
     );
-    expect(tgSendSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ tgChatId: tgUserId, text: TG_MSG.voteAmountDmPrompt }),
+    expect(tgSendSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text: TG_MSG.voteAmountDmPrompt }),
     );
     const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
     expect(pending?.action).toBe('confirm_vote_amount');
     expect((pending?.payload as { reactedMessageId?: number }).reactedMessageId).toBe(messageId);
   });
 
-  it('message_reaction ❤️ reports DM failure when bot cannot message user', async () => {
+  it('message_reaction ❤️ notifies user when group prompt fails', async () => {
     const { messageId } = await seedPublicationWithAnchor(99, { otherAuthor: true });
-    jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(false);
+    jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(null);
+    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
 
     await webhookController.handleWebhook(
       botUsername,
       messageReactionUpdate('❤️', messageId, 31),
     );
 
+    expect(tgSendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ tgChatId: tgUserId, text: expect.stringContaining('Start') }),
+    );
     expect(await pendingModel.findOne({ telegramUserId: tgUserId }).exec()).toBeNull();
   });
 

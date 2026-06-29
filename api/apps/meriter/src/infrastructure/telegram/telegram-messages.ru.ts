@@ -413,6 +413,53 @@ export function voteAmountButtonLabels(_direction: 'up' | 'down'): [string, stri
   return ['1', '3', '5'];
 }
 
+export type TelegramTextMentionEntity = {
+  type: 'text_mention';
+  offset: number;
+  length: number;
+  user: { id: number; is_bot: false; first_name: string; last_name?: string; username?: string };
+};
+
+export function buildTelegramVoterDisplayName(input: {
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+}): string {
+  const fromName = [input.firstName, input.lastName].filter(Boolean).join(' ').trim();
+  if (fromName) return fromName;
+  if (input.username?.trim()) return `@${input.username.replace(/^@/, '')}`;
+  return 'участник';
+}
+
+/** Group vote-amount prompt: leading @mention + reply under reacted message. */
+export function buildVoteAmountGroupMentionMessage(
+  tgUserId: number,
+  displayName: string,
+  direction: 'up' | 'down',
+): { text: string; entities: TelegramTextMentionEntity[] } {
+  const name = displayName.trim() || 'участник';
+  const suffix =
+    direction === 'down'
+      ? ', сколько заслуг списать с автора?\n\nВыберите сумму кнопкой или ответьте числом.'
+      : ', сколько заслуг начислить автору?\n\nВыберите сумму кнопкой или ответьте числом.';
+  const firstName = name.startsWith('@') ? name.slice(1) : name.split(/\s+/)[0] || name;
+  return {
+    text: `${name}${suffix}`,
+    entities: [
+      {
+        type: 'text_mention',
+        offset: 0,
+        length: name.length,
+        user: {
+          id: tgUserId,
+          is_bot: false,
+          first_name: firstName,
+        },
+      },
+    ],
+  };
+}
+
 export function meritTransferGroupMessage(
   senderName: string,
   receiverName: string,

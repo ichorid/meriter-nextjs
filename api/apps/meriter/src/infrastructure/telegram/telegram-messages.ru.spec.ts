@@ -3,6 +3,7 @@ import {
   buildTelegramHelpMessage,
   buildTelegramMiniAppStartLink,
   buildSettingsLeadSummary,
+  buildVoteAmountGroupMentionMessage,
   communitySettingsSnapshot,
   TG_MSG,
 } from './telegram-messages.ru';
@@ -114,5 +115,12 @@ describe('telegram group welcome copy', () => {
   it('reactionPostNotFound uses community hashtag', () => {
     expect(TG_MSG.reactionPostNotFound('идея')).toContain('#идея');
     expect(TG_MSG.reactionPostNotFound('идея')).not.toContain('сохранённым');
+  });
+
+  it('vote amount group prompt mentions voter at start', () => {
+    const { text, entities } = buildVoteAmountGroupMentionMessage(900002, 'TG User', 'up');
+    expect(text.startsWith('TG User,')).toBe(true);
+    expect(entities[0]?.type).toBe('text_mention');
+    expect(entities[0]?.user.id).toBe(900002);
   });
 });

@@ -4,12 +4,14 @@ import { useState } from 'react';
 import { AmountStepper } from '@/components/amount-stepper';
 import { trpc } from '@/lib/trpc/client';
 import { hapticError, hapticSuccess } from '@/lib/telegram-env';
+import { meritTransferWalletHint } from '@/lib/community-hashtag';
 
 type MemberTransferInlineProps = {
   communityId: string;
   receiverId: string;
   receiverLabel: string;
   walletBalance: number;
+  voteHashtag?: string;
   onSuccess?: () => void;
 };
 
@@ -18,6 +20,7 @@ export function MemberTransferInline({
   receiverId,
   receiverLabel,
   walletBalance,
+  voteHashtag,
   onSuccess,
 }: MemberTransferInlineProps) {
   const [open, setOpen] = useState(false);
@@ -105,6 +108,9 @@ export function MemberTransferInline({
         />
       </label>
       {error ? <p className="text-xs text-red-400">{error}</p> : null}
+      <p className="text-xs leading-snug text-stitch-muted">
+        {meritTransferWalletHint(voteHashtag ?? 'идея')}
+      </p>
       <div className="flex gap-2">
         <button
           type="button"

@@ -6,6 +6,7 @@ import { MemberTransferInline } from '@/components/member-transfer-inline';
 import { useCommunityId } from '@/lib/use-route-params';
 import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
 import { trpc } from '@/lib/trpc/client';
+import { primaryCommunityHashtag } from '@/lib/community-hashtag';
 
 function memberQuotaMax(quota: {
   dailyEmission?: number;
@@ -40,6 +41,10 @@ function MembersInner({ communityId }: { communityId: string }) {
     { id: communityId, pageSize: 50 },
     { enabled: Boolean(communityId) },
   );
+  const communityQuery = trpc.communities.getById.useQuery(
+    { id: communityId },
+    { enabled: Boolean(communityId) },
+  );
 
   const members = [...(membersQuery.data?.data ?? [])].sort(
     (a, b) => (b.walletBalance ?? 0) - (a.walletBalance ?? 0),
@@ -47,6 +52,7 @@ function MembersInner({ communityId }: { communityId: string }) {
   const total = membersQuery.data?.pagination?.total ?? 0;
   const selfId = meQuery.data?.id;
   const walletBalance = walletQuery.data?.balance ?? 0;
+  const voteHashtag = primaryCommunityHashtag(communityQuery.data?.hashtags);
 
   return (
     <CommunityShell communityId={communityId} active="members" tgActive="members">
@@ -114,6 +120,7 @@ function MembersInner({ communityId }: { communityId: string }) {
                       member.displayName || member.username || member.id
                     }
                     walletBalance={walletBalance}
+                    voteHashtag={voteHashtag}
                   />
                 )}
               </li>
