@@ -11,9 +11,9 @@ import {
 } from '@/lib/telegram-env';
 import { initTelegramWebApp } from '@/lib/telegram-webapp';
 import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
+import { TgCommunityPicker } from '@/components/tg-community-picker';
 import {
   resolveTelegramBootContext,
-  type TelegramCommunityOption,
 } from '@/lib/tg-boot-resolve';
 
 type BootState =
@@ -31,7 +31,9 @@ export default function TelegramBootPage() {
   const { setBootstrapped } = useTelegramMiniApp();
   const [state, setState] = useState<BootState>('loading');
   const [message, setMessage] = useState('');
-  const [communities, setCommunities] = useState<TelegramCommunityOption[]>([]);
+  const [pickerCommunities, setPickerCommunities] = useState<
+    Parameters<typeof TgCommunityPicker>[0]['communities']
+  >([]);
   const started = useRef(false);
 
   const webAppAuth = trpc.auth.authenticateTelegramWebApp.useMutation();
@@ -86,7 +88,7 @@ export default function TelegramBootPage() {
           return;
         }
         if (resolution.type === 'pick') {
-          setCommunities(resolution.communities);
+          setPickerCommunities(resolution.communities);
           setState('pick_community');
           return;
         }
@@ -139,31 +141,7 @@ export default function TelegramBootPage() {
   }
 
   if (state === 'pick_community') {
-    return (
-      <div className="flex min-h-screen flex-col bg-stitch-canvas px-4 py-8">
-        <h1 className="text-lg font-bold tracking-tight text-stitch-text">Выберите сообщество</h1>
-        <p className="mt-2 text-sm text-stitch-muted">
-          Вы состоите в нескольких группах Meriter. Выберите, для какой открыть баланс и историю
-          заслуг.
-        </p>
-        <ul className="mt-6 flex flex-col gap-2">
-          {communities.map((item) => (
-            <li key={item.communityId}>
-              <button
-                type="button"
-                onClick={() => {
-                  setState('redirecting');
-                  router.replace(`/c/${item.communityId}/me`);
-                }}
-                className="w-full rounded-xl border border-stitch-border bg-stitch-surface px-4 py-3 text-left text-sm font-medium text-stitch-text transition-colors hover:border-primary/40 hover:bg-stitch-elevated"
-              >
-                {item.name}
-              </button>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
+    return <TgCommunityPicker communities={pickerCommunities} />;
   }
 
   if (state === 'no_community') {
