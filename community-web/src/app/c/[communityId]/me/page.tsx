@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { AuthGate } from '@/components/shell';
 import { MeritHistoryRow } from '@/components/merit-history-row';
+import { HintIcon, COMMUNITY_MEMBER_COUNT_HINT } from '@/components/hint-icon';
 import { CommunityShell } from '@/components/community-shell';
 import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
@@ -55,7 +56,10 @@ function MePageInner({ communityId }: { communityId: string }) {
     <CommunityShell communityId={communityId} active="settings" tgActive="me">
       <div className="space-y-6">
         <h1 className="text-xl font-extrabold tracking-tight">Мои заслуги</h1>
-        <p className="text-sm text-stitch-muted">Участников в сообществе: {memberTotal}</p>
+        <p className="flex flex-wrap items-center gap-1.5 text-sm text-stitch-muted">
+          <span>Участников в сообществе: {memberTotal}</span>
+          <HintIcon text={COMMUNITY_MEMBER_COUNT_HINT} />
+        </p>
 
         <div className="rounded-xl border border-stitch-border bg-stitch-surface p-5 space-y-4">
           <div>

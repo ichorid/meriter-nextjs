@@ -61,40 +61,39 @@ export function primaryCommunityHashtag(hashtags?: string[]): string {
   return tag || 'идея';
 }
 
-export function buildMiniAppOpenSteps(botUsername?: string): string {
-  if (botUsername) {
-    return (
-      `Как открыть приложение Meriter:\n` +
-      `1) В группе откройте меню бота (кнопка «Meriter» внизу или в профиле бота)\n` +
-      `2) Или перейдите: https://t.me/${botUsername}?startapp\n` +
-      `3) В приложении: баланс, участники, история заслуг`
-    );
-  }
+function buildHashtagAndMiniAppIntro(input: CommunityUsageRulesInput): string {
+  const hashtag = primaryCommunityHashtag(input.hashtags);
   return (
-    `Как открыть приложение Meriter:\n` +
-    `1) Откройте бота в Telegram\n` +
-    `2) Нажмите кнопку «Meriter» в меню бота\n` +
-    `3) В приложении: баланс, участники, история заслуг`
+    `Отправляйте сообщения с #${hashtag}, чтобы получать заслуги от других пользователей. ` +
+    `Пример: «#${hashtag} Предлагаю собраться в субботу»\n` +
+    `Голосуйте за такие сообщения реакциями 👍 ❤️ 👎\n` +
+    `Проверяйте свой баланс и историю заслуг в нашем мини-приложении (ссылка ниже).`
+  );
+}
+
+function buildReactionVotingRules(): string {
+  return (
+    `Голосование реакциями:\n` +
+    `• 👍 — поддержать быстро +1 заслуга автору\n` +
+    `• ❤️ — поддержать сильнее (выберите сумму кнопкой)\n` +
+    `• 👎 — не согласен (списание с вашего кошелька, выберите сумму)`
+  );
+}
+
+function buildReplyVoteHint(): string {
+  return `Или просто ответьте на пост в таком формате: «+3 Отличная идея» или «-2 Не согласен».`;
+}
+
+function buildCommunityUsageBody(input: CommunityUsageRulesInput): string {
+  return (
+    `${buildHashtagAndMiniAppIntro(input)}\n\n` +
+    `${buildReactionVotingRules()}\n\n` +
+    buildReplyVoteHint()
   );
 }
 
 export function buildCommunityUsageRules(input: CommunityUsageRulesInput): string {
-  const hashtag = primaryCommunityHashtag(input.hashtags);
-  const miniAppBlock =
-    input.platformIntegration !== false
-      ? `${buildMiniAppOpenSteps(input.botUsername)}\n\n`
-      : '';
-  return (
-    `${miniAppBlock}` +
-    `Публикация в чате: напишите #${hashtag} в тексте сообщения.\n` +
-    `Пример: «#${hashtag} Предлагаю собраться в субботу»\n\n` +
-    `Голосование реакциями:\n` +
-    `• 👍 — быстро +1 заслуга автору\n` +
-    `• ❤️ — поддержать сильнее (выберите сумму кнопкой)\n` +
-    `• 👎 — не согласен (списание с вашего кошелька, выберите сумму)\n\n` +
-    `Или ответьте на пост: +3 Отличная идея  /  -2 Не согласен\n\n` +
-    `Заслуги — внутренняя валюта сообщества, не деньги.`
-  );
+  return buildCommunityUsageBody(input);
 }
 
 export function buildOnboardingDoneMessage(input: CommunityUsageRulesInput): string {
@@ -126,9 +125,8 @@ export function buildTelegramMiniAppStartLink(
 
 export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): string {
   return (
-    `Meriter подключён к «${input.communityName}».\n\n` +
-    `Голосуйте реакциями 👍 ❤️ 👎 на посты бота и сообщения с хэштегом.\n\n` +
-    buildCommunityUsageRules(input)
+    `Привет! Я – Меритер: бот, который поможет вам учитывать заслуги всех участников этой группы.\n\n` +
+    buildCommunityUsageBody(input)
   );
 }
 
@@ -151,24 +149,12 @@ export function buildTelegramHelpMessage(
     platformIntegration?: boolean;
   },
 ): string {
-  const rulesBlock = options?.communityName
-    ? `${buildCommunityUsageRules({
-        communityName: options.communityName,
-        hashtags: options?.hashtags,
-        platformIntegration: options?.platformIntegration,
-        botUsername: options?.botUsername,
-      })}\n\n`
-    : `${buildCommunityUsageRules({
-        communityName: 'сообщество',
-        hashtags: options?.hashtags,
-        platformIntegration: options?.platformIntegration,
-        botUsername: options?.botUsername,
-      })}\n\n`;
-
-  const appLine =
-    options?.botUsername && options?.platformIntegration !== false
-      ? `\n\nПриложение: https://t.me/${options.botUsername}?startapp`
-      : '';
+  const rulesBlock = `${buildCommunityUsageRules({
+    communityName: options?.communityName ?? 'сообщество',
+    hashtags: options?.hashtags,
+    platformIntegration: options?.platformIntegration,
+    botUsername: options?.botUsername,
+  })}\n\n`;
 
   return (
     `${rulesBlock}` +
@@ -176,8 +162,7 @@ export function buildTelegramHelpMessage(
     `/balance — ваши заслуги\n` +
     `/members — список участников\n` +
     `/settings — настройки (лид)\n` +
-    `/help — эта подсказка` +
-    appLine
+    `/help — эта подсказка`
   );
 }
 
@@ -223,12 +208,11 @@ export const TG_MSG = {
   reactionUnsupported:
     'Такая реакция не поддерживается.\n\n' +
     'Используйте 👍 ❤️ 👎 или ответьте на пост: +3 ваш комментарий',
+  cannotVoteOwnPost: 'Голосовать за собственный пост нельзя.',
   voteAmountGroupPrompt:
-    'Сколько заслуг начислить автору?\n\nОтветьте числом на это сообщение или нажмите кнопку ниже.',
-  voteAmountGroupPromptSelf:
-    'Сколько заслуг начислить?\n\nНа свой пост — только с кошелька.\nОтветьте числом или нажмите кнопку.',
+    'Насколько заслуг начислить автору?\n\nВыберите сумму кнопкой или ответьте числом на это сообщение.',
   voteAmountGroupPromptDown:
-    'Сколько заслуг списать с автора?\n\nОтветьте числом на это сообщение или нажмите кнопку ниже.',
+    'Насколько заслуг списать с автора?\n\nВыберите сумму кнопкой или ответьте числом на это сообщение.',
   balanceSelf: (name: string, wallet: number, quota: number, quotaMax: number, pct: number) =>
     `Ваши заслуги в «${name}»\n\n` +
     `Кошелёк — накопленные заслуги: ${wallet}\n` +
@@ -245,9 +229,7 @@ export const TG_MSG = {
     'Бот удалён из группы. Сообщество на паузе — начисления и траты заслуг остановлены. Добавьте бота обратно.',
   groupMiniAppLinkHint:
     'Чтобы открыть интерфейс Meriter, проверить свой баланс и заслуги других участников, кликните по ссылке ниже:',
-  enterAmount: 'Напишите число — сколько заслуг начислить:',
-  enterAmountSelfUp:
-    'Напишите число заслуг. На свой пост можно только с кошелька (не с ежедневных на сегодня).',
+  enterAmount: 'Напишите число — сколько заслуг начислить автору:',
   voteAmountDmFailed: (botUsername: string) =>
     `Не удалось написать вам в личку.\n\n` +
     `1) Откройте @${botUsername}\n` +
@@ -285,9 +267,6 @@ export const TG_EMOJI = {
   down: '👎',
 } as const;
 
-export function voteAmountButtonLabels(direction: 'up' | 'down'): [string, string, string] {
-  if (direction === 'down') {
-    return ['-1', '-3', '-5'];
-  }
-  return ['+1', '+3', '+5'];
+export function voteAmountButtonLabels(_direction: 'up' | 'down'): [string, string, string] {
+  return ['1', '3', '5'];
 }

@@ -7,6 +7,22 @@ import { useCommunityId } from '@/lib/use-route-params';
 import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
 import { trpc } from '@/lib/trpc/client';
 
+function memberQuotaMax(quota: {
+  dailyEmission?: number;
+  dailyQuota?: number;
+  usedToday?: number;
+  remainingToday?: number;
+} | null | undefined): number {
+  if (!quota) return 0;
+  if (typeof quota.dailyEmission === 'number' && quota.dailyEmission > 0) {
+    return quota.dailyEmission;
+  }
+  if (typeof quota.dailyQuota === 'number' && quota.dailyQuota > 0) {
+    return quota.dailyQuota;
+  }
+  return (quota.remainingToday ?? 0) + (quota.usedToday ?? 0);
+}
+
 function roleLabel(role: string | undefined): string {
   if (role === 'lead') return 'Лид';
   if (role === 'superadmin') return 'Суперадмин';
@@ -86,7 +102,7 @@ function MembersInner({ communityId }: { communityId: string }) {
                   <div>
                     <p className="text-xs text-stitch-muted">Ежедневные</p>
                     <p className="font-medium">
-                      {member.quota?.remainingToday ?? 0} / {member.quota?.dailyQuota ?? 0}
+                      {member.quota?.remainingToday ?? 0} / {memberQuotaMax(member.quota)}
                     </p>
                   </div>
                 </div>

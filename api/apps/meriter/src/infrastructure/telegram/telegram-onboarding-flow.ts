@@ -6,6 +6,12 @@ export type OnboardingFlowPayload = {
   quotaEnabled?: boolean;
 };
 
+/**
+ * When false, onboarding skips «Интегрировать с платформой Meriter?» and defaults to chat-only.
+ * Re-enable when full community-web / platform integration ships.
+ */
+export const TELEGRAM_ONBOARDING_PLATFORM_INTEGRATION_STEP_ENABLED = false;
+
 const ONBOARDING_FLOW_ACTIONS: TelegramBotPendingActionType[] = [
   'onboarding_name',
   'onboarding_platform_integration',
@@ -23,10 +29,20 @@ const ONBOARDING_FLOW_ACTIONS: TelegramBotPendingActionType[] = [
 /** Ordered onboarding steps for the current answers (platform-only steps omitted when integration is off). */
 export function listOnboardingActions(payload: OnboardingFlowPayload): TelegramBotPendingActionType[] {
   const actions: TelegramBotPendingActionType[] = [];
+  const platformIntegrationActive =
+    TELEGRAM_ONBOARDING_PLATFORM_INTEGRATION_STEP_ENABLED &&
+    payload.platformIntegration === true;
 
   for (const action of ONBOARDING_FLOW_ACTIONS) {
+    if (
+      action === 'onboarding_platform_integration' &&
+      !TELEGRAM_ONBOARDING_PLATFORM_INTEGRATION_STEP_ENABLED
+    ) {
+      continue;
+    }
+
     if (action === 'onboarding_platform_visibility' || action === 'onboarding_future_vision') {
-      if (payload.platformIntegration !== true) {
+      if (!platformIntegrationActive) {
         continue;
       }
       if (action === 'onboarding_future_vision' && payload.platformVisibility !== 'public') {
@@ -40,7 +56,7 @@ export function listOnboardingActions(payload: OnboardingFlowPayload): TelegramB
 
     if (
       (action === 'onboarding_moderation' || action === 'onboarding_publication_ack') &&
-      payload.platformIntegration !== true
+      !platformIntegrationActive
     ) {
       continue;
     }

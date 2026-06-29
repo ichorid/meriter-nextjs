@@ -11,25 +11,32 @@ describe('telegram-onboarding-flow', () => {
     });
     expect(actions).toEqual([
       'onboarding_name',
-      'onboarding_platform_integration',
       'onboarding_quota_enabled',
       'onboarding_hashtag',
       'onboarding_post_cost',
       'onboarding_welcome_merits',
     ]);
+    expect(actions).not.toContain('onboarding_platform_integration');
     expect(actions).not.toContain('onboarding_moderation');
     expect(actions).not.toContain('onboarding_publication_ack');
   });
 
-  it('includes moderation and publication ack when platform integration is on', () => {
+  it('omits platform integration step while TELEGRAM onboarding platform step is disabled', () => {
+    const actions = listOnboardingActions({});
+    expect(actions).not.toContain('onboarding_platform_integration');
+    expect(actions[1]).toBe('onboarding_quota_enabled');
+  });
+
+  it('ignores platformIntegration payload while platform step is disabled', () => {
     const actions = listOnboardingActions({
       platformIntegration: true,
       platformVisibility: 'private',
       quotaEnabled: true,
     });
-    expect(actions).toContain('onboarding_moderation');
-    expect(actions).toContain('onboarding_publication_ack');
-    expect(actions).not.toContain('onboarding_future_vision');
+    expect(actions).not.toContain('onboarding_platform_integration');
+    expect(actions).not.toContain('onboarding_platform_visibility');
+    expect(actions).not.toContain('onboarding_moderation');
+    expect(actions).not.toContain('onboarding_publication_ack');
   });
 
   it('numbers welcome step as last step in chat-only flow', () => {
@@ -37,16 +44,6 @@ describe('telegram-onboarding-flow', () => {
       platformIntegration: false,
       quotaEnabled: false,
     }, 'Welcome body');
-    expect(prompt).toBe('Шаг 6 из 6\n\nWelcome body');
-  });
-
-  it('numbers moderation as step 7 in platform private flow without quota amount', () => {
-    const payload = {
-      platformIntegration: true,
-      platformVisibility: 'private' as const,
-      quotaEnabled: false,
-    };
-    const prompt = formatOnboardingStepPrompt('onboarding_moderation', payload, 'Mod body');
-    expect(prompt).toBe('Шаг 7 из 9\n\nMod body');
+    expect(prompt).toBe('Шаг 5 из 5\n\nWelcome body');
   });
 });

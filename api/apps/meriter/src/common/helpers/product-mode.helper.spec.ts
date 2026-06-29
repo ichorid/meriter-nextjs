@@ -76,24 +76,29 @@ describe('buildTelegramHelpMessage', () => {
     expect(text).not.toContain('/перевод');
   });
 
-  it('includes startapp link when platform integration is enabled', () => {
+  it('includes mini-app hint in usage rules', () => {
     const text = buildTelegramHelpMessage('', {
       botUsername: 'meriter_bot',
       communityName: 'Test',
+      hashtags: ['идея'],
       platformIntegration: true,
     });
-    expect(text).toContain('https://t.me/meriter_bot?startapp');
+    expect(text).toContain('мини-приложении (ссылка ниже)');
+    expect(text).toContain('#идея');
+    expect(text).toContain('поддержать быстро +1 заслуга автору');
     expect(text).not.toContain('/login');
-    expect(text).not.toContain('Веб-версия');
+    expect(text).not.toContain('Публикация в чате');
+    expect(text).not.toContain('https://t.me/meriter_bot?startapp');
   });
 
-  it('omits app link for chat-only communities', () => {
+  it('uses configured hashtag for chat-only communities', () => {
     const text = buildTelegramHelpMessage('', {
       botUsername: 'meriter_bot',
       communityName: 'Test',
+      hashtags: ['предложение'],
       platformIntegration: false,
     });
-    expect(text).not.toContain('?startapp');
+    expect(text).toContain('#предложение');
     expect(text).toContain('👎');
   });
 });

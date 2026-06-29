@@ -65,6 +65,7 @@ import {
   formatTelegramMemberLabel,
   isGenericTelegramMemberDisplayName,
 } from './telegram-member-label';
+import { TELEGRAM_ONBOARDING_PLATFORM_INTEGRATION_STEP_ENABLED } from './telegram-onboarding-flow';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -646,8 +647,18 @@ export class TelegramBotOrchestratorService {
         continue;
       }
       const emoji = reaction.emoji ?? '';
-      if (isTelegramUpvoteEmoji(emoji)) {
+      if (isTelegramUpvoteEmoji(emoji) || isTelegramHeartEmoji(emoji) || isTelegramDownvoteEmoji(emoji)) {
         handled = true;
+        if (isSelfPost) {
+          await this.tgBots.tgReplyEphemeral({
+            chat_id: chatId,
+            reply_to_message_id: messageId,
+            text: TG_MSG.cannotVoteOwnPost,
+          });
+          continue;
+        }
+      }
+      if (isTelegramUpvoteEmoji(emoji)) {
         await this.executeVote(
           voter.id,
           anchor.publicationId,
@@ -658,22 +669,20 @@ export class TelegramBotOrchestratorService {
           groupFeedback,
         );
       } else if (isTelegramHeartEmoji(emoji)) {
-        handled = true;
         await this.promptVoteAmount(
           voter.id,
           String(user.id),
           anchor.publicationId,
           'up',
-          { groupChatId: chatId, replyToMessageId: messageId, isSelfPost },
+          { groupChatId: chatId, replyToMessageId: messageId },
         );
       } else if (isTelegramDownvoteEmoji(emoji)) {
-        handled = true;
         await this.promptVoteAmount(
           voter.id,
           String(user.id),
           anchor.publicationId,
           'down',
-          { groupChatId: chatId, replyToMessageId: messageId, isSelfPost },
+          { groupChatId: chatId, replyToMessageId: messageId },
         );
       } else {
         this.logger.warn('message_reaction: emoji not mapped to vote action', {
@@ -772,9 +781,19 @@ export class TelegramBotOrchestratorService {
     switch (pending.action as TelegramBotPendingActionType) {
       case 'onboarding_name':
         payload.name = text.trim().slice(0, 120);
-        await this.advanceOnboarding(tgUserId, 'onboarding_platform_integration', payload);
+        if (!TELEGRAM_ONBOARDING_PLATFORM_INTEGRATION_STEP_ENABLED) {
+          payload.platformIntegration = false;
+          await this.advanceOnboarding(tgUserId, 'onboarding_quota_enabled', payload);
+        } else {
+          await this.advanceOnboarding(tgUserId, 'onboarding_platform_integration', payload);
+        }
         return true;
       case 'onboarding_platform_integration':
+        if (!TELEGRAM_ONBOARDING_PLATFORM_INTEGRATION_STEP_ENABLED) {
+          payload.platformIntegration = false;
+          await this.advanceOnboarding(tgUserId, 'onboarding_quota_enabled', payload);
+          return true;
+        }
         payload.platformIntegration = normalized === 'да' || normalized === 'yes';
         if (payload.platformIntegration) {
           await this.advanceOnboardingVisibility(tgUserId, payload);
@@ -880,7 +899,9 @@ export class TelegramBotOrchestratorService {
   }
 
   private async finishOnboarding(tgUserId: string, payload: OnboardingPayload): Promise<void> {
-    const platformIntegration = payload.platformIntegration === true;
+    const platformIntegration =
+      TELEGRAM_ONBOARDING_PLATFORM_INTEGRATION_STEP_ENABLED &&
+      payload.platformIntegration === true;
     const platformVisibility = payload.platformVisibility ?? 'private';
     const futureVisionText = payload.futureVisionText?.trim() ?? '';
 
@@ -1318,10 +1339,6 @@ export class TelegramBotOrchestratorService {
     if (direction === 'down') {
       return { quotaAmount: 0, walletAmount: amount };
     }
-    const isSelf = await this.isSelfPublicationVote(voterId, publicationId);
-    if (isSelf) {
-      return { quotaAmount: 0, walletAmount: amount };
-    }
     return { quotaAmount: amount, walletAmount: 0 };
   }
 
@@ -1341,20 +1358,15 @@ export class TelegramBotOrchestratorService {
     context?: {
       groupChatId?: string;
       replyToMessageId?: number;
-      isSelfPost?: boolean;
     },
   ): Promise<void> {
-    const isSelfPost =
-      context?.isSelfPost ?? (await this.isSelfPublicationVote(voterId, publicationId));
     const pendingId = uid();
 
     if (context?.groupChatId && context.replyToMessageId != null) {
       const promptText =
         direction === 'down'
           ? TG_MSG.voteAmountGroupPromptDown
-          : isSelfPost
-            ? TG_MSG.voteAmountGroupPromptSelf
-            : TG_MSG.voteAmountGroupPrompt;
+          : TG_MSG.voteAmountGroupPrompt;
       await this.pendingModel.create({
         id: pendingId,
         telegramUserId: tgUserId,
@@ -1395,8 +1407,7 @@ export class TelegramBotOrchestratorService {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    const dmText =
-      direction === 'up' && isSelfPost ? TG_MSG.enterAmountSelfUp : TG_MSG.enterAmount;
+    const dmText = TG_MSG.enterAmount;
     const dmSent = await this.tgBots.tgSend({ tgChatId: tgUserId, text: dmText });
     if (!dmSent) {
       const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '') ?? 'meriterbot';
@@ -1462,6 +1473,14 @@ export class TelegramBotOrchestratorService {
         chat_id: chatId,
         reply_to_message_id: replyMessageId,
         text: TG_MSG.reactionPostNotFound,
+      });
+      return;
+    }
+    if (await this.isSelfPublicationVote(voterId, anchor.publicationId)) {
+      await this.tgBots.tgReplyEphemeral({
+        chat_id: chatId,
+        reply_to_message_id: replyMessageId,
+        text: TG_MSG.cannotVoteOwnPost,
       });
       return;
     }
