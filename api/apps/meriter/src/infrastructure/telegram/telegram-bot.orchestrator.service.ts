@@ -1385,10 +1385,11 @@ export class TelegramBotOrchestratorService {
         comment: comment?.trim() ? comment.trim() : TG_VOTE_DEFAULT_COMMENT,
       });
       if (groupFeedback) {
+        const voterLabel = await this.resolveVoterLabel(voterId);
         await this.tgBots.tgReplyEphemeral({
           chat_id: groupFeedback.groupChatId,
           reply_to_message_id: groupFeedback.replyToMessageId,
-          text: TG_MSG.voteSuccess(amount, direction),
+          text: TG_MSG.voteSuccess(voterLabel, amount, direction),
         });
       }
     } catch (e) {
@@ -1411,6 +1412,20 @@ export class TelegramBotOrchestratorService {
         error: msg,
       });
     }
+  }
+
+  private async resolveVoterLabel(voterId: string): Promise<string> {
+    const user = await this.userService.getUserById(voterId);
+    if (!user) {
+      return 'Участник';
+    }
+    return formatTelegramMemberLabel(
+      {
+        displayName: user.displayName,
+        username: user.username,
+      },
+      voterId,
+    );
   }
 
   private async resolveVoteAmountSplit(

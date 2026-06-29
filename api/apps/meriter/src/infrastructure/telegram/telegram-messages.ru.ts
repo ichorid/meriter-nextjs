@@ -331,10 +331,10 @@ export const TG_MSG = {
   communityFrozen:
     'Сообщество на паузе: бот удалён из группы. Заслуги временно недоступны. Добавьте бота обратно.',
   insufficientMerits: 'Не хватает заслуг для этого действия. Проверьте баланс командой /balance.',
-  voteSuccess: (amount: number, direction: 'up' | 'down') =>
+  voteSuccess: (voterName: string, amount: number, direction: 'up' | 'down') =>
     direction === 'up'
-      ? `Начислено ${amount} заслуг автору.`
-      : `Списано ${amount} заслуг с автора.`,
+      ? `${voterName} начислил автору ${amount} заслуг.`
+      : `${voterName} списал у автора ${amount} заслуг.`,
   reactionPostNotFound: (hashtag: string) =>
     `Это сообщение не в Meriter. Голосовать можно только за посты с хэштегом #${hashtag}`,
   cannotVoteOwnPost: 'Голосовать за собственный пост нельзя.',

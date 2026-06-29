@@ -117,6 +117,11 @@ describe('telegram group welcome copy', () => {
     expect(TG_MSG.reactionPostNotFound('идея')).not.toContain('сохранённым');
   });
 
+  it('voteSuccess includes voter name', () => {
+    expect(TG_MSG.voteSuccess('Иван', 5, 'up')).toBe('Иван начислил автору 5 заслуг.');
+    expect(TG_MSG.voteSuccess('Мария', 3, 'down')).toBe('Мария списал у автора 3 заслуг.');
+  });
+
   it('vote amount group prompt mentions voter at start', () => {
     const { text, entities } = buildVoteAmountGroupMentionMessage(900002, 'TG User', 'up');
     expect(text.startsWith('TG User,')).toBe(true);
