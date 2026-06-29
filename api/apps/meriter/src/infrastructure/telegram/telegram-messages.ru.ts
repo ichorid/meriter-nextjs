@@ -12,6 +12,10 @@ export type CommunityUsageRulesInput = {
   /** When false (default), no platform / browser / Mini App URLs in copy. */
   platformIntegration?: boolean;
   botUsername?: string;
+  /** Daily quota for voting (0 = disabled). */
+  dailyEmission?: number;
+  /** Welcome merits credited to new members. */
+  welcomeMerits?: number;
 };
 
 const ONBOARDING_STEP_BODIES: Partial<Record<TelegramBotPendingActionType, string>> = {
@@ -84,6 +88,19 @@ function buildReplyVoteHint(): string {
   return `Или просто ответьте на пост в таком формате: «+3 Отличная идея» или «-2 Не согласен».`;
 }
 
+function buildDailyMeritsIntro(dailyEmission: number, welcomeMerits?: number): string {
+  if (dailyEmission <= 0) {
+    return '';
+  }
+  let text =
+    `\n\nКаждый день — ${dailyEmission} заслуг на голоса: они сгорают в полночь. ` +
+    `Сначала тратятся они, потом кошелёк — заслуги от других за ваши посты.`;
+  if (welcomeMerits != null && welcomeMerits > 0) {
+    text += ` Новым участникам — ${welcomeMerits} приветственных заслуг.`;
+  }
+  return text;
+}
+
 function buildCommunityUsageBody(input: CommunityUsageRulesInput): string {
   return (
     `${buildHashtagAndMiniAppIntro(input)}\n\n` +
@@ -124,9 +141,11 @@ export function buildTelegramMiniAppStartLink(
 }
 
 export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): string {
+  const dailyEmission = input.dailyEmission ?? 0;
   return (
     `Привет! Я – Меритер: бот, который поможет вам учитывать заслуги всех участников этой группы.\n\n` +
-    buildCommunityUsageBody(input)
+    buildCommunityUsageBody(input) +
+    buildDailyMeritsIntro(dailyEmission, input.welcomeMerits)
   );
 }
 
@@ -205,9 +224,6 @@ export const TG_MSG = {
       : `Списано ${amount} заслуг с автора.`,
   reactionPostNotFound:
     'Это сообщение ещё не в Meriter. Голосовать можно только по сохранённым постам (с хэштегом или от бота).',
-  reactionUnsupported:
-    'Такая реакция не поддерживается.\n\n' +
-    'Используйте 👍 ❤️ 👎 или ответьте на пост: +3 ваш комментарий',
   cannotVoteOwnPost: 'Голосовать за собственный пост нельзя.',
   voteAmountGroupPrompt:
     'Насколько заслуг начислить автору?\n\nВыберите сумму кнопкой или ответьте числом на это сообщение.',

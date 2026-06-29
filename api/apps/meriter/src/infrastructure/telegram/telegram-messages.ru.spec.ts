@@ -37,6 +37,27 @@ describe('telegram group welcome copy', () => {
     expect(text).toContain('«#предложение Предлагаю собраться в субботу»');
   });
 
+  it('group welcome adds daily merits paragraph when quota is enabled', () => {
+    const text = buildGroupWelcomeMessage({
+      communityName: 'Test',
+      hashtags: ['идея'],
+      dailyEmission: 5,
+      welcomeMerits: 10,
+    });
+    expect(text).toContain('Каждый день — 5 заслуг');
+    expect(text).toContain('10 приветственных заслуг');
+  });
+
+  it('group welcome omits daily merits paragraph when quota is zero', () => {
+    const text = buildGroupWelcomeMessage({
+      communityName: 'Test',
+      hashtags: ['идея'],
+      dailyEmission: 0,
+      welcomeMerits: 10,
+    });
+    expect(text).not.toContain('Каждый день —');
+  });
+
   it('groupMiniAppLinkHint is set for follow-up message', () => {
     expect(TG_MSG.groupMiniAppLinkHint).toContain('кликните по ссылке ниже');
   });

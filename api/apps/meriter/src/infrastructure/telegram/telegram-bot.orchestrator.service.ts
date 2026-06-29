@@ -636,7 +636,6 @@ export class TelegramBotOrchestratorService {
 
     const isSelfPost = await this.isSelfPublicationVote(voter.id, anchor.publicationId);
     const groupFeedback: GroupFeedbackContext = { groupChatId: chatId, replyToMessageId: messageId };
-    let handled = false;
 
     for (const reaction of added) {
       if (reaction.type !== 'emoji') {
@@ -648,7 +647,6 @@ export class TelegramBotOrchestratorService {
       }
       const emoji = reaction.emoji ?? '';
       if (isTelegramUpvoteEmoji(emoji) || isTelegramHeartEmoji(emoji) || isTelegramDownvoteEmoji(emoji)) {
-        handled = true;
         if (isSelfPost) {
           await this.tgBots.tgReplyEphemeral({
             chat_id: chatId,
@@ -685,20 +683,12 @@ export class TelegramBotOrchestratorService {
           { groupChatId: chatId, replyToMessageId: messageId },
         );
       } else {
-        this.logger.warn('message_reaction: emoji not mapped to vote action', {
+        this.logger.debug('message_reaction: emoji not mapped to vote action', {
           emoji,
           normalized: normalizeTelegramReactionEmoji(emoji),
           messageId,
         });
       }
-    }
-
-    if (!handled) {
-      await this.tgBots.tgReplyEphemeral({
-        chat_id: chatId,
-        reply_to_message_id: messageId,
-        text: TG_MSG.reactionUnsupported,
-      });
     }
   }
 
@@ -947,6 +937,7 @@ export class TelegramBotOrchestratorService {
       meritSettings: {
         quotaEnabled: payload.quotaEnabled ?? false,
         dailyQuota: payload.dailyEmission ?? 0,
+        startingMerits: payload.welcomeMerits ?? 0,
       },
     });
 
@@ -982,7 +973,10 @@ export class TelegramBotOrchestratorService {
       });
     }
 
-    const usageInput = this.buildCommunityUsageInput(community, platformIntegration);
+    const usageInput = this.buildCommunityUsageInput(community, platformIntegration, {
+      dailyEmission: payload.quotaEnabled ? (payload.dailyEmission ?? 0) : 0,
+      welcomeMerits: payload.welcomeMerits ?? 0,
+    });
     await this.tgBots.tgSend({
       tgChatId: tgUserId,
       text: buildOnboardingDoneMessage(usageInput),
@@ -1027,15 +1021,26 @@ export class TelegramBotOrchestratorService {
   private buildCommunityUsageInput(
     community: Community,
     platformIntegration?: boolean,
+    overrides?: Pick<CommunityUsageRulesInput, 'dailyEmission' | 'welcomeMerits'>,
   ): CommunityUsageRulesInput {
     const integrated =
       platformIntegration ?? community.settings?.telegramPlatformIntegration === true;
     const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '');
+    const quotaEnabled = community.meritSettings?.quotaEnabled === true;
+    const dailyFromSettings =
+      community.settings?.dailyEmission ?? community.meritSettings?.dailyQuota ?? 0;
+    const dailyEmission =
+      overrides?.dailyEmission ??
+      (quotaEnabled && dailyFromSettings > 0 ? dailyFromSettings : 0);
+    const welcomeMerits =
+      overrides?.welcomeMerits ?? this.communityService.startingMeritsOnJoin(community);
     return {
       communityName: community.name,
       hashtags: community.hashtags,
       platformIntegration: integrated,
       botUsername,
+      dailyEmission: dailyEmission > 0 ? dailyEmission : 0,
+      welcomeMerits,
     };
   }
 
