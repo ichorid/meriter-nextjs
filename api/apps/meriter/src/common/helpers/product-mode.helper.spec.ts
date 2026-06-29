@@ -72,6 +72,7 @@ describe('buildTelegramHelpMessage', () => {
     const text = buildTelegramHelpMessage('', { botUsername: 'meriter_bot' });
     expect(text).toContain('/balance');
     expect(text).toContain('/members');
+    expect(text).toContain('/guide');
     expect(text).not.toContain('/transfer');
     expect(text).not.toContain('/перевод');
   });

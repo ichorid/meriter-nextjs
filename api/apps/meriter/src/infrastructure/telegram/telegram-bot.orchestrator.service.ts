@@ -64,6 +64,7 @@ import {
   voteAmountButtonLabels,
   type CommunityUsageRulesInput,
 } from './telegram-messages.ru';
+import { buildTelegramGuideMessage } from './telegram-guide.ru';
 import {
   normalizeTelegramReactionEmoji,
   reactionTypeKey,
@@ -81,7 +82,7 @@ const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
 const FUTURE_VISION_MAX_LENGTH = 10000;
 const BOT_CMD_REGEX =
-  /^\/(баланс|balance|участники|members|help|справка|settings|настройки)(?:@\w+)?(?:\s+(.*))?$/i;
+  /^\/(баланс|balance|участники|members|help|справка|settings|настройки|guide|гайд)(?:@\w+)?(?:\s+(.*))?$/i;
 
 type BotCommandContext = {
   community: Community;
@@ -329,6 +330,11 @@ export class TelegramBotOrchestratorService {
       this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
       return;
     }
+    if (trimmed === '/guide' || trimmed === '/гайд') {
+      await this.sendGuideToUser(tgUserId);
+      this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
+      return;
+    }
 
     const amountPending = await this.getPendingByAction(tgUserId, 'confirm_vote_amount');
     if (amountPending && /^\d+([.,]\d+)?$/.test(trimmed.replace(',', '.'))) {
@@ -558,6 +564,20 @@ export class TelegramBotOrchestratorService {
         );
         break;
       }
+      case 'guide':
+      case 'гайд': {
+        const sent = await this.sendGuideToUser(tgUserId);
+        if (!sent && replyInGroup && message?.message_id) {
+          const botUsername =
+            this.configService.get('bot')?.username?.replace(/^@/, '') ?? 'meriterbot';
+          await this.sendBotEphemeral(
+            replyChatId,
+            TG_MSG.guideDmFailed(botUsername),
+            message.message_id as number,
+          );
+        }
+        break;
+      }
       default:
         break;
       }
@@ -744,7 +764,7 @@ export class TelegramBotOrchestratorService {
     if (parts[0] === 'vote_amt' && parts[1] && parts[2]) {
       const amount = Number.parseInt(parts[2], 10);
       if (Number.isFinite(amount) && amount > 0) {
-        await this.confirmVoteAmount(tgUserId, parts[1], amount);
+        await this.handleVoteAmountCallback(tgUserId, parts[1], amount, query);
       }
       return;
     }
@@ -1310,6 +1330,14 @@ export class TelegramBotOrchestratorService {
     });
   }
 
+  private async sendGuideToUser(tgUserId: string): Promise<boolean> {
+    return this.tgBots.tgSend({
+      tgChatId: tgUserId,
+      text: buildTelegramGuideMessage(),
+      parseMode: 'HTML',
+    });
+  }
+
   /** Ephemeral bot reply (auto-deleted after TG_BOT_EPHEMERAL_TTL_SEC). */
   private async sendBotEphemeral(
     chatId: string,
@@ -1386,11 +1414,7 @@ export class TelegramBotOrchestratorService {
       });
       if (groupFeedback) {
         const voterLabel = await this.resolveVoterLabel(voterId);
-        await this.tgBots.tgReplyEphemeral({
-          chat_id: groupFeedback.groupChatId,
-          reply_to_message_id: groupFeedback.replyToMessageId,
-          text: TG_MSG.voteSuccess(voterLabel, amount, direction),
-        });
+        await this.sendVoteSuccessReport(groupFeedback, voterLabel, amount, direction);
       }
     } catch (e) {
       const msg =
@@ -1529,6 +1553,50 @@ export class TelegramBotOrchestratorService {
       tgChatId: tgUserId,
       text: TG_MSG.voteAmountDmFailed(botUsername),
     });
+  }
+
+  private async sendVoteSuccessReport(
+    groupFeedback: GroupFeedbackContext,
+    voterLabel: string,
+    amount: number,
+    direction: 'up' | 'down',
+  ): Promise<void> {
+    const text = TG_MSG.voteSuccess(voterLabel, amount, direction);
+    if (groupFeedback.replyToMessageId != null) {
+      await this.tgBots.tgReplyMessage({
+        chat_id: groupFeedback.groupChatId,
+        reply_to_message_id: groupFeedback.replyToMessageId,
+        text,
+      });
+      return;
+    }
+    await this.tgBots.tgSendMessage({ chat_id: groupFeedback.groupChatId, text });
+  }
+
+  private async handleVoteAmountCallback(
+    tgUserId: string,
+    pendingId: string,
+    amount: number,
+    query: Record<string, unknown>,
+  ): Promise<void> {
+    const pending = await this.pendingModel.findOne({ id: pendingId }).lean();
+    if (!pending) {
+      return;
+    }
+    if (pending.telegramUserId !== tgUserId) {
+      const message = query.message as
+        | { chat?: { id: number }; message_id?: number }
+        | undefined;
+      if (message?.chat?.id != null && message.message_id != null) {
+        await this.tgBots.tgReplyEphemeral({
+          chat_id: String(message.chat.id),
+          reply_to_message_id: message.message_id,
+          text: TG_MSG.voteAmountWrongUser,
+        });
+      }
+      return;
+    }
+    await this.confirmVoteAmount(tgUserId, pendingId, amount);
   }
 
   private async confirmVoteAmount(

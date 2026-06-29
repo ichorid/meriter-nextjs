@@ -97,6 +97,7 @@ const BOT_COMMANDS = [
     { command: 'members', description: 'Рейтинг участников' },
     // transfer: removed from menu; peer transfer stays in mini-app / tRPC (meritTransfer.*)
     { command: 'help', description: 'Справка по командам' },
+    { command: 'guide', description: 'Подробный гайд в личку' },
 ];
 
 async function setBotCommands(botToken) {

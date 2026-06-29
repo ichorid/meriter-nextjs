@@ -641,7 +641,7 @@ export class TgBotsService {
     reply_to_message_id: number;
     chat_id: string | number;
     text: string;
-    parseMode?: 'MarkdownV2';
+    parseMode?: 'MarkdownV2' | 'HTML';
   }): Promise<number | null> {
     return this.tgSendMessage({ chat_id, text, parseMode, reply_to_message_id });
   }
@@ -654,7 +654,7 @@ export class TgBotsService {
   }: {
     chat_id: string | number;
     text: string;
-    parseMode?: 'MarkdownV2';
+    parseMode?: 'MarkdownV2' | 'HTML';
     reply_to_message_id?: number;
   }): Promise<number | null> {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
@@ -869,7 +869,7 @@ export class TgBotsService {
   }: {
     tgChatId: string | number;
     text: string;
-    parseMode?: 'MarkdownV2';
+    parseMode?: 'MarkdownV2' | 'HTML';
   }): Promise<boolean> {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       this.logger.debug('Telegram bot is disabled; skipping tgSend');
