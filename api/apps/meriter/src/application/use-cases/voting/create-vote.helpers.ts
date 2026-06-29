@@ -110,6 +110,17 @@ export function ticketHasWorkAccepted(
   return (doc?.ticketActivityLog ?? []).some((e) => e.action === 'work_accepted');
 }
 
+/** Effective merit recipient for a publication vote (beneficiary if set, else author). */
+export function getPublicationEffectiveBeneficiaryId(publicationDoc: {
+  beneficiaryId?: string | null;
+  authorId?: string;
+} | null | undefined): string | null {
+  if (!publicationDoc?.authorId) {
+    return null;
+  }
+  return publicationDoc.beneficiaryId ?? publicationDoc.authorId;
+}
+
 /** Telegram MVP: up/down votes mirror to author wallet immediately (no post withdraw). */
 export function shouldUseTelegramInstantWalletMirror(
   community: { telegramChatId?: string | null } | null | undefined,

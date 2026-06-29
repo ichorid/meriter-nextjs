@@ -1,4 +1,5 @@
 import {
+  getPublicationEffectiveBeneficiaryId,
   shouldUseTelegramInstantWalletMirror,
 } from './create-vote.helpers';
 import {
@@ -33,6 +34,23 @@ describe('create-vote.helpers (Telegram MVP)', () => {
       expect(effectiveAllowWithdraw({ settings: { allowWithdraw: false } })).toBe(false);
       expect(effectiveAllowWithdraw({ settings: { allowWithdraw: true } })).toBe(true);
       expect(effectiveAllowWithdraw({})).toBe(true);
+    });
+  });
+
+  describe('getPublicationEffectiveBeneficiaryId', () => {
+    it('returns author when beneficiary is unset', () => {
+      expect(getPublicationEffectiveBeneficiaryId({ authorId: 'u1' })).toBe('u1');
+    });
+
+    it('returns beneficiary when set', () => {
+      expect(
+        getPublicationEffectiveBeneficiaryId({ authorId: 'u1', beneficiaryId: 'u2' }),
+      ).toBe('u2');
+    });
+
+    it('returns null without author', () => {
+      expect(getPublicationEffectiveBeneficiaryId(null)).toBeNull();
+      expect(getPublicationEffectiveBeneficiaryId({ beneficiaryId: 'u2' })).toBeNull();
     });
   });
 

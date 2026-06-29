@@ -120,9 +120,21 @@ describe('telegram group welcome copy', () => {
     expect(TG_MSG.reactionPostNotFound('идея')).not.toContain('сохранённым');
   });
 
+  it('group welcome mentions beneficiary post formats', () => {
+    const text = buildGroupWelcomeMessage({
+      communityName: 'Test',
+      hashtags: ['идея'],
+    });
+    expect(text).toContain('для @username');
+    expect(text).toContain('ответьте на его сообщение');
+  });
+
   it('voteSuccess includes voter name', () => {
     expect(TG_MSG.voteSuccess('Иван', 5, 'up')).toBe('Иван начислил автору 5 заслуг.');
     expect(TG_MSG.voteSuccess('Мария', 3, 'down')).toBe('Мария списал у автора 3 заслуг.');
+    expect(
+      TG_MSG.voteSuccess('Иван', 5, 'up', { credit: 'Петру', debit: 'Петра' }),
+    ).toBe('Иван начислил Петру 5 заслуг.');
   });
 
   it('vote amount group prompt mentions voter at start', () => {

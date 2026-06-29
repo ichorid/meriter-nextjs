@@ -192,6 +192,8 @@ function buildGroupWelcomeSteps(input: CommunityUsageRulesInput): string {
   return (
     `1. Отправляйте сообщения с #${hashtag}, чтобы получать заслуги от других пользователей. ` +
     `Пример: «#${hashtag} Предлагаю собраться в субботу»\n` +
+    `   Заслуги другому: ответьте на его сообщение и напишите #${hashtag} …, ` +
+    `или «#${hashtag} для @username …»\n` +
     `2. Голосуйте за такие сообщения реакциями 👍 ❤️ 👎\n` +
     `3. Проверяйте свой баланс и историю заслуг в нашем мини-приложении (ссылка ниже).\n` +
     `4. Подробный гайд: /guide — бот пришлёт инструкцию в личку.`
@@ -354,15 +356,24 @@ export const TG_MSG = {
   communityFrozen:
     'Сообщество на паузе: бот удалён из группы. Заслуги временно недоступны. Добавьте бота обратно.',
   insufficientMerits: 'Не хватает заслуг для этого действия. Проверьте баланс командой /balance.',
-  voteSuccess: (voterName: string, amount: number, direction: 'up' | 'down') =>
-    direction === 'up'
-      ? `${voterName} начислил автору ${amount} заслуг.`
-      : `${voterName} списал у автора ${amount} заслуг.`,
+  voteSuccess: (
+    voterName: string,
+    amount: number,
+    direction: 'up' | 'down',
+    recipient?: { credit: string; debit: string },
+  ) => {
+    const credit = recipient?.credit ?? 'автору';
+    const debit = recipient?.debit ?? 'автора';
+    return direction === 'up'
+      ? `${voterName} начислил ${credit} ${amount} заслуг.`
+      : `${voterName} списал у ${debit} ${amount} заслуг.`;
+  },
   voteAmountWrongUser:
     'Эти кнопки — не для вас. Чтобы проголосовать, поставьте ❤️ или 👎 под постом.',
   reactionPostNotFound: (hashtag: string) =>
     `Это сообщение не в Meriter. Голосовать можно только за посты с хэштегом #${hashtag}`,
   cannotVoteOwnPost: 'Голосовать за собственный пост нельзя.',
+  cannotVoteAsBeneficiary: 'Нельзя голосовать за пост, где вы получатель заслуг.',
   voteAmountDmPrompt:
     'Насколько заслуг начислить автору?\n\nВыберите сумму кнопкой или напишите число.',
   voteAmountDmPromptDown:

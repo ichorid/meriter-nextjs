@@ -463,6 +463,14 @@ export class TelegramBotOrchestratorService {
       }
     }
 
+    if (replyTo?.from?.id && !replyTo.from.is_bot) {
+      await this.provisionMember(community, String(replyTo.from.id), {
+        first_name: replyTo.from.first_name,
+        last_name: (replyTo.from as { last_name?: string }).last_name,
+        username: replyTo.from.username,
+      });
+    }
+
     await this.tgBots.processRecieveMessageFromGroup({
       tgChatId: chatId,
       tgUserId,
@@ -472,6 +480,15 @@ export class TelegramBotOrchestratorService {
       messageId: message.message_id as number,
       tgChatUsername: (message.chat as { username?: string }).username,
       replyMessageId: replyTo?.message_id,
+      replyToFrom: replyTo?.from
+        ? {
+            id: replyTo.from.id,
+            is_bot: (replyTo.from as { is_bot?: boolean }).is_bot,
+            first_name: replyTo.from.first_name,
+            last_name: (replyTo.from as { last_name?: string }).last_name,
+            username: replyTo.from.username,
+          }
+        : undefined,
       tgChatName: (message.chat as { title?: string }).title ?? '',
       firstName: from.first_name,
       lastName: from.last_name,
@@ -682,16 +699,19 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
-    const isSelfPost = await this.isSelfPublicationVote(voter.id, anchor.publicationId);
+    const voteBlockReason = await this.getPublicationVoteBlockReason(voter.id, anchor.publicationId);
     const groupFeedback: GroupFeedbackContext = { groupChatId: chatId, replyToMessageId: messageId };
 
     for (const reaction of voteAdded) {
       const emoji = reaction.emoji ?? '';
-      if (isSelfPost) {
+      if (voteBlockReason) {
         await this.tgBots.tgReplyEphemeral({
           chat_id: chatId,
           reply_to_message_id: messageId,
-          text: TG_MSG.cannotVoteOwnPost,
+          text:
+            voteBlockReason === 'beneficiary'
+              ? TG_MSG.cannotVoteAsBeneficiary
+              : TG_MSG.cannotVoteOwnPost,
         });
         continue;
       }
@@ -1483,7 +1503,8 @@ export class TelegramBotOrchestratorService {
       });
       if (groupFeedback) {
         const voterLabel = await this.resolveVoterLabel(voterId);
-        await this.sendVoteSuccessReport(groupFeedback, voterLabel, amount, direction);
+        const recipient = await this.resolveVoteRecipientLabels(publicationId);
+        await this.sendVoteSuccessReport(groupFeedback, voterLabel, amount, direction, recipient);
       }
     } catch (e) {
       const msg =
@@ -1533,12 +1554,45 @@ export class TelegramBotOrchestratorService {
     return { quotaAmount: amount, walletAmount: 0 };
   }
 
-  private async isSelfPublicationVote(voterId: string, publicationId: string): Promise<boolean> {
+  private async getPublicationVoteBlockReason(
+    voterId: string,
+    publicationId: string,
+  ): Promise<'author' | 'beneficiary' | null> {
     const publication = await this.publicationService.getPublication(publicationId);
     if (!publication) {
-      return false;
+      return null;
     }
-    return publication.getAuthorId.getValue() === voterId;
+    const authorId = publication.getAuthorId.getValue();
+    if (authorId === voterId) {
+      return 'author';
+    }
+    const beneficiaryId = publication.getBeneficiaryId?.getValue();
+    if (beneficiaryId && beneficiaryId === voterId) {
+      return 'beneficiary';
+    }
+    return null;
+  }
+
+  private async resolveVoteRecipientLabels(
+    publicationId: string,
+  ): Promise<{ credit: string; debit: string }> {
+    const publication = await this.publicationService.getPublication(publicationId);
+    if (!publication) {
+      return { credit: 'автору', debit: 'автора' };
+    }
+    const authorId = publication.getAuthorId.getValue();
+    const beneficiaryId = publication.getBeneficiaryId?.getValue() ?? authorId;
+    if (beneficiaryId === authorId) {
+      return { credit: 'автору', debit: 'автора' };
+    }
+    const user = await this.userService.getUserById(beneficiaryId);
+    const name = user
+      ? formatTelegramMemberLabel(
+          { displayName: user.displayName, username: user.username },
+          beneficiaryId,
+        )
+      : 'получателю';
+    return { credit: name, debit: name };
   }
 
   private async promptVoteAmount(
@@ -1629,8 +1683,9 @@ export class TelegramBotOrchestratorService {
     voterLabel: string,
     amount: number,
     direction: 'up' | 'down',
+    recipient?: { credit: string; debit: string },
   ): Promise<void> {
-    const text = TG_MSG.voteSuccess(voterLabel, amount, direction);
+    const text = TG_MSG.voteSuccess(voterLabel, amount, direction, recipient);
     if (groupFeedback.replyToMessageId != null) {
       await this.tgBots.tgReplyMessage({
         chat_id: groupFeedback.groupChatId,
@@ -1727,11 +1782,15 @@ export class TelegramBotOrchestratorService {
       });
       return;
     }
-    if (await this.isSelfPublicationVote(voterId, anchor.publicationId)) {
+    const voteBlockReason = await this.getPublicationVoteBlockReason(voterId, anchor.publicationId);
+    if (voteBlockReason) {
       await this.tgBots.tgReplyEphemeral({
         chat_id: chatId,
         reply_to_message_id: replyMessageId,
-        text: TG_MSG.cannotVoteOwnPost,
+        text:
+          voteBlockReason === 'beneficiary'
+            ? TG_MSG.cannotVoteAsBeneficiary
+            : TG_MSG.cannotVoteOwnPost,
       });
       return;
     }

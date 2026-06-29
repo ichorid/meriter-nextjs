@@ -27,7 +27,12 @@ import { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import * as stream from "stream";
 
-import { formatDualLinks, escapeMarkdownV2 } from '../../common/helpers/telegram';
+import { escapeMarkdownV2 } from '../../common/helpers/telegram';
+import {
+  resolveTelegramPublicationBeneficiary,
+  type TelegramMessageEntity,
+  type TelegramReplyFrom,
+} from '../../infrastructure/telegram/telegram-beneficiary';
 import { UpdateEventItem } from './user-updates.service';
 import { FeatureFlagsService } from '../../common/services/feature-flags.service';
 import {
@@ -294,124 +299,122 @@ export class TgBotsService {
     }
   }
 
-  /**
-   * Parse and validate beneficiary from message text
-   * Format: /ben:@username or /ben:123456
-   * Returns { beneficiary: {...}, cleanedText: "...", error: null } 
-   *      or { beneficiary: null, cleanedText: "...", error: "error message" }
-   */
-  async parseBeneficiary(messageText: string, tgChatId: string): Promise<{ beneficiary: { telegramId: string; name: string; photoUrl?: string | null; username?: string } | null; cleanedText: string; error: string | null }> {
-    if (!messageText) return { beneficiary: null, cleanedText: messageText, error: null };
-
-    // Match /ben:@username or /ben:123456
-    const benMatch = messageText.match(/\/ben:@?(\w+)/);
-    if (!benMatch) {
+  /** Resolve publication beneficiary (reply priority, then inline). */
+  async resolvePublicationBeneficiary({
+    messageText,
+    tgChatId,
+    authorTelegramId,
+    entities,
+    replyToFrom,
+    communityId,
+  }: {
+    messageText: string;
+    tgChatId: string;
+    authorTelegramId: string;
+    entities?: TelegramMessageEntity[];
+    replyToFrom?: TelegramReplyFrom | null;
+    communityId: string;
+  }): Promise<{
+    beneficiary: { telegramId: string; name: string; photoUrl?: string | null; username?: string } | null;
+    cleanedText: string;
+    error: string | null;
+  }> {
+    if (!messageText?.trim()) {
       return { beneficiary: null, cleanedText: messageText, error: null };
     }
 
-    const beneficiaryIdentifier = benMatch[1];
-    this.logger.log(`🎯 Beneficiary identifier found: ${beneficiaryIdentifier}`);
-
-    // Remove the /ben:@username from the message text
-    const cleanedText = messageText.replace(/\/ben:@?\w+\s*/, '').trim();
-
-    // Try to find user by username or telegram ID
-    let beneficiaryUser;
-
-    // Check if it's a numeric ID
-    if (/^\d+$/.test(beneficiaryIdentifier)) {
-      // It's a user ID
-      beneficiaryUser = await this.userModel.findOne({
-        authProvider: 'telegram',
-        authId: beneficiaryIdentifier,
-      });
-    } else {
-      // It's a username - search in profile name or meta
-      beneficiaryUser = await this.userModel.findOne({
-        $or: [
-          { 'displayName': new RegExp(beneficiaryIdentifier, 'i') },
-          { 'username': beneficiaryIdentifier },
-        ],
-      });
-
-      // If not found in database, try to resolve via Telegram API
-      if (!beneficiaryUser) {
-        this.logger.log(`🔍 Username ${beneficiaryIdentifier} not found in DB, trying Telegram API resolution`);
+    const result = await resolveTelegramPublicationBeneficiary({
+      authorTelegramId,
+      tgChatId,
+      messageText,
+      entities,
+      replyToFrom,
+      findUserByTelegramId: async (telegramId) => {
+        const user = await this.userModel.findOne({ authProvider: 'telegram', authId: telegramId }).lean();
+        if (!user?.id) return null;
+        return { id: user.id, displayName: user.displayName, username: user.username };
+      },
+      findUserByUsername: async (username) => {
+        const user = await this.userModel.findOne({ username }).lean();
+        if (!user?.id || user.authProvider !== 'telegram' || !user.authId) return null;
+        return {
+          id: user.id,
+          telegramId: user.authId,
+          displayName: user.displayName,
+          username: user.username,
+        };
+      },
+      resolveUsernameViaTelegramApi: async (username) => {
         try {
-          const telegramUserInfo = await this.tgGetUserByUsername(beneficiaryIdentifier);
-          if (telegramUserInfo) {
-            this.logger.log(`✅ Found user via Telegram API: ${telegramUserInfo.id} (${telegramUserInfo.first_name} ${telegramUserInfo.last_name || ''})`);
-            // Now search by the resolved Telegram ID
-            beneficiaryUser = await this.userModel.findOne({
-              authProvider: 'telegram',
-              authId: telegramUserInfo.id.toString(),
-            });
-
-            // Update username if user was found but had missing/incorrect username
-            if (beneficiaryUser && (!beneficiaryUser.username || beneficiaryUser.username !== telegramUserInfo.username)) {
-              this.logger.log(`📝 Updating username for user ${beneficiaryUser.authId}: ${beneficiaryUser.username || 'missing'} -> ${telegramUserInfo.username}`);
-              await this.userModel.updateOne(
-                { authProvider: 'telegram', authId: beneficiaryUser.authId },
-                { $set: { username: telegramUserInfo.username } }
-              );
-              beneficiaryUser.username = telegramUserInfo.username;
-            }
-          }
-        } catch (error) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          this.logger.warn(`⚠️ Failed to resolve username ${beneficiaryIdentifier} via Telegram API:`, errorMessage);
+          const info = await this.tgGetUserByUsername(username);
+          if (!info?.id) return null;
+          return {
+            id: String(info.id),
+            username: info.username,
+            firstName: info.first_name,
+            lastName: info.last_name,
+          };
+        } catch {
+          return null;
         }
-      }
+      },
+      isChatMember: (chatId, tgUserId) => this.tgGetChatMember(chatId, tgUserId),
+      ensureTelegramUser: async (telegramId, profile) => {
+        const displayName =
+          [profile.first_name, profile.last_name].filter(Boolean).join(' ').trim() ||
+          profile.username?.trim() ||
+          'Участник';
+        const user = await this.userModel
+          .findOneAndUpdate(
+            { authProvider: 'telegram', authId: String(telegramId) },
+            {
+              $set: {
+                displayName,
+                ...(profile.username ? { username: profile.username } : {}),
+                updatedAt: new Date(),
+              },
+              $setOnInsert: {
+                id: uid(),
+                authProvider: 'telegram',
+                authId: String(telegramId),
+                createdAt: new Date(),
+              },
+            },
+            { upsert: true, new: true },
+          )
+          .lean();
+        return { id: user!.id, displayName: user!.displayName, username: user!.username };
+      },
+      ensureCommunityMember: async (userId) => {
+        const role = await this.userCommunityRoleService.getRole(userId, communityId);
+        if (!role) {
+          await this.userCommunityRoleService.setRole(userId, communityId, 'participant', true);
+        }
+      },
+    });
+
+    if (result.error) {
+      return { beneficiary: null, cleanedText: result.cleanedText, error: result.error };
+    }
+    if (!result.beneficiary) {
+      return { beneficiary: null, cleanedText: result.cleanedText, error: null };
     }
 
-    if (!beneficiaryUser) {
-      this.logger.warn(`⚠️ Beneficiary user not found: ${beneficiaryIdentifier}`);
-      const dualLinks = formatDualLinks('login', {}, BOT_USERNAME, WEB_BASE_URL);
-      const escapedUsername = escapeMarkdownV2(beneficiaryIdentifier);
-      return {
-        beneficiary: null,
-        cleanedText,
-        error: `⚠️ Пользователь @${escapedUsername} не найден в Meriter\\.\n\nПолучатель баллов должен сначала войти: ${dualLinks}`
-      };
-    }
-
-    // Extract telegram ID directly from the user model
-    const beneficiaryTgId = beneficiaryUser.authId;
-    if (!beneficiaryTgId) {
-      this.logger.warn(`⚠️ Could not extract telegram ID from beneficiary user`);
-      return {
-        beneficiary: null,
-        cleanedText,
-        error: `⚠️ Ошибка при обработке пользователя @${beneficiaryIdentifier}\\.`
-      };
-    }
-
-    // Validate that beneficiary is a member of the chat
-    const isMember = await this.tgGetChatMember(tgChatId, beneficiaryTgId);
-    if (!isMember) {
-      this.logger.warn(`⚠️ Beneficiary ${beneficiaryTgId} is not a member of chat ${tgChatId}`);
-      return {
-        beneficiary: null,
-        cleanedText,
-        error: `⚠️ Пользователь @${beneficiaryIdentifier} не является участником этого сообщества\\.`
-      };
-    }
-
-    // Get beneficiary's photo
     const beneficiaryPhotoUrl = await this.telegramGetChatPhotoUrl(
       BOT_TOKEN,
-      beneficiaryTgId
+      result.beneficiary.telegramId,
     );
 
-    const beneficiary = {
-      name: (beneficiaryUser.profile as any)?.name || beneficiaryIdentifier,
-      photoUrl: beneficiaryPhotoUrl,
-      telegramId: beneficiaryTgId,
-      username: beneficiaryIdentifier,
+    return {
+      beneficiary: {
+        name: result.beneficiary.displayName,
+        photoUrl: beneficiaryPhotoUrl,
+        telegramId: result.beneficiary.telegramId,
+        username: result.beneficiary.username,
+      },
+      cleanedText: result.cleanedText,
+      error: null,
     };
-
-    this.logger.log(`✅ Beneficiary validated: ${beneficiary.name} (${beneficiaryTgId})`);
-    return { beneficiary, cleanedText, error: null };
   }
 
   async processRecieveMessageFromGroup({
@@ -423,6 +426,7 @@ export class TgBotsService {
     messageId,
     tgChatUsername,
     replyMessageId,
+    replyToFrom,
     tgChatName,
     firstName,
     lastName,
@@ -436,6 +440,7 @@ export class TgBotsService {
     messageId?: number;
     tgChatUsername?: string;
     replyMessageId?: number;
+    replyToFrom?: TelegramReplyFrom | null;
     tgChatName?: string;
     firstName?: string;
     lastName?: string;
@@ -494,7 +499,23 @@ export class TgBotsService {
     }
 
     // Parse and validate beneficiary
-    const { beneficiary, cleanedText, error } = await this.parseBeneficiary(messageText || '', tgChatId);
+    const communityDoc = await this.communityModel
+      .findOne({ telegramChatId: tgChatId })
+      .select({ id: 1 })
+      .lean();
+    if (!communityDoc?.id) {
+      this.logger.warn(`Community not found for chat ${tgChatId} during beneficiary resolve`);
+      return;
+    }
+
+    const { beneficiary, cleanedText, error } = await this.resolvePublicationBeneficiary({
+      messageText: messageText || '',
+      tgChatId,
+      authorTelegramId: tgUserId,
+      entities: entities as TelegramMessageEntity[] | undefined,
+      replyToFrom,
+      communityId: communityDoc.id,
+    });
 
     // If there's an error with the beneficiary, send error message and abort
     if (error) {

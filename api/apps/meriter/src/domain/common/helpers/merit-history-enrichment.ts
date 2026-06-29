@@ -12,6 +12,8 @@ export type MeritHistoryMongoDb = NonNullable<Connection['db']>;
 export type MeritHistoryEnrichmentPayload = {
   publicationId?: string;
   publicationTitle?: string | null;
+  publicationAuthorDisplayName?: string | null;
+  publicationBeneficiaryDisplayName?: string | null;
   communityId?: string | null;
   communityName?: string | null;
   pollId?: string;
@@ -82,7 +84,13 @@ function pickDisplayName(user: unknown, fallbackId: string): string {
   return fallbackId;
 }
 
-type PublicationLean = { id: string; title?: string | null; communityId?: string | null };
+type PublicationLean = {
+  id: string;
+  title?: string | null;
+  communityId?: string | null;
+  authorId?: string | null;
+  beneficiaryId?: string | null;
+};
 
 async function loadPublicationsMap(db: MeritHistoryMongoDb, ids: Set<string>): Promise<Map<string, PublicationLean>> {
   const map = new Map<string, PublicationLean>();
@@ -90,7 +98,7 @@ async function loadPublicationsMap(db: MeritHistoryMongoDb, ids: Set<string>): P
   const docs = await db
     .collection('publications')
     .find({ id: { $in: [...ids] } })
-    .project({ id: 1, title: 1, communityId: 1 })
+    .project({ id: 1, title: 1, communityId: 1, authorId: 1, beneficiaryId: 1 })
     .toArray();
   for (const d of docs) {
     if (d?.id) {
@@ -98,6 +106,8 @@ async function loadPublicationsMap(db: MeritHistoryMongoDb, ids: Set<string>): P
         id: String(d.id),
         title: (d as { title?: string }).title ?? null,
         communityId: (d as { communityId?: string }).communityId ?? null,
+        authorId: (d as { authorId?: string }).authorId ?? null,
+        beneficiaryId: (d as { beneficiaryId?: string }).beneficiaryId ?? null,
       });
     }
   }
@@ -337,6 +347,13 @@ export async function enrichMeritHistoryTransactions(
     }
   }
 
+  for (const pub of publicationsMap.values()) {
+    if (pub.authorId) counterpartyIds.add(String(pub.authorId));
+    if (pub.beneficiaryId && pub.beneficiaryId !== pub.authorId) {
+      counterpartyIds.add(String(pub.beneficiaryId));
+    }
+  }
+
   const usersMap =
     counterpartyIds.size > 0
       ? await batchFetchUsers([...counterpartyIds])
@@ -346,9 +363,24 @@ export async function enrichMeritHistoryTransactions(
     const pub = publicationsMap.get(publicationId);
     const cid = pub?.communityId ? String(pub.communityId) : null;
     const anchor = telegramAnchorsMap.get(publicationId);
+    const authorId = pub?.authorId ? String(pub.authorId) : null;
+    const beneficiaryId = pub?.beneficiaryId ? String(pub.beneficiaryId) : null;
+    const hasNominee = beneficiaryId != null && authorId != null && beneficiaryId !== authorId;
     mergePayload(out, txId, {
       publicationId,
       publicationTitle: pub?.title ?? null,
+      ...(hasNominee
+        ? {
+            publicationAuthorDisplayName: pickDisplayName(
+              usersMap.get(authorId),
+              authorId,
+            ),
+            publicationBeneficiaryDisplayName: pickDisplayName(
+              usersMap.get(beneficiaryId),
+              beneficiaryId,
+            ),
+          }
+        : {}),
       communityId: cid,
       communityName: cid ? communityNameById.get(cid) ?? null : null,
       ...(anchor

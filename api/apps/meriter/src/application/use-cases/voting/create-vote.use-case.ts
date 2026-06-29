@@ -28,6 +28,7 @@ import {
   getRemainingQuota,
   getWalletBalance,
   shouldUseProjectInstantAppreciation,
+  getPublicationEffectiveBeneficiaryId,
   shouldUseTelegramInstantWalletMirror,
   ticketHasWorkAccepted,
 } from './create-vote.helpers';
@@ -442,9 +443,7 @@ export class CreateVoteUseCase {
         );
       const telegramMirrorBeneficiaryId =
         useTelegramInstantWalletMirror && publicationDoc
-          ? publicationDoc.postType === 'ticket'
-            ? (publicationDoc.beneficiaryId ?? publicationDoc.authorId)
-            : publicationDoc.authorId
+          ? getPublicationEffectiveBeneficiaryId(publicationDoc)
           : null;
       const mirrorAuthorWallet =
         useTelegramInstantWalletMirror &&
@@ -459,7 +458,7 @@ export class CreateVoteUseCase {
         );
         if (authorBalance < totalMeritVoteAmount) {
           throw new BadRequestException(
-            `Insufficient author wallet balance. Available: ${authorBalance}, Requested: ${totalMeritVoteAmount}`,
+            `Insufficient recipient wallet balance. Available: ${authorBalance}, Requested: ${totalMeritVoteAmount}`,
           );
         }
       }
@@ -607,7 +606,7 @@ export class CreateVoteUseCase {
               );
               if (!debited) {
                 throw new BadRequestException(
-                  'Insufficient author wallet balance for downvote',
+                  'Insufficient recipient wallet balance for downvote',
                 );
               }
             }

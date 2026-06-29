@@ -1,6 +1,8 @@
 export type MeritHistoryEnrichment = {
   publicationId?: string;
   publicationTitle?: string | null;
+  publicationAuthorDisplayName?: string | null;
+  publicationBeneficiaryDisplayName?: string | null;
   communityId?: string | null;
   communityName?: string | null;
   pollId?: string;
@@ -68,10 +70,20 @@ export function formatMeritHistoryLine(row: MeritHistoryRowInput): string {
 
   if (rt === 'telegram_vote_mirror') {
     const title = en?.publicationTitle?.trim();
+    const authorName = en?.publicationAuthorDisplayName?.trim();
+    const beneficiaryName = en?.publicationBeneficiaryDisplayName?.trim();
+    const nomineeHint =
+      authorName && beneficiaryName
+        ? ` (номинация от ${authorName}, заслуги ${beneficiaryName})`
+        : '';
     if (row.type === 'deposit') {
-      return title ? `Голос в чате за «${title}»` : 'Заслуги за голос в Telegram-чате';
+      return title
+        ? `Голос в чате за «${title}»${nomineeHint}`
+        : `Заслуги за голос в Telegram-чате${nomineeHint}`;
     }
-    return title ? `Списание за голос против «${title}»` : 'Списание за голос против поста в чате';
+    return title
+      ? `Списание за голос против «${title}»${nomineeHint}`
+      : `Списание за голос против поста в чате${nomineeHint}`;
   }
 
   if (rt === 'publication_vote') {
