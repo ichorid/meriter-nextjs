@@ -27,6 +27,7 @@ export type MeritHistoryEnrichmentPayload = {
 
 const PUBLICATION_REF_TYPES = new Set<string>([
   'publication_vote',
+  'telegram_vote_mirror',
   'project_appreciation',
   'investment',
   'investment_distribution',

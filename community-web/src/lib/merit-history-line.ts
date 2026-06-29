@@ -23,6 +23,7 @@ export type MeritHistoryRowInput = {
 
 const REF_TYPE_LABELS: Record<string, string> = {
   publication_vote: 'Голос за публикацию',
+  telegram_vote_mirror: 'Голос в Telegram-чате',
   vote_vote: 'Голос',
   vote: 'Голос',
   comment_vote: 'Голос за комментарий',
@@ -63,6 +64,23 @@ export function formatMeritHistoryLine(row: MeritHistoryRowInput): string {
     const incoming = row.type === 'deposit';
     const base = incoming ? `Перевод от ${cp}` : `Перевод для ${cp}`;
     return comment ? `${base}: ${comment}` : base;
+  }
+
+  if (rt === 'telegram_vote_mirror') {
+    const title = en?.publicationTitle?.trim();
+    if (row.type === 'deposit') {
+      return title ? `Голос в чате за «${title}»` : 'Заслуги за голос в Telegram-чате';
+    }
+    return title ? `Списание за голос против «${title}»` : 'Списание за голос против поста в чате';
+  }
+
+  if (rt === 'publication_vote') {
+    const title = en?.publicationTitle?.trim();
+    if (title) {
+      return row.type === 'deposit'
+        ? `Голос за «${title}»`
+        : `Голос против «${title}»`;
+    }
   }
 
   if (rt === 'community_starting_merits') {

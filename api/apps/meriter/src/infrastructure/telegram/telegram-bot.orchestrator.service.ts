@@ -56,6 +56,7 @@ import {
   communitySettingsSnapshot,
   settingsEditFieldToAction,
   isSettingsEditField,
+  primaryCommunityHashtag,
   type SettingsEditField,
   mapTelegramUserFacingError,
   voteAmountButtonLabels,
@@ -635,7 +636,7 @@ export class TelegramBotOrchestratorService {
       await this.tgBots.tgReplyEphemeral({
         chat_id: chatId,
         reply_to_message_id: messageId,
-        text: TG_MSG.reactionPostNotFound,
+        text: TG_MSG.reactionPostNotFound(primaryCommunityHashtag(community.hashtags)),
       });
       return;
     }
@@ -1429,61 +1430,41 @@ export class TelegramBotOrchestratorService {
     },
   ): Promise<void> {
     const pendingId = uid();
-
-    if (context?.groupChatId && context.replyToMessageId != null) {
-      const promptText =
-        direction === 'down'
-          ? TG_MSG.voteAmountGroupPromptDown
-          : TG_MSG.voteAmountGroupPrompt;
-      await this.pendingModel.create({
-        id: pendingId,
-        telegramUserId: tgUserId,
-        action: 'confirm_vote_amount',
-        payload: {
-          voterId,
-          publicationId,
-          direction,
-          groupChatId: context.groupChatId,
-        },
-        expiresAt: new Date(Date.now() + PENDING_TTL_MS),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      const promptMessageId = await this.sendVoteAmountPromptWithKeyboard(
-        context.groupChatId,
-        context.replyToMessageId,
-        pendingId,
-        promptText,
-        direction,
-      );
-      if (promptMessageId != null) {
-        await this.pendingModel.updateOne(
-          { id: pendingId },
-          { $set: { 'payload.promptMessageId': promptMessageId, updatedAt: new Date() } },
-        );
-        return;
-      }
-      await this.pendingModel.deleteOne({ id: pendingId }).exec();
-    }
+    const promptText =
+      direction === 'down' ? TG_MSG.voteAmountDmPromptDown : TG_MSG.voteAmountDmPrompt;
 
     await this.pendingModel.create({
       id: pendingId,
       telegramUserId: tgUserId,
       action: 'confirm_vote_amount',
-      payload: { voterId, publicationId, direction },
+      payload: {
+        voterId,
+        publicationId,
+        direction,
+        groupChatId: context?.groupChatId,
+        reactedMessageId: context?.replyToMessageId,
+      },
       expiresAt: new Date(Date.now() + PENDING_TTL_MS),
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    const dmText = TG_MSG.enterAmount;
-    const dmSent = await this.tgBots.tgSend({ tgChatId: tgUserId, text: dmText });
-    if (!dmSent) {
-      const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '') ?? 'meriterbot';
-      await this.tgBots.tgSend({
-        tgChatId: tgUserId,
-        text: TG_MSG.voteAmountDmFailed(botUsername),
-      });
+
+    const sent = await this.sendVoteAmountDmPromptWithKeyboard(
+      tgUserId,
+      pendingId,
+      promptText,
+      direction,
+    );
+    if (sent) {
+      return;
     }
+
+    await this.pendingModel.deleteOne({ id: pendingId }).exec();
+    const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '') ?? 'meriterbot';
+    await this.tgBots.tgSend({
+      tgChatId: tgUserId,
+      text: TG_MSG.voteAmountDmFailed(botUsername),
+    });
   }
 
   private async confirmVoteAmount(
@@ -1500,15 +1481,16 @@ export class TelegramBotOrchestratorService {
       publicationId: string;
       direction: 'up' | 'down';
       groupChatId?: string;
-      promptMessageId?: number;
+      reactedMessageId?: number;
     };
     await this.pendingModel.deleteOne({ id: pendingId }).exec();
-    const groupFeedback = payload.groupChatId
-      ? {
-          groupChatId: payload.groupChatId,
-          replyToMessageId: payload.promptMessageId,
-        }
-      : undefined;
+    const groupFeedback =
+      payload.groupChatId && payload.reactedMessageId != null
+        ? {
+            groupChatId: payload.groupChatId,
+            replyToMessageId: payload.reactedMessageId,
+          }
+        : undefined;
     await this.executeVote(
       payload.voterId,
       payload.publicationId,
@@ -1540,7 +1522,7 @@ export class TelegramBotOrchestratorService {
       await this.tgBots.tgReplyEphemeral({
         chat_id: chatId,
         reply_to_message_id: replyMessageId,
-        text: TG_MSG.reactionPostNotFound,
+        text: TG_MSG.reactionPostNotFound(primaryCommunityHashtag(community.hashtags)),
       });
       return;
     }
@@ -1688,28 +1670,22 @@ export class TelegramBotOrchestratorService {
     }
   }
 
-  private async sendVoteAmountPromptWithKeyboard(
-    chatId: string,
-    replyToMessageId: number,
+  private async sendVoteAmountDmPromptWithKeyboard(
+    tgUserId: string,
     pendingId: string,
     promptText: string,
     direction: 'up' | 'down',
-  ): Promise<number | null> {
+  ): Promise<boolean> {
     const token = this.configService.get('bot')?.token;
     if (!token || this.configService.get('noAxios')) {
-      return this.tgBots.tgReplyEphemeral({
-        chat_id: chatId,
-        reply_to_message_id: replyToMessageId,
-        text: promptText,
-      });
+      return Boolean(await this.tgBots.tgSend({ tgChatId: tgUserId, text: promptText }));
     }
     const [l1, l2, l3] = voteAmountButtonLabels(direction);
     try {
       const Axios = (await import('axios')).default;
       const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
       const res = await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
-        chat_id: chatId,
-        reply_to_message_id: replyToMessageId,
+        chat_id: tgUserId,
         text: promptText,
         reply_markup: {
           inline_keyboard: [
@@ -1721,21 +1697,10 @@ export class TelegramBotOrchestratorService {
           ],
         },
       });
-      const messageId = res.data?.result?.message_id;
-      if (typeof messageId === 'number') {
-        setTimeout(() => {
-          void this.tgBots.tgDeleteMessage(chatId, messageId);
-        }, TG_BOT_EPHEMERAL_TTL_SEC * 1000);
-        return messageId;
-      }
+      return typeof res.data?.result?.message_id === 'number';
     } catch {
-      /* fallback below */
+      return Boolean(await this.tgBots.tgSend({ tgChatId: tgUserId, text: promptText }));
     }
-    return this.tgBots.tgReplyEphemeral({
-      chat_id: chatId,
-      reply_to_message_id: replyToMessageId,
-      text: promptText,
-    });
   }
 
   private async sendCallbackPrompt(

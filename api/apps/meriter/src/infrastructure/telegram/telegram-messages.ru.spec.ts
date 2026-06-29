@@ -110,4 +110,9 @@ describe('telegram group welcome copy', () => {
     expect(TG_MSG.settingsUpdated(snapshot)).toContain('выключена');
     expect(TG_MSG.settingsUpdated(snapshot)).toContain('2 заслуг');
   });
+
+  it('reactionPostNotFound uses community hashtag', () => {
+    expect(TG_MSG.reactionPostNotFound('идея')).toContain('#идея');
+    expect(TG_MSG.reactionPostNotFound('идея')).not.toContain('сохранённым');
+  });
 });

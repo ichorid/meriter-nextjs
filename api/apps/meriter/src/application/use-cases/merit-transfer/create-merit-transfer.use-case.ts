@@ -24,6 +24,7 @@ import { WalletService } from '../../../domain/services/wallet.service';
 import type { WalletContextResolverService } from '../../../domain/services/wallet-context-resolver.service';
 import type { MeritTransferPersistencePort } from '../../../domain/ports/merit-transfer.persistence.port';
 import type { PublicationPersistencePort } from '../../../domain/ports/publication.persistence.port';
+import type { MeritTransferGroupNotifyPort } from '../../../domain/ports/merit-transfer-group-notify.port';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -45,6 +46,7 @@ export class CreateMeritTransferUseCase implements CreateMeritTransferPort {
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly walletContextResolverService: WalletContextResolverService,
+    private readonly groupNotifyPort?: MeritTransferGroupNotifyPort,
   ) {}
 
   private toRecord(
@@ -235,7 +237,15 @@ export class CreateMeritTransferUseCase implements CreateMeritTransferPort {
     this.logger.log(
       `Merit transfer ${id}: ${input.senderId} → ${input.receiverId}, amount=${input.amount}, context=${input.communityContextId}`,
     );
-    return this.toRecord(created);
+    const record = this.toRecord(created);
+    if (this.groupNotifyPort) {
+      void this.groupNotifyPort.announceTransfer(record).catch((err) => {
+        this.logger.warn(
+          `Merit transfer group notify failed for ${id}: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      });
+    }
+    return record;
   }
 }
 
@@ -246,6 +256,7 @@ export function createCreateMeritTransferUseCase(deps: {
   communityService: CommunityService;
   userCommunityRoleService: UserCommunityRoleService;
   walletContextResolverService: WalletContextResolverService;
+  groupNotifyPort?: MeritTransferGroupNotifyPort;
 }): CreateMeritTransferUseCase {
   return new CreateMeritTransferUseCase(
     deps.meritTransferPersistence,
@@ -254,5 +265,6 @@ export function createCreateMeritTransferUseCase(deps: {
     deps.communityService,
     deps.userCommunityRoleService,
     deps.walletContextResolverService,
+    deps.groupNotifyPort,
   );
 }

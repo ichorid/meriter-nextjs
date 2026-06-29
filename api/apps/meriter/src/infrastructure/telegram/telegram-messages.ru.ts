@@ -335,9 +335,13 @@ export const TG_MSG = {
     direction === 'up'
       ? `Начислено ${amount} заслуг автору.`
       : `Списано ${amount} заслуг с автора.`,
-  reactionPostNotFound:
-    'Это сообщение ещё не в Meriter. Голосовать можно только по сохранённым постам (с хэштегом или от бота).',
+  reactionPostNotFound: (hashtag: string) =>
+    `Это сообщение не в Meriter. Голосовать можно только за посты с хэштегом #${hashtag}`,
   cannotVoteOwnPost: 'Голосовать за собственный пост нельзя.',
+  voteAmountDmPrompt:
+    'Насколько заслуг начислить автору?\n\nВыберите сумму кнопкой или напишите число.',
+  voteAmountDmPromptDown:
+    'Насколько заслуг списать с автора?\n\nВыберите сумму кнопкой или напишите число.',
   voteAmountGroupPrompt:
     'Насколько заслуг начислить автору?\n\nВыберите сумму кнопкой или ответьте числом на это сообщение.',
   voteAmountGroupPromptDown:
@@ -407,4 +411,15 @@ export const TG_EMOJI = {
 
 export function voteAmountButtonLabels(_direction: 'up' | 'down'): [string, string, string] {
   return ['1', '3', '5'];
+}
+
+export function meritTransferGroupMessage(
+  senderName: string,
+  receiverName: string,
+  amount: number,
+  comment?: string | null,
+): string {
+  const base = `${senderName} перевёл ${amount} заслуг ${receiverName}.`;
+  const trimmed = comment?.trim();
+  return trimmed ? `${base}\nКомментарий: ${trimmed}` : base;
 }

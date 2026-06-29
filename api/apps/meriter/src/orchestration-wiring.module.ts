@@ -76,6 +76,10 @@ import type { TeamInvitationPersistencePort } from './domain/ports/team-invitati
 import { DistributeOnWithdrawalUseCase } from './application/use-cases/investments/distribute-on-withdrawal.use-case';
 import { HandlePostCloseUseCase } from './application/use-cases/investments/handle-post-close.use-case';
 import { createCreateMeritTransferUseCase } from './application/use-cases/merit-transfer/create-merit-transfer.use-case';
+import {
+  MERIT_TRANSFER_GROUP_NOTIFY_PORT,
+  type MeritTransferGroupNotifyPort,
+} from './domain/ports/merit-transfer-group-notify.port';
 import { createProvisionBaseMembershipUseCase } from './application/use-cases/communities/provision-base-membership.use-case';
 import { createTransitionTicketStatusUseCase } from './application/use-cases/tickets/transition-ticket-status.use-case';
 import { createCreatePublicationUseCase } from './application/use-cases/publications/create-publication.use-case';
@@ -164,15 +168,22 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         communityService: CommunityService,
         userCommunityRoleService: UserCommunityRoleService,
         walletContextResolverService: WalletContextResolverService,
-      ) =>
-        createCreateMeritTransferUseCase({
+        moduleRef: ModuleRef,
+      ) => {
+        const groupNotifyPort = moduleRef.get<MeritTransferGroupNotifyPort>(
+          MERIT_TRANSFER_GROUP_NOTIFY_PORT,
+          { strict: false },
+        );
+        return createCreateMeritTransferUseCase({
           meritTransferPersistence,
           publicationPersistence,
           walletService,
           communityService,
           userCommunityRoleService,
           walletContextResolverService,
-        }),
+          groupNotifyPort,
+        });
+      },
       inject: [
         MERIT_TRANSFER_PERSISTENCE_PORT,
         PUBLICATION_PERSISTENCE_PORT,
@@ -180,6 +191,7 @@ import { createAcceptTeamInvitationUseCase } from './application/use-cases/teams
         CommunityService,
         UserCommunityRoleService,
         WalletContextResolverService,
+        ModuleRef,
       ],
     },
     {

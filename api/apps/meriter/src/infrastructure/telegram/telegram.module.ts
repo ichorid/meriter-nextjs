@@ -18,6 +18,8 @@ import { TgBotsService } from '../../domain/services/tg-bots.service';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramBotOrchestratorService } from './telegram-bot.orchestrator.service';
 import { TelegramPublicationMirrorHandler } from './telegram-publication-mirror.handler';
+import { TelegramMeritTransferGroupNotifier } from './telegram-merit-transfer-group-notifier.service';
+import { MERIT_TRANSFER_GROUP_NOTIFY_PORT } from '../../domain/ports/merit-transfer-group-notify.port';
 
 /**
  * BC-19 Telegram infrastructure composition root (Phase 8 / OD-4).
@@ -40,7 +42,16 @@ import { TelegramPublicationMirrorHandler } from './telegram-publication-mirror.
     TgBotsService,
     TelegramBotOrchestratorService,
     TelegramPublicationMirrorHandler,
+    TelegramMeritTransferGroupNotifier,
+    {
+      provide: MERIT_TRANSFER_GROUP_NOTIFY_PORT,
+      useExisting: TelegramMeritTransferGroupNotifier,
+    },
   ],
-  exports: [TgBotsService, TelegramBotOrchestratorService],
+  exports: [
+    TgBotsService,
+    TelegramBotOrchestratorService,
+    MERIT_TRANSFER_GROUP_NOTIFY_PORT,
+  ],
 })
 export class TelegramInfrastructureModule {}

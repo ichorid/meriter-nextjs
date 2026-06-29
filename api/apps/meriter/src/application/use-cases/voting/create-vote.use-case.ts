@@ -594,7 +594,7 @@ export class CreateVoteUseCase {
                 'telegram_vote_mirror',
                 input.targetId,
                 currency,
-                `Telegram vote mirror credit for publication ${input.targetId}`,
+                'Заслуги за голос в Telegram-чате',
               );
             } else {
               const debited = await deps.walletService.debitIfSufficient(
@@ -603,7 +603,7 @@ export class CreateVoteUseCase {
                 totalAmount,
                 'telegram_vote_mirror',
                 input.targetId,
-                `Telegram vote mirror debit for publication ${input.targetId}`,
+                'Списание за голос против поста в Telegram-чате',
               );
               if (!debited) {
                 throw new BadRequestException(

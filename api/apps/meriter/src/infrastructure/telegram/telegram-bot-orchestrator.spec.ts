@@ -554,44 +554,37 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
   });
 
-  it('message_reaction ❤️ prompts amount in group with ephemeral reply', async () => {
+  it('message_reaction ❤️ prompts amount in DM with keyboard, not in group', async () => {
     const { messageId } = await seedPublicationWithAnchor(99, { otherAuthor: true });
-    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1001);
-    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend');
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral');
+    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
 
     await webhookController.handleWebhook(
       botUsername,
       messageReactionUpdate('❤️', messageId, 30),
     );
 
-    expect(ephemeralSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        chat_id: tgChatId,
-        reply_to_message_id: messageId,
-        text: TG_MSG.voteAmountGroupPrompt,
-      }),
+    expect(ephemeralSpy).not.toHaveBeenCalledWith(
+      expect.objectContaining({ text: TG_MSG.voteAmountDmPrompt }),
     );
-    expect(tgSendSpy).not.toHaveBeenCalledWith(
-      expect.objectContaining({ text: TG_MSG.enterAmount }),
+    expect(tgSendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ tgChatId: tgUserId, text: TG_MSG.voteAmountDmPrompt }),
     );
     const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
     expect(pending?.action).toBe('confirm_vote_amount');
-    expect((pending?.payload as { promptMessageId?: number }).promptMessageId).toBe(1001);
+    expect((pending?.payload as { reactedMessageId?: number }).reactedMessageId).toBe(messageId);
   });
 
-  it('message_reaction ❤️ falls back to DM when group ephemeral fails', async () => {
+  it('message_reaction ❤️ reports DM failure when bot cannot message user', async () => {
     const { messageId } = await seedPublicationWithAnchor(99, { otherAuthor: true });
-    jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(null);
-    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(false);
 
     await webhookController.handleWebhook(
       botUsername,
       messageReactionUpdate('❤️', messageId, 31),
     );
 
-    expect(tgSendSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ tgChatId: tgUserId, text: TG_MSG.enterAmount }),
-    );
+    expect(await pendingModel.findOne({ telegramUserId: tgUserId }).exec()).toBeNull();
   });
 
   it('message_reaction without anchor replies ephemerally in group', async () => {
@@ -604,7 +597,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
 
     expect(ephemeralSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ text: TG_MSG.reactionPostNotFound }),
+      expect.objectContaining({ text: TG_MSG.reactionPostNotFound('идея') }),
     );
   });
 
