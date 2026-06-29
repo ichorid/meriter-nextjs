@@ -14,7 +14,12 @@ export type TelegramBotPendingActionType =
   | 'onboarding_moderation'
   | 'onboarding_publication_ack'
   | 'onboarding_welcome_merits'
-  | 'onboarding_confirm';
+  | 'onboarding_confirm'
+  | 'settings_edit_name'
+  | 'settings_edit_quota'
+  | 'settings_edit_post_cost'
+  | 'settings_edit_hashtag'
+  | 'settings_edit_welcome_merits';
 
 @Schema({ collection: 'telegram_bot_pending_actions', timestamps: true })
 export class TelegramBotPendingActionSchemaClass {

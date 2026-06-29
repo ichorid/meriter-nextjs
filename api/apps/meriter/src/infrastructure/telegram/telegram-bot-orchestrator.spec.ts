@@ -165,6 +165,15 @@ describe('TelegramBotOrchestrator (integration)', () => {
     return { communityId, userId };
   }
 
+  async function seedLeadCommunity() {
+    const { communityId, userId } = await seedLinkedCommunity();
+    await userCommunityRoleModel.updateOne(
+      { userId, communityId },
+      { $set: { role: 'lead' } },
+    );
+    return { communityId, userId };
+  }
+
   async function seedPublicationWithAnchor(messageId = 99, options?: { otherAuthor?: boolean }) {
     const { communityId, userId } = await seedLinkedCommunity();
     const now = new Date();
@@ -596,6 +605,74 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
     expect(ephemeralSpy).toHaveBeenCalledWith(
       expect.objectContaining({ text: TG_MSG.reactionPostNotFound }),
+    );
+  });
+
+  it('group /settings for lead shows editable summary without post ack', async () => {
+    await seedLeadCommunity();
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 16,
+      message: {
+        message_id: 57,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        text: '/settings',
+      },
+    } as TelegramTypes.Update);
+
+    expect(ephemeralSpy).toHaveBeenCalled();
+    const sentText = String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '');
+    expect(sentText).toContain('Ежедневная квота');
+    expect(sentText).not.toContain('Пост сохранён');
+  });
+
+  it('lead can update community name via settings edit in DM', async () => {
+    const { communityId } = await seedLeadCommunity();
+    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(undefined);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 17,
+      callback_query: {
+        id: 'cb-settings-name',
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG' },
+        message: { message_id: 1, chat: { id: Number(tgChatId), type: 'supergroup' } },
+        chat_instance: '1',
+        data: `settings:edit:name:${communityId}`,
+      },
+    } as TelegramTypes.Update);
+
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining('Новое название') }),
+    );
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 18,
+      message: {
+        message_id: 2,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgUserId), type: 'private' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        text: 'Новое имя',
+      },
+    } as TelegramTypes.Update);
+
+    const updated = await communityModel.findOne({ id: communityId }).lean();
+    expect(updated?.name).toBe('Новое имя');
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ text: expect.stringContaining('«Новое имя»') }),
     );
   });
 

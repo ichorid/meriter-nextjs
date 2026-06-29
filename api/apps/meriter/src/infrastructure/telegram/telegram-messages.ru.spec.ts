@@ -2,6 +2,8 @@ import {
   buildGroupWelcomeMessage,
   buildTelegramHelpMessage,
   buildTelegramMiniAppStartLink,
+  buildSettingsLeadSummary,
+  communitySettingsSnapshot,
   TG_MSG,
 } from './telegram-messages.ru';
 
@@ -83,5 +85,29 @@ describe('telegram group welcome copy', () => {
     expect(text).toContain('/balance — ваши заслуги');
     expect(text).toContain('1. Отправляйте сообщения с #идея');
     expect(text).not.toContain('Заслуги — внутренняя валюта');
+  });
+
+  it('settings summary lists editable fields without post ack toggle', () => {
+    const text = buildSettingsLeadSummary({
+      name: 'Клуб',
+      hashtags: ['идея'],
+      settings: { dailyEmission: 5, postCost: 1 },
+      meritSettings: { startingMerits: 10 },
+    });
+    expect(text).toContain('«Клуб»');
+    expect(text).toContain('5 заслуг в день');
+    expect(text).toContain('#идея');
+    expect(text).not.toContain('Пост сохранён');
+  });
+
+  it('settingsUpdated reflects snapshot', () => {
+    const snapshot = communitySettingsSnapshot({
+      name: 'Клуб',
+      hashtags: ['идея'],
+      settings: { dailyEmission: 0, postCost: 2 },
+      meritSettings: { startingMerits: 0 },
+    });
+    expect(TG_MSG.settingsUpdated(snapshot)).toContain('выключена');
+    expect(TG_MSG.settingsUpdated(snapshot)).toContain('2 заслуг');
   });
 });

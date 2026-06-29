@@ -50,6 +50,13 @@ import {
   buildOnboardingDoneMessage,
   buildTelegramHelpMessage,
   getOnboardingPrompt,
+  getSettingsEditPrompt,
+  buildSettingsLeadSummary,
+  buildSettingsEditKeyboard,
+  communitySettingsSnapshot,
+  settingsEditFieldToAction,
+  isSettingsEditField,
+  type SettingsEditField,
   mapTelegramUserFacingError,
   voteAmountButtonLabels,
   type CommunityUsageRulesInput,
@@ -713,9 +720,10 @@ export class TelegramBotOrchestratorService {
 
     const tgUserId = String(from.id);
     const parts = data.split(':');
-    if (parts[0] === 'settings' && parts[1] === 'pub_ack' && parts[2] && parts[3]) {
-      const enabled = parts[2] === 'on';
-      await this.updatePublicationAckSetting(tgUserId, parts[3], enabled);
+    if (parts[0] === 'settings' && parts[1] === 'edit' && parts[2] && parts[3]) {
+      if (isSettingsEditField(parts[2])) {
+        await this.beginSettingsEdit(tgUserId, parts[3], parts[2]);
+      }
       return;
     }
     if (parts[0] === 'vote_amt' && parts[1] && parts[2]) {
@@ -859,6 +867,60 @@ export class TelegramBotOrchestratorService {
         const w = parseFloat(text.trim().replace(',', '.'));
         payload.welcomeMerits = Number.isFinite(w) && w >= 0 ? w : 0;
         await this.finishOnboarding(tgUserId, payload);
+        return true;
+      }
+      case 'settings_edit_name': {
+        const name = text.trim().slice(0, 120);
+        if (!name) {
+          await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.settingsEditEmptyName });
+          return true;
+        }
+        await this.applySettingsUpdate(tgUserId, String(payload.communityId), { name });
+        return true;
+      }
+      case 'settings_edit_quota': {
+        const n = Number.parseInt(text.trim(), 10);
+        if (!Number.isFinite(n) || n < 0) {
+          await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.settingsEditInvalidNumber });
+          return true;
+        }
+        const quotaEnabled = n > 0;
+        await this.applySettingsUpdate(tgUserId, String(payload.communityId), {
+          settings: { dailyEmission: quotaEnabled ? n : 0 },
+          meritSettings: {
+            quotaEnabled,
+            dailyQuota: quotaEnabled ? n : 0,
+          },
+        });
+        return true;
+      }
+      case 'settings_edit_post_cost': {
+        const cost = Number.parseFloat(text.trim().replace(',', '.'));
+        if (!Number.isFinite(cost) || cost < 0) {
+          await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.settingsEditInvalidNumber });
+          return true;
+        }
+        await this.applySettingsUpdate(tgUserId, String(payload.communityId), {
+          settings: { postCost: cost },
+        });
+        return true;
+      }
+      case 'settings_edit_hashtag': {
+        const hashtag = text.trim().replace(/^#/, '').slice(0, 32) || 'идея';
+        await this.applySettingsUpdate(tgUserId, String(payload.communityId), {
+          hashtags: [hashtag],
+        });
+        return true;
+      }
+      case 'settings_edit_welcome_merits': {
+        const w = Number.parseFloat(text.trim().replace(',', '.'));
+        if (!Number.isFinite(w) || w < 0) {
+          await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.settingsEditInvalidNumber });
+          return true;
+        }
+        await this.applySettingsUpdate(tgUserId, String(payload.communityId), {
+          meritSettings: { startingMerits: w },
+        });
         return true;
       }
       default:
@@ -1540,19 +1602,18 @@ export class TelegramBotOrchestratorService {
       });
       return;
     }
-    const ackEnabled = community.settings?.telegramPublicationAckEnabled ?? false;
-    await this.sendSettingsPrompt(chatId, replyToMessageId, community.id, ackEnabled);
+    await this.sendSettingsPrompt(chatId, replyToMessageId, community);
   }
 
   private async sendSettingsPrompt(
     chatId: string,
     replyToMessageId: number,
-    communityId: string,
-    ackEnabled: boolean,
+    community: Community,
   ): Promise<void> {
+    const summary = buildSettingsLeadSummary(community);
     const token = this.configService.get('bot')?.token;
     if (!token || this.configService.get('noAxios')) {
-      await this.sendBotEphemeral(chatId, TG_MSG.settingsLead(ackEnabled), replyToMessageId);
+      await this.sendBotEphemeral(chatId, summary, replyToMessageId);
       return;
     }
     try {
@@ -1561,21 +1622,8 @@ export class TelegramBotOrchestratorService {
       const res = await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
         chat_id: chatId,
         reply_to_message_id: replyToMessageId,
-        text: TG_MSG.settingsLead(ackEnabled),
-        reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: ackEnabled ? '✓ Уведомлять о постах' : 'Уведомлять о постах',
-                callback_data: `settings:pub_ack:on:${communityId}`,
-              },
-              {
-                text: !ackEnabled ? '✓ Без уведомлений' : 'Без уведомлений',
-                callback_data: `settings:pub_ack:off:${communityId}`,
-              },
-            ],
-          ],
-        },
+        text: summary,
+        reply_markup: buildSettingsEditKeyboard(community.id),
       });
       const messageId = res.data?.result?.message_id;
       if (typeof messageId === 'number') {
@@ -1584,14 +1632,36 @@ export class TelegramBotOrchestratorService {
         }, TG_BOT_EPHEMERAL_TTL_SEC * 1000);
       }
     } catch {
-      await this.sendBotEphemeral(chatId, TG_MSG.settingsLead(ackEnabled), replyToMessageId);
+      await this.sendBotEphemeral(chatId, summary, replyToMessageId);
     }
   }
 
-  private async updatePublicationAckSetting(
+  private async beginSettingsEdit(
     tgUserId: string,
     communityId: string,
-    enabled: boolean,
+    field: SettingsEditField,
+  ): Promise<void> {
+    const action = settingsEditFieldToAction(field);
+
+    const user = await this.userService.getUserByAuthId('telegram', tgUserId);
+    if (!user) {
+      return;
+    }
+    const role = await this.userCommunityRoleService.getRole(user.id, communityId);
+    if (role?.role !== 'lead') {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.settingsLeadOnly });
+      return;
+    }
+
+    await this.pendingModel.deleteMany({ telegramUserId: tgUserId }).exec();
+    await this.savePending(tgUserId, action, { communityId });
+    await this.tgBots.tgSend({ tgChatId: tgUserId, text: getSettingsEditPrompt(action) });
+  }
+
+  private async applySettingsUpdate(
+    tgUserId: string,
+    communityId: string,
+    dto: Parameters<CommunityService['updateCommunity']>[1],
   ): Promise<void> {
     const user = await this.userService.getUserByAuthId('telegram', tgUserId);
     if (!user) {
@@ -1602,11 +1672,20 @@ export class TelegramBotOrchestratorService {
       await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.settingsLeadOnly });
       return;
     }
-    await this.communityModel.updateOne(
-      { id: communityId },
-      { $set: { 'settings.telegramPublicationAckEnabled': enabled, updatedAt: new Date() } },
-    );
-    await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.settingsAckUpdated(enabled) });
+    try {
+      const updated = await this.communityService.updateCommunity(communityId, dto);
+      await this.clearPending(tgUserId);
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: TG_MSG.settingsUpdated(communitySettingsSnapshot(updated)),
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: mapTelegramUserFacingError(message),
+      });
+    }
   }
 
   private async sendVoteAmountPromptWithKeyboard(

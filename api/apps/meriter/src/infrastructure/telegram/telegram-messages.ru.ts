@@ -65,6 +65,109 @@ export function primaryCommunityHashtag(hashtags?: string[]): string {
   return tag || 'идея';
 }
 
+export type CommunitySettingsSnapshotInput = {
+  name: string;
+  hashtags?: string[];
+  settings?: { dailyEmission?: number; postCost?: number };
+  meritSettings?: { startingMerits?: number };
+};
+
+export function communitySettingsSnapshot(
+  community: CommunitySettingsSnapshotInput,
+): {
+  name: string;
+  dailyEmission: number;
+  postCost: number;
+  hashtag: string;
+  welcomeMerits: number;
+} {
+  return {
+    name: community.name,
+    dailyEmission: community.settings?.dailyEmission ?? 0,
+    postCost: community.settings?.postCost ?? 0,
+    hashtag: primaryCommunityHashtag(community.hashtags),
+    welcomeMerits: community.meritSettings?.startingMerits ?? 0,
+  };
+}
+
+const SETTINGS_EDIT_PROMPTS: Partial<Record<TelegramBotPendingActionType, string>> = {
+  settings_edit_name: 'Новое название сообщества? Напишите одним сообщением.',
+  settings_edit_quota:
+    'Сколько ежедневных заслуг выдавать участникам? Напишите число.\n\n0 — отключить ежедневную квоту.',
+  settings_edit_post_cost:
+    'Сколько заслуг стоит публикация поста? Напишите число.\n\n0 — публикация бесплатная.',
+  settings_edit_hashtag:
+    'Какой хэштег для постов из чата? Напишите без #, например: идея',
+  settings_edit_welcome_merits:
+    'Сколько приветственных заслуг дать новому участнику?\n\n0 — не начислять. Напишите число.',
+};
+
+export function getSettingsEditPrompt(action: TelegramBotPendingActionType): string {
+  const body = SETTINGS_EDIT_PROMPTS[action];
+  if (!body) {
+    throw new Error(`Missing settings edit copy for action "${action}"`);
+  }
+  return body;
+}
+
+export function buildSettingsLeadSummary(community: CommunitySettingsSnapshotInput): string {
+  const s = communitySettingsSnapshot(community);
+  const quotaLine =
+    s.dailyEmission > 0
+      ? `${s.dailyEmission} заслуг в день`
+      : 'выключена';
+  return (
+    `Настройки Meriter\n\n` +
+    `• Название: «${s.name}»\n` +
+    `• Ежедневная квота: ${quotaLine}\n` +
+    `• Стоимость поста: ${s.postCost} заслуг\n` +
+    `• Хэштег: #${s.hashtag}\n` +
+    `• Приветственные заслуги: ${s.welcomeMerits}\n\n` +
+    `Нажмите кнопку ниже — бот задаст вопрос в личке.`
+  );
+}
+
+export type SettingsEditField = 'name' | 'quota' | 'post_cost' | 'hashtag' | 'welcome';
+
+export function settingsEditFieldToAction(field: SettingsEditField): TelegramBotPendingActionType {
+  const map: Record<SettingsEditField, TelegramBotPendingActionType> = {
+    name: 'settings_edit_name',
+    quota: 'settings_edit_quota',
+    post_cost: 'settings_edit_post_cost',
+    hashtag: 'settings_edit_hashtag',
+    welcome: 'settings_edit_welcome_merits',
+  };
+  return map[field];
+}
+
+const SETTINGS_EDIT_FIELDS = new Set<SettingsEditField>([
+  'name',
+  'quota',
+  'post_cost',
+  'hashtag',
+  'welcome',
+]);
+
+export function isSettingsEditField(field: string): field is SettingsEditField {
+  return SETTINGS_EDIT_FIELDS.has(field as SettingsEditField);
+}
+
+export function buildSettingsEditKeyboard(communityId: string): {
+  inline_keyboard: Array<Array<{ text: string; callback_data: string }>>;
+} {
+  const row = (field: SettingsEditField, label: string) => ({
+    text: label,
+    callback_data: `settings:edit:${field}:${communityId}`,
+  });
+  return {
+    inline_keyboard: [
+      [row('name', 'Название'), row('quota', 'Квота')],
+      [row('post_cost', 'Стоимость поста'), row('hashtag', 'Хэштег')],
+      [row('welcome', 'Приветственные заслуги')],
+    ],
+  };
+}
+
 function buildGroupWelcomeSteps(input: CommunityUsageRulesInput): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
   return (
@@ -275,13 +378,22 @@ export const TG_MSG = {
     'У вас несколько сообществ Meriter. Используйте команды в той группе, где хотите действовать.',
   settingsLeadOnly: 'Настройки бота доступны только лиду сообщества.',
   settingsUseGroup: 'Настройки бота: напишите /settings в группе (только лид).',
-  settingsLead: (ackEnabled: boolean) =>
-    `Настройки Meriter\n\n` +
-    `Сообщение «Пост сохранён» в группе: ${ackEnabled ? 'включено' : 'выключено'}.`,
-  settingsAckUpdated: (enabled: boolean) =>
-    enabled
-      ? 'Уведомления о сохранении постов включены.'
-      : 'Уведомления о сохранении постов выключены.',
+  settingsUpdated: (snapshot: ReturnType<typeof communitySettingsSnapshot>) => {
+    const quotaLine =
+      snapshot.dailyEmission > 0
+        ? `${snapshot.dailyEmission} заслуг в день`
+        : 'выключена';
+    return (
+      `Сохранено.\n\n` +
+      `• Название: «${snapshot.name}»\n` +
+      `• Ежедневная квота: ${quotaLine}\n` +
+      `• Стоимость поста: ${snapshot.postCost} заслуг\n` +
+      `• Хэштег: #${snapshot.hashtag}\n` +
+      `• Приветственные заслуги: ${snapshot.welcomeMerits}`
+    );
+  },
+  settingsEditInvalidNumber: 'Напишите целое число ≥ 0.',
+  settingsEditEmptyName: 'Название не может быть пустым.',
   postSavedAck: 'Пост сохранён.',
 } as const;
 
