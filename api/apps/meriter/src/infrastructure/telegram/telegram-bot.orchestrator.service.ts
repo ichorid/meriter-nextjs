@@ -1070,15 +1070,10 @@ export class TelegramBotOrchestratorService {
     if (!role) {
       await this.communityService.addMember(community.id, user.id);
       await this.userCommunityRoleService.setRole(user.id, community.id, 'participant', true);
-      await this.userService.addCommunityMembership(user.id, community.id);
-    } else {
-      if (!(await this.userService.isMemberOfCommunity(user.id, community.id))) {
-        await this.userService.addCommunityMembership(user.id, community.id);
-      }
-      if (role.membershipStatus === 'frozen') {
-        await this.rolePersistence.setMembershipStatus(user.id, community.id, 'active', new Date());
-      }
+    } else if (role.membershipStatus === 'frozen') {
+      await this.rolePersistence.setMembershipStatus(user.id, community.id, 'active', new Date());
     }
+    await this.userService.addCommunityMembership(user.id, community.id);
     const currency = community.settings?.currencyNames ?? {
       singular: 'заслуга',
       plural: 'заслуги',
