@@ -58,6 +58,7 @@ export const communityAppRouter = router({
           communityModel: ctx.connection.model(CommunitySchemaClass.name),
           communityService: ctx.communityService,
           userCommunityRoleService: ctx.userCommunityRoleService,
+          userService: ctx.userService,
           walletService: ctx.walletService,
         });
         const useCase = new AuthenticateTelegramWebAppCommunityUseCase(
@@ -97,7 +98,6 @@ export const communityAppRouter = router({
     {
       resolveForTelegramUser: protectedProcedure.query(async ({ ctx }) => {
         const useCase = new ResolveTelegramCommunityUseCase({
-          userService: ctx.userService,
           userCommunityRoleService: ctx.userCommunityRoleService,
           communityModel: ctx.connection.model(CommunitySchemaClass.name),
           configService: ctx.configService,
@@ -106,7 +106,6 @@ export const communityAppRouter = router({
       }),
       listForTelegramUser: protectedProcedure.query(async ({ ctx }) => {
         const useCase = new ResolveTelegramCommunityUseCase({
-          userService: ctx.userService,
           userCommunityRoleService: ctx.userCommunityRoleService,
           communityModel: ctx.connection.model(CommunitySchemaClass.name),
           configService: ctx.configService,

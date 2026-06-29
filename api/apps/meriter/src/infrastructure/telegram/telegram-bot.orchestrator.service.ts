@@ -560,7 +560,6 @@ export class TelegramBotOrchestratorService {
 
   private async resolveTelegramCommunityForUser(userId: string) {
     const useCase = new ResolveTelegramCommunityUseCase({
-      userService: this.userService,
       userCommunityRoleService: this.userCommunityRoleService,
       communityModel: this.communityModel,
       configService: this.configService,
@@ -960,6 +959,7 @@ export class TelegramBotOrchestratorService {
 
     await this.communityService.addMember(community.id, initiator.id);
     await this.userCommunityRoleService.setRole(initiator.id, community.id, 'lead', true);
+    await this.userService.addCommunityMembership(initiator.id, community.id);
 
     const welcome = payload.welcomeMerits ?? 0;
     if (welcome > 0) {
@@ -1070,8 +1070,14 @@ export class TelegramBotOrchestratorService {
     if (!role) {
       await this.communityService.addMember(community.id, user.id);
       await this.userCommunityRoleService.setRole(user.id, community.id, 'participant', true);
-    } else if (role.membershipStatus === 'frozen') {
-      await this.rolePersistence.setMembershipStatus(user.id, community.id, 'active', new Date());
+      await this.userService.addCommunityMembership(user.id, community.id);
+    } else {
+      if (!(await this.userService.isMemberOfCommunity(user.id, community.id))) {
+        await this.userService.addCommunityMembership(user.id, community.id);
+      }
+      if (role.membershipStatus === 'frozen') {
+        await this.rolePersistence.setMembershipStatus(user.id, community.id, 'active', new Date());
+      }
     }
     const currency = community.settings?.currencyNames ?? {
       singular: 'заслуга',

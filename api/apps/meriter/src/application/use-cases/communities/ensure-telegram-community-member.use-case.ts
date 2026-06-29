@@ -4,12 +4,14 @@ import type { Community } from '../../../domain/models/community/community.schem
 import type { CommunityDocument } from '../../../domain/models/community/community.schema';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
+import type { UserService } from '../../../domain/services/user.service';
 import type { WalletService } from '../../../domain/services/wallet.service';
 
 export type EnsureTelegramCommunityMemberDeps = {
   communityModel: Model<CommunityDocument>;
   communityService: CommunityService;
   userCommunityRoleService: UserCommunityRoleService;
+  userService: UserService;
   walletService: WalletService;
 };
 
@@ -43,6 +45,7 @@ export class EnsureTelegramCommunityMemberUseCase {
 
     await this.deps.communityService.addMember(communityId, userId);
     await this.deps.userCommunityRoleService.setRole(userId, communityId, 'participant', true);
+    await this.deps.userService.addCommunityMembership(userId, communityId);
 
     const currency = community.settings?.currencyNames ?? {
       singular: 'заслуга',

@@ -4,11 +4,8 @@ describe('ResolveTelegramCommunityUseCase', () => {
   const communityModel = {
     find: jest.fn(),
   };
-  const userService = {
-    getUserById: jest.fn(),
-  };
   const userCommunityRoleService = {
-    getRole: jest.fn(),
+    getUserRoles: jest.fn(),
   };
   const configService = {
     get: jest.fn().mockReturnValue({ defaultTelegramCommunityId: '' }),
@@ -18,24 +15,20 @@ describe('ResolveTelegramCommunityUseCase', () => {
     jest.clearAllMocks();
   });
 
-  it('listForUser returns active TG communities sorted by name', async () => {
-    userService.getUserById.mockResolvedValue({
-      id: 'u1',
-      communityMemberships: ['c1', 'c2', 'c3'],
-    });
+  it('listForUser returns active TG communities from roles sorted by name', async () => {
+    userCommunityRoleService.getUserRoles.mockResolvedValue([
+      { userId: 'u1', communityId: 'c1', role: 'participant' },
+      { userId: 'u1', communityId: 'c2', role: 'participant' },
+      { userId: 'u1', communityId: 'c3', role: 'participant' },
+    ]);
     communityModel.find.mockReturnValue({
       lean: jest.fn().mockResolvedValue([
         { id: 'c1', name: 'Beta', telegramChatId: '-1001' },
         { id: 'c2', name: 'Alpha', telegramChatId: '-1002' },
-        { id: 'c3', name: 'Frozen', telegramChatId: '-1003' },
       ]),
     });
-    userCommunityRoleService.getRole.mockImplementation(async (userId: string, communityId: string) =>
-      communityId === 'c3' ? null : { userId, communityId, role: 'participant' },
-    );
 
     const useCase = new ResolveTelegramCommunityUseCase({
-      userService: userService as never,
       userCommunityRoleService: userCommunityRoleService as never,
       communityModel: communityModel as never,
       configService: configService as never,
@@ -48,10 +41,19 @@ describe('ResolveTelegramCommunityUseCase', () => {
     ]);
   });
 
-  it('execute returns null when user has no TG communities', async () => {
-    userService.getUserById.mockResolvedValue({ id: 'u1', communityMemberships: [] });
+  it('listForUser returns empty when user has no active roles', async () => {
+    userCommunityRoleService.getUserRoles.mockResolvedValue([]);
     const useCase = new ResolveTelegramCommunityUseCase({
-      userService: userService as never,
+      userCommunityRoleService: userCommunityRoleService as never,
+      communityModel: communityModel as never,
+      configService: configService as never,
+    });
+    await expect(useCase.listForUser('u1')).resolves.toEqual([]);
+  });
+
+  it('execute returns null when user has no TG communities', async () => {
+    userCommunityRoleService.getUserRoles.mockResolvedValue([]);
+    const useCase = new ResolveTelegramCommunityUseCase({
       userCommunityRoleService: userCommunityRoleService as never,
       communityModel: communityModel as never,
       configService: configService as never,
