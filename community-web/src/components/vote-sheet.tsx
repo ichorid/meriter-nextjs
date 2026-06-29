@@ -29,11 +29,17 @@ export function VoteSheet({
   const [error, setError] = useState<string | null>(null);
 
   const isSelf = authorId === currentUserId;
-  const quotaQuery = trpc.wallets.getQuota.useQuery({ communityId });
-  const walletQuery = trpc.wallets.getByCommunity.useQuery({ communityId });
+  const quotaQuery = trpc.wallets.getQuota.useQuery({
+    userId: 'me',
+    communityId,
+  });
+  const walletQuery = trpc.wallets.getByCommunity.useQuery({
+    userId: 'me',
+    communityId,
+  });
   const utils = trpc.useUtils();
 
-  const quotaRemaining = quotaQuery.data?.remainingToday ?? 0;
+  const quotaRemaining = quotaQuery.data?.remaining ?? 0;
   const walletBalance = walletQuery.data?.balance ?? 0;
 
   const voteMutation = trpc.votes.createWithComment.useMutation({

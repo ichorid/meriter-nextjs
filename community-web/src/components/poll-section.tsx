@@ -226,7 +226,7 @@ function PollCard({
 
   const handleCast = () => {
     if (!selectedOptionId) return;
-    const quotaRemaining = quotaQuery.data?.remainingToday ?? 0;
+    const quotaRemaining = quotaQuery.data?.remaining ?? 0;
     const walletBalance = balanceQuery.data?.balance ?? 0;
     const castAmount = Math.max(1, amount);
 

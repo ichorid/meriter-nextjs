@@ -25,11 +25,11 @@ export default function ProfilePage() {
       : undefined);
 
   const walletQuery = trpc.wallets.getByCommunity.useQuery(
-    { communityId: communityId ?? '' },
+    { userId: 'me', communityId: communityId ?? '' },
     { enabled: !!communityId },
   );
   const quotaQuery = trpc.wallets.getQuota.useQuery(
-    { communityId: communityId ?? '' },
+    { userId: 'me', communityId: communityId ?? '' },
     { enabled: !!communityId },
   );
 

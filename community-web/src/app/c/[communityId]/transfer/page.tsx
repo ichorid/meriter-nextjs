@@ -33,7 +33,10 @@ function TransferPageInner({ communityId }: { communityId: string }) {
   }, [communityId, isMiniApp, router]);
 
   const meQuery = trpc.users.getMe.useQuery();
-  const walletQuery = trpc.wallets.getByCommunity.useQuery({ communityId });
+  const walletQuery = trpc.wallets.getByCommunity.useQuery({
+    userId: 'me',
+    communityId,
+  });
   const membersQuery = trpc.communities.getMembers.useQuery(
     { id: communityId, pageSize: 50 },
     { enabled: Boolean(communityId) },
@@ -73,7 +76,7 @@ function TransferPageInner({ communityId }: { communityId: string }) {
       setStep('receiver');
       setReceiverId(null);
       setAmount(1);
-      await utils.wallets.getByCommunity.invalidate({ communityId });
+      await utils.wallets.getByCommunity.invalidate({ userId: 'me', communityId });
       await utils.meritTransfer.getByCommunity.invalidate({ communityId });
     },
     onError: (err) => {

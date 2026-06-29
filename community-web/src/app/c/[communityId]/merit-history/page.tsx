@@ -1,10 +1,14 @@
 'use client';
 
+import { useMemo } from 'react';
 import { AuthGate } from '@/components/shell';
 import { CommunityShell } from '@/components/community-shell';
+import { MeritHistoryRow, type MeritHistoryRowData } from '@/components/merit-history-row';
 import { useCommunityId } from '@/lib/use-route-params';
 import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
 import { trpc } from '@/lib/trpc/client';
+
+const PAGE_SIZE = 20;
 
 function formatMeritAmount(amount: number): string {
   const sign = amount > 0 ? '+' : '';
@@ -13,11 +17,31 @@ function formatMeritAmount(amount: number): string {
 
 function MeritHistoryInner({ communityId }: { communityId: string }) {
   const { isMiniApp } = useTelegramMiniApp();
-  const historyQuery = trpc.wallets.getCommunityMeritHistory.useQuery({
-    communityId,
-    page: 1,
-    pageSize: isMiniApp ? 50 : 30,
-  });
+
+  const personalInfiniteQuery = trpc.wallets.getTransactions.useInfiniteQuery(
+    {
+      userId: 'me',
+      limit: PAGE_SIZE,
+      communityId,
+      permissionCommunityId: communityId,
+    },
+    {
+      enabled: isMiniApp,
+      initialPageParam: 0,
+      getNextPageParam: (lastPage) =>
+        lastPage.hasMore ? lastPage.skip + lastPage.data.length : undefined,
+    },
+  );
+
+  const historyQuery = trpc.wallets.getCommunityMeritHistory.useQuery(
+    {
+      communityId,
+      page: 1,
+      pageSize: 30,
+    },
+    { enabled: !isMiniApp },
+  );
+
   const personalQuery = trpc.wallets.getTransactions.useQuery(
     {
       userId: 'me',
@@ -27,6 +51,7 @@ function MeritHistoryInner({ communityId }: { communityId: string }) {
     },
     { enabled: !isMiniApp },
   );
+
   const dashboardQuery = trpc.wallets.getMeritHistoryDashboard.useQuery(
     {
       userId: 'me',
@@ -37,9 +62,29 @@ function MeritHistoryInner({ communityId }: { communityId: string }) {
     { enabled: !isMiniApp },
   );
 
+  const miniAppRows = useMemo((): MeritHistoryRowData[] => {
+    const pages = personalInfiniteQuery.data?.pages ?? [];
+    return pages.flatMap((page) =>
+      page.data.map((row) => ({
+        id: row.id,
+        type: row.type,
+        amount: row.amount,
+        description: row.description,
+        referenceType: row.referenceType,
+        createdAt: row.createdAt,
+        ledgerMultiplier: row.ledgerMultiplier,
+        meritHistoryEnrichment: row.meritHistoryEnrichment,
+      })),
+    );
+  }, [personalInfiniteQuery.data?.pages]);
+
   const communityRows = historyQuery.data?.data ?? [];
   const personalRows = personalQuery.data?.data ?? [];
   const kpis = dashboardQuery.data?.kpis;
+
+  const isLoading = isMiniApp
+    ? personalInfiniteQuery.isLoading
+    : historyQuery.isLoading || personalQuery.isLoading;
 
   return (
     <CommunityShell communityId={communityId} active="merit-history" tgActive="history">
@@ -48,7 +93,7 @@ function MeritHistoryInner({ communityId }: { communityId: string }) {
           <h1 className="text-xl font-extrabold tracking-tight">История заслуг</h1>
           {isMiniApp ? (
             <p className="text-sm text-stitch-muted">
-              Кто, кому и когда — операции в этом сообществе.
+              Ваши операции в этом сообществе: приветственные начисления, переводы и голоса.
             </p>
           ) : (
             kpis && (
@@ -76,38 +121,52 @@ function MeritHistoryInner({ communityId }: { communityId: string }) {
               Сообщество (сводка)
             </h2>
           )}
-          {historyQuery.isLoading && (
-            <p className="text-sm text-stitch-muted">Загрузка…</p>
-          )}
-          <ul className="space-y-2">
-            {communityRows.map((row) => (
-              <li
-                key={row.id}
-                className="rounded-lg border border-stitch-border bg-stitch-surface px-3 py-2 text-sm"
-              >
-                <div className="flex justify-between gap-2">
-                  <span>
-                    {(row as { subjectDisplayName?: string | null }).subjectDisplayName ??
-                      row.meritHistoryEnrichment?.title ??
-                      row.meritHistoryCategory ??
-                      row.referenceType}
-                  </span>
-                  <span
-                    className={
-                      row.amount >= 0 ? 'text-green-400 shrink-0' : 'text-red-400 shrink-0'
-                    }
-                  >
-                    {formatMeritAmount(row.amount)}
-                  </span>
-                </div>
-                <p className="text-xs text-stitch-muted mt-0.5">
-                  {new Date(row.createdAt).toLocaleString('ru-RU')}
-                </p>
-              </li>
-            ))}
-          </ul>
-          {!historyQuery.isLoading && communityRows.length === 0 && (
-            <p className="text-sm text-stitch-muted">Нет операций.</p>
+          {isLoading && <p className="text-sm text-stitch-muted">Загрузка…</p>}
+
+          {isMiniApp ? (
+            <>
+              <ul className="space-y-2">
+                {miniAppRows.map((row) => (
+                  <MeritHistoryRow key={row.id} row={row} />
+                ))}
+              </ul>
+              {personalInfiniteQuery.hasNextPage ? (
+                <button
+                  type="button"
+                  onClick={() => personalInfiniteQuery.fetchNextPage()}
+                  disabled={personalInfiniteQuery.isFetchingNextPage}
+                  className="min-h-[44px] w-full rounded-lg border border-stitch-border bg-stitch-surface px-4 py-2 text-sm font-medium disabled:opacity-50"
+                >
+                  {personalInfiniteQuery.isFetchingNextPage ? 'Загрузка…' : 'Загрузить ещё'}
+                </button>
+              ) : null}
+              {!isLoading && miniAppRows.length === 0 && (
+                <p className="text-sm text-stitch-muted">Нет операций.</p>
+              )}
+            </>
+          ) : (
+            <>
+              <ul className="space-y-2">
+                {communityRows.map((row) => (
+                  <MeritHistoryRow
+                    key={row.id}
+                    row={{
+                      id: row.id,
+                      type: row.type,
+                      amount: row.amount,
+                      description: row.description,
+                      referenceType: row.referenceType,
+                      createdAt: row.createdAt,
+                      ledgerMultiplier: row.ledgerMultiplier,
+                      meritHistoryEnrichment: row.meritHistoryEnrichment,
+                    }}
+                  />
+                ))}
+              </ul>
+              {!historyQuery.isLoading && communityRows.length === 0 && (
+                <p className="text-sm text-stitch-muted">Нет операций.</p>
+              )}
+            </>
           )}
         </section>
 
@@ -119,29 +178,19 @@ function MeritHistoryInner({ communityId }: { communityId: string }) {
             )}
             <ul className="space-y-2">
               {personalRows.map((row) => (
-                <li
+                <MeritHistoryRow
                   key={row.id}
-                  className="rounded-lg border border-stitch-border bg-stitch-surface px-3 py-2 text-sm"
-                >
-                  <div className="flex justify-between gap-2">
-                    <span>
-                      {row.meritHistoryEnrichment?.title ??
-                        row.meritHistoryCategory ??
-                        row.referenceType ??
-                        row.type}
-                    </span>
-                    <span
-                      className={
-                        row.amount >= 0 ? 'text-green-400 shrink-0' : 'text-red-400 shrink-0'
-                      }
-                    >
-                      {formatMeritAmount(row.amount)}
-                    </span>
-                  </div>
-                  <p className="text-xs text-stitch-muted mt-0.5">
-                    {new Date(row.createdAt).toLocaleString('ru-RU')}
-                  </p>
-                </li>
+                  row={{
+                    id: row.id,
+                    type: row.type,
+                    amount: row.amount,
+                    description: row.description,
+                    referenceType: row.referenceType,
+                    createdAt: row.createdAt,
+                    ledgerMultiplier: row.ledgerMultiplier,
+                    meritHistoryEnrichment: row.meritHistoryEnrichment,
+                  }}
+                />
               ))}
             </ul>
             {!personalQuery.isLoading && personalRows.length === 0 && (

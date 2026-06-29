@@ -19,7 +19,10 @@ export type MeritHistoryEnrichmentPayload = {
   counterpartyUserId?: string;
   counterpartyDisplayName?: string | null;
   meritTransferId?: string;
+  meritTransferComment?: string | null;
   eventPublicationId?: string | null;
+  telegramChatId?: string;
+  telegramMessageId?: number;
 };
 
 const PUBLICATION_REF_TYPES = new Set<string>([
@@ -46,6 +49,28 @@ const COMMUNITY_REF_TYPES = new Set<string>([
 ]);
 
 const POLL_REF_TYPES = new Set<string>(['poll_creation', 'poll_cast']);
+
+async function loadTelegramAnchorsMap(
+  db: MeritHistoryMongoDb,
+  publicationIds: Set<string>,
+): Promise<Map<string, { telegramChatId: string; telegramMessageId: number }>> {
+  const map = new Map<string, { telegramChatId: string; telegramMessageId: number }>();
+  if (publicationIds.size === 0) return map;
+  const docs = await db
+    .collection('telegram_publication_anchors')
+    .find({ publicationId: { $in: [...publicationIds] } })
+    .project({ publicationId: 1, telegramChatId: 1, telegramMessageId: 1 })
+    .toArray();
+  for (const d of docs) {
+    const pid = (d as { publicationId?: string }).publicationId;
+    const chatId = (d as { telegramChatId?: string }).telegramChatId;
+    const msgId = (d as { telegramMessageId?: number }).telegramMessageId;
+    if (pid && chatId && typeof msgId === 'number') {
+      map.set(String(pid), { telegramChatId: String(chatId), telegramMessageId: msgId });
+    }
+  }
+  return map;
+}
 
 function pickDisplayName(user: unknown, fallbackId: string): string {
   if (user && typeof user === 'object') {
@@ -262,6 +287,7 @@ export async function enrichMeritHistoryTransactions(
   }
 
   const publicationsMap = await loadPublicationsMap(db, publicationIds);
+  const telegramAnchorsMap = await loadTelegramAnchorsMap(db, publicationIds);
 
   const pollIds = [...new Set([...pollDirectByTx.values()])];
   const pollsMap = await loadPollsMap(db, pollIds);
@@ -318,11 +344,18 @@ export async function enrichMeritHistoryTransactions(
   function attachPublication(txId: string, publicationId: string): void {
     const pub = publicationsMap.get(publicationId);
     const cid = pub?.communityId ? String(pub.communityId) : null;
+    const anchor = telegramAnchorsMap.get(publicationId);
     mergePayload(out, txId, {
       publicationId,
       publicationTitle: pub?.title ?? null,
       communityId: cid,
       communityName: cid ? communityNameById.get(cid) ?? null : null,
+      ...(anchor
+        ? {
+            telegramChatId: anchor.telegramChatId,
+            telegramMessageId: anchor.telegramMessageId,
+          }
+        : {}),
     });
   }
 
@@ -360,6 +393,7 @@ export async function enrichMeritHistoryTransactions(
         meritTransferId: String(m.id),
         counterpartyUserId: String(cp),
         counterpartyDisplayName: cpName,
+        meritTransferComment: (m as { comment?: string }).comment?.trim() || null,
         communityId: ctxCid,
         communityName: ctxCid ? communityNameById.get(ctxCid) ?? null : null,
         eventPublicationId: eventPid,
@@ -371,6 +405,11 @@ export async function enrichMeritHistoryTransactions(
         const pcid = pub.communityId ? String(pub.communityId) : null;
         payload.communityId = pcid;
         payload.communityName = pcid ? communityNameById.get(pcid) ?? null : null;
+        const anchor = telegramAnchorsMap.get(eventPid);
+        if (anchor) {
+          payload.telegramChatId = anchor.telegramChatId;
+          payload.telegramMessageId = anchor.telegramMessageId;
+        }
       }
       mergePayload(out, tx.id, payload);
     }

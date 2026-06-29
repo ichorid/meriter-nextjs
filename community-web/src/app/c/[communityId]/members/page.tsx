@@ -2,6 +2,7 @@
 
 import { AuthGate } from '@/components/shell';
 import { CommunityShell } from '@/components/community-shell';
+import { MemberTransferInline } from '@/components/member-transfer-inline';
 import { useCommunityId } from '@/lib/use-route-params';
 import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
 import { trpc } from '@/lib/trpc/client';
@@ -15,6 +16,10 @@ function roleLabel(role: string | undefined): string {
 function MembersInner({ communityId }: { communityId: string }) {
   const { isMiniApp } = useTelegramMiniApp();
   const meQuery = trpc.users.getMe.useQuery();
+  const walletQuery = trpc.wallets.getByCommunity.useQuery({
+    userId: 'me',
+    communityId,
+  });
   const membersQuery = trpc.communities.getMembers.useQuery(
     { id: communityId, pageSize: 50 },
     { enabled: Boolean(communityId) },
@@ -25,6 +30,7 @@ function MembersInner({ communityId }: { communityId: string }) {
   );
   const total = membersQuery.data?.pagination?.total ?? 0;
   const selfId = meQuery.data?.id;
+  const walletBalance = walletQuery.data?.balance ?? 0;
 
   return (
     <CommunityShell communityId={communityId} active="members" tgActive="members">
@@ -84,6 +90,16 @@ function MembersInner({ communityId }: { communityId: string }) {
                     </p>
                   </div>
                 </div>
+                {isMiniApp && !isSelf && (
+                  <MemberTransferInline
+                    communityId={communityId}
+                    receiverId={member.id}
+                    receiverLabel={
+                      member.displayName || member.username || member.id
+                    }
+                    walletBalance={walletBalance}
+                  />
+                )}
               </li>
             );
           })}

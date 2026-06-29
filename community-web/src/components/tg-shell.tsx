@@ -16,13 +16,19 @@ export function TgShell({
   active: TgCommunityTabId;
 }) {
   const communityQuery = trpc.communities.getById.useQuery({ id: communityId });
-  const walletQuery = trpc.wallets.getByCommunity.useQuery({ communityId });
-  const quotaQuery = trpc.wallets.getQuota.useQuery({ communityId });
+  const walletQuery = trpc.wallets.getByCommunity.useQuery({
+    userId: 'me',
+    communityId,
+  });
+  const quotaQuery = trpc.wallets.getQuota.useQuery({
+    userId: 'me',
+    communityId,
+  });
   const isFrozen = useIsCommunityFrozen();
 
   const tabs = buildTgCommunityTabs(communityId);
   const wallet = walletQuery.data?.balance ?? 0;
-  const quotaRemaining = quotaQuery.data?.remainingToday ?? 0;
+  const quotaRemaining = quotaQuery.data?.remaining ?? 0;
   const quotaMax = quotaQuery.data?.dailyQuota ?? 0;
 
   return (

@@ -2,14 +2,21 @@
 
 import Link from 'next/link';
 import { AuthGate } from '@/components/shell';
+import { MeritHistoryRow } from '@/components/merit-history-row';
 import { CommunityShell } from '@/components/community-shell';
 import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
 function MePageInner({ communityId }: { communityId: string }) {
   const meQuery = trpc.users.getMe.useQuery();
-  const walletQuery = trpc.wallets.getByCommunity.useQuery({ communityId });
-  const quotaQuery = trpc.wallets.getQuota.useQuery({ communityId });
+  const walletQuery = trpc.wallets.getByCommunity.useQuery({
+    userId: 'me',
+    communityId,
+  });
+  const quotaQuery = trpc.wallets.getQuota.useQuery({
+    userId: 'me',
+    communityId,
+  });
   const membersQuery = trpc.communities.getMembers.useQuery(
     { id: communityId, pageSize: 100 },
     { enabled: Boolean(communityId) },
@@ -26,7 +33,7 @@ function MePageInner({ communityId }: { communityId: string }) {
   );
 
   const wallet = walletQuery.data?.balance ?? 0;
-  const quotaRemaining = quotaQuery.data?.remainingToday ?? 0;
+  const quotaRemaining = quotaQuery.data?.remaining ?? 0;
   const quotaMax = quotaQuery.data?.dailyQuota ?? 0;
   const quotaPct = quotaMax > 0 ? Math.round((quotaRemaining / quotaMax) * 100) : 0;
 
@@ -87,16 +94,19 @@ function MePageInner({ communityId }: { communityId: string }) {
           {txQuery.isLoading && <p className="text-sm text-stitch-muted">Загрузка…</p>}
           <ul className="space-y-2">
             {txs.map((tx) => (
-              <li
+              <MeritHistoryRow
                 key={tx.id}
-                className="rounded-lg border border-stitch-border bg-stitch-surface px-3 py-2 text-sm"
-              >
-                <span className={tx.amount >= 0 ? 'text-green-400' : 'text-red-400'}>
-                  {tx.amount >= 0 ? '+' : ''}
-                  {tx.amount}
-                </span>{' '}
-                <span className="text-stitch-muted">{tx.description ?? tx.type}</span>
-              </li>
+                row={{
+                  id: tx.id,
+                  type: tx.type,
+                  amount: tx.amount,
+                  description: tx.description,
+                  referenceType: tx.referenceType,
+                  createdAt: tx.createdAt,
+                  ledgerMultiplier: tx.ledgerMultiplier,
+                  meritHistoryEnrichment: tx.meritHistoryEnrichment,
+                }}
+              />
             ))}
           </ul>
           {!txQuery.isLoading && txs.length === 0 && (
