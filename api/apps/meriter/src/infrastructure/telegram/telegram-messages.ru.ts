@@ -65,14 +65,18 @@ export function primaryCommunityHashtag(hashtags?: string[]): string {
   return tag || 'идея';
 }
 
-function buildHashtagAndMiniAppIntro(input: CommunityUsageRulesInput): string {
+function buildGroupWelcomeSteps(input: CommunityUsageRulesInput): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
   return (
-    `Отправляйте сообщения с #${hashtag}, чтобы получать заслуги от других пользователей. ` +
+    `1. Отправляйте сообщения с #${hashtag}, чтобы получать заслуги от других пользователей. ` +
     `Пример: «#${hashtag} Предлагаю собраться в субботу»\n` +
-    `Голосуйте за такие сообщения реакциями 👍 ❤️ 👎\n` +
-    `Проверяйте свой баланс и историю заслуг в нашем мини-приложении (ссылка ниже).`
+    `2. Голосуйте за такие сообщения реакциями 👍 ❤️ 👎\n` +
+    `3. Проверяйте свой баланс и историю заслуг в нашем мини-приложении (ссылка ниже).`
   );
+}
+
+function buildHashtagAndMiniAppIntro(input: CommunityUsageRulesInput): string {
+  return buildGroupWelcomeSteps(input);
 }
 
 function buildReactionVotingRules(): string {
@@ -88,17 +92,21 @@ function buildReplyVoteHint(): string {
   return `Или просто ответьте на пост в таком формате: «+3 Отличная идея» или «-2 Не согласен».`;
 }
 
-function buildDailyMeritsIntro(dailyEmission: number, welcomeMerits?: number): string {
+function buildDailyMeritsParagraph(dailyEmission: number): string {
   if (dailyEmission <= 0) {
     return '';
   }
-  let text =
+  return (
     `\n\nКаждый день — ${dailyEmission} заслуг на голоса: они сгорают в полночь. ` +
-    `Сначала тратятся они, потом кошелёк — заслуги от других за ваши посты.`;
-  if (welcomeMerits != null && welcomeMerits > 0) {
-    text += ` Новым участникам — ${welcomeMerits} приветственных заслуг.`;
+    `Сначала тратятся они, потом кошелёк — заслуги от других за ваши посты.`
+  );
+}
+
+function buildWelcomeMeritsParagraph(welcomeMerits?: number): string {
+  if (welcomeMerits == null || welcomeMerits <= 0) {
+    return '';
   }
-  return text;
+  return `\n\nНовым участникам — ${welcomeMerits} приветственных заслуг.`;
 }
 
 function buildCommunityUsageBody(input: CommunityUsageRulesInput): string {
@@ -143,9 +151,11 @@ export function buildTelegramMiniAppStartLink(
 export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): string {
   const dailyEmission = input.dailyEmission ?? 0;
   return (
-    `Привет! Я – Меритер: бот, который поможет вам учитывать заслуги всех участников этой группы.\n\n` +
-    buildCommunityUsageBody(input) +
-    buildDailyMeritsIntro(dailyEmission, input.welcomeMerits)
+    `Привет!\n\n` +
+    `Я – Меритер: бот, который поможет вам учитывать заслуги всех участников этой группы.\n\n` +
+    buildGroupWelcomeSteps(input) +
+    buildDailyMeritsParagraph(dailyEmission) +
+    buildWelcomeMeritsParagraph(input.welcomeMerits)
   );
 }
 
