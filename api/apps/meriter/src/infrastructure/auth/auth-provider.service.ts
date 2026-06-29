@@ -11,6 +11,7 @@ import {
   CommunitySchemaClass,
   CommunityDocument,
 } from '../../domain/models/community/community.schema';
+import { telegramChatIdLookupVariants } from '../../infrastructure/telegram/telegram-chat-id.util';
 import { JwtService } from '../../common/utils/jwt-service.util';
 import * as crypto from 'crypto';
 import {
@@ -1027,8 +1028,11 @@ export class AuthProviderService {
     }
 
     const startParam = parsed.startParam?.trim() || null;
-    if (startParam && !startParam.includes('=')) {
-      primaryTelegramCommunityId = startParam;
+    if (startParam && !startParam.includes(':')) {
+      const fromStart = await this.resolveCommunityIdByTelegramCommunityHint(startParam);
+      if (fromStart) {
+        primaryTelegramCommunityId = fromStart;
+      }
     }
 
     return {
@@ -1045,8 +1049,31 @@ export class AuthProviderService {
   async resolveCommunityIdByTelegramChatId(
     telegramChatId: string,
   ): Promise<string | null> {
+    const variants = telegramChatIdLookupVariants(telegramChatId);
+    if (variants.length === 0) return null;
+
     const doc = await this.communityModel
-      .findOne({ telegramChatId, telegramFrozenAt: { $exists: false } })
+      .findOne({
+        telegramChatId: { $in: variants },
+        telegramFrozenAt: { $exists: false },
+      })
+      .lean();
+    return doc?.id ?? null;
+  }
+
+  /** Resolve community id from Mini App start_param (must be a TG-linked, non-frozen community). */
+  async resolveCommunityIdByTelegramCommunityHint(
+    communityIdHint: string,
+  ): Promise<string | null> {
+    const id = communityIdHint.trim();
+    if (!id) return null;
+
+    const doc = await this.communityModel
+      .findOne({
+        id,
+        telegramChatId: { $exists: true, $nin: [null, ''] },
+        telegramFrozenAt: { $exists: false },
+      })
       .lean();
     return doc?.id ?? null;
   }

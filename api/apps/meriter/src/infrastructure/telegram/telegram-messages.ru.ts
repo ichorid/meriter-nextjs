@@ -1,5 +1,11 @@
 /** Russian copy for Telegram MVP bot (product: «Заслуги»). */
 
+import type { TelegramBotPendingActionType } from '../../domain/models/telegram/telegram-bot-pending-action.schema';
+import {
+  formatOnboardingStepPrompt,
+  type OnboardingFlowPayload,
+} from './telegram-onboarding-flow';
+
 export type CommunityUsageRulesInput = {
   communityName: string;
   hashtags?: string[];
@@ -8,10 +14,46 @@ export type CommunityUsageRulesInput = {
   botUsername?: string;
 };
 
-export const ONBOARDING_TOTAL_STEPS = 11;
+const ONBOARDING_STEP_BODIES: Partial<Record<TelegramBotPendingActionType, string>> = {
+  onboarding_name:
+    'Вы добавили бота Meriter в группу.\n\nКак называется ваше сообщество? Напишите название одним сообщением.',
+  onboarding_platform_integration:
+    'Интегрировать с платформой Meriter?\n\n' +
+    'Если да — создастся сообщество на сайте, идеи из чата могут дублироваться туда.\n' +
+    'Если нет — всё остаётся только в Telegram-чате (рекомендуется).',
+  onboarding_platform_visibility:
+    'Сообщество на платформе — приватное или публичное?\n\n' +
+    '• Приватное — видят только участники (когда появится вход на сайт).\n' +
+    '• Публичное — карточка сообщества может появиться в общей ленте Meriter.',
+  onboarding_future_vision:
+    'Кратко опишите, к чему стремится ваше сообщество — «образ будущего».\n\n' +
+    'Хотя бы одно предложение. Текст будет виден на платформе Meriter.',
+  onboarding_quota_enabled:
+    'Выдавать участникам ежедневные заслуги?\n\nЭто помогает новичкам голосовать без накопленного баланса.',
+  onboarding_quota_amount:
+    'Сколько ежедневных заслуг в день? Напишите число, например: 5',
+  onboarding_hashtag:
+    'Какой хэштег для постов из чата? Напишите без #, например: идея\n\n' +
+    'Участники будут писать #идея в сообщениях, чтобы опубликовать пост.',
+  onboarding_post_cost:
+    'Сколько заслуг стоит публикация поста? Напишите число.\n\n0 — публикация бесплатная.',
+  onboarding_moderation:
+    'Проверять посты лидом перед публикацией?\n\nЕсли да — посты появятся в группе только после одобрения.',
+  onboarding_publication_ack:
+    'Писать в группу «Пост сохранён», когда сообщение с хэштегом попало в Meriter?\n\nПо умолчанию лучше выключить.',
+  onboarding_welcome_merits:
+    'Сколько приветственных заслуг дать новому участнику?\n\n0 — не начислять. Напишите число.',
+};
 
-export function onboardingStepPrompt(step: number, text: string): string {
-  return `Шаг ${step} из ${ONBOARDING_TOTAL_STEPS}\n\n${text}`;
+export function getOnboardingPrompt(
+  action: TelegramBotPendingActionType,
+  payload: OnboardingFlowPayload,
+): string {
+  const body = ONBOARDING_STEP_BODIES[action];
+  if (!body) {
+    throw new Error(`Missing onboarding copy for action "${action}"`);
+  }
+  return formatOnboardingStepPrompt(action, payload, body);
 }
 
 export function primaryCommunityHashtag(hashtags?: string[]): string {
@@ -70,14 +112,21 @@ export function buildOnboardingDoneMessage(input: CommunityUsageRulesInput): str
   );
 }
 
+export function buildTelegramMiniAppStartLink(
+  botUsername: string,
+  communityId?: string,
+): string {
+  const clean = botUsername.replace(/^@/, '').trim();
+  const id = communityId?.trim();
+  if (id) {
+    return `t.me/${clean}?startapp=${encodeURIComponent(id)}`;
+  }
+  return `t.me/${clean}?startapp`;
+}
+
 export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): string {
-  const openHint =
-    input.platformIntegration !== false
-      ? `Откройте приложение Meriter — там баланс и участники.\n`
-      : '';
   return (
     `Meriter подключён к «${input.communityName}».\n\n` +
-    openHint +
     `Голосуйте реакциями 👍 ❤️ 👎 на посты бота и сообщения с хэштегом.\n\n` +
     buildCommunityUsageRules(input)
   );
@@ -188,62 +237,14 @@ export const TG_MSG = {
   membersHeader: 'Участники сообщества:',
   memberLine: (display: string, wallet: number, pct: number) =>
     `• ${display}: ${wallet} (${pct.toFixed(1)}%)`,
-  onboardingStart: onboardingStepPrompt(
-    1,
-    'Вы добавили бота Meriter в группу.\n\nКак называется ваше сообщество? Напишите название одним сообщением.',
-  ),
-  onboardingPlatformIntegration: onboardingStepPrompt(
-    2,
-    'Интегрировать с платформой Meriter?\n\n' +
-      'Если да — создастся сообщество на сайте, идеи из чата могут дублироваться туда.\n' +
-      'Если нет — всё остаётся только в Telegram-чате (рекомендуется).',
-  ),
-  onboardingPlatformVisibility: onboardingStepPrompt(
-    3,
-    'Сообщество на платформе — приватное или публичное?\n\n' +
-      '• Приватное — видят только участники (когда появится вход на сайт).\n' +
-      '• Публичное — карточка сообщества может появиться в общей ленте Meriter.',
-  ),
-  onboardingFutureVision: onboardingStepPrompt(
-    4,
-    'Кратко опишите, к чему стремится ваше сообщество — «образ будущего».\n\n' +
-      'Хотя бы одно предложение. Текст будет виден на платформе Meriter.',
-  ),
   onboardingFutureVisionEmpty:
     'Нужен хотя бы один осмысленный абзац. Опишите цели и ценности сообщества.',
   onboardingFutureVisionTooLong: (max: number) =>
     `Слишком длинный текст. Сократите до ${max} символов и отправьте снова.`,
-  onboardingQuota: onboardingStepPrompt(
-    5,
-    'Выдавать участникам ежедневные заслуги?\n\nЭто помогает новичкам голосовать без накопленного баланса.',
-  ),
-  onboardingQuotaAmount: onboardingStepPrompt(
-    6,
-    'Сколько ежедневных заслуг в день? Напишите число, например: 5',
-  ),
-  onboardingHashtag: onboardingStepPrompt(
-    7,
-    'Какой хэштег для постов из чата? Напишите без #, например: идея\n\n' +
-      'Участники будут писать #идея в сообщениях, чтобы опубликовать пост.',
-  ),
-  onboardingPostCost: onboardingStepPrompt(
-    8,
-    'Сколько заслуг стоит публикация поста? Напишите число.\n\n0 — публикация бесплатная.',
-  ),
-  onboardingModeration: onboardingStepPrompt(
-    9,
-    'Проверять посты лидом перед публикацией?\n\nЕсли да — посты появятся в группе только после одобрения.',
-  ),
-  onboardingPublicationAck: onboardingStepPrompt(
-    10,
-    'Писать в группу «Пост сохранён», когда сообщение с хэштегом попало в Meriter?\n\nПо умолчанию лучше выключить.',
-  ),
-  onboardingWelcome: onboardingStepPrompt(
-    11,
-    'Сколько приветственных заслуг дать новому участнику?\n\n0 — не начислять. Напишите число.',
-  ),
   botRemovedAdmin:
     'Бот удалён из группы. Сообщество на паузе — начисления и траты заслуг остановлены. Добавьте бота обратно.',
+  groupMiniAppLinkHint:
+    'Чтобы открыть интерфейс Meriter, проверить свой баланс и заслуги других участников, кликните по ссылке ниже:',
   enterAmount: 'Напишите число — сколько заслуг начислить:',
   enterAmountSelfUp:
     'Напишите число заслуг. На свой пост можно только с кошелька (не с ежедневных на сегодня).',

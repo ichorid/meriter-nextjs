@@ -6,6 +6,7 @@ import type { AppConfig } from '../../../config/configuration';
 import type { AuthProviderPort } from '../../../domain/ports/auth-provider.port';
 import type { CookieManager } from '../../../infrastructure/auth/cookie-manager';
 import { isTelegramMvpMode } from '../../../common/helpers/product-mode.helper';
+import { EnsureTelegramCommunityMemberUseCase } from '../communities/ensure-telegram-community-member.use-case';
 
 export type TelegramWebAppAuthInput = z.infer<typeof TelegramWebAppDataSchema>;
 
@@ -25,6 +26,7 @@ export class AuthenticateTelegramWebAppCommunityUseCase {
     private readonly authService: AuthProviderPort,
     private readonly cookieManager: CookieManager,
     private readonly configService: ConfigService<AppConfig>,
+    private readonly ensureTelegramMember: EnsureTelegramCommunityMemberUseCase,
   ) {}
 
   async execute(
@@ -50,9 +52,15 @@ export class AuthenticateTelegramWebAppCommunityUseCase {
 
     this.cookieManager.establishCommunityJwtAuth(response, result.jwt, request);
 
+    const communityId = result.primaryTelegramCommunityId ?? null;
+    const userId = (result.user as { id?: string }).id;
+    if (userId && communityId) {
+      await this.ensureTelegramMember.execute(userId, communityId);
+    }
+
     return {
       user: result.user,
-      communityId: result.primaryTelegramCommunityId ?? null,
+      communityId,
       jwt: result.jwt,
       telegramChatId: result.telegramChatId,
       startParam: result.startParam,

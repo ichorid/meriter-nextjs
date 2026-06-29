@@ -71,6 +71,17 @@
         encode gzip
     }
 
+    # Telegram Mini App (community-web) on main dev domain — avoids subdomain DNS issues
+    handle /tgapp* {
+        reverse_proxy community-web:8003 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+        encode gzip
+    }
+
     # Web app (serverful Next.js)
     handle {
         # Add rate limit headers

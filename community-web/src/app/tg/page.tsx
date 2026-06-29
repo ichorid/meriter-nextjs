@@ -59,15 +59,16 @@ export default function TelegramBootPage() {
         await utils.users.getMe.invalidate();
         setBootstrapped(true);
 
-        let communityId =
-          authResult.communityId ||
-          config.defaultCommunityId ||
-          configQuery.data?.devCommunityId ||
-          null;
-
         const startParam = getTelegramStartParam() || authResult.startParam;
         const chatId =
           authResult.telegramChatId || parseTelegramChatIdFromInitData(initData);
+
+        let communityId =
+          authResult.communityId ||
+          (startParam && !startParam.includes(':') ? startParam : null) ||
+          config.defaultCommunityId ||
+          configQuery.data?.devCommunityId ||
+          null;
 
         if (chatId) {
           const byChat = await utils.communities.getByTelegramChatId.fetch({
@@ -89,10 +90,6 @@ export default function TelegramBootPage() {
             router.replace(`/c/${communityId}/posts/${postId}`);
             return;
           }
-        }
-
-        if (startParam && !startParam.includes(':')) {
-          communityId = startParam;
         }
 
         if (!communityId) {

@@ -46,8 +46,10 @@ import {
   TG_MSG,
   TG_VOTE_DEFAULT_COMMENT,
   buildGroupWelcomeMessage,
+  buildTelegramMiniAppStartLink,
   buildOnboardingDoneMessage,
   buildTelegramHelpMessage,
+  getOnboardingPrompt,
   mapTelegramUserFacingError,
   voteAmountButtonLabels,
   type CommunityUsageRulesInput,
@@ -192,21 +194,11 @@ export class TelegramBotOrchestratorService {
           { id: existing.id },
           { $set: { telegramFrozenAt: null, updatedAt: new Date() } },
         );
-        await this.tgBots.tgSend({
-          tgChatId: chatId,
-          text: buildGroupWelcomeMessage(
-            this.buildCommunityUsageInput(existing),
-          ),
-        });
+        await this.sendGroupWelcome(chatId, this.buildCommunityUsageInput(existing), existing.id);
         return;
       }
       if (existing) {
-        await this.tgBots.tgSend({
-          tgChatId: chatId,
-          text: buildGroupWelcomeMessage(
-            this.buildCommunityUsageInput(existing),
-          ),
-        });
+        await this.sendGroupWelcome(chatId, this.buildCommunityUsageInput(existing), existing.id);
         return;
       }
       await this.startOnboarding(chatId, String(from.id), chat.title);
@@ -225,7 +217,7 @@ export class TelegramBotOrchestratorService {
     });
     await this.tgBots.tgSend({
       tgChatId: initiatorTgId,
-      text: TG_MSG.onboardingStart,
+      text: getOnboardingPrompt('onboarding_name', {}),
     });
   }
 
@@ -780,43 +772,23 @@ export class TelegramBotOrchestratorService {
     switch (pending.action as TelegramBotPendingActionType) {
       case 'onboarding_name':
         payload.name = text.trim().slice(0, 120);
-        await this.advanceOnboarding(
-          tgUserId,
-          'onboarding_platform_integration',
-          payload,
-          TG_MSG.onboardingPlatformIntegration,
-        );
+        await this.advanceOnboarding(tgUserId, 'onboarding_platform_integration', payload);
         return true;
       case 'onboarding_platform_integration':
         payload.platformIntegration = normalized === 'да' || normalized === 'yes';
         if (payload.platformIntegration) {
           await this.advanceOnboardingVisibility(tgUserId, payload);
         } else {
-          await this.advanceOnboarding(
-            tgUserId,
-            'onboarding_quota_enabled',
-            payload,
-            TG_MSG.onboardingQuota,
-          );
+          await this.advanceOnboarding(tgUserId, 'onboarding_quota_enabled', payload);
         }
         return true;
       case 'onboarding_platform_visibility':
         payload.platformVisibility =
           normalized === 'public' || normalized === 'публичное' ? 'public' : 'private';
         if (payload.platformVisibility === 'public') {
-          await this.advanceOnboarding(
-            tgUserId,
-            'onboarding_future_vision',
-            payload,
-            TG_MSG.onboardingFutureVision,
-          );
+          await this.advanceOnboarding(tgUserId, 'onboarding_future_vision', payload);
         } else {
-          await this.advanceOnboarding(
-            tgUserId,
-            'onboarding_quota_enabled',
-            payload,
-            TG_MSG.onboardingQuota,
-          );
+          await this.advanceOnboarding(tgUserId, 'onboarding_quota_enabled', payload);
         }
         return true;
       case 'onboarding_future_vision': {
@@ -833,46 +805,47 @@ export class TelegramBotOrchestratorService {
           return true;
         }
         payload.futureVisionText = vision;
-        await this.advanceOnboarding(tgUserId, 'onboarding_quota_enabled', payload, TG_MSG.onboardingQuota);
+        await this.advanceOnboarding(tgUserId, 'onboarding_quota_enabled', payload);
         return true;
       }
       case 'onboarding_quota_enabled':
         payload.quotaEnabled = normalized === 'да' || normalized === 'yes';
         if (payload.quotaEnabled) {
-          await this.advanceOnboarding(tgUserId, 'onboarding_quota_amount', payload, TG_MSG.onboardingQuotaAmount);
+          await this.advanceOnboarding(tgUserId, 'onboarding_quota_amount', payload);
         } else {
           payload.dailyEmission = 0;
-          await this.advanceOnboarding(tgUserId, 'onboarding_hashtag', payload, TG_MSG.onboardingHashtag);
+          await this.advanceOnboarding(tgUserId, 'onboarding_hashtag', payload);
         }
         return true;
       case 'onboarding_quota_amount': {
         const n = parseInt(text.trim(), 10);
         payload.dailyEmission = Number.isFinite(n) && n > 0 ? n : 5;
-        await this.advanceOnboarding(tgUserId, 'onboarding_hashtag', payload, TG_MSG.onboardingHashtag);
+        await this.advanceOnboarding(tgUserId, 'onboarding_hashtag', payload);
         return true;
       }
       case 'onboarding_hashtag':
         payload.hashtag = text.trim().replace(/^#/, '').slice(0, 32) || 'идея';
-        await this.advanceOnboarding(tgUserId, 'onboarding_post_cost', payload, TG_MSG.onboardingPostCost);
+        await this.advanceOnboarding(tgUserId, 'onboarding_post_cost', payload);
         return true;
       case 'onboarding_post_cost': {
         const cost = parseFloat(text.trim().replace(',', '.'));
         payload.postCost = Number.isFinite(cost) && cost >= 0 ? cost : 0;
-        await this.advanceOnboarding(tgUserId, 'onboarding_moderation', payload, TG_MSG.onboardingModeration);
+        if (payload.platformIntegration === true) {
+          await this.advanceOnboarding(tgUserId, 'onboarding_moderation', payload);
+        } else {
+          payload.moderation = false;
+          payload.telegramPublicationAckEnabled = false;
+          await this.advanceOnboarding(tgUserId, 'onboarding_welcome_merits', payload);
+        }
         return true;
       }
       case 'onboarding_moderation':
         payload.moderation = normalized === 'да' || normalized === 'yes';
-        await this.advanceOnboarding(
-          tgUserId,
-          'onboarding_publication_ack',
-          payload,
-          TG_MSG.onboardingPublicationAck,
-        );
+        await this.advanceOnboarding(tgUserId, 'onboarding_publication_ack', payload);
         return true;
       case 'onboarding_publication_ack':
         payload.telegramPublicationAckEnabled = normalized === 'да' || normalized === 'yes';
-        await this.advanceOnboarding(tgUserId, 'onboarding_welcome_merits', payload, TG_MSG.onboardingWelcome);
+        await this.advanceOnboarding(tgUserId, 'onboarding_welcome_merits', payload);
         return true;
       case 'onboarding_welcome_merits': {
         const w = parseFloat(text.trim().replace(',', '.'));
@@ -889,8 +862,8 @@ export class TelegramBotOrchestratorService {
     tgUserId: string,
     nextAction: TelegramBotPendingActionType,
     payload: OnboardingPayload,
-    prompt: string,
   ): Promise<void> {
+    const prompt = getOnboardingPrompt(nextAction, payload);
     await this.pendingModel.deleteMany({ telegramUserId: tgUserId }).exec();
     await this.savePending(tgUserId, nextAction, payload as Record<string, unknown>);
     const yesNoSteps: TelegramBotPendingActionType[] = [
@@ -961,8 +934,12 @@ export class TelegramBotOrchestratorService {
       {
         $set: {
           telegramChatId: payload.telegramChatId,
-          'settings.telegramModerationEnabled': payload.moderation ?? false,
-          'settings.telegramPublicationAckEnabled': payload.telegramPublicationAckEnabled ?? false,
+          'settings.telegramModerationEnabled': platformIntegration
+            ? (payload.moderation ?? false)
+            : false,
+          'settings.telegramPublicationAckEnabled': platformIntegration
+            ? (payload.telegramPublicationAckEnabled ?? false)
+            : false,
           'settings.allowWithdraw': false,
           updatedAt: new Date(),
         },
@@ -989,10 +966,41 @@ export class TelegramBotOrchestratorService {
       tgChatId: tgUserId,
       text: buildOnboardingDoneMessage(usageInput),
     });
+    await this.sendGroupWelcome(payload.telegramChatId, usageInput, community.id);
+  }
+
+  private async sendGroupWelcome(
+    chatId: string,
+    usageInput: CommunityUsageRulesInput,
+    communityId: string,
+  ): Promise<void> {
     await this.tgBots.tgSend({
-      tgChatId: payload.telegramChatId,
+      tgChatId: chatId,
       text: buildGroupWelcomeMessage(usageInput),
     });
+    await this.sendGroupMiniAppLinkPrompt(chatId, usageInput.botUsername, communityId);
+  }
+
+  private async sendGroupMiniAppLinkPrompt(
+    chatId: string,
+    botUsername?: string,
+    communityId?: string,
+  ): Promise<void> {
+    const clean = botUsername?.replace(/^@/, '').trim();
+    if (!clean || !communityId?.trim()) {
+      return;
+    }
+    await this.tgBots.tgSend({
+      tgChatId: chatId,
+      text: TG_MSG.groupMiniAppLinkHint,
+    });
+    const messageId = await this.tgBots.tgSendMessage({
+      chat_id: chatId,
+      text: buildTelegramMiniAppStartLink(clean, communityId),
+    });
+    if (messageId != null) {
+      await this.tgBots.tgPinChatMessage(chatId, messageId);
+    }
   }
 
   private buildCommunityUsageInput(
@@ -1020,7 +1028,10 @@ export class TelegramBotOrchestratorService {
       'onboarding_platform_visibility',
       payload as Record<string, unknown>,
     );
-    await this.sendVisibilityPrompt(tgUserId, TG_MSG.onboardingPlatformVisibility);
+    await this.sendVisibilityPrompt(
+      tgUserId,
+      getOnboardingPrompt('onboarding_platform_visibility', payload),
+    );
   }
 
   private async provisionMember(

@@ -295,6 +295,9 @@ jobs:
           # Keep cache reads, but don't export cache for non-deployment runs (saves significant time).
           cache-from: type=gha,scope=${{ matrix.component }}
 
+      - name: Resolve community-web base path (dev)
+        if: github.event_name == 'push' && matrix.component == 'community-web' && needs.determine-target.outputs.build_type == 'dev'
+        run: echo "COMMUNITY_WEB_BASE_PATH=/tgapp" >> "$GITHUB_ENV"
       - name: Build Docker image (export cache)
         if: ${{ github.event_name == 'push' && needs.determine-target.outputs.build_type != '' }}
         uses: docker/build-push-action@v5
@@ -306,6 +309,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BASE_IMAGE=${{ needs.build-base.outputs.base_image }}
+            NEXT_PUBLIC_BASE_PATH=${{ env.COMMUNITY_WEB_BASE_PATH || '' }}
           cache-from: type=gha,scope=${{ matrix.component }}
           # "mode=min" reduces export time/size; scoping prevents web/api cache churn.
           cache-to: type=gha,mode=min,scope=${{ matrix.component }}

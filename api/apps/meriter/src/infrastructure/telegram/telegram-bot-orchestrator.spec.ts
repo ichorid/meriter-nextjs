@@ -384,7 +384,12 @@ describe('TelegramBotOrchestrator (integration)', () => {
       id: uid(),
       telegramUserId: tgUserId,
       action: 'onboarding_future_vision',
-      payload: { telegramChatId: tgChatId, name: 'Test Community' },
+      payload: {
+        telegramChatId: tgChatId,
+        name: 'Test Community',
+        platformIntegration: true,
+        platformVisibility: 'public',
+      },
       expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
       createdAt: now,
       updatedAt: now,
@@ -440,6 +445,40 @@ describe('TelegramBotOrchestrator (integration)', () => {
     const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
     expect(pending?.action).toBe('onboarding_quota_enabled');
     expect((pending?.payload as { futureVisionText?: string }).futureVisionText).toContain('вклад');
+  });
+
+  it('chat-only onboarding skips moderation and publication ack after post cost', async () => {
+    const now = new Date();
+    await pendingModel.create({
+      id: uid(),
+      telegramUserId: tgUserId,
+      action: 'onboarding_post_cost',
+      payload: {
+        telegramChatId: tgChatId,
+        name: 'Chat Only',
+        platformIntegration: false,
+        quotaEnabled: false,
+        hashtag: 'идея',
+      },
+      expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend');
+
+    await webhookController.handleWebhook(botUsername, dmMessage('0', 22, 7));
+
+    expect(tgSendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringMatching(/Шаг 6 из 6[\s\S]*приветственных заслуг/),
+      }),
+    );
+    const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
+    expect(pending?.action).toBe('onboarding_welcome_merits');
+    expect(pending?.payload).toMatchObject({
+      moderation: false,
+      telegramPublicationAckEnabled: false,
+    });
   });
 
   it('sendUserUpdates uses MarkdownV2 parse mode for formatted vote lines', async () => {

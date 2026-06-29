@@ -22,6 +22,7 @@ import { GetCommunityByTelegramChatIdUseCase } from '../../../application/use-ca
 import { AuthenticateTelegramCommunityUseCase } from '../../../application/use-cases/auth/authenticate-telegram-community.use-case';
 import { AuthenticateTelegramWebAppCommunityUseCase } from '../../../application/use-cases/auth/authenticate-telegram-webapp-community.use-case';
 import { AuthenticateFakeCommunityUseCase } from '../../../application/use-cases/auth/authenticate-fake-community.use-case';
+import { EnsureTelegramCommunityMemberUseCase } from '../../../application/use-cases/communities/ensure-telegram-community-member.use-case';
 import { SeedCommunityWebDevUseCase } from '../../../application/use-cases/dev/seed-community-web-dev.use-case';
 import {
   isDevCommunityId,
@@ -53,10 +54,17 @@ export const communityAppRouter = router({
     authenticateTelegramWebApp: publicProcedure
       .input(TelegramWebAppDataSchema)
       .mutation(async ({ ctx, input }) => {
+        const ensureTelegramMember = new EnsureTelegramCommunityMemberUseCase({
+          communityModel: ctx.connection.model(CommunitySchemaClass.name),
+          communityService: ctx.communityService,
+          userCommunityRoleService: ctx.userCommunityRoleService,
+          walletService: ctx.walletService,
+        });
         const useCase = new AuthenticateTelegramWebAppCommunityUseCase(
           ctx.authService,
           ctx.cookieManager,
           ctx.configService,
+          ensureTelegramMember,
         );
         return useCase.execute(input, ctx.res, ctx.req);
       }),

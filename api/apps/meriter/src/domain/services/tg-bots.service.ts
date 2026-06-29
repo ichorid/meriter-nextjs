@@ -713,6 +713,37 @@ export class TgBotsService {
     }
   }
 
+  async tgPinChatMessage(
+    chat_id: string | number,
+    message_id: number,
+    disable_notification = true,
+  ): Promise<boolean> {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      return false;
+    }
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) {
+      return true;
+    }
+    const botToken = (this.configService.get as (key: string) => string | undefined)('bot.token');
+    if (!botToken) {
+      return false;
+    }
+    try {
+      await Axios.get(BOT_URL + '/pinChatMessage', {
+        params: { chat_id, message_id, disable_notification },
+      });
+      return true;
+    } catch (e) {
+      this.logger.warn(
+        'tgPinChatMessage failed (bot may lack pin permission)',
+        { chat_id, message_id },
+        (e as { response?: { data?: unknown } })?.response?.data,
+      );
+      return false;
+    }
+  }
+
   /** Delete a message after TTL (e.g. user's /balance command in group). */
   tgScheduleDeleteMessage(
     chat_id: string | number,
