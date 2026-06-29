@@ -58,21 +58,22 @@ export class ResolveTelegramCommunityUseCase {
       return null;
     }
 
-    const defaultId =
-      this.deps.configService.get('app')?.defaultTelegramCommunityId?.trim();
-    if (defaultId) {
-      const match = list.find((c) => c.communityId === defaultId);
-      if (match) {
-        return match;
-      }
-    }
-
     if (list.length > 1) {
       this.logger.debug(
-        `User ${userId} belongs to ${list.length} TG communities; returning first for legacy resolve`,
+        `User ${userId} belongs to ${list.length} TG communities; resolve requires explicit pick`,
+      );
+      return null;
+    }
+
+    const only = list[0]!;
+    const defaultId =
+      this.deps.configService.get('app')?.defaultTelegramCommunityId?.trim();
+    if (defaultId && only.communityId !== defaultId) {
+      this.logger.debug(
+        `User ${userId} single TG community ${only.communityId} differs from default ${defaultId}`,
       );
     }
 
-    return list[0];
+    return only;
   }
 }

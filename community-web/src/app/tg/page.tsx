@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { trpc } from '@/lib/trpc/client';
-import { config } from '@/config';
 import {
   getTelegramInitData,
   getTelegramStartParam,
@@ -12,12 +11,10 @@ import {
 } from '@/lib/telegram-env';
 import { initTelegramWebApp } from '@/lib/telegram-webapp';
 import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
-
-type TelegramCommunityOption = {
-  communityId: string;
-  name: string;
-  telegramChatId: string;
-};
+import {
+  resolveTelegramBootContext,
+  type TelegramCommunityOption,
+} from '@/lib/tg-boot-resolve';
 
 type BootState =
   | 'loading'
@@ -71,52 +68,31 @@ export default function TelegramBootPage() {
         const chatId =
           authResult.telegramChatId || parseTelegramChatIdFromInitData(initData);
 
-        let communityId =
-          authResult.communityId ||
-          (startParam && !startParam.includes(':') ? startParam : null) ||
-          config.defaultCommunityId ||
-          configQuery.data?.devCommunityId ||
-          null;
+        const resolution = await resolveTelegramBootContext({
+          startParam,
+          chatId,
+          devCommunityId: configQuery.data?.devCommunityId,
+          fetchByTelegramChatId: async (id) =>
+            utils.communities.getByTelegramChatId.fetch({ telegramChatId: id }),
+          listForTelegramUser: () => utils.communities.listForTelegramUser.fetch(),
+        });
 
-        if (chatId) {
-          const byChat = await utils.communities.getByTelegramChatId.fetch({
-            telegramChatId: chatId,
-          });
-          if (byChat?.isFrozen) {
-            setState('frozen');
-            return;
-          }
-          if (byChat?.communityId) {
-            communityId = byChat.communityId;
-          }
+        if (resolution.type === 'frozen') {
+          setState('frozen');
+          return;
         }
-
-        if (startParam?.startsWith('post:')) {
-          const postId = startParam.slice('post:'.length);
-          if (communityId && postId) {
-            setState('redirecting');
-            router.replace(`/c/${communityId}/posts/${postId}`);
-            return;
-          }
+        if (resolution.type === 'no_community') {
+          setState('no_community');
+          return;
         }
-
-        if (!communityId) {
-          const list = await utils.communities.listForTelegramUser.fetch();
-          if (list.length === 0) {
-            setState('no_community');
-            return;
-          }
-          if (list.length === 1) {
-            communityId = list[0]!.communityId;
-          } else {
-            setCommunities(list);
-            setState('pick_community');
-            return;
-          }
+        if (resolution.type === 'pick') {
+          setCommunities(resolution.communities);
+          setState('pick_community');
+          return;
         }
 
         setState('redirecting');
-        router.replace(`/c/${communityId}/me`);
+        router.replace(resolution.path);
       } catch {
         setState('auth_error');
         setMessage('Не удалось войти. Закройте и откройте снова из Telegram.');
@@ -167,7 +143,8 @@ export default function TelegramBootPage() {
       <div className="flex min-h-screen flex-col bg-stitch-canvas px-4 py-8">
         <h1 className="text-lg font-bold tracking-tight text-stitch-text">Выберите сообщество</h1>
         <p className="mt-2 text-sm text-stitch-muted">
-          У вас несколько групп Meriter. Откройте нужную.
+          Вы состоите в нескольких группах Meriter. Выберите, для какой открыть баланс и историю
+          заслуг.
         </p>
         <ul className="mt-6 flex flex-col gap-2">
           {communities.map((item) => (
@@ -193,11 +170,11 @@ export default function TelegramBootPage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-stitch-canvas px-4">
         <p className="max-w-sm text-center text-sm text-stitch-muted">
-          Пока нет подключённых сообществ Meriter для вашего аккаунта.
+          Вы не состоите ни в одном сообществе Meriter с ботом.
         </p>
         <p className="max-w-sm text-center text-xs text-stitch-muted">
-          Откройте мини-приложение из Telegram-группы, где стоит бот, или напишите там сообщение /
-          поставьте реакцию — после этого сообщество появится в списке.
+          Откройте мини-приложение из Telegram-группы, где установлен бот, или напишите там
+          сообщение с хэштегом — после этого сообщество появится в списке.
         </p>
       </div>
     );
