@@ -224,10 +224,15 @@ services:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=
       - NEXT_PUBLIC_DEFAULT_COMMUNITY_ID=${NEXT_PUBLIC_DEFAULT_COMMUNITY_ID:-}
+      - COMMUNITY_WEB_HEALTH_PATH=${COMMUNITY_WEB_HEALTH_PATH:-/tg}
     networks:
       - meriter-frontend-network
     healthcheck:
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:8003 || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "wget --quiet --tries=1 --spider http://127.0.0.1:8003$$COMMUNITY_WEB_HEALTH_PATH || exit 1",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
