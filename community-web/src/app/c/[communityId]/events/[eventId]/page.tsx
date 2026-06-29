@@ -66,7 +66,7 @@ function EventDetailInner({
   });
 
   return (
-    <CommunityShell communityId={communityId} active="events" tgActive="feed">
+    <CommunityShell communityId={communityId} active="events" tgActive="me">
       <div className="space-y-6">
         {!backButtonActive && (
           <a

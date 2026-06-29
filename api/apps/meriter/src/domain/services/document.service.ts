@@ -264,6 +264,7 @@ export class DocumentService {
       }>;
     };
     description?: string;
+    skipImageOfFuture?: boolean;
   }): Promise<{ documentsCreated: number }> {
     let documentsCreated = 0;
     if (
@@ -274,7 +275,7 @@ export class DocumentService {
     }
 
     try {
-      if (shouldBootstrapImageOfFutureDocument(params.typeTag)) {
+      if (shouldBootstrapImageOfFutureDocument(params.typeTag) && !params.skipImageOfFuture) {
         if (
           await this.ensureOfficialDocument({
             communityId: params.communityId,

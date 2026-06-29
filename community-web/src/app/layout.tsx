@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next';
+import Script from 'next/script';
 import { Manrope } from 'next/font/google';
 import { TrpcProvider } from '@/lib/trpc/provider';
 import { TelegramMiniAppProvider } from '@/lib/telegram-mini-app-context';
@@ -27,6 +28,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru" data-theme="dark">
+      <head>
+        <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
+      </head>
       <body className={`${manrope.variable} font-sans`}>
         <TrpcProvider>
           <TelegramMiniAppProvider>{children}</TelegramMiniAppProvider>

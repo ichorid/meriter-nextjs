@@ -39,10 +39,6 @@ import {
   USER_COMMUNITY_ROLE_PERSISTENCE_PORT,
   type UserCommunityRolePersistencePort,
 } from '../../domain/ports/user-community-role.persistence.port';
-import {
-  CREATE_MERIT_TRANSFER_PORT,
-  type CreateMeritTransferPort,
-} from '../../domain/ports/create-merit-transfer.port';
 import { createCreateVoteUseCase } from '../../application/use-cases/voting/create-vote.use-case';
 import { GetQuotaUseCase } from '../../application/use-cases/wallets/get-quota.use-case';
 import { ResolveTelegramCommunityUseCase } from '../../application/use-cases/communities/resolve-telegram-community.use-case';
@@ -54,6 +50,7 @@ import {
   buildTelegramHelpMessage,
   mapTelegramUserFacingError,
   voteAmountButtonLabels,
+  type CommunityUsageRulesInput,
 } from './telegram-messages.ru';
 import {
   normalizeTelegramReactionEmoji,
@@ -66,13 +63,12 @@ import {
   formatTelegramMemberLabel,
   isGenericTelegramMemberDisplayName,
 } from './telegram-member-label';
-import { getTelegramWebLinkContext } from '../../common/helpers/product-mode.helper';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
 const FUTURE_VISION_MAX_LENGTH = 10000;
 const BOT_CMD_REGEX =
-  /^\/(баланс|balance|участники|members|перевод|transfer|help|справка|settings|настройки)(?:@\w+)?(?:\s+(.*))?$/i;
+  /^\/(баланс|balance|участники|members|help|справка|settings|настройки)(?:@\w+)?(?:\s+(.*))?$/i;
 
 type BotCommandContext = {
   community: Community;
@@ -93,6 +89,8 @@ type OnboardingPayload = {
   telegramChatId: string;
   chatTitle?: string;
   name?: string;
+  platformIntegration?: boolean;
+  platformVisibility?: 'private' | 'public';
   futureVisionText?: string;
   quotaEnabled?: boolean;
   dailyEmission?: number;
@@ -125,8 +123,6 @@ export class TelegramBotOrchestratorService {
     private readonly documentVariantService: DocumentVariantService,
     @Inject(USER_COMMUNITY_ROLE_PERSISTENCE_PORT)
     private readonly rolePersistence: UserCommunityRolePersistencePort,
-    @Inject(CREATE_MERIT_TRANSFER_PORT)
-    private readonly createMeritTransfer: CreateMeritTransferPort,
     @Inject(getConnectionToken())
     private readonly connection: Connection,
     @InjectModel(CommunitySchemaClass.name)
@@ -198,20 +194,18 @@ export class TelegramBotOrchestratorService {
         );
         await this.tgBots.tgSend({
           tgChatId: chatId,
-          text: buildGroupWelcomeMessage({
-            communityName: existing.name,
-            hashtags: existing.hashtags,
-          }),
+          text: buildGroupWelcomeMessage(
+            this.buildCommunityUsageInput(existing),
+          ),
         });
         return;
       }
       if (existing) {
         await this.tgBots.tgSend({
           tgChatId: chatId,
-          text: buildGroupWelcomeMessage({
-            communityName: existing.name,
-            hashtags: existing.hashtags,
-          }),
+          text: buildGroupWelcomeMessage(
+            this.buildCommunityUsageInput(existing),
+          ),
         });
         return;
       }
@@ -413,21 +407,6 @@ export class TelegramBotOrchestratorService {
       | { message_id?: number; from?: { id: number; first_name?: string; username?: string } }
       | undefined;
 
-    const transferReplyMatch = trimmed.match(/^\/(перевод|transfer)(?:@\w+)?\s+(\d+(?:[.,]\d+)?)$/i);
-    if (transferReplyMatch && replyTo?.from?.id) {
-      const amount = parseFloat(transferReplyMatch[2].replace(',', '.'));
-      const receiverTgId = String(replyTo.from.id);
-      if (receiverTgId !== tgUserId && Number.isFinite(amount) && amount > 0) {
-        const receiver = await this.ensureTelegramUser(receiverTgId, replyTo.from);
-        await this.executeTransferInGroup(community, user.id, receiver.id, amount, {
-          groupChatId: chatId,
-          replyToMessageId: message.message_id as number,
-        });
-        this.scheduleEphemeralUserMessage(chatId, message.message_id as number);
-        return;
-      }
-    }
-
     if (replyTo?.message_id) {
       const amountPending = await this.pendingModel
         .findOne({
@@ -543,7 +522,7 @@ export class TelegramBotOrchestratorService {
   private async executeBotCommand(
     ctx: BotCommandContext,
     cmd: string,
-    args: string,
+    _args: string,
   ): Promise<void> {
     const { community, userId, tgUserId, replyChatId, message, triggerMessageId, replyInGroup } =
       ctx;
@@ -557,17 +536,6 @@ export class TelegramBotOrchestratorService {
       case 'участники':
       case 'members':
         await this.sendMembers(community, replyChatId, message?.message_id as number | undefined);
-        break;
-      case 'перевод':
-      case 'transfer':
-        if (!replyInGroup) {
-          await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.transferUseGroup });
-          break;
-        }
-        await this.startTransfer(community, userId, tgUserId, args, {
-          groupChatId: replyChatId,
-          replyToMessageId: message?.message_id as number | undefined,
-        });
         break;
       case 'settings':
       case 'настройки':
@@ -778,6 +746,17 @@ export class TelegramBotOrchestratorService {
       }
       return;
     }
+    if (
+      parts[0] === 'onboard' &&
+      parts[1] === 'vis' &&
+      (parts[2] === 'private' || parts[2] === 'public')
+    ) {
+      const pending = await this.pendingModel.findOne({ telegramUserId: tgUserId }).exec();
+      if (pending) {
+        await this.handlePendingInput(tgUserId, parts[2], pending);
+      }
+      return;
+    }
     const [kind, action, pendingId] = parts;
     if (kind === 'vote' && pendingId) {
       if (action === 'yes') {
@@ -787,10 +766,6 @@ export class TelegramBotOrchestratorService {
         await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.cancelled });
       }
       return;
-    }
-    if (kind === 'transfer' && pendingId) {
-      await this.pendingModel.deleteOne({ id: pendingId }).exec();
-      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.cancelled });
     }
   }
 
@@ -807,10 +782,42 @@ export class TelegramBotOrchestratorService {
         payload.name = text.trim().slice(0, 120);
         await this.advanceOnboarding(
           tgUserId,
-          'onboarding_future_vision',
+          'onboarding_platform_integration',
           payload,
-          TG_MSG.onboardingFutureVision,
+          TG_MSG.onboardingPlatformIntegration,
         );
+        return true;
+      case 'onboarding_platform_integration':
+        payload.platformIntegration = normalized === 'да' || normalized === 'yes';
+        if (payload.platformIntegration) {
+          await this.advanceOnboardingVisibility(tgUserId, payload);
+        } else {
+          await this.advanceOnboarding(
+            tgUserId,
+            'onboarding_quota_enabled',
+            payload,
+            TG_MSG.onboardingQuota,
+          );
+        }
+        return true;
+      case 'onboarding_platform_visibility':
+        payload.platformVisibility =
+          normalized === 'public' || normalized === 'публичное' ? 'public' : 'private';
+        if (payload.platformVisibility === 'public') {
+          await this.advanceOnboarding(
+            tgUserId,
+            'onboarding_future_vision',
+            payload,
+            TG_MSG.onboardingFutureVision,
+          );
+        } else {
+          await this.advanceOnboarding(
+            tgUserId,
+            'onboarding_quota_enabled',
+            payload,
+            TG_MSG.onboardingQuota,
+          );
+        }
         return true;
       case 'onboarding_future_vision': {
         const vision = text.trim();
@@ -887,6 +894,7 @@ export class TelegramBotOrchestratorService {
     await this.pendingModel.deleteMany({ telegramUserId: tgUserId }).exec();
     await this.savePending(tgUserId, nextAction, payload as Record<string, unknown>);
     const yesNoSteps: TelegramBotPendingActionType[] = [
+      'onboarding_platform_integration',
       'onboarding_quota_enabled',
       'onboarding_moderation',
       'onboarding_publication_ack',
@@ -899,8 +907,11 @@ export class TelegramBotOrchestratorService {
   }
 
   private async finishOnboarding(tgUserId: string, payload: OnboardingPayload): Promise<void> {
+    const platformIntegration = payload.platformIntegration === true;
+    const platformVisibility = payload.platformVisibility ?? 'private';
     const futureVisionText = payload.futureVisionText?.trim() ?? '';
-    if (!futureVisionText) {
+
+    if (platformIntegration && platformVisibility === 'public' && !futureVisionText) {
       await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.onboardingFutureVisionEmpty });
       await this.savePending(tgUserId, 'onboarding_future_vision', payload as Record<string, unknown>);
       return;
@@ -911,18 +922,30 @@ export class TelegramBotOrchestratorService {
     if (!initiator) {
       return;
     }
+
+    const createSettings: NonNullable<Parameters<CommunityService['createCommunity']>[0]['settings']> = {
+      currencyNames: { singular: 'заслуга', plural: 'заслуги', genitive: 'заслуг' },
+      dailyEmission: payload.quotaEnabled ? (payload.dailyEmission ?? 5) : 0,
+      postCost: payload.postCost ?? 0,
+      allowWithdraw: false,
+      documentsMode: platformIntegration ? 'visionOrDescriptionOnly' : 'off',
+      telegramPlatformIntegration: platformIntegration,
+      ...(platformIntegration
+        ? { telegramPlatformVisibility: platformVisibility }
+        : {}),
+    };
+
     const community = await this.communityService.createCommunity({
       name: payload.name ?? payload.chatTitle ?? 'Telegram-сообщество',
-      description: 'Сообщество Meriter Telegram MVP',
+      description: platformIntegration
+        ? 'Сообщество Meriter Telegram MVP'
+        : 'Telegram-сообщество Meriter',
       typeTag: 'team',
-      futureVisionText,
+      ...(platformIntegration && platformVisibility === 'public' && futureVisionText
+        ? { futureVisionText }
+        : {}),
       creatorUserId: initiator.id,
-      settings: {
-        currencyNames: { singular: 'заслуга', plural: 'заслуги', genitive: 'заслуг' },
-        dailyEmission: payload.quotaEnabled ? (payload.dailyEmission ?? 5) : 0,
-        postCost: payload.postCost ?? 0,
-        allowWithdraw: false,
-      },
+      settings: createSettings,
     });
 
     await this.communityService.updateCommunity(community.id, {
@@ -961,20 +984,43 @@ export class TelegramBotOrchestratorService {
       });
     }
 
+    const usageInput = this.buildCommunityUsageInput(community, platformIntegration);
     await this.tgBots.tgSend({
       tgChatId: tgUserId,
-      text: buildOnboardingDoneMessage({
-        communityName: payload.name ?? community.name,
-        hashtags: community.hashtags,
-      }),
+      text: buildOnboardingDoneMessage(usageInput),
     });
     await this.tgBots.tgSend({
       tgChatId: payload.telegramChatId,
-      text: buildGroupWelcomeMessage({
-        communityName: payload.name ?? community.name,
-        hashtags: community.hashtags,
-      }),
+      text: buildGroupWelcomeMessage(usageInput),
     });
+  }
+
+  private buildCommunityUsageInput(
+    community: Community,
+    platformIntegration?: boolean,
+  ): CommunityUsageRulesInput {
+    const integrated =
+      platformIntegration ?? community.settings?.telegramPlatformIntegration === true;
+    const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '');
+    return {
+      communityName: community.name,
+      hashtags: community.hashtags,
+      platformIntegration: integrated,
+      botUsername,
+    };
+  }
+
+  private async advanceOnboardingVisibility(
+    tgUserId: string,
+    payload: OnboardingPayload,
+  ): Promise<void> {
+    await this.pendingModel.deleteMany({ telegramUserId: tgUserId }).exec();
+    await this.savePending(
+      tgUserId,
+      'onboarding_platform_visibility',
+      payload as Record<string, unknown>,
+    );
+    await this.sendVisibilityPrompt(tgUserId, TG_MSG.onboardingPlatformVisibility);
   }
 
   private async provisionMember(
@@ -1132,19 +1178,20 @@ export class TelegramBotOrchestratorService {
   }
 
   private async helpMessage(communityId?: string): Promise<string> {
-    const { baseUrl, linkStyle } = getTelegramWebLinkContext(this.configService);
+    const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '');
     if (!communityId) {
-      return buildTelegramHelpMessage(baseUrl, { linkStyle });
+      return buildTelegramHelpMessage('', { botUsername });
     }
     const community = await this.communityService.getCommunity(communityId);
     if (!community) {
-      return buildTelegramHelpMessage(baseUrl, { linkStyle });
+      return buildTelegramHelpMessage('', { botUsername });
     }
-    return buildTelegramHelpMessage(baseUrl, {
+    return buildTelegramHelpMessage('', {
       communityId: community.id,
       communityName: community.name,
       hashtags: community.hashtags,
-      linkStyle,
+      botUsername,
+      platformIntegration: community.settings?.telegramPlatformIntegration === true,
     });
   }
 
@@ -1442,116 +1489,6 @@ export class TelegramBotOrchestratorService {
     );
   }
 
-  private buildTelegramMeritTransferInput(
-    community: Community,
-    senderId: string,
-    receiverId: string,
-    amount: number,
-  ) {
-    const walletType = community.isProject ? ('project' as const) : ('community' as const);
-    return {
-      senderId,
-      receiverId,
-      amount: Math.floor(amount),
-      sourceWalletType: walletType,
-      targetWalletType: walletType,
-      sourceContextId: community.id,
-      targetContextId: community.id,
-      communityContextId: community.id,
-    };
-  }
-
-  private async executeTransferInGroup(
-    community: Community,
-    senderId: string,
-    receiverId: string,
-    amount: number,
-    group: GroupFeedbackContext,
-  ): Promise<void> {
-    if (!Number.isFinite(amount) || amount <= 0) {
-      await this.tgBots.tgReplyEphemeral({
-        chat_id: group.groupChatId,
-        reply_to_message_id: group.replyToMessageId,
-        text: TG_MSG.transferErrorAmount,
-      });
-      return;
-    }
-    if (senderId === receiverId) {
-      await this.tgBots.tgReplyEphemeral({
-        chat_id: group.groupChatId,
-        reply_to_message_id: group.replyToMessageId,
-        text: TG_MSG.transferErrorSelf,
-      });
-      return;
-    }
-    const receiver = await this.userService.getUserById(receiverId);
-    try {
-      await this.createMeritTransfer.execute(
-        this.buildTelegramMeritTransferInput(community, senderId, receiverId, amount),
-      );
-      const walletCommunityId = await this.walletContextResolver.resolvePersonalWalletCommunityId(
-        community,
-        'voting',
-      );
-      const balance = await this.readWalletBalance(senderId, walletCommunityId);
-      await this.tgBots.tgReplyEphemeral({
-        chat_id: group.groupChatId,
-        reply_to_message_id: group.replyToMessageId,
-        text: TG_MSG.transferDoneGroup(
-          Math.floor(amount),
-          formatTelegramMemberLabel(receiver, receiverId),
-          balance,
-        ),
-      });
-    } catch (e) {
-      const msg =
-        e instanceof Error ? mapTelegramUserFacingError(e.message) : TG_MSG.insufficientMerits;
-      await this.tgBots.tgReplyEphemeral({
-        chat_id: group.groupChatId,
-        reply_to_message_id: group.replyToMessageId,
-        text: msg,
-      });
-    }
-  }
-
-  private async startTransfer(
-    community: Community,
-    senderId: string,
-    tgUserId: string,
-    args: string,
-    group?: GroupFeedbackContext,
-  ): Promise<void> {
-    if (!group) {
-      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.transferUseGroup });
-      return;
-    }
-    const match = args.match(/@?(\w+)\s+(\d+(?:[.,]\d+)?)/);
-    if (!match) {
-      await this.tgBots.tgReplyEphemeral({
-        chat_id: group.groupChatId,
-        reply_to_message_id: group.replyToMessageId,
-        text: TG_MSG.transferErrorFormat,
-      });
-      return;
-    }
-    const username = match[1];
-    const amount = parseFloat(match[2].replace(',', '.'));
-    const receiver = await this.userModel
-      .findOne({
-        $or: [{ username }, { displayName: new RegExp(`^${username}$`, 'i') }],
-      })
-      .lean();
-    if (!receiver) {
-      await this.tgBots.tgReplyEphemeral({
-        chat_id: group.groupChatId,
-        reply_to_message_id: group.replyToMessageId,
-        text: TG_MSG.transferErrorReceiver,
-      });
-      return;
-    }
-    await this.executeTransferInGroup(community, senderId, receiver.id, amount, group);
-  }
-
   private async sendSettings(
     community: Community,
     userId: string,
@@ -1707,6 +1644,33 @@ export class TelegramBotOrchestratorService {
           inline_keyboard: [[
             { text: 'Да', callback_data: yesData },
             { text: 'Нет', callback_data: noData },
+          ]],
+        },
+      });
+    } catch {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text });
+    }
+  }
+
+  private async sendVisibilityPrompt(tgUserId: string, text: string): Promise<void> {
+    const token = this.configService.get('bot')?.token;
+    if (!token || this.configService.get('noAxios')) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: `${text}\n\nОтветьте «приватное» или «публичное».`,
+      });
+      return;
+    }
+    try {
+      const Axios = (await import('axios')).default;
+      const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
+      await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
+        chat_id: tgUserId,
+        text,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: 'Приватное', callback_data: 'onboard:vis:private' },
+            { text: 'Публичное', callback_data: 'onboard:vis:public' },
           ]],
         },
       });

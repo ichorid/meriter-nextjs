@@ -9,7 +9,7 @@ function DocumentsInner({ communityId }: { communityId: string }) {
   const docsQuery = trpc.documents.listByCommunity.useQuery({ communityId });
 
   return (
-    <CommunityShell communityId={communityId} active="documents" tgActive="feed">
+    <CommunityShell communityId={communityId} active="documents" tgActive="me">
       <div className="space-y-4">
         <h1 className="text-xl font-extrabold tracking-tight">Документы</h1>
         {docsQuery.isLoading && (

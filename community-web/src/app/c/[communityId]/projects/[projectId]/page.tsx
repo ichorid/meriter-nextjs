@@ -31,7 +31,7 @@ function ProjectDetailInner({
   });
 
   return (
-    <CommunityShell communityId={communityId} active="projects" tgActive="feed">
+    <CommunityShell communityId={communityId} active="projects" tgActive="me">
       <div className="space-y-6">
         {!backButtonActive && (
           <a

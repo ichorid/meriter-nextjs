@@ -64,7 +64,7 @@ function DocumentDetailInner({
   });
 
   return (
-    <CommunityShell communityId={communityId} active="documents" tgActive="feed">
+    <CommunityShell communityId={communityId} active="documents" tgActive="me">
       <div className="space-y-6">
         <div>
           {!backButtonActive && (

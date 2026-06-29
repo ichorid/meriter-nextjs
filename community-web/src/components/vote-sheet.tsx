@@ -126,7 +126,7 @@ export function VoteSheet({
               checked={source === 'quota'}
               onChange={() => setSource('quota')}
             />
-            Бесплатные на сегодня (осталось {quotaRemaining})
+            Ежедневные заслуги (осталось {quotaRemaining})
           </label>
           <label className="flex items-center gap-2">
             <input

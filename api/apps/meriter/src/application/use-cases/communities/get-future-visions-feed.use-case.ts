@@ -99,6 +99,7 @@ export class GetFutureVisionsFeedUseCase {
       const community = communityMap.get(post.sourceEntityId);
       if (!community) continue;
       if (community.isProject === true || community.typeTag === 'project') continue;
+      if (!isCommunityEligibleForFutureVisionsFeed(community)) continue;
       if (tagsFilter && community.futureVisionTags?.length) {
         const hasTag = community.futureVisionTags.some((t) => tagsFilter.has(t));
         if (!hasTag) continue;
@@ -134,4 +135,15 @@ export function createGetFutureVisionsFeedUseCase(
   deps: GetFutureVisionsFeedDeps,
 ): GetFutureVisionsFeedUseCase {
   return new GetFutureVisionsFeedUseCase(deps);
+}
+
+/** Telegram-linked communities appear in OB feed only when platform integration is public. */
+export function isCommunityEligibleForFutureVisionsFeed(community: Community): boolean {
+  if (!community.telegramChatId) {
+    return true;
+  }
+  if (community.settings?.telegramPlatformIntegration !== true) {
+    return false;
+  }
+  return community.settings?.telegramPlatformVisibility === 'public';
 }

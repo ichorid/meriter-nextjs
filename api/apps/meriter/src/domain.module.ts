@@ -165,6 +165,7 @@ import { PlatformDemoPackImportService } from './domain/services/platform-demo-p
 import { PlatformDatabaseDumpService } from './domain/services/platform-database-dump.service';
 import { Decree809TagMigrationService } from './domain/services/decree809-tag-migration.service';
 import { CollaborativeDocumentsMigrationService } from './domain/services/collaborative-documents-migration.service';
+import { TelegramCommunityPrivacyMigrationService } from './domain/services/telegram-community-privacy-migration.service';
 import { MeritTransferService } from './domain/services/merit-transfer.service';
 import { EventService } from './domain/services/event.service';
 import { CommunityInviteService } from './domain/services/community-invite.service';
@@ -290,6 +291,7 @@ import { EventBus } from './domain/events/event-bus';
     PlatformDatabaseDumpService,
     Decree809TagMigrationService,
     CollaborativeDocumentsMigrationService,
+    TelegramCommunityPrivacyMigrationService,
     MeritTransferService,
     EventService,
     CommunityInviteService,

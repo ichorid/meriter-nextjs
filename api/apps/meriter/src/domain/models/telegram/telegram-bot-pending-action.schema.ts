@@ -4,6 +4,8 @@ import { Document } from 'mongoose';
 export type TelegramBotPendingActionType =
   | 'confirm_vote_amount'
   | 'onboarding_name'
+  | 'onboarding_platform_integration'
+  | 'onboarding_platform_visibility'
   | 'onboarding_future_vision'
   | 'onboarding_quota_enabled'
   | 'onboarding_quota_amount'

@@ -66,7 +66,7 @@ function FeedPageInner({ communityId }: { communityId: string }) {
     ) ?? [];
 
   return (
-    <CommunityShell communityId={communityId} active="feed" tgActive="feed">
+    <CommunityShell communityId={communityId} active="feed" tgActive="me">
       <div className="space-y-6">
         {pendingNotice && (
           <p className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-3 text-sm">

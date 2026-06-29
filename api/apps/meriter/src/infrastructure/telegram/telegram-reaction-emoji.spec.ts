@@ -15,6 +15,7 @@ describe('telegram-reaction-emoji', () => {
   it('matches plain thumbs up and heart variants', () => {
     expect(isTelegramUpvoteEmoji('👍')).toBe(true);
     expect(isTelegramHeartEmoji('❤️')).toBe(true);
+    expect(isTelegramDownvoteEmoji('👎')).toBe(true);
     expect(isTelegramDownvoteEmoji('🤡')).toBe(true);
   });
 

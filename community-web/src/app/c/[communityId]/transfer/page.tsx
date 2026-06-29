@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AuthGate } from '@/components/shell';
 import { CommunityShell } from '@/components/community-shell';
 import { AmountStepper } from '@/components/amount-stepper';
 import { useCommunityId } from '@/lib/use-route-params';
+import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
 import { trpc } from '@/lib/trpc/client';
 import { hapticError, hapticImpact, hapticSuccess } from '@/lib/telegram-env';
 import { useTelegramBackButton, useTelegramMainButton } from '@/lib/use-telegram-chrome';
@@ -13,6 +14,8 @@ import { useTelegramBackButton, useTelegramMainButton } from '@/lib/use-telegram
 type Step = 'receiver' | 'amount' | 'confirm';
 
 function TransferPageInner({ communityId }: { communityId: string }) {
+  const router = useRouter();
+  const { isMiniApp } = useTelegramMiniApp();
   const searchParams = useSearchParams();
   const preselectedTo = searchParams.get('to');
 
@@ -22,6 +25,12 @@ function TransferPageInner({ communityId }: { communityId: string }) {
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isMiniApp) {
+      router.replace(`/c/${communityId}/me`);
+    }
+  }, [communityId, isMiniApp, router]);
 
   const meQuery = trpc.users.getMe.useQuery();
   const walletQuery = trpc.wallets.getByCommunity.useQuery({ communityId });
@@ -122,8 +131,12 @@ function TransferPageInner({ communityId }: { communityId: string }) {
     onClick: goBack,
   });
 
+  if (isMiniApp) {
+    return null;
+  }
+
   return (
-    <CommunityShell communityId={communityId} active="members" tgActive="transfer">
+    <CommunityShell communityId={communityId} active="members" tgActive="me">
       <div className="space-y-6">
         <div>
           <h1 className="text-xl font-extrabold tracking-tight">Перевод заслуг</h1>

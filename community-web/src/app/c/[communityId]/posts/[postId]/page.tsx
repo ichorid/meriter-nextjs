@@ -30,7 +30,7 @@ function PostDetailInner({
   });
 
   return (
-    <CommunityShell communityId={communityId} active="feed" tgActive="feed">
+    <CommunityShell communityId={communityId} active="feed" tgActive="me">
       <div className="space-y-6">
         {!backButtonActive && (
           <Link

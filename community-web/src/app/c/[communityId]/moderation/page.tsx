@@ -31,7 +31,7 @@ function ModerationInner({ communityId }: { communityId: string }) {
   const items = pendingQuery.data ?? [];
 
   return (
-    <CommunityShell communityId={communityId} active="moderation" tgActive="feed">
+    <CommunityShell communityId={communityId} active="moderation" tgActive="me">
       <div className="space-y-6">
         <h1 className="text-xl font-extrabold tracking-tight">Модерация постов</h1>
         <p className="text-sm text-stitch-muted">

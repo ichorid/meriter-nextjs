@@ -85,7 +85,7 @@ function ProjectsInner({ communityId }: { communityId: string }) {
   });
 
   return (
-    <CommunityShell communityId={communityId} active="projects" tgActive="feed">
+    <CommunityShell communityId={communityId} active="projects" tgActive="me">
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-extrabold tracking-tight">Проекты</h1>

@@ -10,9 +10,16 @@ import {
   isTelegramWebApp,
   parseTelegramChatIdFromInitData,
 } from '@/lib/telegram-env';
+import { initTelegramWebApp } from '@/lib/telegram-webapp';
 import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
 
-type BootState = 'loading' | 'auth_error' | 'no_community' | 'frozen' | 'redirecting';
+type BootState =
+  | 'loading'
+  | 'auth_error'
+  | 'no_community'
+  | 'frozen'
+  | 'redirecting'
+  | 'outside_telegram';
 
 export default function TelegramBootPage() {
   const router = useRouter();
@@ -26,13 +33,17 @@ export default function TelegramBootPage() {
   const configQuery = trpc.config.getConfig.useQuery();
 
   useEffect(() => {
+    initTelegramWebApp();
+  }, []);
+
+  useEffect(() => {
     if (started.current) return;
     if (configQuery.isLoading) return;
     started.current = true;
 
     void (async () => {
       if (!isTelegramWebApp()) {
-        router.replace('/login');
+        setState('outside_telegram');
         return;
       }
 
@@ -95,7 +106,7 @@ export default function TelegramBootPage() {
         }
 
         setState('redirecting');
-        router.replace(`/c/${communityId}/feed`);
+        router.replace(`/c/${communityId}/me`);
       } catch {
         setState('auth_error');
         setMessage('Не удалось войти. Закройте и откройте снова из Telegram.');
@@ -103,10 +114,30 @@ export default function TelegramBootPage() {
     })();
   }, [configQuery.isLoading, configQuery.data, router, setBootstrapped, utils, webAppAuth]);
 
+  const botUsername = configQuery.data?.botUsername?.replace(/^@/, '');
+
   if (state === 'loading' || state === 'redirecting') {
     return (
       <div className="flex min-h-screen items-center justify-center bg-stitch-canvas px-4">
         <p className="text-stitch-muted">Подключаем Meriter…</p>
+      </div>
+    );
+  }
+
+  if (state === 'outside_telegram') {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-stitch-canvas px-4">
+        <p className="max-w-sm text-center text-sm text-stitch-muted">
+          Meriter работает только внутри Telegram. Откройте приложение из чата с ботом.
+        </p>
+        {botUsername && (
+          <a
+            href={`https://t.me/${botUsername}?startapp`}
+            className="rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-primary/90"
+          >
+            Открыть в Telegram
+          </a>
+        )}
       </div>
     );
   }

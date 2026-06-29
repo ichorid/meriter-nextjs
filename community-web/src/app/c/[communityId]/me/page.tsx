@@ -31,6 +31,7 @@ function MePageInner({ communityId }: { communityId: string }) {
   const quotaPct = quotaMax > 0 ? Math.round((quotaRemaining / quotaMax) * 100) : 0;
 
   const members = membersQuery.data?.data ?? [];
+  const memberTotal = membersQuery.data?.pagination?.total ?? members.length;
   const totalWallet = members.reduce((sum, m) => sum + (m.walletBalance ?? 0), 0);
   const poolPct =
     totalWallet > 0 && meQuery.data?.id
@@ -47,6 +48,7 @@ function MePageInner({ communityId }: { communityId: string }) {
     <CommunityShell communityId={communityId} active="settings" tgActive="me">
       <div className="space-y-6">
         <h1 className="text-xl font-extrabold tracking-tight">Мои заслуги</h1>
+        <p className="text-sm text-stitch-muted">Участников в сообществе: {memberTotal}</p>
 
         <div className="rounded-xl border border-stitch-border bg-stitch-surface p-5 space-y-4">
           <div>
@@ -55,7 +57,7 @@ function MePageInner({ communityId }: { communityId: string }) {
             <p className="text-sm text-stitch-muted">заслуг</p>
           </div>
           <div>
-            <p className="text-xs text-stitch-muted">Квота сегодня</p>
+            <p className="text-xs text-stitch-muted">Ежедневные заслуги</p>
             <p className="text-lg font-semibold tabular-nums">
               {quotaRemaining} / {quotaMax}
             </p>

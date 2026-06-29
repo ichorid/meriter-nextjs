@@ -95,6 +95,10 @@ export interface CommunitySettings {
   telegramModerationEnabled?: boolean;
   /** Telegram MVP: bot replies in group when a hashtag post is saved (default off). */
   telegramPublicationAckEnabled?: boolean;
+  /** Telegram MVP: mirror content to Meriter web platform. Default false (chat-only). */
+  telegramPlatformIntegration?: boolean;
+  /** When platform integration is on: private (default) or public OB card. */
+  telegramPlatformVisibility?: 'private' | 'public';
 }
 
 export interface CommunityMeritConversion {
@@ -450,6 +454,12 @@ export class CommunitySchemaClass implements Community {
       documentAutoApplyTimerHours: { type: Number, default: 48 },
       telegramModerationEnabled: { type: Boolean, default: false },
       telegramPublicationAckEnabled: { type: Boolean, default: false },
+      telegramPlatformIntegration: { type: Boolean, default: false },
+      telegramPlatformVisibility: {
+        type: String,
+        enum: ['private', 'public'],
+        default: 'private',
+      },
     },
     default: {},
   })

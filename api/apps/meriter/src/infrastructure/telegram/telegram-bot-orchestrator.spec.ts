@@ -434,7 +434,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
     expect(tgSendSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        text: expect.stringContaining('бесплатные заслуги'),
+        text: expect.stringContaining('ежедневные заслуги'),
       }),
     );
     const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();

@@ -194,9 +194,9 @@ docker compose run --rm bot-webhook-init
    - Создать бота, получить `BOT_TOKEN`
    - **Group Privacy: Off** (бот видит все сообщения)
    - **Allow Groups: On**
-   - **Mini App (обязательно для 📎 в группах):**
-     - `/setattach` → выбрать бота → URL: `https://{COMMUNITY_DOMAIN}/tg` → peer types: **Groups** + **Private chats**
-     - `/setdomain` → домен community-web (`community.meriter.pro` или dev-хост)
+   - **Mini App:** Menu Button URL `https://{COMMUNITY_DOMAIN}/tg` (скрипт `setup-bot-menu.js set`)
+   - **`COMMUNITY_WEB_BASE_URL` должен отличаться от основного `DOMAIN`** — иначе Mini App может предлагать вход через браузер
+   - `/setdomain` → домен community-web (`community.meriter.pro` или dev-хост)
      - Menu Button: выставляется при деплое (`setup-bot-menu.js set /tg`); проверить в `/mybots` → Bot Settings → Menu Button
    - Пользовательская инструкция: [14-telegram-bot-user-guide-ru.md](./14-telegram-bot-user-guide-ru.md) §10
 

@@ -21,7 +21,8 @@ export function isTelegramHeartEmoji(emoji: string): boolean {
 }
 
 export function isTelegramDownvoteEmoji(emoji: string): boolean {
-  return normalizeTelegramReactionEmoji(emoji) === '🤡';
+  const n = normalizeTelegramReactionEmoji(emoji);
+  return n === '👎' || n === '🤡';
 }
 
 export function reactionTypeKey(reaction: { type?: string; emoji?: string }): string {

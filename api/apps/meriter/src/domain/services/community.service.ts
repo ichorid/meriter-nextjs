@@ -80,6 +80,8 @@ export interface CreateCommunityDto {
     investorShareMax?: number;
     documentsMode?: 'off' | 'visionOrDescriptionOnly' | 'all';
     documentCreators?: 'admins' | 'members';
+    telegramPlatformIntegration?: boolean;
+    telegramPlatformVisibility?: 'private' | 'public';
   };
   isPriority?: boolean;
   /** Project-specific: set when typeTag === 'project' */
@@ -652,6 +654,12 @@ export class CommunityService {
     if (dto.settings?.documentCreators !== undefined) {
       settings.documentCreators = dto.settings.documentCreators;
     }
+    if (dto.settings?.telegramPlatformIntegration !== undefined) {
+      settings.telegramPlatformIntegration = dto.settings.telegramPlatformIntegration;
+    }
+    if (dto.settings?.telegramPlatformVisibility !== undefined) {
+      settings.telegramPlatformVisibility = dto.settings.telegramPlatformVisibility;
+    }
     const community: Record<string, unknown> = {
       id: dto.id || uid(),
       name: dto.name,
@@ -703,14 +711,16 @@ export class CommunityService {
     );
 
     try {
+      const skipObDocument = dto.settings?.telegramPlatformIntegration === false;
       await this.documentService.bootstrapForNewCommunity({
         communityId: community.id as string,
         typeTag: dto.typeTag,
         isProject: Boolean((community as Record<string, unknown>).isProject),
         createdByUserId: dto.creatorUserId ?? dto.founderUserId ?? 'system',
-        futureVisionText: dto.futureVisionText,
-        futureVisionDocumentSeed: dto.futureVisionDocumentSeed,
+        futureVisionText: skipObDocument ? undefined : dto.futureVisionText,
+        futureVisionDocumentSeed: skipObDocument ? undefined : dto.futureVisionDocumentSeed,
         description: dto.description,
+        skipImageOfFuture: skipObDocument,
       });
     } catch (err) {
       this.logger.error(
@@ -718,18 +728,24 @@ export class CommunityService {
       );
     }
 
-    if (
-      dto.futureVisionText &&
+    const tgIntegration = dto.settings?.telegramPlatformIntegration;
+    const tgVisibility = dto.settings?.telegramPlatformVisibility;
+    const shouldPublishOb =
+      Boolean(dto.futureVisionText) &&
       dto.typeTag !== 'future-vision' &&
-      dto.creatorUserId
-    ) {
+      dto.creatorUserId &&
+      (tgIntegration === undefined
+        ? true
+        : tgIntegration === true && tgVisibility === 'public');
+
+    if (shouldPublishOb) {
       const futureVision = await this.getCommunityByTypeTag('future-vision');
       if (futureVision) {
         try {
           await this.publicationService.createFutureVisionPost({
             futureVisionCommunityId: futureVision.id,
             authorId: dto.creatorUserId,
-            content: dto.futureVisionText,
+            content: dto.futureVisionText!,
             sourceEntityId: community.id as string,
           });
         } catch (e) {
@@ -1445,6 +1461,13 @@ export class CommunityService {
       const community = communityMap.get(post.sourceEntityId) as any;
       if (!community) continue;
       if (community.isProject === true || community.typeTag === 'project') continue;
+      if (
+        community.telegramChatId &&
+        (community.settings?.telegramPlatformIntegration !== true ||
+          community.settings?.telegramPlatformVisibility !== 'public')
+      ) {
+        continue;
+      }
       if (tagsFilter && community.futureVisionTags?.length) {
         const hasTag = community.futureVisionTags.some((t: string) =>
           tagsFilter.has(t),

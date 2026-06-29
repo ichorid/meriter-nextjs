@@ -20,7 +20,7 @@ export function WalletChip({
       href={`/c/${communityId}/me`}
       className="rounded-lg bg-stitch-surface px-2.5 py-1 text-xs font-medium text-stitch-muted hover:text-primary"
     >
-      {wallet} засл. · квота {quotaRemaining}/{quotaMax}
+      {wallet} засл. · ежедн. {quotaRemaining}/{quotaMax}
     </Link>
   );
 }

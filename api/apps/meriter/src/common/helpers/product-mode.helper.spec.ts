@@ -67,39 +67,33 @@ describe('getTelegramWebLinkContext', () => {
   });
 });
 
-describe('buildTelegramHelpMessage web links', () => {
-  it('uses meriter login on shared main-web domain', () => {
-    const text = buildTelegramHelpMessage('https://dev.meriter.pro', {
-      linkStyle: 'meriter-web',
-    });
-    expect(text).toContain('https://dev.meriter.pro/meriter/login');
-    expect(text).not.toContain('https://dev.meriter.pro/login');
-    expect(text).not.toContain('community.meriter.pro');
+describe('buildTelegramHelpMessage', () => {
+  it('lists English-only slash commands', () => {
+    const text = buildTelegramHelpMessage('', { botUsername: 'meriter_bot' });
+    expect(text).toContain('/balance');
+    expect(text).toContain('/members');
+    expect(text).not.toContain('/transfer');
+    expect(text).not.toContain('/перевод');
   });
 
-  it('uses meriter community URL on shared main-web domain', () => {
-    const text = buildTelegramHelpMessage('https://dev.meriter.pro', {
-      communityId: 'cd4e9e74829',
-      communityName: 'Test Community',
-      linkStyle: 'meriter-web',
+  it('includes startapp link when platform integration is enabled', () => {
+    const text = buildTelegramHelpMessage('', {
+      botUsername: 'meriter_bot',
+      communityName: 'Test',
+      platformIntegration: true,
     });
-    expect(text).toContain('Приложение: https://dev.meriter.pro/tg');
-    expect(text).toContain(
-      'Веб-версия: https://dev.meriter.pro/meriter/communities/cd4e9e74829',
-    );
-    expect(text).not.toContain('/c/');
-    expect(text).not.toContain('community.meriter.pro');
+    expect(text).toContain('https://t.me/meriter_bot?startapp');
+    expect(text).not.toContain('/login');
+    expect(text).not.toContain('Веб-версия');
   });
 
-  it('uses community-web feed URL on dedicated host', () => {
-    const text = buildTelegramHelpMessage('https://community.meriter.pro', {
-      communityId: '299751ae456',
-      communityName: 'Test Community',
-      linkStyle: 'community-web',
+  it('omits app link for chat-only communities', () => {
+    const text = buildTelegramHelpMessage('', {
+      botUsername: 'meriter_bot',
+      communityName: 'Test',
+      platformIntegration: false,
     });
-    expect(text).toContain('Приложение: https://community.meriter.pro/tg');
-    expect(text).toContain(
-      'Веб-версия: https://community.meriter.pro/c/299751ae456/feed',
-    );
+    expect(text).not.toContain('?startapp');
+    expect(text).toContain('👎');
   });
 });

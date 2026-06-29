@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { AuthGate } from '@/components/shell';
 import { CommunityShell } from '@/components/community-shell';
 import { useCommunityId } from '@/lib/use-route-params';
+import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
 import { trpc } from '@/lib/trpc/client';
 
 function roleLabel(role: string | undefined): string {
@@ -13,6 +13,7 @@ function roleLabel(role: string | undefined): string {
 }
 
 function MembersInner({ communityId }: { communityId: string }) {
+  const { isMiniApp } = useTelegramMiniApp();
   const meQuery = trpc.users.getMe.useQuery();
   const membersQuery = trpc.communities.getMembers.useQuery(
     { id: communityId, pageSize: 50 },
@@ -77,26 +78,18 @@ function MembersInner({ communityId }: { communityId: string }) {
                     <p className="font-medium">{member.walletBalance ?? 0} заслуг</p>
                   </div>
                   <div>
-                    <p className="text-xs text-stitch-muted">Квота сегодня</p>
+                    <p className="text-xs text-stitch-muted">Ежедневные</p>
                     <p className="font-medium">
                       {member.quota?.remainingToday ?? 0} / {member.quota?.dailyQuota ?? 0}
                     </p>
                   </div>
                 </div>
-                {!isSelf && (
-                  <Link
-                    href={`/c/${communityId}/transfer?to=${member.id}`}
-                    className="mt-3 inline-flex rounded-lg bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/25"
-                  >
-                    Перевести
-                  </Link>
-                )}
               </li>
             );
           })}
         </ul>
 
-        {!membersQuery.isLoading && total < 3 && (
+        {!isMiniApp && !membersQuery.isLoading && total < 3 && (
           <p className="rounded-xl border border-stitch-border bg-stitch-surface px-4 py-3 text-sm text-stitch-muted">
             Мало участников для демо. Запустите{' '}
             <code className="text-xs">pnpm seed:community-web-dev</code> или пересоздайте

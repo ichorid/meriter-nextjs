@@ -182,7 +182,7 @@ function EventsInner({ communityId }: { communityId: string }) {
   const eventsQuery = trpc.events.getEventsByCommunity.useQuery({ communityId });
 
   return (
-    <CommunityShell communityId={communityId} active="events" tgActive="feed">
+    <CommunityShell communityId={communityId} active="events" tgActive="me">
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-extrabold tracking-tight">События</h1>

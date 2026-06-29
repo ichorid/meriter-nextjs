@@ -236,6 +236,15 @@ async function main() {
             process.exit(1);
         }
 
+        const mainDomain = domain ? `https://${domain}`.replace(/\/$/, '') : '';
+        if (communityWebBase && mainDomain && communityWebBase === mainDomain) {
+            console.warn('');
+            console.warn('⚠️  WARNING: COMMUNITY_WEB_BASE_URL equals main DOMAIN.');
+            console.warn('   Mini App may show browser login instead of WebApp-only flow.');
+            console.warn('   Use a dedicated community host (e.g. https://community-dev.meriter.pro).');
+            console.warn('');
+        }
+
         const path = pathArg || '/tg';
         await setMenuButton(botToken, appUrl, path);
     } else if (command === 'remove') {
