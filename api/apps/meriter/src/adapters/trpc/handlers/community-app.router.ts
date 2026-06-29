@@ -104,6 +104,15 @@ export const communityAppRouter = router({
         });
         return useCase.execute(ctx.user.id);
       }),
+      listForTelegramUser: protectedProcedure.query(async ({ ctx }) => {
+        const useCase = new ResolveTelegramCommunityUseCase({
+          userService: ctx.userService,
+          userCommunityRoleService: ctx.userCommunityRoleService,
+          communityModel: ctx.connection.model(CommunitySchemaClass.name),
+          configService: ctx.configService,
+        });
+        return useCase.listForUser(ctx.user.id);
+      }),
       getByTelegramChatId: protectedProcedure
         .input(z.object({ telegramChatId: z.string().min(1) }))
         .query(async ({ ctx, input }) => {

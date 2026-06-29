@@ -13,10 +13,17 @@ import {
 import { initTelegramWebApp } from '@/lib/telegram-webapp';
 import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
 
+type TelegramCommunityOption = {
+  communityId: string;
+  name: string;
+  telegramChatId: string;
+};
+
 type BootState =
   | 'loading'
   | 'auth_error'
   | 'no_community'
+  | 'pick_community'
   | 'frozen'
   | 'redirecting'
   | 'outside_telegram';
@@ -27,6 +34,7 @@ export default function TelegramBootPage() {
   const { setBootstrapped } = useTelegramMiniApp();
   const [state, setState] = useState<BootState>('loading');
   const [message, setMessage] = useState('');
+  const [communities, setCommunities] = useState<TelegramCommunityOption[]>([]);
   const started = useRef(false);
 
   const webAppAuth = trpc.auth.authenticateTelegramWebApp.useMutation();
@@ -93,13 +101,18 @@ export default function TelegramBootPage() {
         }
 
         if (!communityId) {
-          const resolved = await utils.communities.resolveForTelegramUser.fetch();
-          communityId = resolved?.communityId ?? null;
-        }
-
-        if (!communityId) {
-          setState('no_community');
-          return;
+          const list = await utils.communities.listForTelegramUser.fetch();
+          if (list.length === 0) {
+            setState('no_community');
+            return;
+          }
+          if (list.length === 1) {
+            communityId = list[0]!.communityId;
+          } else {
+            setCommunities(list);
+            setState('pick_community');
+            return;
+          }
         }
 
         setState('redirecting');
@@ -149,11 +162,42 @@ export default function TelegramBootPage() {
     );
   }
 
+  if (state === 'pick_community') {
+    return (
+      <div className="flex min-h-screen flex-col bg-stitch-canvas px-4 py-8">
+        <h1 className="text-lg font-bold tracking-tight text-stitch-text">Выберите сообщество</h1>
+        <p className="mt-2 text-sm text-stitch-muted">
+          У вас несколько групп Meriter. Откройте нужную.
+        </p>
+        <ul className="mt-6 flex flex-col gap-2">
+          {communities.map((item) => (
+            <li key={item.communityId}>
+              <button
+                type="button"
+                onClick={() => {
+                  setState('redirecting');
+                  router.replace(`/c/${item.communityId}/me`);
+                }}
+                className="w-full rounded-xl border border-stitch-border bg-stitch-surface px-4 py-3 text-left text-sm font-medium text-stitch-text transition-colors hover:border-primary/40 hover:bg-stitch-elevated"
+              >
+                {item.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
+
   if (state === 'no_community') {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-stitch-canvas px-4">
         <p className="max-w-sm text-center text-sm text-stitch-muted">
-          Вы не состоите в сообществе Meriter. Подключите бота к группе или напишите боту в личку.
+          Пока нет подключённых сообществ Meriter для вашего аккаунта.
+        </p>
+        <p className="max-w-sm text-center text-xs text-stitch-muted">
+          Откройте мини-приложение из Telegram-группы, где стоит бот, или напишите там сообщение /
+          поставьте реакцию — после этого сообщество появится в списке.
         </p>
       </div>
     );

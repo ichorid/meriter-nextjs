@@ -108,10 +108,13 @@ export function formatMeritHistoryLine(row: MeritHistoryRowInput): string {
   return rt || 'Операция';
 }
 
+import { buildTelegramMessageLink } from '@/lib/telegram-message-link';
+
 export function meritHistoryMessageLink(
   en: MeritHistoryEnrichment | null | undefined,
 ): { chatId: string; messageId: number; label: string } | null {
   if (!en?.telegramChatId || en.telegramMessageId == null) return null;
+  if (!buildTelegramMessageLink(en.telegramChatId, en.telegramMessageId)) return null;
   const title = en.publicationTitle?.trim();
   return {
     chatId: en.telegramChatId,

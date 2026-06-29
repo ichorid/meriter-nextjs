@@ -1,13 +1,22 @@
+/** Strip Telegram supergroup prefix for t.me/c/… deep links. */
+export function supergroupLinkSegment(chatId: string): string | null {
+  const id = chatId.trim();
+  if (!id) return null;
+  const superMatch = id.match(/^-100(\d+)$/);
+  if (superMatch) return superMatch[1];
+  const legacyMatch = id.match(/^-(\d+)$/);
+  if (legacyMatch) return legacyMatch[1];
+  return null;
+}
+
 export function buildTelegramMessageLink(
   chatId: string,
   messageId: number,
 ): string | null {
-  const id = chatId.trim();
-  if (!id || !Number.isFinite(messageId) || messageId <= 0) return null;
-  if (id.startsWith('-100')) {
-    return `https://t.me/c/${id.slice(4)}/${messageId}`;
-  }
-  return null;
+  if (!Number.isFinite(messageId) || messageId <= 0) return null;
+  const segment = supergroupLinkSegment(chatId);
+  if (!segment) return null;
+  return `https://t.me/c/${segment}/${messageId}`;
 }
 
 export function openTelegramMessage(chatId: string, messageId: number): void {
