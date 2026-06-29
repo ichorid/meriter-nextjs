@@ -1,8 +1,11 @@
 'use client';
 
-import { AuthGate, Shell } from '@/components/shell';
+import { useRouter } from 'next/navigation';
+import { AuthGate } from '@/components/shell';
+import { CommunityShell } from '@/components/community-shell';
 import { useCommunityProjectParams } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
+import { useTelegramBackButton } from '@/lib/use-telegram-chrome';
 
 function ProjectDetailInner({
   communityId,
@@ -11,6 +14,7 @@ function ProjectDetailInner({
   communityId: string;
   projectId: string;
 }) {
+  const router = useRouter();
   const meQuery = trpc.users.getMe.useQuery();
   const projectQuery = trpc.project.getById.useQuery({ id: projectId });
   const joinMutation = trpc.project.join.useMutation({
@@ -21,15 +25,22 @@ function ProjectDetailInner({
   const walletBalance = projectQuery.data?.walletBalance ?? 0;
   const meId = meQuery.data?.id;
 
+  const backButtonActive = useTelegramBackButton({
+    visible: true,
+    onClick: () => router.push(`/c/${communityId}/projects`),
+  });
+
   return (
-    <Shell communityId={communityId} active="projects">
+    <CommunityShell communityId={communityId} active="projects" tgActive="feed">
       <div className="space-y-6">
-        <a
-          href={`/c/${communityId}/projects`}
-          className="text-sm text-primary hover:underline"
-        >
-          ← К проектам
-        </a>
+        {!backButtonActive && (
+          <a
+            href={`/c/${communityId}/projects`}
+            className="text-sm text-primary hover:underline"
+          >
+            ← К проектам
+          </a>
+        )}
 
         {projectQuery.isLoading && (
           <p className="text-sm text-stitch-muted">Загрузка…</p>
@@ -89,7 +100,7 @@ function ProjectDetailInner({
           </>
         )}
       </div>
-    </Shell>
+    </CommunityShell>
   );
 }
 

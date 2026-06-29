@@ -1,6 +1,7 @@
 'use client';
 
-import { AuthGate, Shell } from '@/components/shell';
+import { AuthGate } from '@/components/shell';
+import { CommunityShell } from '@/components/community-shell';
 import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
@@ -33,7 +34,7 @@ function MeritHistoryInner({ communityId }: { communityId: string }) {
   const kpis = dashboardQuery.data?.kpis;
 
   return (
-    <Shell communityId={communityId} active="merit-history">
+    <CommunityShell communityId={communityId} active="merit-history" tgActive="me">
       <div className="space-y-8">
         <section className="space-y-3">
           <h1 className="text-xl font-extrabold tracking-tight">История заслуг</h1>
@@ -131,7 +132,7 @@ function MeritHistoryInner({ communityId }: { communityId: string }) {
           )}
         </section>
       </div>
-    </Shell>
+    </CommunityShell>
   );
 }
 

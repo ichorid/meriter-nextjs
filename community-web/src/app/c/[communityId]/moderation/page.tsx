@@ -1,8 +1,10 @@
 'use client';
 
-import { AuthGate, Shell } from '@/components/shell';
+import { AuthGate } from '@/components/shell';
+import { CommunityShell } from '@/components/community-shell';
 import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
+import { hapticError, hapticSuccess } from '@/lib/telegram-env';
 
 function ModerationInner({ communityId }: { communityId: string }) {
   const pendingQuery = trpc.publications.listPendingTelegramModeration.useQuery({
@@ -12,20 +14,24 @@ function ModerationInner({ communityId }: { communityId: string }) {
 
   const approveMutation = trpc.publications.approveTelegramModeration.useMutation({
     onSuccess: async () => {
+      hapticSuccess();
       await utils.publications.listPendingTelegramModeration.invalidate({ communityId });
       await utils.communities.getFeed.invalidate({ communityId });
     },
+    onError: () => hapticError(),
   });
   const rejectMutation = trpc.publications.rejectTelegramModeration.useMutation({
     onSuccess: async () => {
+      hapticSuccess();
       await utils.publications.listPendingTelegramModeration.invalidate({ communityId });
     },
+    onError: () => hapticError(),
   });
 
   const items = pendingQuery.data ?? [];
 
   return (
-    <Shell communityId={communityId} active="moderation">
+    <CommunityShell communityId={communityId} active="moderation" tgActive="feed">
       <div className="space-y-6">
         <h1 className="text-xl font-extrabold tracking-tight">Модерация постов</h1>
         <p className="text-sm text-stitch-muted">
@@ -78,7 +84,7 @@ function ModerationInner({ communityId }: { communityId: string }) {
           <p className="text-sm text-stitch-muted">Нет постов на модерации.</p>
         )}
       </div>
-    </Shell>
+    </CommunityShell>
   );
 }
 

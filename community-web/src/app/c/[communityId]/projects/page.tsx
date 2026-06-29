@@ -1,7 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { AuthGate, Shell } from '@/components/shell';
+import { AuthGate } from '@/components/shell';
+import { CommunityShell } from '@/components/community-shell';
 import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
@@ -84,7 +85,7 @@ function ProjectsInner({ communityId }: { communityId: string }) {
   });
 
   return (
-    <Shell communityId={communityId} active="projects">
+    <CommunityShell communityId={communityId} active="projects" tgActive="feed">
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-extrabold tracking-tight">Проекты</h1>
@@ -121,7 +122,7 @@ function ProjectsInner({ communityId }: { communityId: string }) {
           <p className="text-sm text-stitch-muted">Пока нет проектов.</p>
         )}
       </div>
-    </Shell>
+    </CommunityShell>
   );
 }
 

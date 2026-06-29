@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { AuthGate, Shell } from '@/components/shell';
-import { useCommunityId } from '@/lib/use-route-params';
+import { useCallback, useState } from 'react';
+import { AuthGate } from '@/components/shell';
+import { CommunityShell } from '@/components/community-shell';
+import { PostCard } from '@/components/post-card';
 import { PollSection } from '@/components/poll-section';
+import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
+import { useTelegramMainButton } from '@/lib/use-telegram-chrome';
+import { hapticError, hapticSuccess } from '@/lib/telegram-env';
 
 function FeedPageInner({ communityId }: { communityId: string }) {
   const [title, setTitle] = useState('');
@@ -25,11 +29,35 @@ function FeedPageInner({ communityId }: { communityId: string }) {
 
   const createMutation = trpc.publications.create.useMutation({
     onSuccess: async (result) => {
+      hapticSuccess();
       setTitle('');
       setContent('');
       setPendingNotice(result.telegramModerationStatus === 'pending');
       await utils.communities.getFeed.invalidate({ communityId });
     },
+    onError: () => {
+      hapticError();
+    },
+  });
+
+  const canPublish = Boolean(content.trim()) && !createMutation.isPending;
+
+  const publish = useCallback(() => {
+    if (!content.trim()) return;
+    createMutation.mutate({
+      communityId,
+      content: content.trim(),
+      title: title.trim() || undefined,
+      type: 'text',
+    });
+  }, [communityId, content, createMutation, title]);
+
+  const mainButtonActive = useTelegramMainButton({
+    text: 'Опубликовать',
+    visible: Boolean(content.trim()),
+    enabled: canPublish,
+    loading: createMutation.isPending,
+    onClick: publish,
   });
 
   const posts =
@@ -38,7 +66,7 @@ function FeedPageInner({ communityId }: { communityId: string }) {
     ) ?? [];
 
   return (
-    <Shell communityId={communityId} active="feed">
+    <CommunityShell communityId={communityId} active="feed" tgActive="feed">
       <div className="space-y-6">
         {pendingNotice && (
           <p className="rounded-xl border border-primary/40 bg-primary/10 px-4 py-3 text-sm">
@@ -53,6 +81,9 @@ function FeedPageInner({ communityId }: { communityId: string }) {
               В этом сообществе посты проходят модерацию перед публикацией.
             </p>
           )}
+          <p className="text-xs text-stitch-muted">
+            В группе можно также опубликовать через #хэштег в сообщении.
+          </p>
           <input
             className="w-full rounded-lg border border-stitch-border bg-stitch-canvas px-3 py-2 text-sm"
             placeholder="Заголовок (необязательно)"
@@ -68,15 +99,8 @@ function FeedPageInner({ communityId }: { communityId: string }) {
           <button
             type="button"
             disabled={!content.trim() || createMutation.isPending}
-            onClick={() =>
-              createMutation.mutate({
-                communityId,
-                content: content.trim(),
-                title: title.trim() || undefined,
-                type: 'text',
-              })
-            }
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            onClick={publish}
+            className={`rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white disabled:opacity-50${mainButtonActive ? ' hidden' : ''}`}
           >
             Опубликовать
           </button>
@@ -87,17 +111,13 @@ function FeedPageInner({ communityId }: { communityId: string }) {
           {feedQuery.isLoading && (
             <p className="text-sm text-stitch-muted">Загрузка…</p>
           )}
+          {!feedQuery.isLoading && posts.length === 0 && (
+            <p className="text-sm text-stitch-muted">
+              Пока нет постов. Опубликуйте или добавьте #идея в группе.
+            </p>
+          )}
           {posts.map((post) => (
-            <article
-              key={post.id}
-              className="rounded-xl border border-stitch-border bg-stitch-surface p-4 space-y-2"
-            >
-              {post.title && <h3 className="font-semibold">{post.title}</h3>}
-              <p className="text-sm whitespace-pre-wrap">{post.content}</p>
-              <p className="text-xs text-stitch-muted">
-                Рейтинг: {post.metrics?.score ?? 0} заслуг
-              </p>
-            </article>
+            <PostCard key={post.id} communityId={communityId} post={post} />
           ))}
           {feedQuery.hasNextPage && (
             <button
@@ -112,7 +132,7 @@ function FeedPageInner({ communityId }: { communityId: string }) {
 
         <PollSection communityId={communityId} />
       </div>
-    </Shell>
+    </CommunityShell>
   );
 }
 

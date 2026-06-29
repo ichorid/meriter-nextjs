@@ -88,6 +88,9 @@ docker image prune -f
 if [ -f .env ] && grep -qE '^TELEGRAM_BOT_ENABLED=true' .env; then
   echo "[deploy] Registering Telegram webhook..."
   docker compose run --rm bot-webhook-init || echo "[deploy] WARNING: bot-webhook-init failed (check BOT_TOKEN, BOT_USERNAME, DOMAIN)"
+  echo "[deploy] Setting Telegram Mini App menu button (/tg)..."
+  docker compose run --rm --no-deps api node scripts/setup-bot-menu.js set /tg \
+    || echo "[deploy] WARNING: setup-bot-menu failed (check BOT_TOKEN, DOMAIN)"
 fi
 
 echo "[deploy] Done."

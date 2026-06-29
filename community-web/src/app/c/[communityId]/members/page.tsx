@@ -1,6 +1,8 @@
 'use client';
 
-import { AuthGate, Shell } from '@/components/shell';
+import Link from 'next/link';
+import { AuthGate } from '@/components/shell';
+import { CommunityShell } from '@/components/community-shell';
 import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
@@ -11,21 +13,25 @@ function roleLabel(role: string | undefined): string {
 }
 
 function MembersInner({ communityId }: { communityId: string }) {
+  const meQuery = trpc.users.getMe.useQuery();
   const membersQuery = trpc.communities.getMembers.useQuery(
     { id: communityId, pageSize: 50 },
     { enabled: Boolean(communityId) },
   );
 
-  const members = membersQuery.data?.data ?? [];
+  const members = [...(membersQuery.data?.data ?? [])].sort(
+    (a, b) => (b.walletBalance ?? 0) - (a.walletBalance ?? 0),
+  );
   const total = membersQuery.data?.pagination?.total ?? 0;
+  const selfId = meQuery.data?.id;
 
   return (
-    <Shell communityId={communityId} active="members">
+    <CommunityShell communityId={communityId} active="members" tgActive="members">
       <div className="space-y-4">
         <div>
-          <h1 className="text-xl font-extrabold tracking-tight">Пользователи</h1>
+          <h1 className="text-xl font-extrabold tracking-tight">Участники</h1>
           <p className="mt-1 text-sm text-stitch-muted">
-            Участники сообщества, роли и балансы заслуг (только просмотр).
+            Рейтинг по балансу заслуг в сообществе.
           </p>
         </div>
 
@@ -37,6 +43,59 @@ function MembersInner({ communityId }: { communityId: string }) {
           <p className="text-sm text-red-400">Не удалось загрузить список участников.</p>
         )}
 
+        <ul className="space-y-3">
+          {members.map((member) => {
+            const isSelf = member.id === selfId;
+            return (
+              <li
+                key={member.id}
+                className={
+                  isSelf
+                    ? 'rounded-xl border border-primary/40 bg-primary/5 p-4'
+                    : 'rounded-xl border border-stitch-border bg-stitch-surface p-4'
+                }
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="font-semibold text-stitch-text">
+                      {member.displayName || member.username || member.id}
+                      {isSelf && (
+                        <span className="ml-2 text-xs font-normal text-primary">(вы)</span>
+                      )}
+                    </p>
+                    {member.username && (
+                      <p className="text-sm text-stitch-muted">@{member.username}</p>
+                    )}
+                  </div>
+                  <span className="rounded-lg bg-stitch-elevated px-2 py-0.5 text-xs font-medium text-stitch-muted">
+                    {roleLabel(member.role)}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-stitch-muted">Кошелёк</p>
+                    <p className="font-medium">{member.walletBalance ?? 0} заслуг</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-stitch-muted">Квота сегодня</p>
+                    <p className="font-medium">
+                      {member.quota?.remainingToday ?? 0} / {member.quota?.dailyQuota ?? 0}
+                    </p>
+                  </div>
+                </div>
+                {!isSelf && (
+                  <Link
+                    href={`/c/${communityId}/transfer?to=${member.id}`}
+                    className="mt-3 inline-flex rounded-lg bg-primary/15 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/25"
+                  >
+                    Перевести
+                  </Link>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+
         {!membersQuery.isLoading && total < 3 && (
           <p className="rounded-xl border border-stitch-border bg-stitch-surface px-4 py-3 text-sm text-stitch-muted">
             Мало участников для демо. Запустите{' '}
@@ -45,46 +104,11 @@ function MembersInner({ communityId }: { communityId: string }) {
           </p>
         )}
 
-        <ul className="space-y-3">
-          {members.map((member) => (
-            <li
-              key={member.id}
-              className="rounded-xl border border-stitch-border bg-stitch-surface p-4"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-stitch-text">
-                    {member.displayName || member.username || member.id}
-                  </p>
-                  {member.username && (
-                    <p className="text-sm text-stitch-muted">@{member.username}</p>
-                  )}
-                </div>
-                <span className="rounded-lg bg-stitch-elevated px-2 py-0.5 text-xs font-medium text-stitch-muted">
-                  {roleLabel(member.role)}
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-xs text-stitch-muted">Кошелёк</p>
-                  <p className="font-medium">{member.walletBalance ?? 0} заслуг</p>
-                </div>
-                <div>
-                  <p className="text-xs text-stitch-muted">Квота сегодня</p>
-                  <p className="font-medium">
-                    {member.quota?.remainingToday ?? 0} / {member.quota?.dailyQuota ?? 0}
-                  </p>
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-
         {!membersQuery.isLoading && members.length === 0 && (
           <p className="text-sm text-stitch-muted">Участников пока нет.</p>
         )}
       </div>
-    </Shell>
+    </CommunityShell>
   );
 }
 

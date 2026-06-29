@@ -52,6 +52,8 @@ import {
   buildGroupWelcomeMessage,
   buildOnboardingDoneMessage,
   buildTelegramHelpMessage,
+  mapTelegramUserFacingError,
+  voteAmountButtonLabels,
 } from './telegram-messages.ru';
 import {
   normalizeTelegramReactionEmoji,
@@ -758,6 +760,24 @@ export class TelegramBotOrchestratorService {
       await this.updatePublicationAckSetting(tgUserId, parts[3], enabled);
       return;
     }
+    if (parts[0] === 'vote_amt' && parts[1] && parts[2]) {
+      const amount = Number.parseInt(parts[2], 10);
+      if (Number.isFinite(amount) && amount > 0) {
+        await this.confirmVoteAmount(tgUserId, parts[1], amount);
+      }
+      return;
+    }
+    if (parts[0] === 'onboard' && (parts[1] === 'yes' || parts[1] === 'no')) {
+      const pending = await this.pendingModel.findOne({ telegramUserId: tgUserId }).exec();
+      if (pending) {
+        await this.handlePendingInput(
+          tgUserId,
+          parts[1] === 'yes' ? 'да' : 'нет',
+          pending,
+        );
+      }
+      return;
+    }
     const [kind, action, pendingId] = parts;
     if (kind === 'vote' && pendingId) {
       if (action === 'yes') {
@@ -866,7 +886,16 @@ export class TelegramBotOrchestratorService {
   ): Promise<void> {
     await this.pendingModel.deleteMany({ telegramUserId: tgUserId }).exec();
     await this.savePending(tgUserId, nextAction, payload as Record<string, unknown>);
-    await this.tgBots.tgSend({ tgChatId: tgUserId, text: prompt });
+    const yesNoSteps: TelegramBotPendingActionType[] = [
+      'onboarding_quota_enabled',
+      'onboarding_moderation',
+      'onboarding_publication_ack',
+    ];
+    if (yesNoSteps.includes(nextAction)) {
+      await this.sendCallbackPrompt(tgUserId, prompt, 'onboard:yes', 'onboard:no');
+    } else {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: prompt });
+    }
   }
 
   private async finishOnboarding(tgUserId: string, payload: OnboardingPayload): Promise<void> {
@@ -1201,7 +1230,8 @@ export class TelegramBotOrchestratorService {
         });
       }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : TG_MSG.insufficientMerits;
+      const msg =
+        e instanceof Error ? mapTelegramUserFacingError(e.message) : TG_MSG.insufficientMerits;
       if (groupFeedback) {
         await this.tgBots.tgReplyEphemeral({
           chat_id: groupFeedback.groupChatId,
@@ -1267,29 +1297,35 @@ export class TelegramBotOrchestratorService {
           : isSelfPost
             ? TG_MSG.voteAmountGroupPromptSelf
             : TG_MSG.voteAmountGroupPrompt;
-      const promptMessageId = await this.tgBots.tgReplyEphemeral({
-        chat_id: context.groupChatId,
-        reply_to_message_id: context.replyToMessageId,
-        text: promptText,
+      await this.pendingModel.create({
+        id: pendingId,
+        telegramUserId: tgUserId,
+        action: 'confirm_vote_amount',
+        payload: {
+          voterId,
+          publicationId,
+          direction,
+          groupChatId: context.groupChatId,
+        },
+        expiresAt: new Date(Date.now() + PENDING_TTL_MS),
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
+      const promptMessageId = await this.sendVoteAmountPromptWithKeyboard(
+        context.groupChatId,
+        context.replyToMessageId,
+        pendingId,
+        promptText,
+        direction,
+      );
       if (promptMessageId != null) {
-        await this.pendingModel.create({
-          id: pendingId,
-          telegramUserId: tgUserId,
-          action: 'confirm_vote_amount',
-          payload: {
-            voterId,
-            publicationId,
-            direction,
-            groupChatId: context.groupChatId,
-            promptMessageId,
-          },
-          expiresAt: new Date(Date.now() + PENDING_TTL_MS),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+        await this.pendingModel.updateOne(
+          { id: pendingId },
+          { $set: { 'payload.promptMessageId': promptMessageId, updatedAt: new Date() } },
+        );
         return;
       }
+      await this.pendingModel.deleteOne({ id: pendingId }).exec();
     }
 
     await this.pendingModel.create({
@@ -1468,7 +1504,8 @@ export class TelegramBotOrchestratorService {
         ),
       });
     } catch (e) {
-      const msg = e instanceof Error ? e.message : TG_MSG.insufficientMerits;
+      const msg =
+        e instanceof Error ? mapTelegramUserFacingError(e.message) : TG_MSG.insufficientMerits;
       await this.tgBots.tgReplyEphemeral({
         chat_id: group.groupChatId,
         reply_to_message_id: group.replyToMessageId,
@@ -1597,6 +1634,56 @@ export class TelegramBotOrchestratorService {
       { $set: { 'settings.telegramPublicationAckEnabled': enabled, updatedAt: new Date() } },
     );
     await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.settingsAckUpdated(enabled) });
+  }
+
+  private async sendVoteAmountPromptWithKeyboard(
+    chatId: string,
+    replyToMessageId: number,
+    pendingId: string,
+    promptText: string,
+    direction: 'up' | 'down',
+  ): Promise<number | null> {
+    const token = this.configService.get('bot')?.token;
+    if (!token || this.configService.get('noAxios')) {
+      return this.tgBots.tgReplyEphemeral({
+        chat_id: chatId,
+        reply_to_message_id: replyToMessageId,
+        text: promptText,
+      });
+    }
+    const [l1, l2, l3] = voteAmountButtonLabels(direction);
+    try {
+      const Axios = (await import('axios')).default;
+      const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
+      const res = await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
+        chat_id: chatId,
+        reply_to_message_id: replyToMessageId,
+        text: promptText,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: l1, callback_data: `vote_amt:${pendingId}:1` },
+              { text: l2, callback_data: `vote_amt:${pendingId}:3` },
+              { text: l3, callback_data: `vote_amt:${pendingId}:5` },
+            ],
+          ],
+        },
+      });
+      const messageId = res.data?.result?.message_id;
+      if (typeof messageId === 'number') {
+        setTimeout(() => {
+          void this.tgBots.tgDeleteMessage(chatId, messageId);
+        }, TG_BOT_EPHEMERAL_TTL_SEC * 1000);
+        return messageId;
+      }
+    } catch {
+      /* fallback below */
+    }
+    return this.tgBots.tgReplyEphemeral({
+      chat_id: chatId,
+      reply_to_message_id: replyToMessageId,
+      text: promptText,
+    });
   }
 
   private async sendCallbackPrompt(

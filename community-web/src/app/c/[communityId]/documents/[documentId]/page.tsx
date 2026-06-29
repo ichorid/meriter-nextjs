@@ -1,9 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { AuthGate, Shell } from '@/components/shell';
+import { useRouter } from 'next/navigation';
+import { AuthGate } from '@/components/shell';
+import { CommunityShell } from '@/components/community-shell';
 import { useCommunityDocumentParams } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
+import { useTelegramBackButton } from '@/lib/use-telegram-chrome';
 
 type DocumentBlock = {
   id: string;
@@ -28,6 +31,7 @@ function DocumentDetailInner({
   communityId: string;
   documentId: string;
 }) {
+  const router = useRouter();
   const [proposeBlockId, setProposeBlockId] = useState<string | null>(null);
   const [proposeContent, setProposeContent] = useState('');
   const utils = trpc.useUtils();
@@ -54,16 +58,23 @@ function DocumentDetailInner({
 
   const threads = variantsQuery.data?.threads ?? [];
 
+  const backButtonActive = useTelegramBackButton({
+    visible: true,
+    onClick: () => router.push(`/c/${communityId}/documents`),
+  });
+
   return (
-    <Shell communityId={communityId} active="documents">
+    <CommunityShell communityId={communityId} active="documents" tgActive="feed">
       <div className="space-y-6">
         <div>
-          <a
-            href={`/c/${communityId}/documents`}
-            className="text-sm text-primary hover:underline"
-          >
-            ← К списку документов
-          </a>
+          {!backButtonActive && (
+            <a
+              href={`/c/${communityId}/documents`}
+              className="text-sm text-primary hover:underline"
+            >
+              ← К списку документов
+            </a>
+          )}
           <h1 className="mt-2 text-xl font-extrabold tracking-tight">
             {doc?.title ?? doc?.documentType ?? 'Документ'}
           </h1>
@@ -174,7 +185,7 @@ function DocumentDetailInner({
           <p className="text-sm text-red-400">Не удалось отправить предложение.</p>
         )}
       </div>
-    </Shell>
+    </CommunityShell>
   );
 }
 

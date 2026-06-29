@@ -83,8 +83,9 @@ describe('buildTelegramHelpMessage web links', () => {
       communityName: 'Test Community',
       linkStyle: 'meriter-web',
     });
+    expect(text).toContain('Приложение: https://dev.meriter.pro/tg');
     expect(text).toContain(
-      'Открыть веб: https://dev.meriter.pro/meriter/communities/cd4e9e74829',
+      'Веб-версия: https://dev.meriter.pro/meriter/communities/cd4e9e74829',
     );
     expect(text).not.toContain('/c/');
     expect(text).not.toContain('community.meriter.pro');
@@ -96,8 +97,9 @@ describe('buildTelegramHelpMessage web links', () => {
       communityName: 'Test Community',
       linkStyle: 'community-web',
     });
+    expect(text).toContain('Приложение: https://community.meriter.pro/tg');
     expect(text).toContain(
-      'Открыть веб: https://community.meriter.pro/c/299751ae456/feed',
+      'Веб-версия: https://community.meriter.pro/c/299751ae456/feed',
     );
   });
 });

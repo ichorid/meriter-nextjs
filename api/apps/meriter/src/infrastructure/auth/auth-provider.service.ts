@@ -919,10 +919,151 @@ export class AuthProviderService {
     return hashValid && timeValid;
   }
 
+  parseTelegramWebAppInitData(initData: string): {
+    valid: boolean;
+    user?: {
+      id: number;
+      first_name: string;
+      last_name?: string;
+      username?: string;
+      photo_url?: string;
+    };
+    chat?: { id: number; type: string; title?: string };
+    startParam?: string | null;
+  } {
+    const botToken = this.configService.get('bot')?.token;
+    if (!botToken) {
+      return { valid: false };
+    }
+    const verified = this.verifyTelegramWebAppData(initData, botToken);
+    if (!verified.valid || !verified.user) {
+      return { valid: false };
+    }
+    try {
+      const urlParams = new URLSearchParams(initData);
+      const chatJson = urlParams.get('chat');
+      const chat = chatJson
+        ? (JSON.parse(chatJson) as { id: number; type: string; title?: string })
+        : undefined;
+      const startParam = urlParams.get('start_param');
+      return {
+        valid: true,
+        user: verified.user,
+        chat,
+        startParam,
+      };
+    } catch {
+      return { valid: true, user: verified.user, startParam: null };
+    }
+  }
+
+  async authenticateTelegramWebApp(
+    initData: string,
+    options?: { skipBaseCommunities?: boolean },
+  ): Promise<{
+    user: User;
+    hasPendingCommunities: boolean;
+    isNewUser: boolean;
+    jwt: string;
+    primaryTelegramCommunityId: string | null;
+    telegramChatId: string | null;
+    startParam: string | null;
+  }> {
+    const parsed = this.parseTelegramWebAppInitData(initData);
+    if (!parsed.valid || !parsed.user) {
+      throw new Error('Invalid Telegram Web App authentication data');
+    }
+
+    const tgUser = parsed.user;
+    const authId = String(tgUser.id);
+    const username = tgUser.username || `tg_${authId}`;
+    const displayName =
+      [tgUser.first_name, tgUser.last_name].filter(Boolean).join(' ').trim() ||
+      username;
+
+    let user = await this.userService.getUserByAuthId('telegram', authId);
+    const isNewUser = !user;
+
+    user = await this.userService.createOrUpdateUser({
+      authProvider: 'telegram',
+      authId,
+      username,
+      firstName: tgUser.first_name,
+      lastName: tgUser.last_name,
+      displayName,
+      avatarUrl: tgUser.photo_url,
+    });
+
+    if (!user) {
+      throw new Error('Failed to create or update Telegram user');
+    }
+
+    if (!options?.skipBaseCommunities) {
+      await this.userService.ensureUserInBaseCommunities(user.id);
+    }
+
+    const jwtSecret = this.configService.getOrThrow('jwt').secret;
+    const jwtToken = signJWT(
+      {
+        uid: user.id,
+        authProvider: 'telegram',
+        authId,
+        communityTags: user.communityTags || [],
+        product: 'community',
+      },
+      jwtSecret,
+      '365d',
+    );
+
+    let primaryTelegramCommunityId =
+      await this.resolvePrimaryTelegramCommunityId(user.id);
+
+    const telegramChatId = parsed.chat?.id != null ? String(parsed.chat.id) : null;
+    if (telegramChatId) {
+      const fromChat = await this.resolveCommunityIdByTelegramChatId(telegramChatId);
+      if (fromChat) {
+        primaryTelegramCommunityId = fromChat;
+      }
+    }
+
+    const startParam = parsed.startParam?.trim() || null;
+    if (startParam && !startParam.includes('=')) {
+      primaryTelegramCommunityId = startParam;
+    }
+
+    return {
+      user: JwtService.mapUserToV1Format(user),
+      hasPendingCommunities: (user.communityTags?.length || 0) > 0,
+      isNewUser,
+      jwt: jwtToken,
+      primaryTelegramCommunityId,
+      telegramChatId,
+      startParam,
+    };
+  }
+
+  async resolveCommunityIdByTelegramChatId(
+    telegramChatId: string,
+  ): Promise<string | null> {
+    const doc = await this.communityModel
+      .findOne({ telegramChatId, telegramFrozenAt: { $exists: false } })
+      .lean();
+    return doc?.id ?? null;
+  }
+
   private verifyTelegramWebAppData(
     initData: string,
     botToken: string,
-  ): { valid: boolean; user?: any } {
+  ): {
+    valid: boolean;
+    user?: {
+      id: number;
+      first_name: string;
+      last_name?: string;
+      username?: string;
+      photo_url?: string;
+    };
+  } {
     try {
       const urlParams = new URLSearchParams(initData);
       const hash = urlParams.get('hash');
@@ -951,7 +1092,7 @@ export class AuthProviderService {
         return { valid: false };
       }
 
-      const authDate = parseInt(urlParams.get('auth_date') || '0');
+      const authDate = parseInt(urlParams.get('auth_date') || '0', 10);
       const currentTime = Math.floor(Date.now() / 1000);
       if (currentTime - authDate >= 86400) {
         return { valid: false };
@@ -962,7 +1103,13 @@ export class AuthProviderService {
         return { valid: false };
       }
 
-      const user = JSON.parse(userJson);
+      const user = JSON.parse(userJson) as {
+        id: number;
+        first_name: string;
+        last_name?: string;
+        username?: string;
+        photo_url?: string;
+      };
       return { valid: true, user };
     } catch (error) {
       this.logger.error('Error verifying Telegram Web App data:', error);

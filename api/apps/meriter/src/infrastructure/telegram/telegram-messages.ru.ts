@@ -7,35 +7,75 @@ export type CommunityUsageRulesInput = {
   hashtags?: string[];
 };
 
+export const ONBOARDING_TOTAL_STEPS = 9;
+
+export function onboardingStepPrompt(step: number, text: string): string {
+  return `Шаг ${step} из ${ONBOARDING_TOTAL_STEPS}\n\n${text}`;
+}
+
 export function primaryCommunityHashtag(hashtags?: string[]): string {
   const tag = (hashtags?.[0] ?? 'идея').replace(/^#/, '').trim();
   return tag || 'идея';
 }
 
+export function buildMiniAppOpenSteps(): string {
+  return (
+    `Как открыть приложение Meriter:\n` +
+    `1) В группе нажмите 📎 (скрепка) слева от поля ввода\n` +
+    `2) Выберите «Meriter» в меню\n` +
+    `3) Откроется приложение: баланс, люди, переводы, лента`
+  );
+}
+
 export function buildCommunityUsageRules(input: CommunityUsageRulesInput): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
   return (
-    `Правила:\n` +
-    `• Публикация: #${hashtag} в тексте сообщения\n` +
-    `• 👍 = +1 заслуга автору (на чужих — квота/кошелёк; на своих — только кошелёк)\n` +
-    `• ❤️ = бот попросит сумму ответом в группе\n` +
-    `• 🤡 = минус с кошелька (бот попросит сумму ответом в группе)\n` +
-    `• Reply +N текст или -N текст — голос с комментарием\n` +
-    `• /balance /members /transfer /help /settings\n\n` +
-    `Заслуги — не деньги.`
+    `${buildMiniAppOpenSteps()}\n\n` +
+    `Публикация в чате: напишите #${hashtag} в тексте сообщения.\n` +
+    `Пример: «#${hashtag} Предлагаю собраться в субботу»\n\n` +
+    `Голосование реакциями:\n` +
+    `• 👍 — быстро +1 заслуга автору\n` +
+    `• ❤️ — поддержать сильнее (выберите сумму кнопкой)\n` +
+    `• 🤡 — не согласен (списание с вашего кошелька, выберите сумму)\n\n` +
+    `Или ответьте на пост: +3 Отличная идея  /  -2 Не согласен\n\n` +
+    `Заслуги — внутренняя валюта сообщества, не деньги.`
   );
 }
 
 export function buildOnboardingDoneMessage(input: CommunityUsageRulesInput): string {
-  return `Сообщество «${input.communityName}» настроено.\n\n${buildCommunityUsageRules(input)}`;
+  return (
+    `Готово! Сообщество «${input.communityName}» настроено.\n\n` +
+    `Что делать дальше:\n` +
+    `• Откройте Meriter у 📎 и посмотрите баланс\n` +
+    `• Опубликуйте первый пост с #${primaryCommunityHashtag(input.hashtags)} в группе\n\n` +
+    buildCommunityUsageRules(input)
+  );
 }
 
 export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): string {
   return (
     `Meriter подключён к «${input.communityName}».\n\n` +
-    `Голосуйте реакциями на посты бота и сообщения с хэштегом.\n\n` +
+    `Начните с приложения у 📎 — там баланс, участники и переводы.\n` +
+    `Голосуйте реакциями 👍 ❤️ 🤡 на посты бота и сообщения с хэштегом.\n\n` +
     buildCommunityUsageRules(input)
   );
+}
+
+export function communityWebMiniAppUrl(
+  baseUrl: string,
+  _linkStyle: TelegramWebLinkStyle = 'community-web',
+): string {
+  const root = baseUrl.replace(/\/$/, '');
+  return `${root}/tg`;
+}
+
+export function communityWebPostMiniAppUrl(
+  _baseUrl: string,
+  _communityId: string,
+  postId: string,
+  botUsername: string,
+): string {
+  return `https://t.me/${botUsername}?startapp=post:${postId}`;
 }
 
 export function communityWebFeedUrl(
@@ -71,104 +111,175 @@ export function buildTelegramHelpMessage(
   },
 ): string {
   const linkStyle = options?.linkStyle ?? 'community-web';
+  const miniAppUrl = communityWebMiniAppUrl(communityWebBaseUrl, linkStyle);
   const openLine = options?.communityId
-    ? `\n\nОткрыть веб: ${communityWebFeedUrl(communityWebBaseUrl, options.communityId, linkStyle)}`
-    : `\n\nВход в веб: ${communityWebLoginUrl(communityWebBaseUrl, linkStyle)}`;
+    ? `\n\nПриложение: ${miniAppUrl}\nВеб-версия: ${communityWebFeedUrl(communityWebBaseUrl, options.communityId, linkStyle)}`
+    : `\n\nПриложение: ${miniAppUrl}\nВход в браузере: ${communityWebLoginUrl(communityWebBaseUrl, linkStyle)}`;
 
   const rulesBlock = options?.communityName
     ? `${buildCommunityUsageRules({
         communityName: options.communityName,
-        hashtags: options.hashtags,
+        hashtags: options?.hashtags,
       })}\n\n`
     : `${buildCommunityUsageRules({ communityName: 'сообщество', hashtags: options?.hashtags })}\n\n`;
 
-  return `${rulesBlock}Команды:\n/balance — баланс и квота\n/members — рейтинг участников\n/transfer — перевод заслуг (в группе)\n/settings — настройки бота (лид)\n/help — эта справка${openLine}`;
+  return (
+    `${rulesBlock}` +
+    `Команды в чате (если нет приложения):\n` +
+    `/баланс или /balance — ваши заслуги\n` +
+    `/участники или /members — список участников\n` +
+    `/перевод или /transfer — перевести заслуги\n` +
+    `/настройки или /settings — настройки (лид)\n` +
+    `/справка или /help — эта подсказка` +
+    openLine
+  );
+}
+
+/** Map backend errors to plain Russian for chat users. */
+export function mapTelegramUserFacingError(message: string): string {
+  const lower = message.toLowerCase();
+  if (
+    lower.includes('insufficient') ||
+    lower.includes('not enough') ||
+    lower.includes('не хватает')
+  ) {
+    return TG_MSG.insufficientMerits;
+  }
+  if (lower.includes('frozen') || lower.includes('заморож')) {
+    return TG_MSG.frozenMember;
+  }
+  if (lower.includes('permission') || lower.includes('forbidden') || lower.includes('доступ')) {
+    return 'У вас нет прав для этого действия.';
+  }
+  if (/^[a-z\s_-]+$/i.test(message.trim()) && message.length < 120) {
+    return TG_MSG.insufficientMerits;
+  }
+  if (/[\u0400-\u04FF]/.test(message)) {
+    return message;
+  }
+  return TG_MSG.insufficientMerits;
 }
 
 export const TG_VOTE_DEFAULT_COMMENT = 'В Telegram-группе';
 
 export const TG_MSG = {
   frozenMember:
-    'Ваш доступ к заслугам в этом сообществе приостановлен — вы не в Telegram-группе. Вернитесь в группу, чтобы снова участвовать.',
+    'Доступ к заслугам приостановлен — вы не состоите в Telegram-группе. Вернитесь в группу и откройте Meriter снова.',
   communityFrozen:
-    'Сообщество заморожено: бот удалён из группы. Заслуги временно недоступны.',
-  insufficientMerits: 'Не хватает заслуг для этого действия.',
-  voteConfirm: (amount: number, direction: 'up' | 'down') =>
-    direction === 'up'
-      ? `Подтвердить начисление ${amount} заслуг автору?`
-      : `Подтвердить списание ${amount} заслуг с автора?`,
-  transferDone: (amount: number, balance: number) =>
-    `Готово. Переведено ${amount} заслуг. Ваш баланс: ${balance}.`,
+    'Сообщество на паузе: бот удалён из группы. Заслуги временно недоступны. Добавьте бота обратно.',
+  insufficientMerits: 'Не хватает заслуг для этого действия. Проверьте баланс в приложении Meriter (📎).',
   transferDoneGroup: (amount: number, receiverName: string, balance: number) =>
-    `Переведено ${amount} заслуг → ${receiverName}. Ваш баланс: ${balance}.`,
+    `Готово! Переведено ${amount} заслуг → ${receiverName}.\nВаш баланс: ${balance}.`,
   transferUseGroup:
-    'Перевод заслуг доступен только в группе: ответьте на сообщение участника командой /transfer 5 или /transfer @username 5.',
+    'Перевод заслуг работает только в группе.\n\n' +
+    '• Ответьте на сообщение участника: /перевод 5\n' +
+    '• Или укажите имя: /перевод @username 5',
   transferErrorSelf: 'Нельзя переводить заслуги самому себе.',
-  transferErrorAmount: 'Укажите положительную сумму.',
-  transferErrorReceiver: 'Получатель не найден в Meriter.',
+  transferErrorAmount: 'Укажите положительное число заслуг.',
+  transferErrorReceiver:
+    'Участник не найден. Убедитесь, что он писал в группе и состоит в Meriter.',
   transferErrorFormat:
-    'Формат: /transfer @username 5 или ответ на сообщение: /transfer 5',
+    'Не получилось разобрать команду.\n\n' +
+    'Примеры:\n' +
+    '• /перевод @ivan 5\n' +
+    '• ответ на сообщение: /перевод 5',
   voteSuccess: (amount: number, direction: 'up' | 'down') =>
     direction === 'up'
       ? `Начислено ${amount} заслуг автору.`
       : `Списано ${amount} заслуг с автора.`,
-  reactionPostNotFound: 'Пост не найден в Meriter — голосовать можно только по сохранённым публикациям.',
-  reactionUnsupported: 'Эта реакция не поддерживается. Используйте 👍 ❤️ 🤡 или ответ +N текст.',
-  voteAmountGroupPrompt: 'Ответьте числом на это сообщение — сколько заслуг начислить?',
+  reactionPostNotFound:
+    'Это сообщение ещё не в Meriter. Голосовать можно только по сохранённым постам (с хэштегом или от бота).',
+  reactionUnsupported:
+    'Такая реакция не поддерживается.\n\n' +
+    'Используйте 👍 ❤️ 🤡 или ответьте на пост: +3 ваш комментарий',
+  voteAmountGroupPrompt:
+    'Сколько заслуг начислить автору?\n\nОтветьте числом на это сообщение или нажмите кнопку ниже.',
   voteAmountGroupPromptSelf:
-    'Ответьте числом на это сообщение — сколько заслуг начислить? (на свой пост — только с кошелька)',
-  voteAmountGroupPromptDown: 'Ответьте числом на это сообщение — сколько заслуг списать?',
+    'Сколько заслуг начислить?\n\nНа свой пост — только с кошелька.\nОтветьте числом или нажмите кнопку.',
+  voteAmountGroupPromptDown:
+    'Сколько заслуг списать с автора?\n\nОтветьте числом на это сообщение или нажмите кнопку ниже.',
   balanceSelf: (name: string, wallet: number, quota: number, quotaMax: number, pct: number) =>
-    `Ваши заслуги в «${name}»\n\nКошелёк: ${wallet}\nКвота сегодня: ${quota} из ${quotaMax}\nДоля от общего пула: ${pct.toFixed(1)}%`,
-  membersHeader: 'Участники (активные):',
+    `Ваши заслуги в «${name}»\n\n` +
+    `Кошелёк — накопленные заслуги: ${wallet}\n` +
+    `Бесплатные на сегодня: ${quota} из ${quotaMax}\n` +
+    `Доля в общем фонде сообщества: ${pct.toFixed(1)}%`,
+  membersHeader: 'Участники сообщества:',
   memberLine: (display: string, wallet: number, pct: number) =>
     `• ${display}: ${wallet} (${pct.toFixed(1)}%)`,
-  onboardingStart:
-    'Добро пожаловать! Вы добавили бота Meriter. Как называется ваше сообщество? (отправьте название)',
-  onboardingFutureVision:
-    'Опишите образ будущего вашего сообщества — это обязательно и не может быть пустым.\n\nРасскажите, к чему вы стремитесь, какие ценности и цели объединяют участников. Текст сохранится в настройках Meriter и попадёт в ленту «Образы будущего».',
+  onboardingStart: onboardingStepPrompt(
+    1,
+    'Вы добавили бота Meriter в группу.\n\nКак называется ваше сообщество? Напишите название одним сообщением.',
+  ),
+  onboardingFutureVision: onboardingStepPrompt(
+    2,
+    'Кратко опишите, к чему стремится ваше сообщество — «образ будущего».\n\n' +
+      'Это обязательный шаг: хотя бы одно предложение. Текст сохранится в Meriter.',
+  ),
   onboardingFutureVisionEmpty:
-    'Образ будущего обязателен — пустой текст принять нельзя. Отправьте осмысленное описание (хотя бы одно предложение).',
+    'Нужен хотя бы один осмысленный абзац. Опишите цели и ценности сообщества.',
   onboardingFutureVisionTooLong: (max: number) =>
-    `Слишком длинный текст. Сократите образ будущего до ${max} символов и отправьте снова.`,
-  onboardingQuota: 'Включить ежедневную квоту заслуг? Ответьте «да» или «нет».',
-  onboardingQuotaAmount: 'Сколько заслуг в день выдавать в квоте? (число, например 5)',
-  onboardingHashtag:
-    'Какой хэштег для постов из чата? (без #, например: идея)',
-  onboardingPostCost: 'Стоимость публикации поста в заслугах? (0 = бесплатно)',
-  onboardingModeration:
-    'Нужна модерация постов перед публикацией? «да» или «нет»',
-  onboardingPublicationAck:
-    'Уведомлять в группе о сохранении постов с хэштегом? «да» или «нет» (по умолчанию — нет)',
-  onboardingWelcome: 'Приветственные заслуги новым участникам? (0 = не начислять)',
+    `Слишком длинный текст. Сократите до ${max} символов и отправьте снова.`,
+  onboardingQuota: onboardingStepPrompt(
+    3,
+    'Выдавать участникам бесплатные заслуги каждый день?\n\nЭто помогает новичкам голосовать без накопленного баланса.',
+  ),
+  onboardingQuotaAmount: onboardingStepPrompt(
+    4,
+    'Сколько бесплатных заслуг в день? Напишите число, например: 5',
+  ),
+  onboardingHashtag: onboardingStepPrompt(
+    5,
+    'Какой хэштег для постов из чата? Напишите без #, например: идея\n\n' +
+      'Участники будут писать #идея в сообщениях, чтобы опубликовать пост.',
+  ),
+  onboardingPostCost: onboardingStepPrompt(
+    6,
+    'Сколько заслуг стоит публикация поста? Напишите число.\n\n0 — публикация бесплатная.',
+  ),
+  onboardingModeration: onboardingStepPrompt(
+    7,
+    'Проверять посты лидом перед публикацией?\n\nЕсли да — посты появятся в группе только после одобрения.',
+  ),
+  onboardingPublicationAck: onboardingStepPrompt(
+    8,
+    'Писать в группу «Пост сохранён», когда сообщение с хэштегом попало в Meriter?\n\nПо умолчанию лучше выключить.',
+  ),
+  onboardingWelcome: onboardingStepPrompt(
+    9,
+    'Сколько приветственных заслуг дать новому участнику?\n\n0 — не начислять. Напишите число.',
+  ),
   botRemovedAdmin:
-    'Бот удалён из группы. Сообщество заморожено — траты и начисления заслуг остановлены.',
-  enterAmount: 'Введите количество заслуг (число):',
+    'Бот удалён из группы. Сообщество на паузе — начисления и траты заслуг остановлены. Добавьте бота обратно.',
+  enterAmount: 'Напишите число — сколько заслуг начислить:',
   enterAmountSelfUp:
-    'Введите количество заслуг (число). На свой пост — только с кошелька.',
+    'Напишите число заслуг. На свой пост можно только с кошелька (не с бесплатных на сегодня).',
   voteAmountDmFailed: (botUsername: string) =>
-    `Не удалось написать вам в личку. Откройте @${botUsername}, нажмите Start, затем повторите реакцию.`,
-  voteAmountGroupHint: (botUsername: string, isSelfPost: boolean) =>
-    isSelfPost
-      ? `Для голоса откройте @${botUsername} в личке (Start) и введите сумму заслуг. На свой пост — только с кошелька.`
-      : `Для голоса откройте @${botUsername} в личке (Start) и введите сумму заслуг.`,
+    `Не удалось написать вам в личку.\n\n` +
+    `1) Откройте @${botUsername}\n` +
+    `2) Нажмите Start / Запустить\n` +
+    `3) Повторите реакцию в группе`,
   cancelled: 'Отменено.',
-  unknownCommand: 'Не понял команду. /help — справка.',
+  unknownCommand: 'Не понял команду. Напишите /справка или /help — там все подсказки.',
   noLinkedCommunity:
-    'Нет привязанного Telegram-сообщества. Добавьте бота в группу и завершите мастер настройки в личке.',
+    'Сообщество ещё не настроено.\n\n' +
+    '1) Добавьте бота в группу\n' +
+    '2) Завершите мастер настройки в личке с ботом (тому, кто добавил бота)',
   groupNotLinked:
-    'Бот не привязан к этой группе. Завершите мастер настройки в личке с ботом (тому, кто добавил бота).',
-  onboardingInProgress: 'Мастер настройки не завершён. Продолжите в личке с ботом.',
+    'Бот не привязан к этой группе.\n\nТому, кто добавил бота, нужно завершить настройку в личке с @ботом.',
+  onboardingInProgress:
+    'Настройка не завершена. Продолжите ответы в личке с ботом — бот задаст следующий вопрос.',
   multipleLinkedCommunities:
-    'У вас несколько Telegram-сообществ. Используйте команды в соответствующей группе.',
+    'У вас несколько сообществ Meriter. Используйте команды в той группе, где хотите действовать.',
   settingsLeadOnly: 'Настройки бота доступны только лиду сообщества.',
-  settingsUseGroup: 'Настройки бота доступны в группе: /settings (только лид).',
+  settingsUseGroup: 'Настройки бота: напишите /settings или /настройки в группе (только лид).',
   settingsLead: (ackEnabled: boolean) =>
-    `Настройки бота Meriter.\n\nУведомление о сохранении поста в группе: ${ackEnabled ? 'включено' : 'выключено'}.`,
+    `Настройки Meriter\n\n` +
+    `Сообщение «Пост сохранён» в группе: ${ackEnabled ? 'включено' : 'выключено'}.`,
   settingsAckUpdated: (enabled: boolean) =>
     enabled
       ? 'Уведомления о сохранении постов включены.'
       : 'Уведомления о сохранении постов выключены.',
+  postSavedAck: 'Пост сохранён в Meriter.',
 } as const;
 
 export const TG_EMOJI = {
@@ -178,3 +289,10 @@ export const TG_EMOJI = {
   heartFull: '❤️',
   down: '🤡',
 } as const;
+
+export function voteAmountButtonLabels(direction: 'up' | 'down'): [string, string, string] {
+  if (direction === 'down') {
+    return ['-1', '-3', '-5'];
+  }
+  return ['+1', '+3', '+5'];
+}

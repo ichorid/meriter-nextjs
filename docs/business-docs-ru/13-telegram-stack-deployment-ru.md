@@ -2,7 +2,7 @@
 
 **Аудитория:** DevOps, разработчики, операторы пилота  
 **Версии:** API ≥ 0.59.0, community-web ≥ 0.4.0  
-**Связанные документы:** [10-telegram-mvp.md](./10-telegram-mvp.md), [11-telegram-bot-runbook-ru.md](./11-telegram-bot-runbook-ru.md), [12-community-web-mvp.md](./12-community-web-mvp.md), [12-community-web-runbook-ru.md](./12-community-web-runbook-ru.md)
+**Связанные документы:** [10-telegram-mvp.md](./10-telegram-mvp.md), [11-telegram-bot-runbook-ru.md](./11-telegram-bot-runbook-ru.md), [12-community-web-mvp.md](./12-community-web-mvp.md), [12-community-web-runbook-ru.md](./12-community-web-runbook-ru.md), **[14-telegram-bot-user-guide-ru.md](./14-telegram-bot-user-guide-ru.md)** (инструкция для участников)
 
 ---
 
@@ -194,6 +194,11 @@ docker compose run --rm bot-webhook-init
    - Создать бота, получить `BOT_TOKEN`
    - **Group Privacy: Off** (бот видит все сообщения)
    - **Allow Groups: On**
+   - **Mini App (обязательно для 📎 в группах):**
+     - `/setattach` → выбрать бота → URL: `https://{COMMUNITY_DOMAIN}/tg` → peer types: **Groups** + **Private chats**
+     - `/setdomain` → домен community-web (`community.meriter.pro` или dev-хост)
+     - Menu Button: выставляется при деплое (`setup-bot-menu.js set /tg`); проверить в `/mybots` → Bot Settings → Menu Button
+   - Пользовательская инструкция: [14-telegram-bot-user-guide-ru.md](./14-telegram-bot-user-guide-ru.md) §10
 
 3. **TLS**
    - Caddy автоматически получает Let's Encrypt для `DOMAIN` и `COMMUNITY_DOMAIN`

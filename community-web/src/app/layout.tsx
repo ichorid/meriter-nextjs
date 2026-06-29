@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Manrope } from 'next/font/google';
 import { TrpcProvider } from '@/lib/trpc/provider';
+import { TelegramMiniAppProvider } from '@/lib/telegram-mini-app-context';
 import './globals.css';
 
 const manrope = Manrope({
@@ -27,7 +28,9 @@ export default function RootLayout({
   return (
     <html lang="ru" data-theme="dark">
       <body className={`${manrope.variable} font-sans`}>
-        <TrpcProvider>{children}</TrpcProvider>
+        <TrpcProvider>
+          <TelegramMiniAppProvider>{children}</TelegramMiniAppProvider>
+        </TrpcProvider>
       </body>
     </html>
   );

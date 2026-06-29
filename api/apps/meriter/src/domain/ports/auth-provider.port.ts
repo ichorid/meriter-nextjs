@@ -44,6 +44,16 @@ export type AuthProviderPort = {
       hash: string;
     },
   ): Promise<void>;
+  authenticateTelegramWebApp(
+    initData: string,
+    options?: { skipBaseCommunities?: boolean },
+  ): Promise<
+    AuthSessionResult & {
+      primaryTelegramCommunityId: string | null;
+      telegramChatId: string | null;
+      startParam: string | null;
+    }
+  >;
   authenticateSms(phoneNumber: string): Promise<AuthSessionResult>;
   authenticateEmail(email: string): Promise<AuthSessionResult>;
   authenticateGoogle(code: string): Promise<AuthSessionResult>;

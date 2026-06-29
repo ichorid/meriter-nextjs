@@ -433,7 +433,9 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
 
     expect(tgSendSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ text: TG_MSG.onboardingQuota }),
+      expect.objectContaining({
+        text: expect.stringContaining('бесплатные заслуги'),
+      }),
     );
     const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
     expect(pending?.action).toBe('onboarding_quota_enabled');

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AuthGate, Shell } from '@/components/shell';
+import { AuthGate } from '@/components/shell';
+import { CommunityShell } from '@/components/community-shell';
 import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
@@ -33,6 +34,7 @@ function SettingsInner({ communityId }: { communityId: string }) {
   const [pollCost, setPollCost] = useState('');
   const [dailyEmission, setDailyEmission] = useState('');
   const [telegramModeration, setTelegramModeration] = useState(false);
+  const [telegramPubAck, setTelegramPubAck] = useState(false);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -41,12 +43,13 @@ function SettingsInner({ communityId }: { communityId: string }) {
       setPollCost(String(settings.pollCost ?? 1));
       setDailyEmission(String(settings.dailyEmission ?? 0));
       setTelegramModeration(settings.telegramModerationEnabled ?? false);
+      setTelegramPubAck(settings.telegramPublicationAckEnabled ?? false);
       setInitialized(true);
     }
   }, [settings, initialized]);
 
   return (
-    <Shell communityId={communityId} active="settings">
+    <CommunityShell communityId={communityId} active="settings" tgActive="me">
       <div className="space-y-6">
         <h1 className="text-xl font-extrabold tracking-tight">Настройки сообщества</h1>
 
@@ -73,6 +76,7 @@ function SettingsInner({ communityId }: { communityId: string }) {
                     pollCost: Number(pollCost) || 0,
                     dailyEmission: Number(dailyEmission) || 0,
                     telegramModerationEnabled: telegramModeration,
+                    telegramPublicationAckEnabled: telegramPubAck,
                   },
                 },
               });
@@ -123,6 +127,16 @@ function SettingsInner({ communityId }: { communityId: string }) {
                 className="rounded border-stitch-border"
               />
               <span>Модерация публикаций из Telegram (pending до approve)</span>
+            </label>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={telegramPubAck}
+                onChange={(e) => setTelegramPubAck(e.target.checked)}
+                className="rounded border-stitch-border"
+              />
+              <span>Уведомлять в группе о сохранённых постах</span>
             </label>
 
             <button
@@ -177,7 +191,7 @@ function SettingsInner({ communityId }: { communityId: string }) {
           </section>
         )}
       </div>
-    </Shell>
+    </CommunityShell>
   );
 }
 

@@ -571,7 +571,7 @@ export class TgBotsService {
         await this.tgReplyEphemeral({
           reply_to_message_id: messageId,
           chat_id: tgChatId,
-          text: 'Пост сохранён.',
+          text: 'Пост сохранён в Meriter.',
         });
       }
     }

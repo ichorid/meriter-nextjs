@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { trpc } from '@/lib/trpc/client';
+import { hapticError, hapticSuccess } from '@/lib/telegram-env';
 
 type PollOption = {
   id?: string;
@@ -48,6 +49,7 @@ function PollCreateForm({ communityId }: { communityId: string }) {
 
   const createMutation = trpc.polls.create.useMutation({
     onSuccess: async () => {
+      hapticSuccess();
       setQuestion('');
       setDescription('');
       setHours('24');
@@ -58,6 +60,7 @@ function PollCreateForm({ communityId }: { communityId: string }) {
       setOpen(false);
       await utils.polls.getByCommunity.invalidate({ communityId });
     },
+    onError: () => hapticError(),
   });
 
   if (!open) {
@@ -199,9 +202,11 @@ function PollCard({
 
   const castMutation = trpc.polls.cast.useMutation({
     onSuccess: async () => {
+      hapticSuccess();
       setSelectedOptionId(null);
       await utils.polls.getByCommunity.invalidate({ communityId });
     },
+    onError: () => hapticError(),
   });
 
   const updateMutation = trpc.polls.update.useMutation({

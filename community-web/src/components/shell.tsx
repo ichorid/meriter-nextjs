@@ -8,6 +8,7 @@ import { trpc } from '@/lib/trpc/client';
 import { config } from '@/config';
 import { buildCommunityTabs } from '@/lib/community-nav';
 import { initTelegramWebApp } from '@/lib/telegram-webapp';
+import { isExternalCaptiveBrowser, isTelegramWebApp } from '@/lib/telegram-env';
 import { cn } from '@/lib/utils';
 
 declare global {
@@ -20,15 +21,7 @@ const TELEGRAM_WIDGET_LOAD_ERROR =
   'Не удалось загрузить вход через Telegram. Проверьте домен в BotFather (/setdomain) и обновите страницу.';
 
 function isCaptiveBrowser(): boolean {
-  if (typeof window === 'undefined') return false;
-  if (
-    (window as Window & { Telegram?: { WebApp?: unknown } }).Telegram?.WebApp ||
-    (window as Window & { TelegramWebview?: unknown }).TelegramWebview
-  ) {
-    return true;
-  }
-  const ua = navigator.userAgent;
-  return /Instagram|FBAN|FBAV|Line|MicroMessenger/i.test(ua);
+  return isExternalCaptiveBrowser();
 }
 
 export function TelegramLoginPanel() {
@@ -96,6 +89,7 @@ export function TelegramLoginPanel() {
   }, [runtimeConfig?.botUsername]);
 
   const captive = typeof window !== 'undefined' && isCaptiveBrowser();
+  const inTelegramMiniApp = typeof window !== 'undefined' && isTelegramWebApp();
   const devFakeAuth = runtimeConfig?.devFakeAuthEnabled === true;
   const apiUnreachable = configQuery.isError;
   const showTelegramWidget =
@@ -114,7 +108,7 @@ export function TelegramLoginPanel() {
         </p>
       )}
 
-      {captive && (
+      {captive && !inTelegramMiniApp && (
         <div className="rounded-xl border border-stitch-border bg-stitch-surface p-4 text-sm text-stitch-muted">
           Откройте эту страницу во внешнем браузере (Safari, Chrome), чтобы войти
           через Telegram.
@@ -191,7 +185,11 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (meQuery.isError) {
-      router.replace('/login');
+      if (typeof window !== 'undefined' && isTelegramWebApp()) {
+        router.replace('/tg');
+      } else {
+        router.replace('/login');
+      }
     }
   }, [meQuery.isError, router]);
 

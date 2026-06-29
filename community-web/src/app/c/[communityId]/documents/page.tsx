@@ -1,6 +1,7 @@
 'use client';
 
-import { AuthGate, Shell } from '@/components/shell';
+import { AuthGate } from '@/components/shell';
+import { CommunityShell } from '@/components/community-shell';
 import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
@@ -8,7 +9,7 @@ function DocumentsInner({ communityId }: { communityId: string }) {
   const docsQuery = trpc.documents.listByCommunity.useQuery({ communityId });
 
   return (
-    <Shell communityId={communityId} active="documents">
+    <CommunityShell communityId={communityId} active="documents" tgActive="feed">
       <div className="space-y-4">
         <h1 className="text-xl font-extrabold tracking-tight">Документы</h1>
         {docsQuery.isLoading && (
@@ -28,7 +29,7 @@ function DocumentsInner({ communityId }: { communityId: string }) {
           ))}
         </ul>
       </div>
-    </Shell>
+    </CommunityShell>
   );
 }
 

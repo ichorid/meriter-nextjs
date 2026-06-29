@@ -1,4 +1,4 @@
-import { TelegramAuthDataSchema } from '@meriter/shared-types';
+import { TelegramAuthDataSchema, TelegramWebAppDataSchema } from '@meriter/shared-types';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
 import { router, protectedProcedure, publicProcedure } from '../../../trpc/trpc';
@@ -18,7 +18,9 @@ import { uploadsRouter } from '../../../trpc/routers/uploads.router';
 import { meritTransferRouter } from '../../../trpc/routers/merit-transfer.router';
 import { commentsRouter } from '../../../trpc/routers/comments.router';
 import { ResolveTelegramCommunityUseCase } from '../../../application/use-cases/communities/resolve-telegram-community.use-case';
+import { GetCommunityByTelegramChatIdUseCase } from '../../../application/use-cases/communities/get-community-by-telegram-chat-id.use-case';
 import { AuthenticateTelegramCommunityUseCase } from '../../../application/use-cases/auth/authenticate-telegram-community.use-case';
+import { AuthenticateTelegramWebAppCommunityUseCase } from '../../../application/use-cases/auth/authenticate-telegram-webapp-community.use-case';
 import { AuthenticateFakeCommunityUseCase } from '../../../application/use-cases/auth/authenticate-fake-community.use-case';
 import { SeedCommunityWebDevUseCase } from '../../../application/use-cases/dev/seed-community-web-dev.use-case';
 import {
@@ -42,6 +44,16 @@ export const communityAppRouter = router({
       .input(TelegramAuthDataSchema)
       .mutation(async ({ ctx, input }) => {
         const useCase = new AuthenticateTelegramCommunityUseCase(
+          ctx.authService,
+          ctx.cookieManager,
+          ctx.configService,
+        );
+        return useCase.execute(input, ctx.res, ctx.req);
+      }),
+    authenticateTelegramWebApp: publicProcedure
+      .input(TelegramWebAppDataSchema)
+      .mutation(async ({ ctx, input }) => {
+        const useCase = new AuthenticateTelegramWebAppCommunityUseCase(
           ctx.authService,
           ctx.cookieManager,
           ctx.configService,
@@ -84,6 +96,14 @@ export const communityAppRouter = router({
         });
         return useCase.execute(ctx.user.id);
       }),
+      getByTelegramChatId: protectedProcedure
+        .input(z.object({ telegramChatId: z.string().min(1) }))
+        .query(async ({ ctx, input }) => {
+          const useCase = new GetCommunityByTelegramChatIdUseCase({
+            communityModel: ctx.connection.model(CommunitySchemaClass.name),
+          });
+          return useCase.execute(input.telegramChatId);
+        }),
     },
   ),
 
@@ -100,6 +120,7 @@ export const communityAppRouter = router({
 
   votes: pickProceduresRouter(votesRouter, [
     'create',
+    'createWithComment',
     'getByPublicationId',
     'withdrawFromVote',
   ]),

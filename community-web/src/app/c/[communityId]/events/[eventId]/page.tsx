@@ -1,9 +1,12 @@
 'use client';
 
-import { AuthGate, Shell } from '@/components/shell';
+import { useRouter } from 'next/navigation';
+import { AuthGate } from '@/components/shell';
+import { CommunityShell } from '@/components/community-shell';
 import { useCommunityEventParams } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 import { formatEventDateRange } from '@/lib/format-dates';
+import { useTelegramBackButton } from '@/lib/use-telegram-chrome';
 
 function EventDetailInner({
   communityId,
@@ -12,6 +15,7 @@ function EventDetailInner({
   communityId: string;
   eventId: string;
 }) {
+  const router = useRouter();
   const meQuery = trpc.users.getMe.useQuery();
   const pubQuery = trpc.publications.getById.useQuery({ id: eventId });
   const utils = trpc.useUtils();
@@ -56,15 +60,22 @@ function EventDetailInner({
     pub?.eventEndDate != null &&
     new Date(pub.eventEndDate).getTime() < Date.now();
 
+  const backButtonActive = useTelegramBackButton({
+    visible: true,
+    onClick: () => router.push(`/c/${communityId}/events`),
+  });
+
   return (
-    <Shell communityId={communityId} active="events">
+    <CommunityShell communityId={communityId} active="events" tgActive="feed">
       <div className="space-y-6">
-        <a
-          href={`/c/${communityId}/events`}
-          className="text-sm text-primary hover:underline"
-        >
-          ← К событиям
-        </a>
+        {!backButtonActive && (
+          <a
+            href={`/c/${communityId}/events`}
+            className="text-sm text-primary hover:underline"
+          >
+            ← К событиям
+          </a>
+        )}
 
         {pubQuery.isLoading && (
           <p className="text-sm text-stitch-muted">Загрузка…</p>
@@ -169,7 +180,7 @@ function EventDetailInner({
           <p className="text-sm text-red-400">Публикация не является событием.</p>
         )}
       </div>
-    </Shell>
+    </CommunityShell>
   );
 }
 
