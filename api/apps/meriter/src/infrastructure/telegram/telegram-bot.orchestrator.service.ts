@@ -71,6 +71,7 @@ import {
   isTelegramUpvoteEmoji,
   isTelegramHeartEmoji,
   isTelegramDownvoteEmoji,
+  isTelegramVoteReaction,
 } from './telegram-reaction-emoji';
 import {
   formatTelegramMemberLabel,
@@ -628,14 +629,14 @@ export class TelegramBotOrchestratorService {
     const added = newReactions.filter(
       (nr) => !oldReactions.some((or) => reactionTypeKey(or) === reactionTypeKey(nr)),
     );
-    if (added.length === 0) {
-      this.logger.debug('message_reaction: no newly added emojis', { messageId, userId: user.id });
+    const voteAdded = added.filter((reaction) => isTelegramVoteReaction(reaction));
+    if (voteAdded.length === 0) {
       return;
     }
 
     const chatId = String(chat.id);
     this.logger.log(
-      `message_reaction chat=${chatId} message=${messageId} user=${user.id} added=${added.map((r) => r.emoji ?? r.type).join(',')}`,
+      `message_reaction chat=${chatId} message=${messageId} user=${user.id} added=${voteAdded.map((r) => r.emoji ?? r.type).join(',')}`,
     );
 
     const community = await this.findCommunityByChatId(chatId);
@@ -655,35 +656,28 @@ export class TelegramBotOrchestratorService {
       .lean();
     if (!anchor) {
       this.logger.warn('message_reaction: no publication anchor', { chatId, messageId });
-      await this.tgBots.tgReplyEphemeral({
-        chat_id: chatId,
-        reply_to_message_id: messageId,
-        text: TG_MSG.reactionPostNotFound(primaryCommunityHashtag(community.hashtags)),
-      });
+      if (community.settings?.telegramReactionNoHashtagHintEnabled !== false) {
+        await this.tgBots.tgReplyEphemeral({
+          chat_id: chatId,
+          reply_to_message_id: messageId,
+          text: TG_MSG.reactionPostNotFound(primaryCommunityHashtag(community.hashtags)),
+        });
+      }
       return;
     }
 
     const isSelfPost = await this.isSelfPublicationVote(voter.id, anchor.publicationId);
     const groupFeedback: GroupFeedbackContext = { groupChatId: chatId, replyToMessageId: messageId };
 
-    for (const reaction of added) {
-      if (reaction.type !== 'emoji') {
-        this.logger.warn('message_reaction: unsupported reaction type', {
-          type: reaction.type,
-          messageId,
+    for (const reaction of voteAdded) {
+      const emoji = reaction.emoji ?? '';
+      if (isSelfPost) {
+        await this.tgBots.tgReplyEphemeral({
+          chat_id: chatId,
+          reply_to_message_id: messageId,
+          text: TG_MSG.cannotVoteOwnPost,
         });
         continue;
-      }
-      const emoji = reaction.emoji ?? '';
-      if (isTelegramUpvoteEmoji(emoji) || isTelegramHeartEmoji(emoji) || isTelegramDownvoteEmoji(emoji)) {
-        if (isSelfPost) {
-          await this.tgBots.tgReplyEphemeral({
-            chat_id: chatId,
-            reply_to_message_id: messageId,
-            text: TG_MSG.cannotVoteOwnPost,
-          });
-          continue;
-        }
       }
       if (isTelegramUpvoteEmoji(emoji)) {
         await this.executeVote(
@@ -724,7 +718,7 @@ export class TelegramBotOrchestratorService {
           },
         );
       } else {
-        this.logger.debug('message_reaction: emoji not mapped to vote action', {
+        this.logger.debug('message_reaction: vote emoji not mapped', {
           emoji,
           normalized: normalizeTelegramReactionEmoji(emoji),
           messageId,
@@ -751,10 +745,21 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
-    await this.answerCallback(id);
-
     const tgUserId = String(from.id);
     const parts = data.split(':');
+    if (
+      parts[0] === 'settings' &&
+      parts[1] === 'toggle' &&
+      parts[2] === 'reaction_no_hashtag' &&
+      parts[3]
+    ) {
+      const toast = await this.toggleReactionNoHashtagHint(tgUserId, parts[3]);
+      await this.answerCallback(id, toast);
+      return;
+    }
+
+    await this.answerCallback(id);
+
     if (parts[0] === 'settings' && parts[1] === 'edit' && parts[2] && parts[3]) {
       if (isSettingsEditField(parts[2])) {
         await this.beginSettingsEdit(tgUserId, parts[3], parts[2]);
@@ -1359,7 +1364,7 @@ export class TelegramBotOrchestratorService {
     this.tgBots.tgScheduleDeleteMessage(chatId, messageId);
   }
 
-  private async answerCallback(callbackQueryId: string): Promise<void> {
+  private async answerCallback(callbackQueryId: string, text?: string): Promise<void> {
     const token = this.configService.get('bot')?.token;
     if (!token || this.configService.get('noAxios')) {
       return;
@@ -1369,6 +1374,7 @@ export class TelegramBotOrchestratorService {
       const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
       await Axios.post(`${apiUrl}/bot${token}/answerCallbackQuery`, {
         callback_query_id: callbackQueryId,
+        ...(text ? { text } : {}),
       });
     } catch {
       /* ignore */
@@ -1737,7 +1743,10 @@ export class TelegramBotOrchestratorService {
         chat_id: chatId,
         reply_to_message_id: replyToMessageId,
         text: summary,
-        reply_markup: buildSettingsEditKeyboard(community.id),
+        reply_markup: buildSettingsEditKeyboard(
+          community.id,
+          community.settings?.telegramReactionNoHashtagHintEnabled !== false,
+        ),
       });
       const messageId = res.data?.result?.message_id;
       if (typeof messageId === 'number') {
@@ -1748,6 +1757,36 @@ export class TelegramBotOrchestratorService {
     } catch {
       await this.sendBotEphemeral(chatId, summary, replyToMessageId);
     }
+  }
+
+  private async toggleReactionNoHashtagHint(
+    tgUserId: string,
+    communityId: string,
+  ): Promise<string> {
+    const user = await this.userService.getUserByAuthId('telegram', tgUserId);
+    if (!user) {
+      return TG_MSG.settingsLeadOnly;
+    }
+    const role = await this.userCommunityRoleService.getRole(user.id, communityId);
+    if (role?.role !== 'lead') {
+      return TG_MSG.settingsLeadOnly;
+    }
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      return TG_MSG.noLinkedCommunity;
+    }
+    const enabled = community.settings?.telegramReactionNoHashtagHintEnabled !== false;
+    const next = !enabled;
+    await this.communityModel.updateOne(
+      { id: communityId },
+      {
+        $set: {
+          'settings.telegramReactionNoHashtagHintEnabled': next,
+          updatedAt: new Date(),
+        },
+      },
+    );
+    return TG_MSG.settingsReactionNoHashtagHintToggled(next);
   }
 
   private async beginSettingsEdit(

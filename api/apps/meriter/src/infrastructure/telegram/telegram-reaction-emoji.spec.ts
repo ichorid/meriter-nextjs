@@ -2,6 +2,7 @@ import {
   isTelegramDownvoteEmoji,
   isTelegramHeartEmoji,
   isTelegramUpvoteEmoji,
+  isTelegramVoteReactionEmoji,
   normalizeTelegramReactionEmoji,
   reactionTypeKey,
 } from './telegram-reaction-emoji';
@@ -16,7 +17,9 @@ describe('telegram-reaction-emoji', () => {
     expect(isTelegramUpvoteEmoji('👍')).toBe(true);
     expect(isTelegramHeartEmoji('❤️')).toBe(true);
     expect(isTelegramDownvoteEmoji('👎')).toBe(true);
-    expect(isTelegramDownvoteEmoji('🤡')).toBe(true);
+    expect(isTelegramDownvoteEmoji('🤡')).toBe(false);
+    expect(isTelegramVoteReactionEmoji('👍')).toBe(true);
+    expect(isTelegramVoteReactionEmoji('😄')).toBe(false);
   });
 
   it('builds stable reaction type keys', () => {

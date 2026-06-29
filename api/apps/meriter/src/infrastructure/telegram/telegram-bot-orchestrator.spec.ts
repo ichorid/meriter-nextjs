@@ -642,6 +642,34 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
   });
 
+  it('message_reaction with non-vote emoji ignores message without anchor', async () => {
+    await seedLinkedCommunity();
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+
+    await webhookController.handleWebhook(
+      botUsername,
+      messageReactionUpdate('😄', 404, 36),
+    );
+
+    expect(ephemeralSpy).not.toHaveBeenCalled();
+  });
+
+  it('message_reaction without anchor skips hint when setting is disabled', async () => {
+    await seedLinkedCommunity();
+    await communityModel.updateOne(
+      { telegramChatId: tgChatId },
+      { $set: { 'settings.telegramReactionNoHashtagHintEnabled': false } },
+    );
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+
+    await webhookController.handleWebhook(
+      botUsername,
+      messageReactionUpdate('👍', 405, 39),
+    );
+
+    expect(ephemeralSpy).not.toHaveBeenCalled();
+  });
+
   it('group /settings for lead shows editable summary without post ack', async () => {
     await seedLeadCommunity();
     const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
@@ -665,7 +693,30 @@ describe('TelegramBotOrchestrator (integration)', () => {
     expect(ephemeralSpy).toHaveBeenCalled();
     const sentText = String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '');
     expect(sentText).toContain('Ежедневная квота');
+    expect(sentText).toContain('Подсказка без хэштега');
     expect(sentText).not.toContain('Пост сохранён');
+  });
+
+  it('lead can toggle reaction no-hashtag hint from settings keyboard', async () => {
+    const { communityId } = await seedLeadCommunity();
+    await communityModel.updateOne(
+      { id: communityId },
+      { $set: { 'settings.telegramReactionNoHashtagHintEnabled': true } },
+    );
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 43,
+      callback_query: {
+        id: 'cb-settings-toggle-hint',
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG' },
+        message: { message_id: 58, chat: { id: Number(tgChatId), type: 'supergroup' } },
+        chat_instance: '1',
+        data: `settings:toggle:reaction_no_hashtag:${communityId}`,
+      },
+    } as TelegramTypes.Update);
+
+    const updated = await communityModel.findOne({ id: communityId }).lean();
+    expect(updated?.settings?.telegramReactionNoHashtagHintEnabled).toBe(false);
   });
 
   it('lead can update community name via settings edit in DM', async () => {
@@ -771,7 +822,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
     await webhookController.handleWebhook(
       botUsername,
-      messageReactionUpdate('👍', messageId, 35),
+      messageReactionUpdate('👍', messageId, 42),
     );
 
     expect(replySpy).toHaveBeenCalledWith(

@@ -22,7 +22,22 @@ export function isTelegramHeartEmoji(emoji: string): boolean {
 
 export function isTelegramDownvoteEmoji(emoji: string): boolean {
   const n = normalizeTelegramReactionEmoji(emoji);
-  return n === '👎' || n === '🤡';
+  return n === '👎' || n.startsWith('👎');
+}
+
+export function isTelegramVoteReactionEmoji(emoji: string): boolean {
+  return (
+    isTelegramUpvoteEmoji(emoji) ||
+    isTelegramHeartEmoji(emoji) ||
+    isTelegramDownvoteEmoji(emoji)
+  );
+}
+
+export function isTelegramVoteReaction(reaction: { type?: string; emoji?: string }): boolean {
+  if (reaction.type !== 'emoji') {
+    return false;
+  }
+  return isTelegramVoteReactionEmoji(reaction.emoji ?? '');
 }
 
 export function reactionTypeKey(reaction: { type?: string; emoji?: string }): string {

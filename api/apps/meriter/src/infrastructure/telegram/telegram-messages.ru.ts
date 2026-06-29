@@ -68,7 +68,11 @@ export function primaryCommunityHashtag(hashtags?: string[]): string {
 export type CommunitySettingsSnapshotInput = {
   name: string;
   hashtags?: string[];
-  settings?: { dailyEmission?: number; postCost?: number };
+  settings?: {
+    dailyEmission?: number;
+    postCost?: number;
+    telegramReactionNoHashtagHintEnabled?: boolean;
+  };
   meritSettings?: { startingMerits?: number };
 };
 
@@ -116,13 +120,16 @@ export function buildSettingsLeadSummary(community: CommunitySettingsSnapshotInp
     s.dailyEmission > 0
       ? `${s.dailyEmission} заслуг в день`
       : 'выключена';
+  const noHashtagHint =
+    community.settings?.telegramReactionNoHashtagHintEnabled !== false ? 'вкл' : 'выкл';
   return (
     `Настройки Meriter\n\n` +
     `• Название: «${s.name}»\n` +
     `• Ежедневная квота: ${quotaLine}\n` +
     `• Стоимость поста: ${s.postCost} заслуг\n` +
     `• Хэштег: #${s.hashtag}\n` +
-    `• Приветственные заслуги: ${s.welcomeMerits}\n\n` +
+    `• Приветственные заслуги: ${s.welcomeMerits}\n` +
+    `• Подсказка без хэштега: ${noHashtagHint}\n\n` +
     `Нажмите кнопку ниже — бот задаст вопрос в личке.`
   );
 }
@@ -152,18 +159,30 @@ export function isSettingsEditField(field: string): field is SettingsEditField {
   return SETTINGS_EDIT_FIELDS.has(field as SettingsEditField);
 }
 
-export function buildSettingsEditKeyboard(communityId: string): {
+export function buildSettingsEditKeyboard(
+  communityId: string,
+  reactionNoHashtagHintEnabled = true,
+): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>;
 } {
   const row = (field: SettingsEditField, label: string) => ({
     text: label,
     callback_data: `settings:edit:${field}:${communityId}`,
   });
+  const hintLabel = reactionNoHashtagHintEnabled
+    ? 'Подсказка без хэштега: вкл'
+    : 'Подсказка без хэштега: выкл';
   return {
     inline_keyboard: [
       [row('name', 'Название'), row('quota', 'Квота')],
       [row('post_cost', 'Стоимость поста'), row('hashtag', 'Хэштег')],
       [row('welcome', 'Приветственные заслуги')],
+      [
+        {
+          text: hintLabel,
+          callback_data: `settings:toggle:reaction_no_hashtag:${communityId}`,
+        },
+      ],
     ],
   };
 }
@@ -408,6 +427,10 @@ export const TG_MSG = {
   },
   settingsEditInvalidNumber: 'Напишите целое число ≥ 0.',
   settingsEditEmptyName: 'Название не может быть пустым.',
+  settingsReactionNoHashtagHintToggled: (enabled: boolean) =>
+    enabled
+      ? 'Подсказка без хэштега включена.'
+      : 'Подсказка без хэштега выключена.',
   postSavedAck: 'Пост сохранён.',
 } as const;
 
