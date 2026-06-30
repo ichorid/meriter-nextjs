@@ -98,6 +98,9 @@ describe('MeritTransferService (integration)', () => {
         currencyNames: currency,
         dailyEmission: 10,
       },
+      meritSettings: {
+        startingMerits: 0,
+      },
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),

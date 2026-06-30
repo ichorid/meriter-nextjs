@@ -38,6 +38,8 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
   let testUserId4: string;
   let testUserId5: string;
 
+  const testMeritSettings = { startingMerits: 0 } as const;
+
   beforeAll(async () => {
     testDb = new TestDatabaseHelper();
     const mongoUri = await testDb.start();
@@ -106,6 +108,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: testMeritSettings,
         lastQuotaResetAt: today,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -323,7 +326,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
-        lastQuotaResetAt: today,
+        meritSettings: testMeritSettings,
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -840,7 +843,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
-        lastQuotaResetAt: today,
+        meritSettings: testMeritSettings,
         createdAt: new Date(),
         updatedAt: new Date(),
       });

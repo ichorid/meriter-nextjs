@@ -1376,17 +1376,22 @@ export class CommunityService {
       genitive: 'merits',
     };
     const startingMerits = this.startingMeritsOnJoin(community as Community);
-    await Promise.all(
-      mappedMembers.map(async (member) => {
-        const wallet = await this.walletService.createOrGetWallet(
-          member.id,
-          communityId,
-          currency,
-          { startingMeritsIfNewWallet: startingMerits },
-        );
-        member.walletBalance = wallet.getBalance();
-      }),
-    );
+    if (startingMerits > 0) {
+      await Promise.all(
+        mappedMembers.map(async (member) => {
+          if (member.walletBalance === undefined) {
+            return;
+          }
+          const wallet = await this.walletService.createOrGetWallet(
+            member.id,
+            communityId,
+            currency,
+            { startingMeritsIfNewWallet: startingMerits },
+          );
+          member.walletBalance = wallet.getBalance();
+        }),
+      );
+    }
 
     return { members: mappedMembers, total };
   }
