@@ -649,11 +649,11 @@ Telegram-группа
 
 ## 21. Фаза 2: community-web (реализовано в monorepo)
 
-**Продукт:** отдельное Next.js-приложение `@meriter/community-web` на **`community.meriter.pro`**.
+**Продукт:** отдельное Next.js-приложение `@meriter/community-web` на **`community-meriter.pro`** (prod).
 
 **Изоляция от основного Meriter (обязательно):**
 - Отдельный домен, Docker-образ, cookie `meriter_community_session`, tRPC только `/trpc/community/*` (whitelist `communityApp.*`).
-- Бот и `/help` ссылаются **только** на `community.meriter.pro` — никогда на `meriter.pro/meriter/*`.
+- Бот и `/help` ссылаются **только** на `community-meriter.pro` — никогда на `meriter.pro/meriter/*`.
 - Общий backend: `@meriter/api` + MongoDB (`MERITER_PRODUCT_MODE=telegram_mvp`).
 
 **Маршруты:** `/login`, `/c/{communityId}/feed|projects|documents|events|merit-history|settings`, `/profile`.

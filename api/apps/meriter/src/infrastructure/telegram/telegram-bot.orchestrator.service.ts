@@ -2641,32 +2641,47 @@ export class TelegramBotOrchestratorService {
       this.votePanelRefreshTimers.delete(publicationId);
       void this.refreshVotePanel(publicationId);
     }, 1000);
+    timer.unref();
     this.votePanelRefreshTimers.set(publicationId, timer);
   }
 
   private async refreshVotePanel(publicationId: string): Promise<void> {
-    const panelAnchor = await this.anchorModel
-      .findOne({ publicationId, anchorType: 'vote_panel' })
-      .lean();
-    if (!panelAnchor) {
+    if (this.connection.readyState !== 1) {
       return;
     }
 
-    const publication = await this.publicationService.getPublication(publicationId);
-    if (!publication) {
-      return;
+    try {
+      const panelAnchor = await this.anchorModel
+        .findOne({ publicationId, anchorType: 'vote_panel' })
+        .lean();
+      if (!panelAnchor) {
+        return;
+      }
+
+      const publication = await this.publicationService.getPublication(publicationId);
+      if (!publication) {
+        return;
+      }
+
+      const metrics = {
+        upMerits: publication.getMetrics.upvotes,
+        downMerits: publication.getMetrics.downvotes,
+      };
+
+      await this.tgBots.tgEditMessageReplyMarkup({
+        chat_id: panelAnchor.telegramChatId,
+        message_id: panelAnchor.telegramMessageId,
+        reply_markup: buildVotePanelKeyboard(publicationId, metrics),
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        (error.name === 'MongoNotConnectedError' || error.message.includes('must be connected'))
+      ) {
+        return;
+      }
+      throw error;
     }
-
-    const metrics = {
-      upMerits: publication.getMetrics.upvotes,
-      downMerits: publication.getMetrics.downvotes,
-    };
-
-    await this.tgBots.tgEditMessageReplyMarkup({
-      chat_id: panelAnchor.telegramChatId,
-      message_id: panelAnchor.telegramMessageId,
-      reply_markup: buildVotePanelKeyboard(publicationId, metrics),
-    });
   }
 
   private async savePending(

@@ -17,9 +17,9 @@ describe('getCommunityWebBaseUrl', () => {
   it('prefers COMMUNITY_WEB_BASE_URL when set', () => {
     expect(
       getCommunityWebBaseUrl(
-        mockConfig({ communityWebBaseUrl: 'https://community.meriter.pro/' }),
+        mockConfig({ communityWebBaseUrl: 'https://community-meriter.pro/' }),
       ),
-    ).toBe('https://community.meriter.pro');
+    ).toBe('https://community-meriter.pro');
   });
 
   it('falls back to app.url (DOMAIN) when community web URL is unset', () => {
@@ -42,7 +42,7 @@ describe('resolveTelegramWebLinkStyle', () => {
   it('uses community-web paths on dedicated community host', () => {
     expect(
       resolveTelegramWebLinkStyle(
-        'https://community.meriter.pro',
+        'https://community-meriter.pro',
         'https://meriter.pro',
       ),
     ).toBe('community-web');

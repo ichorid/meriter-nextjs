@@ -28,7 +28,7 @@
 MERITER_PRODUCT_MODE=telegram_mvp
 BOT_TOKEN=<from @BotFather>
 BOT_USERNAME=<bot without @>
-COMMUNITY_WEB_BASE_URL=https://community.meriter.pro
+COMMUNITY_WEB_BASE_URL=https://community-meriter.pro
 # DEFAULT_TELEGRAM_COMMUNITY_ID=<uuid>   # optional dev/pilot
 JWT_SECRET=<strong secret>
 MONGO_URL=...
@@ -47,7 +47,7 @@ NEXT_PUBLIC_DEFAULT_COMMUNITY_ID=  # dev only
 
 ```env
 DOMAIN=meriter.pro
-COMMUNITY_DOMAIN=community.meriter.pro
+COMMUNITY_DOMAIN=community-meriter.pro
 ```
 
 ---
@@ -115,7 +115,7 @@ pnpm --filter @meriter/community-web test:smoke
 
 1. Cookie `jwt` с meriter.pro **не** авторизует на community.*  
 2. Cookie `meriter_community_session` **не** работает на meriter.pro  
-3. `/help` в боте содержит только `community.meriter.pro/...`
+3. `/help` в боте содержит только `community-meriter.pro/...`
 
 ---
 

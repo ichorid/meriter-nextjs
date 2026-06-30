@@ -308,12 +308,54 @@ npx jest apps/meriter/src/infrastructure/telegram/telegram-hashtag-publication.s
 
 ---
 
-## 12. Production deploy (кратко)
+## 12. Production deploy (@meriter_bot)
 
-1. Образ API с env из §3.
-2. `./deploy.sh` на VPS поднимает все сервисы включая **Caddy**; при `TELEGRAM_BOT_ENABLED=true` автоматически запускается `bot-webhook-init`.
-3. Вручную: `docker compose run --rm bot-webhook-init` или `node scripts/setup-webhook.js set` из каталога `api/`.
-4. Один chat → одно сообщество (`telegramChatId` unique sparse).
-5. Мониторинг: webhook `last_error`, latency POST `/api/telegram/hooks/*`.
+**Prod-хосты:** `meriter.pro` (API + webhook), `community-meriter.pro` (community-web, Login Widget, Mini App).
 
-**Не пушить секреты:** `BOT_TOKEN` только в secrets / `.env` (не в git).
+CI выкатывает prod при push в **`main`** (`deploy-prod` в `.github/workflows/build-and-push.yml`). Перед merge убедитесь, что на prod VPS в `/opt/meriter/.env` заданы переменные ниже (секреты **не** в git).
+
+### 12.1. DNS
+
+| Запись | Назначение |
+|--------|------------|
+| `meriter.pro` | A/AAAA → prod VPS (Caddy → API; опционально full web) |
+| `community-meriter.pro` | A/AAAA → тот же VPS (Caddy → community-web) |
+
+### 12.2. BotFather (@meriter_bot)
+
+1. **Group Privacy: Off**, **Allow Groups: On**
+2. `/setdomain` → **`community-meriter.pro`** (Login Widget)
+3. Mini App / Menu Button URL: `https://community-meriter.pro/tg` (выставляется при деплое: `setup-bot-menu.js set /tg`)
+4. Старый dev-бот `@meriter_dev1_bot`: снять webhook (`node scripts/setup-webhook.js delete` с его токеном) или не использовать группы
+
+### 12.3. `.env` на prod VPS (`/opt/meriter/.env`)
+
+```env
+DOMAIN=meriter.pro
+COMMUNITY_DOMAIN=community-meriter.pro
+COMMUNITY_WEB_BASE_URL=https://community-meriter.pro
+
+MERITER_PRODUCT_MODE=telegram_mvp
+TELEGRAM_BOT_ENABLED=true
+OAUTH_TELEGRAM_ENABLED=true
+
+BOT_USERNAME=meriter_bot
+BOT_TOKEN=<from BotFather — только на сервере>
+
+JWT_SECRET=...
+MONGO_ADMIN_PASSWORD=...
+MONGO_APP_PASSWORD=...
+```
+
+Webhook после деплоя: `https://meriter.pro/api/telegram/hooks/meriter_bot`
+
+### 12.4. Деплой
+
+1. Merge `dev` → `main` (или push в `main`) — CI соберёт образы и запустит `deploy-prod`
+2. На VPS `./deploy.sh` регистрирует webhook и menu button, если `TELEGRAM_BOT_ENABLED=true`
+3. Проверка: `docker compose run --rm bot-webhook-init` → `node scripts/setup-webhook.js check` внутри контейнера api
+4. Smoke: добавить бота в тест-группу → онбординг → `#идея` → `/balance`
+
+Шаблон без секретов: `.env.production.telegram.example` в корне репозитория.
+
+**Не пушить секреты:** `BOT_TOKEN` только в secrets / `.env` на VPS (не в git).

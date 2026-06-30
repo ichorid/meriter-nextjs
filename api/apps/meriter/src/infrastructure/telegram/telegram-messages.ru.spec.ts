@@ -10,11 +10,11 @@ import {
 
 describe('telegram group welcome copy', () => {
   it('buildTelegramMiniAppStartLink uses t.me without scheme', () => {
-    expect(buildTelegramMiniAppStartLink('meriter_dev1_bot')).toBe(
-      't.me/meriter_dev1_bot?startapp',
+    expect(buildTelegramMiniAppStartLink('meriter_bot')).toBe(
+      't.me/meriter_bot?startapp',
     );
-    expect(buildTelegramMiniAppStartLink('@meriter_dev1_bot', 'comm-123')).toBe(
-      't.me/meriter_dev1_bot?startapp=comm-123',
+    expect(buildTelegramMiniAppStartLink('@meriter_bot', 'comm-123')).toBe(
+      't.me/meriter_bot?startapp=comm-123',
     );
   });
 
@@ -23,7 +23,7 @@ describe('telegram group welcome copy', () => {
       communityName: 'Test',
       hashtags: ['идея'],
       platformIntegration: true,
-      botUsername: 'meriter_dev1_bot',
+      botUsername: 'meriter_bot',
     });
     expect(text).toMatch(/^Привет!\n\nЯ – Меритер/);
     expect(text).toContain('1. Отправляйте сообщения с #идея');

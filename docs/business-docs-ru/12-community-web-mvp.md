@@ -1,7 +1,7 @@
 # Community-web MVP (фаза 2 Telegram)
 
 **Пакет:** `@meriter/community-web`  
-**Домен:** `community.meriter.pro` (dev: `community-dev.meriter.pro`)  
+**Домен:** `community-meriter.pro` (dev: `community-dev.meriter.pro` или отдельный dev-хост)  
 **Backend:** общий `@meriter/api`, режим `MERITER_PRODUCT_MODE=telegram_mvp`
 
 ---
@@ -40,7 +40,7 @@
 **Env (API):**
 
 - `MERITER_PRODUCT_MODE=telegram_mvp`
-- `COMMUNITY_WEB_BASE_URL=https://community.meriter.pro`
+- `COMMUNITY_WEB_BASE_URL=https://community-meriter.pro`
 - `DEFAULT_TELEGRAM_COMMUNITY_ID` — dev/pilot fallback
 - `BOT_TOKEN`, `BOT_USERNAME` — Telegram Login
 
