@@ -46,12 +46,6 @@ export const routes = {
     communityDocuments: (id: string) => `/meriter/communities/${id}/documents`,
     communityDocument: (communityId: string, documentId: string) =>
         `/meriter/communities/${communityId}/documents/${documentId}`,
-    /** Document canvas deep link to a block (notifications, share). */
-    communityDocumentBlock: (
-        communityId: string,
-        documentId: string,
-        blockId: string,
-    ) => `/meriter/communities/${communityId}/documents/${documentId}#block-${blockId}`,
     /** @deprecated Use projectMembers — canonical URL is under /meriter/projects/:id/members */
     projectMembersManage: (projectCommunityId: string) =>
       `/meriter/projects/${projectCommunityId}/members`,

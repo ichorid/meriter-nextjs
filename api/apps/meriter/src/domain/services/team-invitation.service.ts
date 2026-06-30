@@ -4,8 +4,13 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-  Inject,
 } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import {
+  TeamInvitationSchemaClass,
+  TeamInvitationDocument,
+} from '../models/team-invitation/team-invitation.schema';
 import type {
   TeamInvitation,
   TeamInvitationStatus,
@@ -15,61 +20,21 @@ import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
+import { TeamJoinRequestService } from './team-join-request.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
-import {
-  TEAM_INVITATION_PERSISTENCE_PORT,
-  type TeamInvitationPersistencePort,
-  type TeamInvitationMutableRecord,
-} from '../ports/team-invitation.persistence.port';
-import {
-  ACCEPT_TEAM_INVITATION_PORT,
-  type AcceptTeamInvitationPort,
-  type TeamInvitationTargetAction,
-} from '../ports/accept-team-invitation.port';
-
-/**
- * P-8: load invitation by id, ensure pending, and verify target user.
- */
-export async function loadPendingInvitationForTarget(
-  teamInvitationPersistence: TeamInvitationPersistencePort,
-  invitationId: string,
-  targetUserId: string,
-  action: TeamInvitationTargetAction,
-): Promise<TeamInvitationMutableRecord> {
-  const invitation = await teamInvitationPersistence.findById(invitationId);
-
-  if (!invitation) {
-    throw new NotFoundException('Invitation not found');
-  }
-
-  if (invitation.status !== 'pending') {
-    throw new BadRequestException('Invitation is not pending');
-  }
-
-  if (invitation.targetUserId !== targetUserId) {
-    const message =
-      action === 'accept'
-        ? 'You can only accept invitations sent to you'
-        : 'You can only reject invitations sent to you';
-    throw new ForbiddenException(message);
-  }
-
-  return invitation;
-}
 
 @Injectable()
 export class TeamInvitationService {
   private readonly logger = new Logger(TeamInvitationService.name);
 
   constructor(
-    @Inject(TEAM_INVITATION_PERSISTENCE_PORT)
-    private readonly teamInvitationPersistence: TeamInvitationPersistencePort,
+    @InjectModel(TeamInvitationSchemaClass.name)
+    private readonly teamInvitationModel: Model<TeamInvitationDocument>,
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
     private readonly notificationService: NotificationService,
-    @Inject(ACCEPT_TEAM_INVITATION_PORT)
-    private readonly acceptTeamInvitationUseCase: AcceptTeamInvitationPort,
+    private readonly teamJoinRequestService: TeamJoinRequestService,
   ) {}
 
   /**
@@ -135,11 +100,13 @@ export class TeamInvitationService {
     }
 
     // 4. At most one pending invitation per target user per community (any inviter)
-    const existingPending =
-      await this.teamInvitationPersistence.findPendingByTargetAndCommunity(
+    const existingPending = await this.teamInvitationModel
+      .findOne({
         targetUserId,
         communityId,
-      );
+        status: 'pending',
+      })
+      .lean();
 
     if (existingPending) {
       throw new BadRequestException(
@@ -148,7 +115,7 @@ export class TeamInvitationService {
     }
 
     // 5. Create invitation
-    const invitation = await this.teamInvitationPersistence.create({
+    const invitation = await this.teamInvitationModel.create({
       id: uid(),
       inviterId,
       targetUserId,
@@ -183,15 +150,100 @@ export class TeamInvitationService {
       `Invitation ${invitation.id} created for user ${targetUserId} to join team ${communityId}`,
     );
 
-    return invitation as TeamInvitation;
+    return invitation.toObject();
   }
 
-  /** Delegates to AcceptTeamInvitationUseCase (BC-11 / P-8). */
+  /**
+   * Accept an invitation
+   */
   async acceptInvitation(
     invitationId: string,
     userId: string,
   ): Promise<TeamInvitation & { inviteTargetIsProject: boolean }> {
-    return this.acceptTeamInvitationUseCase.execute(invitationId, userId);
+    this.logger.log(`User ${userId} accepting invitation ${invitationId}`);
+
+    // 1. Get invitation
+    const invitation = await this.teamInvitationModel.findOne({
+      id: invitationId,
+    });
+
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found');
+    }
+
+    if (invitation.status !== 'pending') {
+      throw new BadRequestException('Invitation is not pending');
+    }
+
+    // 2. Verify that user is the target of this invitation
+    if (invitation.targetUserId !== userId) {
+      throw new ForbiddenException(
+        'You can only accept invitations sent to you',
+      );
+    }
+
+    // 3. Check that user is not already a member
+    const existingRole = await this.userCommunityRoleService.getRole(
+      userId,
+      invitation.communityId,
+    );
+    if (existingRole) {
+      throw new BadRequestException(
+        'You are already a member of this team',
+      );
+    }
+
+    // 4. Add user to team (using existing addUserToTeam logic)
+    await this.userService.addUserToTeam(
+      invitation.inviterId,
+      userId,
+      invitation.communityId,
+    );
+
+    await this.teamJoinRequestService.resolvePendingJoinAfterUserAddedByInvite(
+      userId,
+      invitation.communityId,
+      invitation.inviterId,
+    );
+
+    // 5. Update invitation status
+    invitation.status = 'accepted';
+    invitation.processedAt = new Date();
+    invitation.updatedAt = new Date();
+    await invitation.save();
+
+    // 6. Create notification for inviter
+    const community = await this.communityService.getCommunity(
+      invitation.communityId,
+    );
+    const user = await this.userService.getUserById(userId);
+    const userName = user?.displayName || user?.username || 'User';
+
+    await this.notificationService.createNotification({
+      userId: invitation.inviterId,
+      type: 'system',
+      source: 'user',
+      sourceId: userId,
+      metadata: {
+        invitationId: invitation.id,
+        communityId: invitation.communityId,
+        communityName: community?.name || invitation.communityId,
+        noticeKind: 'team_invitation_accepted',
+        inviteTargetIsProject: Boolean(community?.isProject),
+      },
+      title: 'Team invitation accepted',
+      message: `${userName} accepted your invitation to join "${community?.name || invitation.communityId}"`,
+    });
+
+    this.logger.log(
+      `Invitation ${invitationId} accepted, user ${userId} joined team ${invitation.communityId}`,
+    );
+
+    const plain = invitation.toObject() as TeamInvitation;
+    return {
+      ...plain,
+      inviteTargetIsProject: Boolean(community?.isProject),
+    };
   }
 
   /**
@@ -203,22 +255,31 @@ export class TeamInvitationService {
   ): Promise<TeamInvitation> {
     this.logger.log(`User ${userId} rejecting invitation ${invitationId}`);
 
-    const invitation = await loadPendingInvitationForTarget(
-      this.teamInvitationPersistence,
-      invitationId,
-      userId,
-      'reject',
-    );
+    // 1. Get invitation
+    const invitation = await this.teamInvitationModel.findOne({
+      id: invitationId,
+    });
 
-    // 3. Update invitation status
-    const updated = await this.teamInvitationPersistence.findById(invitationId);
-    if (!updated) {
+    if (!invitation) {
       throw new NotFoundException('Invitation not found');
     }
-    updated.status = 'rejected';
-    updated.set('processedAt', new Date());
-    updated.updatedAt = new Date();
-    await updated.save();
+
+    if (invitation.status !== 'pending') {
+      throw new BadRequestException('Invitation is not pending');
+    }
+
+    // 2. Verify that user is the target of this invitation
+    if (invitation.targetUserId !== userId) {
+      throw new ForbiddenException(
+        'You can only reject invitations sent to you',
+      );
+    }
+
+    // 3. Update invitation status
+    invitation.status = 'rejected';
+    invitation.processedAt = new Date();
+    invitation.updatedAt = new Date();
+    await invitation.save();
 
     // 4. Create notification for inviter
     const community = await this.communityService.getCommunity(
@@ -228,33 +289,39 @@ export class TeamInvitationService {
     const userName = user?.displayName || user?.username || 'User';
 
     await this.notificationService.createNotification({
-      userId: updated.inviterId,
+      userId: invitation.inviterId,
       type: 'system',
       source: 'user',
       sourceId: userId,
       metadata: {
-        invitationId: updated.id,
-        communityId: updated.communityId,
-        communityName: community?.name || updated.communityId,
+        invitationId: invitation.id,
+        communityId: invitation.communityId,
+        communityName: community?.name || invitation.communityId,
         noticeKind: 'team_invitation_rejected',
         inviteTargetIsProject: Boolean(community?.isProject),
       },
       title: 'Team invitation rejected',
-      message: `${userName} rejected your invitation to join "${community?.name || updated.communityId}"`,
+      message: `${userName} rejected your invitation to join "${community?.name || invitation.communityId}"`,
     });
 
     this.logger.log(`Invitation ${invitationId} rejected`);
 
-    return updated as unknown as TeamInvitation;
+    return invitation.toObject();
   }
 
   /**
    * Get pending invitations for a user
    */
   async getPendingInvitationsForUser(userId: string): Promise<TeamInvitation[]> {
-    return (await this.teamInvitationPersistence.listPendingForTarget(
-      userId,
-    )) as TeamInvitation[];
+    const invitations = await this.teamInvitationModel
+      .find({
+        targetUserId: userId,
+        status: 'pending',
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    return invitations;
   }
 
   /**
@@ -265,12 +332,14 @@ export class TeamInvitationService {
     targetUserId: string,
     communityId: string,
   ): Promise<TeamInvitationStatus | null> {
-    const invitation =
-      await this.teamInvitationPersistence.findPendingByInviterTargetCommunity(
+    const invitation = await this.teamInvitationModel
+      .findOne({
         inviterId,
         targetUserId,
         communityId,
-      );
+        status: 'pending',
+      })
+      .lean();
 
     return invitation?.status || null;
   }

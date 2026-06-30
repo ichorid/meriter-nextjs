@@ -60,12 +60,9 @@ services:
     restart: "no"
     env_file:
       - .env
-    environment:
-      - MONGO_APP_PASSWORD=${MONGO_APP_PASSWORD}
     volumes:
       - ./mongodb-init/rs-init-every-deploy.js:/scripts/rs-init-every-deploy.js:ro
       - ./mongodb-init/rs-init-on-deploy.sh:/scripts/rs-init-on-deploy.sh:ro
-      - ./mongodb-init/ensure-app-user.js:/scripts/ensure-app-user.js:ro
     networks:
       - meriter-database-network
     depends_on:
@@ -89,9 +86,6 @@ services:
     environment:
       - PORT=8002
       - NODE_ENV=production
-      # Collaborative documents DB migration runs on API startup (CollaborativeDocumentsMigrationService).
-      # Do not set MERITER_MANUAL_COLLABORATIVE_DOCUMENTS_MIGRATION=1 in production/deploy.
-      # Manual dry-run: pnpm --filter @meriter/api migrate:collaborative-documents:dry
       # MongoDB connection with authentication
       - MONGO_URL=mongodb://meriter_user:${MONGO_APP_PASSWORD}@mongodb:27017/meriter?authSource=meriter
     # Security: API port not exposed to host, only accessible through Caddy
@@ -181,15 +175,6 @@ services:
     environment:
       - PORT=8001
       - NODE_ENV=production
-      # Guidewell widget (read at runtime by Next.js server — not baked into the client bundle)
-      - NEXT_PUBLIC_GUIDEWELL_ENABLED=${NEXT_PUBLIC_GUIDEWELL_ENABLED:-}
-      - NEXT_PUBLIC_GUIDEWELL_API_BASE=${NEXT_PUBLIC_GUIDEWELL_API_BASE:-}
-      - NEXT_PUBLIC_GUIDEWELL_API_KEY=${NEXT_PUBLIC_GUIDEWELL_API_KEY:-}
-      - NEXT_PUBLIC_GUIDEWELL_FAB_TEXT=${NEXT_PUBLIC_GUIDEWELL_FAB_TEXT:-}
-      - NEXT_PUBLIC_GUIDEWELL_FAB_TEXT_RU=${NEXT_PUBLIC_GUIDEWELL_FAB_TEXT_RU:-}
-      - NEXT_PUBLIC_GUIDEWELL_CHAT=${NEXT_PUBLIC_GUIDEWELL_CHAT:-}
-      - NEXT_PUBLIC_GUIDEWELL_AI=${NEXT_PUBLIC_GUIDEWELL_AI:-}
-      - NEXT_PUBLIC_GUIDEWELL_PRIMARY_COLOR=${NEXT_PUBLIC_GUIDEWELL_PRIMARY_COLOR:-}
     # Security: Web port not exposed to host, only accessible through Caddy
     # ports:
     #   - "8001:8001"
@@ -206,42 +191,6 @@ services:
         limits:
           cpus: '1'
           memory: 1G
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-      - /var/tmp
-
-  community-web:
-    image: ghcr.io/ichorid/meriter-nextjs-community-web:${VERSION_COMMUNITY_WEB:-latest}
-    container_name: meriter-community-web
-    restart: unless-stopped
-    env_file:
-      - .env
-    environment:
-      - PORT=8003
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=
-      - NEXT_PUBLIC_DEFAULT_COMMUNITY_ID=${NEXT_PUBLIC_DEFAULT_COMMUNITY_ID:-}
-      - COMMUNITY_WEB_HEALTH_PATH=${COMMUNITY_WEB_HEALTH_PATH:-/tg}
-    networks:
-      - meriter-frontend-network
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "wget --quiet --tries=1 --spider http://127.0.0.1:8003$$COMMUNITY_WEB_HEALTH_PATH || exit 1",
-        ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    deploy:
-      resources:
-        limits:
-          cpus: '1'
-          memory: 512M
     security_opt:
       - no-new-privileges:true
     read_only: true
@@ -269,17 +218,13 @@ services:
     depends_on:
       web:
         condition: service_healthy
-      community-web:
-        condition: service_healthy
       api:
         condition: service_healthy
     healthcheck:
-      # Port 80 may redirect to HTTPS; admin API on 2019 is stable for liveness.
-      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:2019/config/ || exit 1"]
+      test: ["CMD-SHELL", "wget --quiet --tries=1 --spider http://127.0.0.1:80 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 15s
     deploy:
       resources:
         limits:

@@ -1,9 +1,8 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { EventCreateInput } from '@meriter/shared-types/events';
-import {
-  PUBLICATION_PERSISTENCE_PORT,
-  type PublicationPersistencePort,
-} from '../ports/publication.persistence.port';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import type { EventCreateInput } from '@meriter/shared-types';
+import { PublicationSchemaClass, PublicationDocument } from '../models/publication/publication.schema';
 import { CommunityService } from './community.service';
 import { CommentService } from './comment.service';
 import { EventService } from './event.service';
@@ -13,7 +12,7 @@ import {
   DEMO_EVENT_SEED_COMMUNITY_IDS,
   DEMO_EVENT_SEED_MAX_TOTAL,
   DEMO_EVENT_TITLE_PREFIX,
-} from '@meriter/shared-types/demo-event-seed-targets';
+} from '@meriter/shared-types';
 
 function resolveDemoEventSeedCommunityIdsFromEnv(): string[] {
   const raw = process.env.MERITER_DEMO_EVENT_SEED_COMMUNITY_IDS?.trim();
@@ -54,8 +53,8 @@ export class PlatformDemoEventsSeedService {
     private readonly commentService: CommentService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly publicationService: PublicationService,
-    @Inject(PUBLICATION_PERSISTENCE_PORT)
-    private readonly publicationPersistence: PublicationPersistencePort,
+    @InjectModel(PublicationSchemaClass.name)
+    private readonly publicationModel: Model<PublicationDocument>,
   ) {}
 
   async seedDemoEvents(actorUserId: string): Promise<{
@@ -79,7 +78,7 @@ export class PlatformDemoEventsSeedService {
         continue;
       }
 
-      const existingDemo = await this.publicationPersistence.countByQuery({
+      const existingDemo = await this.publicationModel.countDocuments({
         communityId,
         postType: 'event',
         deleted: { $ne: true },
@@ -116,9 +115,10 @@ export class PlatformDemoEventsSeedService {
               userId,
               attendance: null as null,
             }));
-            await this.publicationPersistence.patchById(publicationId, {
-              set: { eventParticipants, eventAttendees: attendees },
-            });
+            await this.publicationModel.updateOne(
+              { id: publicationId },
+              { $set: { eventParticipants, eventAttendees: attendees } },
+            );
           }
 
           if (spec.commentCount > 0) {

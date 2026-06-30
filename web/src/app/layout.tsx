@@ -4,7 +4,6 @@ import { detectBrowserLanguage, type Locale } from '@/i18n/request';
 import ClientRootLayout from './ClientRootLayout';
 import { Metadata } from 'next';
 import { cookies, headers } from 'next/headers';
-import { parseGuidewellConfig } from '@/lib/guidewell/parse-guidewell-config';
 
 export const metadata: Metadata = {
   title: {
@@ -35,7 +34,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const locale = await resolveServerLocale();
-  const guidewellConfig = parseGuidewellConfig(process.env);
 
   return (
     <html lang={locale} translate="no" className="notranslate" suppressHydrationWarning>
@@ -146,9 +144,7 @@ export default async function RootLayout({
         />
       </head>
       <body suppressHydrationWarning>
-        <ClientRootLayout serverLocale={locale} guidewellConfig={guidewellConfig}>
-          {children}
-        </ClientRootLayout>
+        <ClientRootLayout serverLocale={locale}>{children}</ClientRootLayout>
       </body>
     </html>
   );

@@ -146,7 +146,7 @@ Automatic deduction from author wallet after 24h is not implemented.
 2. ✅ Check feature status (implemented/not)
 3. ✅ Check dependencies
 4. ✅ Check MVP scope
-5. ✅ Follow existing code patterns — layer placement: @architecture.mdc (`use-cases/` vs `domain/services/` vs thin `trpc/`)
+5. ✅ Follow existing code patterns
 6. ✅ Consider all community settings
 7. ✅ Handle all role permissions
 8. ✅ Follow merit flow rules
@@ -160,7 +160,7 @@ Automatic deduction from author wallet after 24h is not implemented.
 | AI Development Context | `docs/AI_DEVELOPMENT_CONTEXT.md` | How to work with this project |
 | Cursor Workflow | `docs/CURSOR-WORKFLOW.md` | Step-by-step workflow |
 | PRD Template | `docs/templates/PRD-TEMPLATE.md` | For new features |
-| Architecture (map) | `ARCHITECTURE.md` | Short repo map (humans); agents use `.cursor/rules/architecture.mdc` |
+| Architecture | `ARCHITECTURE.md` | Technical architecture |
 | Business Logic (full) | `BUSINESS_LOGIC_DOCUMENTATION.md` | Complete business logic |
 
 ---

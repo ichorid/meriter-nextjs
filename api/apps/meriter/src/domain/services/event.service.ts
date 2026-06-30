@@ -1,12 +1,13 @@
 import {
   BadRequestException,
   ForbiddenException,
-  Inject,
   Injectable,
   Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { randomBytes } from 'crypto';
 import { uid } from 'uid';
 import type {
@@ -15,13 +16,17 @@ import type {
   EventInviteRecord,
   EventPublicationView,
   EventUpdateInput,
-} from '@meriter/shared-types/events';
-import type { MeritTransferCreateProcedureInput } from '@meriter/shared-types/merit-transfer';
+} from '@meriter/shared-types';
+import type { MeritTransferCreateProcedureInput } from '@meriter/shared-types';
 import type { Publication } from '../aggregates/publication/publication.entity';
 import {
-  EVENT_PERSISTENCE_PORT,
-  type EventPersistencePort,
-} from '../ports/event.persistence.port';
+  EventInviteSchemaClass,
+  EventInviteDocument,
+} from '../models/event-invite/event-invite.schema';
+import {
+  PublicationSchemaClass,
+  PublicationDocument,
+} from '../models/publication/publication.schema';
 import { PublicationDocument as IPublicationDocument } from '../../common/interfaces/publication-document.interface';
 import { CommentService } from './comment.service';
 import { CommunityService } from './community.service';
@@ -57,8 +62,10 @@ export class EventService {
     private readonly commentService: CommentService,
     private readonly userService: UserService,
     private readonly configService: ConfigService,
-    @Inject(EVENT_PERSISTENCE_PORT)
-    private readonly eventPersistence: EventPersistencePort,
+    @InjectModel(EventInviteSchemaClass.name)
+    private readonly eventInviteModel: Model<EventInviteDocument>,
+    @InjectModel(PublicationSchemaClass.name)
+    private readonly publicationModel: Model<PublicationDocument>,
   ) {}
 
   private getCheckInSecret(): string {
@@ -81,7 +88,10 @@ export class EventService {
     rows: EventParticipantRow[],
   ): Promise<void> {
     const ids = attendeeIdsFromParticipants(rows);
-    await this.eventPersistence.updateEventParticipants(publicationId, rows, ids);
+    await this.publicationModel.updateOne(
+      { id: publicationId },
+      { $set: { eventParticipants: rows, eventAttendees: ids } },
+    );
   }
 
   /** Author or community lead may manage attendance / QR check-in. */
@@ -100,7 +110,7 @@ export class EventService {
   }
 
   async attendAfterJoinApproved(userId: string, publicationId: string): Promise<void> {
-    const doc = await this.eventPersistence.findEventPublicationById(publicationId);
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
     if (!doc || doc.deleted || doc.postType !== 'event') {
       this.logger.warn(`Deferred event RSVP skipped: publication ${publicationId} missing or not event`);
       return;
@@ -218,7 +228,7 @@ export class EventService {
   }
 
   async updateEvent(userId: string, input: EventUpdateInput): Promise<void> {
-    const doc = await this.eventPersistence.findEventPublicationById(input.publicationId);
+    const doc = await this.publicationModel.findOne({ id: input.publicationId }).lean();
     if (!doc || doc.deleted) {
       throw new NotFoundException('Publication not found');
     }
@@ -250,7 +260,7 @@ export class EventService {
   }
 
   async deleteEvent(userId: string, publicationId: string): Promise<void> {
-    const doc = await this.eventPersistence.findEventPublicationById(publicationId);
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
     if (!doc || doc.deleted) {
       throw new NotFoundException('Publication not found');
     }
@@ -292,7 +302,13 @@ export class EventService {
     upcoming: EventPublicationView[];
     past: EventPublicationView[];
   }> {
-    const docs = await this.eventPersistence.findEventPublicationsByCommunity(communityId);
+    const docs = await this.publicationModel
+      .find({
+        communityId,
+        postType: 'event',
+        deleted: { $ne: true },
+      })
+      .lean();
 
     const now = new Date();
     const upcomingDocs: IPublicationDocument[] = [];
@@ -341,7 +357,7 @@ export class EventService {
     eventLocation?: string;
     attendeeCount: number;
   }> {
-    const invite = await this.eventPersistence.findInviteByToken(token);
+    const invite = await this.eventInviteModel.findOne({ token }).lean();
     if (!invite) {
       throw new NotFoundException('Invite not found');
     }
@@ -352,7 +368,7 @@ export class EventService {
     if (maxUses != null && invite.usedCount >= maxUses) {
       throw new BadRequestException('This invite link is no longer valid');
     }
-    const pub = await this.eventPersistence.findEventPublicationById(invite.eventPostId);
+    const pub = await this.publicationModel.findOne({ id: invite.eventPostId }).lean();
     if (!pub || pub.deleted || pub.postType !== 'event') {
       throw new NotFoundException('Event not found');
     }
@@ -374,7 +390,7 @@ export class EventService {
   }
 
   async attendEvent(userId: string, publicationId: string): Promise<void> {
-    const doc = await this.eventPersistence.findEventPublicationById(publicationId);
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
     if (!doc || doc.deleted) {
       throw new NotFoundException('Publication not found');
     }
@@ -398,7 +414,7 @@ export class EventService {
   }
 
   async unattendEvent(userId: string, publicationId: string): Promise<void> {
-    const doc = await this.eventPersistence.findEventPublicationById(publicationId);
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
     if (!doc || doc.deleted) {
       throw new NotFoundException('Publication not found');
     }
@@ -422,7 +438,7 @@ export class EventService {
     communityId: string;
     isProject: boolean;
   }> {
-    const doc = await this.eventPersistence.findEventPublicationById(eventPostId);
+    const doc = await this.publicationModel.findOne({ id: eventPostId }).lean();
     if (!doc || doc.deleted) {
       throw new NotFoundException('Publication not found');
     }
@@ -453,7 +469,7 @@ export class EventService {
 
     const id = uid();
     const token = randomBytes(24).toString('hex');
-    const doc = await this.eventPersistence.createInvite({
+    const doc = await this.eventInviteModel.create({
       id,
       eventPostId,
       token,
@@ -477,7 +493,7 @@ export class EventService {
   }
 
   async attendViaInvite(token: string, userId: string): Promise<void> {
-    const invite = await this.eventPersistence.findInviteByToken(token);
+    const invite = await this.eventInviteModel.findOne({ token }).lean();
     if (!invite) {
       throw new NotFoundException('Invite not found');
     }
@@ -485,7 +501,7 @@ export class EventService {
       throw new BadRequestException('This invite link has expired');
     }
 
-    const pub = await this.eventPersistence.findEventPublicationById(invite.eventPostId);
+    const pub = await this.publicationModel.findOne({ id: invite.eventPostId }).lean();
     if (!pub || pub.deleted || pub.postType !== 'event') {
       throw new NotFoundException('Event not found');
     }
@@ -502,7 +518,7 @@ export class EventService {
     userId: string,
     publicationId: string,
   ): Promise<{ token: string; expiresAt: Date }> {
-    const doc = await this.eventPersistence.findEventPublicationById(publicationId);
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
     if (!doc || doc.deleted || doc.postType !== 'event') {
       throw new NotFoundException('Publication not found');
     }
@@ -527,7 +543,7 @@ export class EventService {
     if (!payload) {
       throw new BadRequestException('Invalid or expired check-in token');
     }
-    const doc = await this.eventPersistence.findEventPublicationById(payload.publicationId);
+    const doc = await this.publicationModel.findOne({ id: payload.publicationId }).lean();
     if (!doc || doc.deleted || doc.postType !== 'event') {
       throw new NotFoundException('Event not found');
     }
@@ -551,7 +567,7 @@ export class EventService {
     targetUserId: string,
     attendance: 'checked_in' | 'no_show' | null,
   ): Promise<void> {
-    const doc = await this.eventPersistence.findEventPublicationById(publicationId);
+    const doc = await this.publicationModel.findOne({ id: publicationId }).lean();
     if (!doc || doc.deleted || doc.postType !== 'event') {
       throw new NotFoundException('Publication not found');
     }
@@ -585,7 +601,7 @@ export class EventService {
       throw new NotFoundException('User not found');
     }
 
-    const doc = await this.eventPersistence.findEventPublicationById(eventPostId);
+    const doc = await this.publicationModel.findOne({ id: eventPostId }).lean();
     const title = (doc as IPublicationDocument)?.title ?? 'Ивент';
     const community = await this.communityService.getCommunity(communityId);
     const communityName = community?.name ?? communityId;
@@ -614,7 +630,7 @@ export class EventService {
     input: MeritTransferCreateProcedureInput & { publicationId: string },
   ): Promise<{ transferId: string }> {
     const { publicationId, ...transferInput } = input;
-    const pub = await this.eventPersistence.findEventPublicationById(publicationId);
+    const pub = await this.publicationModel.findOne({ id: publicationId }).lean();
     if (!pub || pub.deleted) {
       throw new NotFoundException('Publication not found');
     }

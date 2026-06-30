@@ -1,14 +1,14 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { uid } from 'uid';
 import {
   Favorite,
+  FavoriteSchemaClass,
+  FavoriteDocument,
   FavoriteTargetType,
 } from '../models/favorite/favorite.schema';
 import { PaginationHelper, PaginationResult } from '../../common/helpers/pagination.helper';
-import {
-  FAVORITE_PERSISTENCE_PORT,
-  type FavoritePersistencePort,
-} from '../ports/favorite.persistence.port';
 
 export interface GetFavoritesOptions {
   page?: number;
@@ -18,36 +18,39 @@ export interface GetFavoritesOptions {
 @Injectable()
 export class FavoriteService {
   constructor(
-    @Inject(FAVORITE_PERSISTENCE_PORT)
-    private readonly favoritePersistence: FavoritePersistencePort,
+    @InjectModel(FavoriteSchemaClass.name)
+    private readonly favoriteModel: Model<FavoriteDocument>,
   ) {}
 
   async addFavorite(
     userId: string,
     targetType: FavoriteTargetType,
     targetId: string,
-  ): Promise<Favorite> {
+  ): Promise<FavoriteDocument> {
     const now = new Date();
 
     // Upsert to keep operation idempotent
-    await this.favoritePersistence.upsertFavorite(
-      userId,
-      targetType,
-      targetId,
-      uid(),
-      now,
+    await this.favoriteModel.updateOne(
+      { userId, targetType, targetId },
+      {
+        $setOnInsert: {
+          id: uid(),
+          userId,
+          targetType,
+          targetId,
+          lastViewedAt: now, // on add, treat as "viewed" to avoid immediate unread highlight
+          lastActivityAt: undefined,
+        },
+      },
+      { upsert: true },
     );
 
-    const doc = await this.favoritePersistence.findByUserTarget(
-      userId,
-      targetType,
-      targetId,
-    );
+    const doc = await this.favoriteModel.findOne({ userId, targetType, targetId }).exec();
     if (!doc) {
       // Extremely unlikely after upsert
       throw new Error('Failed to add favorite');
     }
-    return doc as unknown as Favorite;
+    return doc;
   }
 
   async removeFavorite(
@@ -55,7 +58,7 @@ export class FavoriteService {
     targetType: FavoriteTargetType,
     targetId: string,
   ): Promise<void> {
-    await this.favoritePersistence.deleteFavorite(userId, targetType, targetId);
+    await this.favoriteModel.deleteOne({ userId, targetType, targetId }).exec();
   }
 
   async isFavorite(
@@ -63,11 +66,12 @@ export class FavoriteService {
     targetType: FavoriteTargetType,
     targetId: string,
   ): Promise<boolean> {
-    return this.favoritePersistence.exists(userId, targetType, targetId);
+    const exists = await this.favoriteModel.exists({ userId, targetType, targetId });
+    return !!exists;
   }
 
   async getFavoriteCount(userId: string): Promise<number> {
-    return this.favoritePersistence.countByUserId(userId);
+    return this.favoriteModel.countDocuments({ userId });
   }
 
   async markAsViewed(
@@ -76,11 +80,9 @@ export class FavoriteService {
     targetId: string,
   ): Promise<void> {
     const now = new Date();
-    await this.favoritePersistence.markAsViewed(
-      userId,
-      targetType,
-      targetId,
-      now,
+    await this.favoriteModel.updateOne(
+      { userId, targetType, targetId },
+      { $set: { lastViewedAt: now } },
     );
   }
 
@@ -90,11 +92,13 @@ export class FavoriteService {
     activityAt: Date = new Date(),
     excludeUserId?: string,
   ): Promise<void> {
-    await this.favoritePersistence.touchByTarget(
-      targetType,
-      targetId,
-      activityAt,
-      excludeUserId,
+    const filter: Record<string, unknown> = { targetType, targetId };
+    if (excludeUserId) {
+      filter.userId = { $ne: excludeUserId };
+    }
+    await this.favoriteModel.updateMany(
+      filter,
+      { $set: { lastActivityAt: activityAt } },
     );
   }
 
@@ -102,11 +106,30 @@ export class FavoriteService {
     targetType: FavoriteTargetType,
     targetId: string,
   ): Promise<string[]> {
-    return this.favoritePersistence.distinctUserIdsByTarget(targetType, targetId);
+    const userIds = await this.favoriteModel.distinct('userId', {
+      targetType,
+      targetId,
+    });
+    return userIds.filter((x): x is string => typeof x === 'string' && x.length > 0);
   }
 
   async getUnreadCount(userId: string): Promise<number> {
-    return this.favoritePersistence.countUnread(userId);
+    // unread = there is activity after lastViewedAt (or lastViewedAt missing)
+    const result = await this.favoriteModel
+      .aggregate<{ count: number }>([
+        { $match: { userId, lastActivityAt: { $exists: true } } },
+        {
+          $match: {
+            $expr: {
+              $gt: ['$lastActivityAt', { $ifNull: ['$lastViewedAt', new Date(0)] }],
+            },
+          },
+        },
+        { $count: 'count' },
+      ])
+      .exec();
+
+    return result[0]?.count ?? 0;
   }
 
   async getUserFavorites(
@@ -119,17 +142,18 @@ export class FavoriteService {
     });
     const skip = PaginationHelper.getSkip(pagination);
 
-    const { items: favorites, total } = await this.favoritePersistence.listByUser({
-      userId,
-      skip,
-      limit: pagination.limit ?? 20,
-    });
+    const query = { userId };
+    const total = await this.favoriteModel.countDocuments(query);
 
-    return PaginationHelper.createResult(
-      favorites as unknown as Favorite[],
-      total,
-      pagination,
-    );
+    const favorites = await this.favoriteModel
+      .find(query)
+      .sort({ lastActivityAt: -1, createdAt: -1 })
+      .skip(skip)
+      .limit(pagination.limit ?? 20)
+      .lean<Favorite[]>()
+      .exec();
+
+    return PaginationHelper.createResult(favorites, total, pagination);
   }
 }
 

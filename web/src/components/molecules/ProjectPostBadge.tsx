@@ -4,9 +4,6 @@ import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { cn } from '@/lib/utils';
 
-const cardOutlineBadgeClassName =
-  'shrink-0 border-base-300/70 bg-base-200/50 px-2 py-0.5 text-xs font-medium text-base-content/85 dark:border-base-content/20 dark:bg-base-300/35';
-
 export function BirzhaSourcePostBadge({
   sourceEntityType,
   variant = 'short',
@@ -29,7 +26,10 @@ export function BirzhaSourcePostBadge({
   return (
     <Badge
       variant="outline"
-      className={cn(cardOutlineBadgeClassName, className)}
+      className={cn(
+        'shrink-0 border-base-300/70 bg-base-200/50 px-2 py-0.5 text-xs font-medium text-base-content/85 dark:border-base-content/20 dark:bg-base-300/35',
+        className,
+      )}
     >
       {label}
     </Badge>
@@ -38,13 +38,4 @@ export function BirzhaSourcePostBadge({
 
 export function ProjectPostBadge() {
   return <BirzhaSourcePostBadge sourceEntityType="project" />;
-}
-
-export function PinnedPostBadge({ className }: { className?: string }) {
-  const t = useTranslations('publications');
-  return (
-    <Badge variant="outline" className={cn(cardOutlineBadgeClassName, className)}>
-      {t('badge.pinned')}
-    </Badge>
-  );
 }

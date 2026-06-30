@@ -4,7 +4,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
-import { createMongoMemoryReplSetWithRetry } from './mongo-memory-shared';
 import { MeriterModule } from '../src/meriter.module';
 import { WalletService } from '../src/domain/services/wallet.service';
 import { MeritTransferService } from '../src/domain/services/merit-transfer.service';
@@ -23,7 +22,6 @@ import {
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 import { TestSetupHelper } from './helpers/test-setup.helper';
-import { unregisterReplSet } from './mongo-memory-registry.js';
 import { trpcMutation } from './helpers/trpc-test-helper';
 import { BadRequestException } from '@nestjs/common';
 
@@ -49,7 +47,7 @@ describe('MeritTransferService (integration)', () => {
   const currency = { singular: 'merit', plural: 'merits', genitive: 'merits' } as const;
 
   beforeAll(async () => {
-    replSet = await createMongoMemoryReplSetWithRetry({
+    replSet = await MongoMemoryReplSet.create({
       replSet: { count: 1, dbName: 'test' },
     });
     const mongoUri = replSet.getUri();
@@ -140,13 +138,7 @@ describe('MeritTransferService (integration)', () => {
 
   afterAll(async () => {
     await app?.close();
-    if (replSet) {
-      try {
-        await replSet.stop();
-      } finally {
-        unregisterReplSet(replSet);
-      }
-    }
+    await replSet?.stop();
   });
 
   it('QA-1: transfers community-wallet merits between members; balances and list update', async () => {

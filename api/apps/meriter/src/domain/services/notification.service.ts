@@ -1,14 +1,16 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import {
+  NotificationSchemaClass,
+  NotificationDocument,
+} from '../models/notification/notification.schema';
 import type {
   Notification,
   NotificationType,
   NotificationSource,
   NotificationMetadata,
 } from '../models/notification/notification.schema';
-import {
-  NOTIFICATION_PERSISTENCE_PORT,
-  type NotificationPersistencePort,
-} from '../ports/notification.persistence.port';
 import { PaginationHelper, PaginationResult } from '../../common/helpers/pagination.helper';
 import { formatMeritsForDisplay } from '../../common/helpers/format-merits.helper';
 import { uid } from 'uid';
@@ -49,13 +51,12 @@ export class NotificationService {
   private readonly logger = new Logger(NotificationService.name);
 
   constructor(
-    @Inject(NOTIFICATION_PERSISTENCE_PORT)
-    private readonly notificationPersistence: NotificationPersistencePort,
+    @InjectModel(NotificationSchemaClass.name)
+    private readonly notificationModel: Model<NotificationDocument>,
   ) {}
 
   async createNotification(dto: CreateNotificationDto): Promise<Notification> {
-    const now = new Date();
-    const notification = await this.notificationPersistence.create({
+    const notification = await this.notificationModel.create({
       id: uid(),
       userId: dto.userId,
       type: dto.type,
@@ -65,12 +66,12 @@ export class NotificationService {
       title: dto.title,
       message: dto.message,
       read: false,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
     this.logger.log(`Notification created: ${notification.id} for user ${dto.userId}`);
-    return notification as Notification;
+    return notification.toObject();
   }
 
   /**
@@ -83,25 +84,33 @@ export class NotificationService {
     dto: CreateNotificationDto,
     key: NotificationDeduplicationKey,
   ): Promise<Notification> {
-    const existing = await this.notificationPersistence.findOldestUnreadByTarget(
-      dto.userId,
-      dto.type,
-      key,
-    );
+    const existing = await this.notificationModel
+      .findOne({
+        userId: dto.userId,
+        type: dto.type,
+        read: false,
+        'metadata.targetType': key.targetType,
+        'metadata.targetId': key.targetId,
+      })
+      .sort({ createdAt: 1 })
+      .exec();
 
     if (existing) {
-      const now = new Date();
-      const saved = await this.notificationPersistence.replaceNotification(existing.id, {
-        source: dto.source,
-        sourceId: dto.sourceId,
-        metadata: dto.metadata,
-        title: dto.title,
-        message: dto.message,
-        createdAt: now,
-        updatedAt: now,
-      });
-      this.logger.log(`Notification replaced (dedup): ${saved.id} for user ${dto.userId}`);
-      return saved as Notification;
+      existing.source = dto.source;
+      existing.sourceId = dto.sourceId;
+      existing.metadata = dto.metadata;
+      existing.title = dto.title;
+      existing.message = dto.message;
+      existing.read = false;
+      existing.readAt = undefined;
+      existing.createdAt = new Date();
+      existing.updatedAt = new Date();
+
+      const saved = await existing.save();
+      this.logger.log(
+        `Notification replaced (dedup): ${saved.id} for user ${dto.userId}`,
+      );
+      return saved.toObject();
     }
 
     return this.createNotification(dto);
@@ -117,27 +126,33 @@ export class NotificationService {
     dto: CreateNotificationDto,
     key: EditorPostDeduplicationKey,
   ): Promise<Notification> {
-    const existing = await this.notificationPersistence.findOldestUnreadByEditorAndPost(
-      dto.userId,
-      dto.type,
-      key,
-    );
+    const existing = await this.notificationModel
+      .findOne({
+        userId: dto.userId,
+        type: dto.type,
+        read: false,
+        'metadata.publicationId': key.publicationId,
+        'metadata.editorId': key.editorId,
+      })
+      .sort({ createdAt: 1 })
+      .exec();
 
     if (existing) {
-      const now = new Date();
-      const saved = await this.notificationPersistence.replaceNotification(existing.id, {
-        source: dto.source,
-        sourceId: dto.sourceId,
-        metadata: dto.metadata,
-        title: dto.title,
-        message: dto.message,
-        createdAt: now,
-        updatedAt: now,
-      });
+      existing.source = dto.source;
+      existing.sourceId = dto.sourceId;
+      existing.metadata = dto.metadata;
+      existing.title = dto.title;
+      existing.message = dto.message;
+      existing.read = false;
+      existing.readAt = undefined;
+      existing.createdAt = new Date();
+      existing.updatedAt = new Date();
+
+      const saved = await existing.save();
       this.logger.log(
         `Notification replaced (dedup by editor/post): ${saved.id} for user ${dto.userId}`,
       );
-      return saved as Notification;
+      return saved.toObject();
     }
 
     return this.createNotification(dto);
@@ -178,12 +193,19 @@ export class NotificationService {
       return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
     };
 
-    const existing = await this.notificationPersistence.findOldestUnreadVoteAggregation(
-      dto.userId,
-      key,
-    );
+    const existing = await this.notificationModel
+      .findOne({
+        userId: dto.userId,
+        type: 'vote',
+        read: false,
+        'metadata.publicationId': key.publicationId,
+        'metadata.targetType': 'publication',
+      })
+      .sort({ createdAt: 1 })
+      .exec();
 
     if (existing) {
+      // Aggregate vote data from existing notification
       const existingMetadata = existing.metadata as Record<string, unknown>;
       const totalUpvotes =
         numberFromMetadata(existingMetadata, 'totalUpvotes') +
@@ -194,33 +216,36 @@ export class NotificationService {
       const netAmount = totalUpvotes - totalDownvotes;
       const voterCount = numberFromMetadataOrDefault(existingMetadata, 'voterCount', 1) + 1;
 
+      // Build aggregated message (merits rounded to tenths)
       const upStr = totalUpvotes > 0 ? `+${formatMeritsForDisplay(totalUpvotes)}` : '';
       const downStr = totalDownvotes > 0 ? `-${formatMeritsForDisplay(totalDownvotes)}` : '';
-      const amountStr = upStr || downStr ? ` (${upStr}${downStr ? '/' + downStr : ''})` : '';
+      const amountStr = (upStr || downStr) ? ` (${upStr}${downStr ? '/' + downStr : ''})` : '';
       const message = `${voterInfo.voterName} and ${voterCount - 1} others voted on a favorite post${amountStr}`;
 
-      const now = new Date();
-      const saved = await this.notificationPersistence.replaceNotification(existing.id, {
-        source: dto.source,
-        sourceId: voterInfo.voterId,
-        metadata: {
-          ...dto.metadata,
-          totalUpvotes,
-          totalDownvotes,
-          netAmount,
-          voterCount,
-          latestVoterId: voterInfo.voterId,
-          latestVoterName: voterInfo.voterName,
-        },
-        title: dto.title,
-        message,
-        createdAt: now,
-        updatedAt: now,
-      });
+      // Update existing notification with aggregated data
+      existing.source = dto.source;
+      existing.sourceId = voterInfo.voterId; // Latest voter
+      existing.metadata = {
+        ...dto.metadata,
+        totalUpvotes,
+        totalDownvotes,
+        netAmount,
+        voterCount,
+        latestVoterId: voterInfo.voterId,
+        latestVoterName: voterInfo.voterName,
+      };
+      existing.title = dto.title;
+      existing.message = message;
+      existing.read = false;
+      existing.readAt = undefined;
+      existing.createdAt = new Date();
+      existing.updatedAt = new Date();
+
+      const saved = await existing.save();
       this.logger.log(
         `Notification aggregated (vote): ${saved.id} for user ${dto.userId}, ${voterCount} voters, net: ${netAmount}`,
       );
-      return saved as Notification;
+      return saved.toObject();
     }
 
     // Create new notification with initial vote data
@@ -266,25 +291,52 @@ export class NotificationService {
 
     const skip = PaginationHelper.getSkip(pagination);
 
-    const { items, total } = await this.notificationPersistence.findByUser({
-      userId,
-      limit: pagination.limit ?? 10,
-      skip,
-      unreadOnly: options.unreadOnly,
-      type: options.type,
-    });
+    // Build query
+    const query: any = { userId };
 
-    return PaginationHelper.createResult(items as Notification[], total, pagination);
+    if (options.unreadOnly) {
+      query.read = false;
+    }
+
+    if (options.type) {
+      query.type = options.type;
+    }
+
+    // Get total count
+    const total = await this.notificationModel.countDocuments(query);
+
+    // Get notifications
+    const notifications = await this.notificationModel
+      .find(query)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pagination.limit ?? 10)
+      .lean<Notification[]>()
+      .exec();
+
+    return PaginationHelper.createResult(notifications, total, pagination);
   }
 
   async getUnreadCount(userId: string): Promise<number> {
-    return this.notificationPersistence.countUnread(userId);
+    return this.notificationModel.countDocuments({
+      userId,
+      read: false,
+    });
   }
 
   async markAsRead(userId: string, notificationId: string): Promise<void> {
-    const matched = await this.notificationPersistence.markAsRead(userId, notificationId);
+    const result = await this.notificationModel.updateOne(
+      { id: notificationId, userId },
+      {
+        $set: {
+          read: true,
+          readAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+    );
 
-    if (!matched) {
+    if (result.matchedCount === 0) {
       throw new Error(`Notification ${notificationId} not found for user ${userId}`);
     }
 
@@ -292,9 +344,18 @@ export class NotificationService {
   }
 
   async markAllAsRead(userId: string): Promise<void> {
-    const modifiedCount = await this.notificationPersistence.markAllAsRead(userId);
+    const result = await this.notificationModel.updateMany(
+      { userId, read: false },
+      {
+        $set: {
+          read: true,
+          readAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+    );
 
-    this.logger.log(`Marked ${modifiedCount} notifications as read for user ${userId}`);
+    this.logger.log(`Marked ${result.modifiedCount} notifications as read for user ${userId}`);
   }
 
   /**
@@ -306,14 +367,22 @@ export class NotificationService {
     resolvedByUserId: string;
     resolvedByDisplayName: string;
   }): Promise<void> {
-    const modifiedCount = await this.notificationPersistence.markTeamJoinRequestResolved({
-      requestId: params.requestId,
-      resolution: params.resolution,
-      resolvedByUserId: params.resolvedByUserId,
-      resolvedByDisplayName: params.resolvedByDisplayName,
-    });
+    const result = await this.notificationModel.updateMany(
+      { type: 'team_join_request', 'metadata.requestId': params.requestId },
+      {
+        $set: {
+          'metadata.joinRequestResolved': true,
+          'metadata.joinRequestResolution': params.resolution,
+          'metadata.resolvedByUserId': params.resolvedByUserId,
+          'metadata.resolvedByDisplayName': params.resolvedByDisplayName,
+          'metadata.joinRequestResolvedByUserId': params.resolvedByUserId,
+          'metadata.joinRequestResolvedByName': params.resolvedByDisplayName,
+          updatedAt: new Date(),
+        },
+      },
+    );
     this.logger.log(
-      `Marked ${modifiedCount} join-request notifications resolved (${params.requestId}, ${params.resolution})`,
+      `Marked ${result.modifiedCount} join-request notifications resolved (${params.requestId}, ${params.resolution})`,
     );
   }
 
@@ -626,17 +695,13 @@ export class NotificationService {
         return undefined;
       }
 
-      case 'document_variant_proposed':
-      case 'document_variant_not_selected':
       case 'document_variant_won':
       case 'document_variant_applied':
       case 'document_block_admin_override': {
         const communityId = metadata?.communityId as string | undefined;
         const documentId = metadata?.documentId as string | undefined;
-        const blockId = metadata?.blockId as string | undefined;
         if (communityId && documentId) {
-          const base = `/meriter/communities/${communityId}/documents/${documentId}`;
-          return blockId ? `${base}#block-${blockId}` : base;
+          return `/meriter/communities/${communityId}/documents/${documentId}`;
         }
         return undefined;
       }

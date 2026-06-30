@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Input } from '@/components/ui/shadcn/input';
 import { useDocumentStructure } from '@/features/documents/context/DocumentStructureContext';
-import { DocumentSectionHeading } from '@/features/documents/components/DocumentSectionHeading';
 import { sectionTitleForDisplay } from '@/features/documents/lib/document-canvas-shared';
 import { cn } from '@/lib/utils';
 
@@ -30,7 +29,7 @@ export function DocumentSectionTitle({ sectionId, title = '', className }: Docum
         disabled={structure.structureBusy}
         placeholder={t('sectionTitle')}
         className={cn(
-          'h-9 border-dashed border-base-300/80 bg-transparent text-xl font-bold tracking-tight',
+          'h-9 border-dashed border-base-300/80 bg-transparent text-lg font-semibold tracking-tight',
           className,
         )}
         onChange={(e) => setDraft(e.target.value)}
@@ -48,5 +47,14 @@ export function DocumentSectionTitle({ sectionId, title = '', className }: Docum
     return null;
   }
 
-  return <DocumentSectionHeading className={className}>{label}</DocumentSectionHeading>;
+  return (
+    <h2
+      className={cn(
+        'text-lg font-semibold tracking-tight text-base-content/90',
+        className,
+      )}
+    >
+      {label}
+    </h2>
+  );
 }

@@ -1,17 +1,15 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import {
+  PlatformSettingsSchemaClass,
+  PlatformSettingsDocument,
   PlatformSettings,
   PLATFORM_SETTINGS_ID,
 } from '../models/platform-settings/platform-settings.schema';
 import { PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP } from '../common/constants/platform-bootstrap.constants';
-import { DECREE_809_TAGS } from '@meriter/shared-types/value-rubricator';
-import { DECREE_809_TAGS_REVISION } from '@meriter/shared-types/decree809-tag-remap';
+import { DECREE_809_TAGS, DECREE_809_TAGS_REVISION } from '@meriter/shared-types';
 import { loadDevPlatformSnapshot } from '../../seed-data/load-dev-platform-snapshot';
-import {
-  PLATFORM_SETTINGS_PERSISTENCE_PORT,
-  type PlatformSettingsPersistencePort,
-  type PlatformSettingsBootstrapInput,
-} from '../ports/platform-settings.persistence.port';
 
 export interface UpdatePlatformSettingsDto {
   welcomeMeritsGlobal?: number;
@@ -22,44 +20,50 @@ export class PlatformSettingsService {
   private readonly logger = new Logger(PlatformSettingsService.name);
 
   constructor(
-    @Inject(PLATFORM_SETTINGS_PERSISTENCE_PORT)
-    private readonly platformSettingsPersistence: PlatformSettingsPersistencePort,
+    @InjectModel(PlatformSettingsSchemaClass.name)
+    private platformSettingsModel: Model<PlatformSettingsDocument>,
   ) {}
-
-  private getBootstrapInput(): PlatformSettingsBootstrapInput {
-    return {
-      welcomeMeritsGlobal: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.welcomeMeritsGlobal,
-      availableFutureVisionTags: [
-        ...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.availableFutureVisionTags,
-      ],
-      decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
-      decree809Tags: [...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Tags],
-      decree809TagsRevision: DECREE_809_TAGS_REVISION,
-      popularValueTagsThreshold:
-        PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
-    };
-  }
 
   /**
    * Get platform settings. Creates document with defaults if missing.
    */
   async get(): Promise<PlatformSettings> {
-    let doc = await this.platformSettingsPersistence.findById(PLATFORM_SETTINGS_ID);
+    let doc: PlatformSettings | null = (await this.platformSettingsModel
+      .findOne({ id: PLATFORM_SETTINGS_ID })
+      .lean()
+      .exec()) as PlatformSettings | null;
     if (!doc) {
-      doc = await this.platformSettingsPersistence.createWithBootstrap(
-        this.getBootstrapInput(),
-      );
+      const created = await this.platformSettingsModel.create({
+        id: PLATFORM_SETTINGS_ID,
+        welcomeMeritsGlobal: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.welcomeMeritsGlobal,
+        availableFutureVisionTags: [
+          ...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.availableFutureVisionTags,
+        ],
+        decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
+        decree809Tags: [...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Tags],
+        decree809TagsRevision: DECREE_809_TAGS_REVISION,
+        popularValueTagsThreshold:
+          PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
+      });
+      doc = created.toObject() as unknown as PlatformSettings;
     }
-    const result = doc as PlatformSettings;
+    const result = doc;
     if (!result.availableFutureVisionTags) {
       result.availableFutureVisionTags = [];
     }
     if (!result.decree809Tags || result.decree809Tags.length === 0) {
-      await this.platformSettingsPersistence.updateById(PLATFORM_SETTINGS_ID, {
-        decree809Tags: [...DECREE_809_TAGS],
-        decree809TagsRevision: DECREE_809_TAGS_REVISION,
-        updatedAt: new Date(),
-      });
+      await this.platformSettingsModel
+        .updateOne(
+          { id: PLATFORM_SETTINGS_ID },
+          {
+            $set: {
+              decree809Tags: [...DECREE_809_TAGS],
+              decree809TagsRevision: DECREE_809_TAGS_REVISION,
+              updatedAt: new Date(),
+            },
+          },
+        )
+        .exec();
       result.decree809Tags = [...DECREE_809_TAGS];
       result.decree809TagsRevision = DECREE_809_TAGS_REVISION;
     }
@@ -95,11 +99,14 @@ export class PlatformSettingsService {
       }
       update.welcomeMeritsGlobal = dto.welcomeMeritsGlobal;
     }
-    const doc = await this.platformSettingsPersistence.updateWithUpsert(
-      PLATFORM_SETTINGS_ID,
-      update,
-      this.getBootstrapInput(),
-    );
+    const doc = await this.platformSettingsModel
+      .findOneAndUpdate(
+        { id: PLATFORM_SETTINGS_ID },
+        { $set: update },
+        { new: true, upsert: true, runValidators: true },
+      )
+      .lean()
+      .exec();
     if (!doc) {
       throw new Error('Failed to update platform settings');
     }
@@ -110,11 +117,14 @@ export class PlatformSettingsService {
    * Update available future vision tags (rubricator). Superadmin only.
    */
   async updateFutureVisionTags(tags: string[]): Promise<PlatformSettings> {
-    const doc = await this.platformSettingsPersistence.updateWithUpsert(
-      PLATFORM_SETTINGS_ID,
-      { availableFutureVisionTags: tags, updatedAt: new Date() },
-      this.getBootstrapInput(),
-    );
+    const doc = await this.platformSettingsModel
+      .findOneAndUpdate(
+        { id: PLATFORM_SETTINGS_ID },
+        { $set: { availableFutureVisionTags: tags, updatedAt: new Date() } },
+        { new: true, upsert: true, runValidators: true },
+      )
+      .lean()
+      .exec();
     if (!doc) {
       throw new Error('Failed to update platform settings');
     }
@@ -122,11 +132,14 @@ export class PlatformSettingsService {
   }
 
   async updateDecree809Enabled(enabled: boolean): Promise<PlatformSettings> {
-    const doc = await this.platformSettingsPersistence.updateWithUpsert(
-      PLATFORM_SETTINGS_ID,
-      { decree809Enabled: enabled, updatedAt: new Date() },
-      this.getBootstrapInput(),
-    );
+    const doc = await this.platformSettingsModel
+      .findOneAndUpdate(
+        { id: PLATFORM_SETTINGS_ID },
+        { $set: { decree809Enabled: enabled, updatedAt: new Date() } },
+        { new: true, upsert: true, runValidators: true },
+      )
+      .lean()
+      .exec();
     if (!doc) {
       throw new Error('Failed to update platform settings');
     }
@@ -141,16 +154,28 @@ export class PlatformSettingsService {
     this.logger.log(
       'Reset decree 809 tags to canonical list; clearing availableFutureVisionTags',
     );
-    const doc = await this.platformSettingsPersistence.updateWithUpsert(
-      PLATFORM_SETTINGS_ID,
-      {
-        availableFutureVisionTags: [],
-        decree809Tags: [...DECREE_809_TAGS],
-        decree809TagsRevision: DECREE_809_TAGS_REVISION,
-        updatedAt: new Date(),
-      },
-      this.getBootstrapInput(),
-    );
+    const doc = await this.platformSettingsModel
+      .findOneAndUpdate(
+        { id: PLATFORM_SETTINGS_ID },
+        {
+          $set: {
+            availableFutureVisionTags: [],
+            decree809Tags: [...DECREE_809_TAGS],
+            decree809TagsRevision: DECREE_809_TAGS_REVISION,
+            updatedAt: new Date(),
+          },
+          $setOnInsert: {
+            id: PLATFORM_SETTINGS_ID,
+            welcomeMeritsGlobal: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.welcomeMeritsGlobal,
+            decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
+            popularValueTagsThreshold:
+              PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
+          },
+        },
+        { new: true, upsert: true, runValidators: true },
+      )
+      .lean()
+      .exec();
     if (!doc) {
       throw new Error('Failed to reset decree 809 rubricator');
     }
@@ -158,59 +183,42 @@ export class PlatformSettingsService {
   }
 
   async getDemoSeedVersion(): Promise<number | undefined> {
-    const doc = await this.platformSettingsPersistence.findById(
-      PLATFORM_SETTINGS_ID,
-    );
+    const doc = await this.platformSettingsModel
+      .findOne({ id: PLATFORM_SETTINGS_ID })
+      .lean()
+      .exec();
     return doc?.demoSeedVersion;
   }
 
   async setDemoSeedVersion(version: number): Promise<void> {
-    await this.platformSettingsPersistence.updateWithUpsert(
-      PLATFORM_SETTINGS_ID,
-      { demoSeedVersion: version, updatedAt: new Date() },
-      this.getBootstrapInput(),
-    );
+    const res = await this.platformSettingsModel
+      .updateOne(
+        { id: PLATFORM_SETTINGS_ID },
+        { $set: { demoSeedVersion: version, updatedAt: new Date() } },
+      )
+      .exec();
+    if (res.matchedCount === 0) {
+      await this.platformSettingsModel.create({
+        id: PLATFORM_SETTINGS_ID,
+        welcomeMeritsGlobal: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.welcomeMeritsGlobal,
+        availableFutureVisionTags: [
+          ...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.availableFutureVisionTags,
+        ],
+        decree809Enabled: PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Enabled,
+        decree809Tags: [...PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.decree809Tags],
+        decree809TagsRevision: DECREE_809_TAGS_REVISION,
+        popularValueTagsThreshold:
+          PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP.popularValueTagsThreshold,
+        demoSeedVersion: version,
+      });
+    }
   }
 
   /** Cleared after platform wipe so demo seed can run again. */
   async clearDemoSeedVersion(): Promise<void> {
-    await this.platformSettingsPersistence.unsetFields(PLATFORM_SETTINGS_ID, [
-      'demoSeedVersion',
-    ]);
-  }
-
-  async getEntrepreneursDemoPack(): Promise<
-    PlatformSettings['entrepreneursDemoPack'] | undefined
-  > {
-    const doc = await this.platformSettingsPersistence.findById(PLATFORM_SETTINGS_ID);
-    return doc?.entrepreneursDemoPack;
-  }
-
-  async setEntrepreneursDemoPack(
-    pack: NonNullable<PlatformSettings['entrepreneursDemoPack']>,
-  ): Promise<void> {
-    await this.platformSettingsPersistence.updateWithUpsert(
-      PLATFORM_SETTINGS_ID,
-      { entrepreneursDemoPack: pack, updatedAt: new Date() },
-      this.getBootstrapInput(),
-    );
-  }
-
-  async getDemoPersonasEnabled(): Promise<boolean> {
-    const doc = await this.get();
-    return doc.demoPersonasEnabled === true;
-  }
-
-  async setDemoPersonasEnabled(enabled: boolean): Promise<PlatformSettings> {
-    const doc = await this.platformSettingsPersistence.updateWithUpsert(
-      PLATFORM_SETTINGS_ID,
-      { demoPersonasEnabled: enabled, updatedAt: new Date() },
-      this.getBootstrapInput(),
-    );
-    if (!doc) {
-      throw new Error('Failed to update platform settings');
-    }
-    return doc as PlatformSettings;
+    await this.platformSettingsModel
+      .updateOne({ id: PLATFORM_SETTINGS_ID }, { $unset: { demoSeedVersion: 1 } })
+      .exec();
   }
 
   /**
@@ -219,20 +227,23 @@ export class PlatformSettingsService {
   async resetAfterPlatformWipe(): Promise<void> {
     const snap = loadDevPlatformSnapshot();
     const ps = snap.platformSettings;
-    await this.platformSettingsPersistence.resetAfterPlatformWipe(
-      PLATFORM_SETTINGS_ID,
-      {
-        welcomeMeritsGlobal: ps.welcomeMeritsGlobal,
-        availableFutureVisionTags: [...(ps.availableFutureVisionTags ?? [])],
-        decree809Enabled: ps.decree809Enabled ?? false,
-        decree809Tags: [...(ps.decree809Tags ?? DECREE_809_TAGS)],
-        decree809TagsRevision: DECREE_809_TAGS_REVISION,
-        popularValueTagsThreshold: ps.popularValueTagsThreshold ?? 5,
-        updatedAt: new Date(),
-      },
-    );
-    await this.platformSettingsPersistence.unsetFields(PLATFORM_SETTINGS_ID, [
-      'demoSeedVersion',
-    ]);
+    await this.platformSettingsModel
+      .updateOne(
+        { id: PLATFORM_SETTINGS_ID },
+        {
+          $set: {
+            welcomeMeritsGlobal: ps.welcomeMeritsGlobal,
+            availableFutureVisionTags: [...(ps.availableFutureVisionTags ?? [])],
+            decree809Enabled: ps.decree809Enabled ?? false,
+            decree809Tags: [...(ps.decree809Tags ?? DECREE_809_TAGS)],
+            decree809TagsRevision: DECREE_809_TAGS_REVISION,
+            popularValueTagsThreshold: ps.popularValueTagsThreshold ?? 5,
+            updatedAt: new Date(),
+          },
+          $unset: { demoSeedVersion: '' },
+        },
+        { upsert: true },
+      )
+      .exec();
   }
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
@@ -20,29 +20,16 @@ import { DocumentCanvasFocusProvider } from '@/features/documents/context/Docume
 import { DocumentSettingsDialog } from '@/features/documents/components/DocumentSettingsDialog';
 import { DocumentCanvas } from '@/features/documents/components/DocumentCanvas';
 import { DocumentCanvasHeader } from '@/features/documents/components/DocumentCanvasHeader';
-import { DocumentUnifiedCanvas } from '@/features/documents/components/DocumentUnifiedCanvas';
-import { DocumentGdocsUnifiedEditor } from '@/features/documents/components/DocumentGdocsUnifiedEditor';
-import { DocumentProposalRail } from '@/features/documents/components/DocumentProposalRail';
-import { DocumentMobileProposalsDock } from '@/features/documents/components/DocumentMobileProposalsDock';
+import { DocumentCanvasBody } from '@/features/documents/components/DocumentCanvasBody';
+import { DocumentCanvasRail } from '@/features/documents/components/DocumentCanvasRail';
+import { DocumentCanvasFocusHint } from '@/features/documents/components/DocumentCanvasFocusHint';
 import { DocumentCanvasMobileSheet } from '@/features/documents/components/DocumentCanvasMobileSheet';
 import { DocumentBlockAdminDialogs } from '@/features/documents/components/DocumentBlockAdminDialogs';
 import type { DocTranslate } from '@/features/documents/lib/document-canvas-shared';
-import {
-  documentLiveQueryOptions,
-  useDocumentLiveSync,
-} from '@/features/documents/hooks/useDocumentLiveSync';
-import type { DocumentLiveEvent } from '@meriter/shared-types';
 
 export interface CommunityDocumentDetailPageClientProps {
   communityId: string;
   documentId: string;
-}
-
-function readDeepLinkBlockId(): string | null {
-  if (typeof window === 'undefined') return null;
-  const hash = window.location.hash;
-  if (!hash.startsWith('#block-')) return null;
-  return hash.slice('#block-'.length) || null;
 }
 
 export function CommunityDocumentDetailPageClient({
@@ -50,7 +37,6 @@ export function CommunityDocumentDetailPageClient({
   documentId,
 }: CommunityDocumentDetailPageClientProps) {
   const router = useRouter();
-  const [deepLinkBlockId] = useState<string | null>(readDeepLinkBlockId);
   const t = useTranslations('pages.documents');
   const addToast = useToastStore((s) => s.addToast);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -60,62 +46,10 @@ export function CommunityDocumentDetailPageClient({
   const { data: wallets = [] } = useWallets();
   const { data: quotaData } = useUserQuota(communityId);
 
-  const liveQueryOptions = documentLiveQueryOptions();
-
   const docQuery = trpc.documents.getById.useQuery(
     { id: documentId },
-    {
-      enabled: Boolean(documentId && user?.id),
-      ...liveQueryOptions,
-    },
+    { enabled: Boolean(documentId && user?.id) },
   );
-
-  const handleRemoteDocumentActivity = useCallback(
-    (event: DocumentLiveEvent) => {
-      if (event.type === 'variant.proposed') {
-        addToast(t('gdocs.liveVariantProposed'), 'info');
-        return;
-      }
-      if (event.type === 'vote.cast') {
-        addToast(t('gdocs.liveVoteCast'), 'info');
-        return;
-      }
-      if (event.type === 'document.updated' || event.type === 'variant.applied') {
-        addToast(t('gdocs.liveDocumentUpdated'), 'info');
-        return;
-      }
-      if (event.type === 'wave.closed') {
-        addToast(t('gdocs.liveWaveClosed'), 'info');
-        return;
-      }
-      if (event.type === 'block.locks_changed') {
-        addToast(t('gdocs.liveLocksChanged'), 'info');
-      }
-    },
-    [addToast, t],
-  );
-
-  useDocumentLiveSync({
-    documentId,
-    enabled: Boolean(documentId && user?.id && docQuery.data),
-    userId: user?.id,
-    onRemoteActivity: handleRemoteDocumentActivity,
-  });
-
-  useEffect(() => {
-    if (!docQuery.data?.sections) return;
-    const hash = typeof window !== 'undefined' ? window.location.hash : '';
-    if (!hash.startsWith('#block-')) return;
-    const blockId = hash.slice('#block-'.length);
-    if (!blockId) return;
-    const timer = window.setTimeout(() => {
-      document.getElementById(`block-${blockId}`)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      });
-    }, 150);
-    return () => window.clearTimeout(timer);
-  }, [docQuery.data?.sections, docQuery.dataUpdatedAt]);
 
   const quotaRemaining = quotaData?.remainingToday ?? 0;
   const walletBalance = getWalletBalance(wallets, communityId);
@@ -124,30 +58,18 @@ export function CommunityDocumentDetailPageClient({
   const userRoleInCommunity =
     user?.globalRole === 'superadmin'
       ? 'superadmin'
-      : (userRoles.find((r) => r?.communityId === communityId)?.role ?? null);
+      : (userRoles.find((r) => r.communityId === communityId)?.role ?? null);
 
   const canManageDocument =
     user?.globalRole === 'superadmin' ||
     (docQuery.data?.createdBy != null && docQuery.data.createdBy === user?.id) ||
     userRoleInCommunity === 'lead';
 
-  const isCommunityMember =
-    userRoleInCommunity === 'lead' || userRoleInCommunity === 'participant';
-
-  const documentCreators =
-    (community?.settings as { documentCreators?: 'admins' | 'members' } | undefined)
-      ?.documentCreators ?? 'members';
-
-  const canUseGdocsEditor =
-    Boolean(user?.id) &&
-    (user?.globalRole === 'superadmin' ||
-      (isCommunityMember && (canManageDocument || documentCreators === 'members')));
-
   const pageHeader = (
     <SimpleStickyHeader
       title={docQuery.data?.title ?? t('listTitle')}
       showBack
-      onBack={() => router.push(routes.community(communityId))}
+      onBack={() => router.push(routes.communityDocuments(communityId))}
       asStickyHeader
       showScrollToTop
     />
@@ -222,7 +144,6 @@ export function CommunityDocumentDetailPageClient({
   const focusProps = {
     documentId: doc.id,
     sections: doc.sections,
-    initialFocusedBlockId: deepLinkBlockId,
     docMode: doc.mode,
     variantCost: doc.variantCost ?? 1,
     votingDurationHours: doc.votingDurationHours ?? 48,
@@ -244,7 +165,7 @@ export function CommunityDocumentDetailPageClient({
       myId={user.id}
       stickyHeader={pageHeader}
     >
-      <div className="relative w-full">
+      <div className="relative mx-auto w-full max-w-3xl p-4">
         {canManageDocument ? (
           <DocumentSettingsDialog
             open={settingsOpen}
@@ -273,42 +194,38 @@ export function CommunityDocumentDetailPageClient({
         >
           <DocumentCanvasFocusProvider {...focusProps}>
             <>
-              <div className="grid w-full grid-cols-1 gap-4 pb-20 max-lg:pb-24 lg:grid-cols-[minmax(0,1fr)_min(280px,32%)] lg:items-start lg:pb-0">
-                <DocumentCanvas fullWidth>
-                  <DocumentCanvasHeader
-                    title={doc.title}
-                    docType={doc.type}
-                    mode={doc.mode}
-                    votingDurationHours={doc.votingDurationHours ?? 48}
-                    variantCost={doc.variantCost ?? 1}
-                    updatedAt={doc.updatedAt}
-                    canManageDocument={canManageDocument}
-                    onOpenSettings={() => setSettingsOpen(true)}
-                  />
-
-                  {canUseGdocsEditor ? (
-                    <DocumentGdocsUnifiedEditor
-                      documentId={doc.id}
-                      sections={doc.sections}
-                      updatedAt={doc.updatedAt}
-                      canManageDocument={canManageDocument}
-                    />
-                  ) : (
-                    <DocumentUnifiedCanvas
-                      sections={doc.sections}
-                      documentId={doc.id}
-                      readOnly
-                    />
-                  )}
-                </DocumentCanvas>
-
-                <DocumentProposalRail
-                  sections={doc.sections}
-                  className="hidden lg:flex lg:min-h-0 lg:w-full lg:max-w-[320px] lg:justify-self-end"
+              <DocumentCanvas>
+                <DocumentCanvasFocusHint />
+                <DocumentCanvasHeader
+                  title={doc.title}
+                  docType={doc.type}
+                  mode={doc.mode}
+                  votingDurationHours={doc.votingDurationHours ?? 48}
+                  variantCost={doc.variantCost ?? 1}
+                  updatedAt={doc.updatedAt}
+                  canManageDocument={canManageDocument}
+                  onOpenSettings={() => setSettingsOpen(true)}
                 />
-              </div>
 
-              <DocumentMobileProposalsDock sections={doc.sections} />
+                <DocumentCanvasBody
+                  sections={doc.sections}
+                  documentId={doc.id}
+                  docMode={doc.mode}
+                  variantCost={doc.variantCost ?? 1}
+                  votingDurationHours={doc.votingDurationHours ?? 48}
+                  docAllowDownvotes={doc.allowDownvotes ?? true}
+                  canManageDocument={canManageDocument}
+                  community={community ?? null}
+                  quotaRemaining={quotaRemaining}
+                  walletBalance={walletBalance}
+                  globalWalletBalance={globalWalletBalance}
+                  userId={user.id}
+                  addToast={addToast}
+                  t={t as DocTranslate}
+                />
+              </DocumentCanvas>
+
+              <DocumentCanvasRail />
               <DocumentCanvasMobileSheet />
               <DocumentBlockAdminDialogs />
             </>

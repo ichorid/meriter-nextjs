@@ -1,7 +1,21 @@
 'use client';
 
+import React from 'react';
+import Link from 'next/link';
+
 /**
- * Dedicated /meriter/not-found route for client-side redirects when a meriter
- * resource (community, user, post, etc.) does not exist. UI is the canonical shell.
+ * 404 Not Found page for meriter routes
+ * This page is shown when a resource (community, user, post, etc.) doesn't exist
  */
-export { NotFoundShell as default } from '@/app/not-found';
+export default function NotFound() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen p-4">
+      <h1 className="text-4xl font-bold mb-4">404</h1>
+      <p className="text-lg mb-8">Page not found</p>
+      <Link href="/meriter/profile" className="text-blue-500 hover:underline">
+        Go to profile page
+      </Link>
+    </div>
+  );
+}
+

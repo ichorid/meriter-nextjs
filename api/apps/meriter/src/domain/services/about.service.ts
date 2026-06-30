@@ -2,19 +2,20 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  Inject,
 } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import {
+  AboutCategorySchemaClass,
+  AboutCategoryDocument,
   AboutCategory,
 } from '../models/about/about-category.schema';
 import {
+  AboutArticleSchemaClass,
+  AboutArticleDocument,
   AboutArticle,
 } from '../models/about/about-article.schema';
 import { uid } from 'uid';
-import {
-  ABOUT_PERSISTENCE_PORT,
-  type AboutPersistencePort,
-} from '../ports/about.persistence.port';
 
 export interface CreateAboutCategoryDto {
   title: string;
@@ -51,8 +52,10 @@ export class AboutService {
   private readonly logger = new Logger(AboutService.name);
 
   constructor(
-    @Inject(ABOUT_PERSISTENCE_PORT)
-    private readonly aboutPersistence: AboutPersistencePort,
+    @InjectModel(AboutCategorySchemaClass.name)
+    private categoryModel: Model<AboutCategoryDocument>,
+    @InjectModel(AboutArticleSchemaClass.name)
+    private articleModel: Model<AboutArticleDocument>,
   ) {}
 
   /**
@@ -60,18 +63,21 @@ export class AboutService {
    * Excludes the special 'introduction' category
    */
   async getAllCategoriesWithArticles(): Promise<AboutCategoryWithArticles[]> {
-    const categories =
-      await this.aboutPersistence.findCategoriesExcludingIntroduction();
+    const categories = await this.categoryModel
+      .find({ id: { $ne: 'introduction' } }) // Exclude introduction category
+      .sort({ order: 1, createdAt: 1 })
+      .exec();
 
     const categoriesWithArticles = await Promise.all(
-      categories.map(async (category) => {
-        const articles = await this.aboutPersistence.findArticlesByCategoryId(
-          category.id,
-        );
+      categories.map(async (cat) => {
+        const articles = await this.articleModel
+          .find({ categoryId: cat.id })
+          .sort({ order: 1, createdAt: 1 })
+          .exec();
 
         return {
-          ...(category as AboutCategory),
-          articles: articles as AboutArticle[],
+          ...cat.toObject(),
+          articles: articles.map((art) => art.toObject()),
         };
       }),
     );
@@ -83,34 +89,41 @@ export class AboutService {
    * Get all categories
    */
   async getAllCategories(): Promise<AboutCategory[]> {
-    return (await this.aboutPersistence.findAllCategoriesOrdered()) as AboutCategory[];
+    const categories = await this.categoryModel
+      .find()
+      .sort({ order: 1, createdAt: 1 })
+      .exec();
+    return categories.map((cat) => cat.toObject());
   }
 
   /**
    * Get category by ID
    */
   async getCategoryById(id: string): Promise<AboutCategory> {
-    const category = await this.aboutPersistence.findCategoryById(id);
+    const category = await this.categoryModel.findOne({ id }).exec();
     if (!category) {
       throw new NotFoundException(`About category with id ${id} not found`);
     }
-    return category as AboutCategory;
+    return category.toObject();
   }
 
   /**
    * Get category with articles by ID
    */
   async getCategoryWithArticlesById(id: string): Promise<AboutCategoryWithArticles> {
-    const category = await this.aboutPersistence.findCategoryById(id);
+    const category = await this.categoryModel.findOne({ id }).exec();
     if (!category) {
       throw new NotFoundException(`About category with id ${id} not found`);
     }
 
-    const articles = await this.aboutPersistence.findArticlesByCategoryId(id);
+    const articles = await this.articleModel
+      .find({ categoryId: id })
+      .sort({ order: 1, createdAt: 1 })
+      .exec();
 
     return {
-      ...(category as AboutCategory),
-      articles: articles as AboutArticle[],
+      ...category.toObject(),
+      articles: articles.map((art) => art.toObject()),
     };
   }
 
@@ -121,54 +134,58 @@ export class AboutService {
     // Get max order if not provided
     let order = dto.order;
     if (order === undefined) {
-      const maxOrder = await this.aboutPersistence.findMaxCategoryOrder();
-      order = maxOrder !== null ? maxOrder + 1 : 0;
+      const maxOrderCategory = await this.categoryModel
+        .findOne()
+        .sort({ order: -1 })
+        .exec();
+      order = maxOrderCategory ? maxOrderCategory.order + 1 : 0;
     }
 
-    const category = await this.aboutPersistence.createCategory({
+    const category = new this.categoryModel({
       id: uid(),
       title: dto.title,
       description: dto.description,
       order,
     });
 
+    await category.save();
     this.logger.log(`Created about category: ${category.id} (${category.title})`);
-    return category as AboutCategory;
+    return category.toObject();
   }
 
   /**
    * Update a category
    */
   async updateCategory(id: string, dto: UpdateAboutCategoryDto): Promise<AboutCategory> {
-    const category = await this.aboutPersistence.findCategoryById(id);
+    const category = await this.categoryModel.findOne({ id }).exec();
     if (!category) {
       throw new NotFoundException(`About category with id ${id} not found`);
     }
 
-    const updated = await this.aboutPersistence.saveCategory({
-      ...category,
-      ...(dto.title !== undefined ? { title: dto.title } : {}),
-      ...(dto.description !== undefined ? { description: dto.description } : {}),
-      ...(dto.order !== undefined ? { order: dto.order } : {}),
-    });
+    // Update fields
+    if (dto.title !== undefined) category.title = dto.title;
+    if (dto.description !== undefined) category.description = dto.description;
+    if (dto.order !== undefined) category.order = dto.order;
+
+    await category.save();
     this.logger.log(`Updated about category: ${category.id} (${category.title})`);
-    return updated as AboutCategory;
+    return category.toObject();
   }
 
   /**
    * Delete a category and all its articles
    */
   async deleteCategory(id: string): Promise<void> {
-    const category = await this.aboutPersistence.findCategoryById(id);
+    const category = await this.categoryModel.findOne({ id }).exec();
     if (!category) {
       throw new NotFoundException(`About category with id ${id} not found`);
     }
 
     // Delete all articles in this category
-    await this.aboutPersistence.deleteArticlesByCategoryId(id);
+    await this.articleModel.deleteMany({ categoryId: id }).exec();
 
     // Delete the category
-    await this.aboutPersistence.deleteCategoryById(id);
+    await this.categoryModel.deleteOne({ id }).exec();
     this.logger.log(`Deleted about category: ${id} (${category.title})`);
   }
 
@@ -176,20 +193,22 @@ export class AboutService {
    * Get all articles for a category
    */
   async getArticlesByCategoryId(categoryId: string): Promise<AboutArticle[]> {
-    return (await this.aboutPersistence.findArticlesByCategoryId(
-      categoryId,
-    )) as AboutArticle[];
+    const articles = await this.articleModel
+      .find({ categoryId })
+      .sort({ order: 1, createdAt: 1 })
+      .exec();
+    return articles.map((art) => art.toObject());
   }
 
   /**
    * Get article by ID
    */
   async getArticleById(id: string): Promise<AboutArticle> {
-    const article = await this.aboutPersistence.findArticleById(id);
+    const article = await this.articleModel.findOne({ id }).exec();
     if (!article) {
       throw new NotFoundException(`About article with id ${id} not found`);
     }
-    return article as AboutArticle;
+    return article.toObject();
   }
 
   /**
@@ -197,7 +216,7 @@ export class AboutService {
    */
   async createArticle(dto: CreateAboutArticleDto): Promise<AboutArticle> {
     // Verify category exists
-    const category = await this.aboutPersistence.findCategoryById(dto.categoryId);
+    const category = await this.categoryModel.findOne({ id: dto.categoryId }).exec();
     if (!category) {
       throw new NotFoundException(`About category with id ${dto.categoryId} not found`);
     }
@@ -205,13 +224,14 @@ export class AboutService {
     // Get max order if not provided
     let order = dto.order;
     if (order === undefined) {
-      const maxOrder = await this.aboutPersistence.findMaxArticleOrderInCategory(
-        dto.categoryId,
-      );
-      order = maxOrder !== null ? maxOrder + 1 : 0;
+      const maxOrderArticle = await this.articleModel
+        .findOne({ categoryId: dto.categoryId })
+        .sort({ order: -1 })
+        .exec();
+      order = maxOrderArticle ? maxOrderArticle.order + 1 : 0;
     }
 
-    const article = await this.aboutPersistence.createArticle({
+    const article = new this.articleModel({
       id: uid(),
       categoryId: dto.categoryId,
       title: dto.title,
@@ -219,48 +239,49 @@ export class AboutService {
       order,
     });
 
+    await article.save();
     this.logger.log(`Created about article: ${article.id} (${article.title})`);
-    return article as AboutArticle;
+    return article.toObject();
   }
 
   /**
    * Update an article
    */
   async updateArticle(id: string, dto: UpdateAboutArticleDto): Promise<AboutArticle> {
-    const article = await this.aboutPersistence.findArticleById(id);
+    const article = await this.articleModel.findOne({ id }).exec();
     if (!article) {
       throw new NotFoundException(`About article with id ${id} not found`);
     }
 
     // Verify new category exists if changing
     if (dto.categoryId && dto.categoryId !== article.categoryId) {
-      const category = await this.aboutPersistence.findCategoryById(dto.categoryId);
+      const category = await this.categoryModel.findOne({ id: dto.categoryId }).exec();
       if (!category) {
         throw new NotFoundException(`About category with id ${dto.categoryId} not found`);
       }
     }
 
-    const updated = await this.aboutPersistence.saveArticle({
-      ...article,
-      ...(dto.categoryId !== undefined ? { categoryId: dto.categoryId } : {}),
-      ...(dto.title !== undefined ? { title: dto.title } : {}),
-      ...(dto.content !== undefined ? { content: dto.content } : {}),
-      ...(dto.order !== undefined ? { order: dto.order } : {}),
-    });
+    // Update fields
+    if (dto.categoryId !== undefined) article.categoryId = dto.categoryId;
+    if (dto.title !== undefined) article.title = dto.title;
+    if (dto.content !== undefined) article.content = dto.content;
+    if (dto.order !== undefined) article.order = dto.order;
+
+    await article.save();
     this.logger.log(`Updated about article: ${article.id} (${article.title})`);
-    return updated as AboutArticle;
+    return article.toObject();
   }
 
   /**
    * Delete an article
    */
   async deleteArticle(id: string): Promise<void> {
-    const article = await this.aboutPersistence.findArticleById(id);
+    const article = await this.articleModel.findOne({ id }).exec();
     if (!article) {
       throw new NotFoundException(`About article with id ${id} not found`);
     }
 
-    await this.aboutPersistence.deleteArticleById(id);
+    await this.articleModel.deleteOne({ id }).exec();
     this.logger.log(`Deleted about article: ${id} (${article.title})`);
   }
 
@@ -268,9 +289,7 @@ export class AboutService {
    * Get introduction text (stored as a special category with id 'introduction')
    */
   async getIntroduction(): Promise<string | null> {
-    const introCategory = await this.aboutPersistence.findCategoryById(
-      'introduction',
-    );
+    const introCategory = await this.categoryModel.findOne({ id: 'introduction' }).exec();
     if (!introCategory) {
       return null;
     }
@@ -282,22 +301,18 @@ export class AboutService {
    * Set introduction text
    */
   async setIntroduction(content: string): Promise<void> {
-    const introCategory = await this.aboutPersistence.findCategoryById(
-      'introduction',
-    );
+    let introCategory = await this.categoryModel.findOne({ id: 'introduction' }).exec();
     if (!introCategory) {
-      await this.aboutPersistence.createCategory({
+      introCategory = new this.categoryModel({
         id: 'introduction',
         title: 'Introduction',
         description: content,
         order: -1, // Always first
       });
-      return;
+    } else {
+      introCategory.description = content;
     }
-    await this.aboutPersistence.saveCategory({
-      ...introCategory,
-      description: content,
-    });
+    await introCategory.save();
   }
 
   /**
@@ -491,22 +506,24 @@ export class AboutService {
 
     for (let i = 0; i < AboutService.DEMO_CATEGORIES.length; i++) {
       const catData = AboutService.DEMO_CATEGORIES[i];
-      const category = await this.aboutPersistence.createCategory({
+      const category = new this.categoryModel({
         id: uid(),
         title: catData.title,
         description: catData.description,
         order: i,
       });
+      await category.save();
 
       for (let j = 0; j < catData.articles.length; j++) {
         const artData = catData.articles[j];
-        await this.aboutPersistence.createArticle({
+        const article = new this.articleModel({
           id: uid(),
           categoryId: category.id,
           title: artData.title,
           content: artData.content,
           order: j,
         });
+        await article.save();
       }
     }
 
@@ -519,7 +536,7 @@ export class AboutService {
    * Initialize demo data when no about content exists (e.g. first run).
    */
   async initializeDemoData(): Promise<void> {
-    const existingCategories = await this.aboutPersistence.countCategories();
+    const existingCategories = await this.categoryModel.countDocuments().exec();
     if (existingCategories > 0) {
       this.logger.log('About content already exists, skipping demo data initialization');
       return;
@@ -532,8 +549,8 @@ export class AboutService {
    * Superadmin only. Use for "Сбросить «О проекте» к демо-данным" in platform settings.
    */
   async resetToDemoData(): Promise<void> {
-    await this.aboutPersistence.deleteAllArticles();
-    await this.aboutPersistence.deleteAllCategories();
+    await this.articleModel.deleteMany({}).exec();
+    await this.categoryModel.deleteMany({}).exec();
     this.logger.log('About content cleared, inserting demo data');
     await this.insertDemoData();
   }

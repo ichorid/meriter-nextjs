@@ -4,13 +4,13 @@ import { Document } from 'mongoose';
 /**
  * PollCast Mongoose Schema
  * 
- * SOURCE OF TRUTH: @meriter/shared-types/schemas - PollCastSchema (Zod)
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - PollCastSchema (Zod)
  * 
  * This Mongoose schema implements the PollCast entity defined in shared-types.
  * Any changes to the PollCast entity MUST be made in the Zod schema first,
  * then this Mongoose schema should be updated to match.
  * 
- * Fields correspond to PollCastSchema in @meriter/shared-types/schemas
+ * Fields correspond to PollCastSchema in libs/shared-types/src/schemas.ts
  */
 
 export interface PollCast {

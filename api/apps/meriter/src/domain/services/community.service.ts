@@ -6,34 +6,30 @@ import {
   forwardRef,
   Inject,
 } from '@nestjs/common';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection, ClientSession } from 'mongoose';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Model, Connection, ClientSession } from 'mongoose';
 import {
-  COMMUNITY_PERSISTENCE_PORT,
-  type CommunityPersistencePort,
-  type CommunitySnapshot,
-  type CommunityUpdatePayload,
-} from '../ports/community.persistence.port';
+  CommunitySchemaClass,
+  CommunityDocument,
+} from '../models/community/community.schema';
 import type {
   Community,
   PermissionRule,
   CommunityMeritSettings,
   CommunityVotingSettings,
 } from '../models/community/community.schema';
-import {
-  USER_PERSISTENCE_PORT,
-  type UserPersistencePort,
-} from '../ports/user.persistence.port';
+import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
+import { WalletSchemaClass, WalletDocument } from '../models/wallet/wallet.schema';
 import { EventBus } from '../events/event-bus';
+import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
 import { uid } from 'uid';
 import { UserService } from './user.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { WalletService } from './wallet.service';
 import { CommunityDefaultsService } from './community-defaults.service';
-import { CommunityEffectiveSettingsService } from './community-effective-settings.service';
-import { CommunityMembershipService } from './community-membership.service';
 import { PublicationService } from './publication.service';
 import { DocumentService } from './document.service';
+import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD } from '../common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import {
   PRIORITY_HUB_BOOTSTRAP,
@@ -44,7 +40,11 @@ import {
   loadDevPlatformSnapshot,
   getPriorityHubSnapshotForTag,
 } from '../../seed-data/load-dev-platform-snapshot';
-import { isEligibleNonProjectBirzhaSourceCommunity } from '../common/constants/birzha-source-entity.constants';
+import {
+  TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE,
+  isEligibleNonProjectBirzhaSourceCommunity,
+} from '../common/constants/birzha-source-entity.constants';
+import { isPriorityCommunity } from '../common/helpers/community.helper';
 import { CommunityWalletService } from './community-wallet.service';
 
 export interface CreateCommunityDto {
@@ -80,8 +80,6 @@ export interface CreateCommunityDto {
     investorShareMax?: number;
     documentsMode?: 'off' | 'visionOrDescriptionOnly' | 'all';
     documentCreators?: 'admins' | 'members';
-    telegramPlatformIntegration?: boolean;
-    telegramPlatformVisibility?: 'private' | 'public';
   };
   isPriority?: boolean;
   /** Project-specific: set when typeTag === 'project' */
@@ -181,7 +179,6 @@ export interface UpdateCommunityDto {
   projectStatus?: 'active' | 'closed' | 'archived';
   rejectionMessage?: string;
   futureVisionText?: string;
-  futureVisionDocumentSeed?: CreateCommunityDto['futureVisionDocumentSeed'];
   futureVisionTags?: string[];
   futureVisionCover?: string;
   /** Project communities: set parent; pass null to detach (becomes personal when combined with isPersonalProject). */
@@ -212,19 +209,15 @@ const DEFAULT_MERIT_CURRENCY = {
   genitive: 'merits',
 } as const;
 
-function asCommunity(snapshot: CommunitySnapshot): Community {
-  return snapshot as unknown as Community;
-}
-
 @Injectable()
 export class CommunityService {
   private readonly logger = new Logger(CommunityService.name);
 
   constructor(
-    @Inject(COMMUNITY_PERSISTENCE_PORT)
-    private readonly communityPersistence: CommunityPersistencePort,
-    @Inject(USER_PERSISTENCE_PORT)
-    private readonly userPersistence: UserPersistencePort,
+    @InjectModel(CommunitySchemaClass.name)
+    private communityModel: Model<CommunityDocument>,
+    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
+    @InjectModel(WalletSchemaClass.name) private walletModel: Model<WalletDocument>,
     @InjectConnection() private mongoose: Connection,
     private eventBus: EventBus,
     @Inject(forwardRef(() => UserService))
@@ -234,9 +227,6 @@ export class CommunityService {
     @Inject(forwardRef(() => WalletService))
     private walletService: WalletService,
     private communityDefaultsService: CommunityDefaultsService,
-    private readonly effectiveSettings: CommunityEffectiveSettingsService,
-    @Inject(forwardRef(() => CommunityMembershipService))
-    private readonly membership: CommunityMembershipService,
     @Inject(forwardRef(() => PublicationService))
     private publicationService: PublicationService,
     private communityWalletService: CommunityWalletService,
@@ -245,100 +235,144 @@ export class CommunityService {
 
   async getCommunity(communityId: string): Promise<Community | null> {
     // Query by internal ID only
-    const doc = await this.communityPersistence.findById(communityId);
-    return doc ? asCommunity(doc) : null;
+    const doc = await this.communityModel.findOne({ id: communityId }).lean();
+    return doc ? (doc as unknown as Community) : null;
   }
 
 
+  /**
+   * Get effective permission rules (defaults merged with custom overrides)
+   * DB rules override defaults. Rules are matched by role + action.
+   */
   getEffectivePermissionRules(community: Community): PermissionRule[] {
-    return this.effectiveSettings.getEffectivePermissionRules(community);
-  }
-
-  getEffectiveMeritSettings(
-    community: Pick<Community, 'typeTag' | 'meritSettings'>,
-  ): CommunityMeritSettings {
-    return this.effectiveSettings.getEffectiveMeritSettings(community);
-  }
-
-  getQuotaStartTime(community: Pick<Community, 'lastQuotaResetAt'>): Date {
-    return this.effectiveSettings.getQuotaStartTime(community);
-  }
-
-  getDailyEmissionCapForQuota(
-    community: Pick<Community, 'typeTag' | 'meritSettings' | 'settings'>,
-  ): number {
-    return this.effectiveSettings.getDailyEmissionCapForQuota(community);
-  }
-
-  getPublicationCreateDailyCap(
-    community: Pick<Community, 'typeTag' | 'meritSettings'>,
-  ): number {
-    return this.effectiveSettings.getPublicationCreateDailyCap(community);
-  }
-
-  computeRemainingQuota(dailyCap: number, used: number): number {
-    return this.effectiveSettings.computeRemainingQuota(dailyCap, used);
-  }
-
-  async getRemainingPublicationCreateQuota(
-    userId: string,
-    communityId: string,
-    community: Pick<
-      Community,
-      'typeTag' | 'meritSettings' | 'settings' | 'lastQuotaResetAt' | 'isPriority'
-    >,
-    dbOverride?: Parameters<CommunityEffectiveSettingsService['aggregateQuotaUsedSince']>[3],
-  ): Promise<number> {
-    return this.effectiveSettings.getRemainingPublicationCreateQuota(
-      userId,
-      communityId,
-      community,
-      dbOverride,
+    const defaultRules = this.communityDefaultsService.getDefaultPermissionRules(
+      community.typeTag,
     );
+
+    if (!community.permissionRules || community.permissionRules.length === 0) {
+      return defaultRules;
+    }
+
+    // Merge: DB rules override defaults
+    // Create a map of default rules by role+action for quick lookup
+    const defaultRulesMap = new Map<string, PermissionRule>();
+    for (const rule of defaultRules) {
+      const key = `${rule.role}:${rule.action}`;
+      defaultRulesMap.set(key, rule);
+    }
+
+    // Create a map of DB rules by role+action
+    const dbRulesMap = new Map<string, PermissionRule>();
+    for (const rule of community.permissionRules) {
+      const key = `${rule.role}:${rule.action}`;
+      dbRulesMap.set(key, rule);
+    }
+
+    // Merge: DB rules override defaults, but merge conditions from defaults
+    const mergedRules: PermissionRule[] = [];
+    const processedKeys = new Set<string>();
+
+    // First, merge DB rules with defaults (DB rules override, but conditions are merged)
+    for (const dbRule of community.permissionRules) {
+      const key = `${dbRule.role}:${dbRule.action}`;
+      const defaultRule = defaultRulesMap.get(key);
+      
+      // Merge conditions: DB conditions override defaults, but include defaults if not in DB
+      const mergedConditions = defaultRule?.conditions
+        ? { ...defaultRule.conditions, ...dbRule.conditions }
+        : dbRule.conditions;
+      
+      mergedRules.push({
+        ...dbRule,
+        conditions: mergedConditions && Object.keys(mergedConditions).length > 0
+          ? mergedConditions
+          : undefined,
+      });
+      processedKeys.add(key);
+    }
+
+    // Then, add default rules that weren't overridden
+    for (const defaultRule of defaultRules) {
+      const key = `${defaultRule.role}:${defaultRule.action}`;
+      if (!processedKeys.has(key)) {
+        mergedRules.push(defaultRule);
+      }
+    }
+
+    return mergedRules;
   }
 
-  async getRemainingDailyEmissionQuota(
-    userId: string,
-    communityId: string,
-    community: Pick<
-      Community,
-      'typeTag' | 'meritSettings' | 'settings' | 'lastQuotaResetAt'
-    >,
-    dbOverride?: Parameters<CommunityEffectiveSettingsService['aggregateQuotaUsedSince']>[3],
-  ): Promise<number> {
-    return this.effectiveSettings.getRemainingDailyEmissionQuota(
-      userId,
-      communityId,
-      community,
-      dbOverride,
+  /**
+   * Get effective merit settings (defaults merged with custom overrides)
+   */
+  getEffectiveMeritSettings(community: Pick<Community, 'typeTag' | 'meritSettings'>): CommunityMeritSettings {
+    const defaults = this.communityDefaultsService.getDefaultMeritSettings(
+      community.typeTag,
     );
+
+    if (!community.meritSettings) {
+      return defaults;
+    }
+
+    const effectiveSettings = {
+      ...defaults,
+      ...community.meritSettings,
+      quotaRecipients:
+        community.meritSettings.quotaRecipients ?? defaults.quotaRecipients,
+    };
+
+    // If startingMerits is not set, default to dailyQuota value
+    if (effectiveSettings.startingMerits === undefined) {
+      effectiveSettings.startingMerits = effectiveSettings.dailyQuota;
+    }
+
+    return effectiveSettings;
   }
 
-  async aggregateQuotaUsedSince(
-    userId: string,
-    communityId: string,
-    quotaStartTime: Date,
-    dbOverride?: Parameters<CommunityEffectiveSettingsService['aggregateQuotaUsedSince']>[3],
-  ): Promise<number> {
-    return this.effectiveSettings.aggregateQuotaUsedSince(
-      userId,
-      communityId,
-      quotaStartTime,
-      dbOverride,
-    );
-  }
-
+  /**
+   * Get effective voting settings (defaults merged with custom overrides)
+   */
   getEffectiveVotingSettings(community: Community): CommunityVotingSettings {
-    return this.effectiveSettings.getEffectiveVotingSettings(community);
+    const defaults = this.communityDefaultsService.getDefaultVotingSettings(
+      community.typeTag,
+    );
+
+    if (!community.votingSettings) {
+      return defaults;
+    }
+
+    return {
+      ...defaults,
+      ...community.votingSettings,
+      votingRestriction:
+        community.votingSettings.votingRestriction ?? defaults.votingRestriction,
+      currencySource:
+        community.votingSettings.currencySource ?? defaults.currencySource,
+      meritConversion:
+        community.votingSettings.meritConversion ?? defaults.meritConversion,
+    };
   }
 
+  /**
+   * Permanent merits to credit when a user's wallet in this community is first created.
+   * Global hub uses welcome merits separately; team-projects hub defaults to 0.
+   */
   startingMeritsOnJoin(community: Community): number {
-    return this.effectiveSettings.startingMeritsOnJoin(community);
+    if (!community?.id || community.id === GLOBAL_COMMUNITY_ID) {
+      return 0;
+    }
+    const effective = this.getEffectiveMeritSettings(community);
+    const raw = effective.startingMerits ?? effective.dailyQuota ?? 0;
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n <= 0) {
+      return 0;
+    }
+    return Math.floor(n);
   }
 
   async getCommunityByTypeTag(typeTag: string): Promise<Community | null> {
-    const doc = await this.communityPersistence.findByTypeTag(typeTag);
-    return doc ? asCommunity(doc) : null;
+    const doc = await this.communityModel.findOne({ typeTag }).lean();
+    return doc ? (doc as unknown as Community) : null;
   }
 
   /**
@@ -421,7 +455,7 @@ export class CommunityService {
 
     // 3. Team Projects
     // Check for duplicates first
-    const allTeamProjects = await this.communityPersistence.findAllByTypeTag('team-projects');
+    const allTeamProjects = await this.communityModel.find({ typeTag: 'team-projects' }).lean();
     if (allTeamProjects.length > 1) {
       this.logger.warn(`Found ${allTeamProjects.length} communities with typeTag 'team-projects'. Removing duplicates...`);
       // Keep the first one (oldest), delete the rest
@@ -433,7 +467,7 @@ export class CommunityService {
       const _toKeep = sorted[0];
       for (let i = 1; i < sorted.length; i++) {
         this.logger.log(`Deleting duplicate Team Projects community: ${sorted[i].id}`);
-        await this.communityPersistence.deleteById(sorted[i].id);
+        await this.communityModel.deleteOne({ id: sorted[i].id });
       }
     }
     
@@ -504,7 +538,7 @@ export class CommunityService {
     };
 
     for (const typeTag of PRIORITY_HUB_BOOTSTRAP_TYPE_TAGS) {
-      const doc = await this.communityPersistence.findByTypeTag(typeTag);
+      const doc = await this.communityModel.findOne({ typeTag }).lean();
       if (!doc?.id) {
         continue;
       }
@@ -532,28 +566,34 @@ export class CommunityService {
       if (b.meritSettings) {
         delete unsetForHub.meritSettings;
       }
-      await this.communityPersistence.updateCommunity(doc.id, {
-        set: setDoc,
-        unset: unsetForHub,
-      });
+      await this.communityModel.updateOne(
+        { id: doc.id },
+        {
+          $set: setDoc as never,
+          $unset: unsetForHub,
+        },
+      );
     }
 
-    const g = await this.communityPersistence.findById(GLOBAL_COMMUNITY_ID);
+    const g = await this.communityModel.findOne({ id: GLOBAL_COMMUNITY_ID }).lean();
     if (g?.id) {
       const gc = snap.globalCommunity;
-      await this.communityPersistence.updateCommunity(GLOBAL_COMMUNITY_ID, {
-        set: {
-          name: gc.name,
-          description: gc.description,
-          typeTag: 'global',
-          isActive: true,
-          settings: { ...gc.settings } as unknown as Community['settings'],
-          hashtags: [],
-          hashtagDescriptions: {},
-          updatedAt: now,
+      await this.communityModel.updateOne(
+        { id: GLOBAL_COMMUNITY_ID },
+        {
+          $set: {
+            name: gc.name,
+            description: gc.description,
+            typeTag: 'global',
+            isActive: true,
+            settings: { ...gc.settings } as unknown as Community['settings'],
+            hashtags: [],
+            hashtagDescriptions: {},
+            updatedAt: now,
+          },
+          $unset: unsetStoredOverrides,
         },
-        unset: unsetStoredOverrides,
-      });
+      );
     }
 
     this.logger.log('Priority communities and global hub reset from dev snapshot (fallback: bootstrap)');
@@ -568,20 +608,20 @@ export class CommunityService {
     
     try {
       // Get all users (without pagination to process all)
-      const allUserIds = await this.userPersistence.findAllUserIds();
-      this.logger.log(`Found ${allUserIds.length} users to check`);
+      const allUsers = await this.userModel.find({}).lean();
+      this.logger.log(`Found ${allUsers.length} users to check`);
       
       let processedCount = 0;
       let errorsCount = 0;
       
-      for (const userId of allUserIds) {
+      for (const user of allUsers) {
         try {
-          await this.userService.ensureUserInBaseCommunities(userId);
+          await this.userService.ensureUserInBaseCommunities(user.id);
           processedCount++;
         } catch (error) {
           errorsCount++;
           this.logger.error(
-            `Failed to ensure user ${userId} in base communities: ${error instanceof Error ? error.message : 'Unknown error'}`
+            `Failed to ensure user ${user.id} in base communities: ${error instanceof Error ? error.message : 'Unknown error'}`
           );
         }
       }
@@ -606,7 +646,9 @@ export class CommunityService {
 
     // Check for single-instance communities (Future Vision, Marathon of Good, Team Projects, and Support)
     if (dto.typeTag === 'future-vision' || dto.typeTag === 'marathon-of-good' || dto.typeTag === 'team-projects' || dto.typeTag === 'support') {
-      const existing = await this.communityPersistence.findByTypeTag(dto.typeTag);
+      const existing = await this.communityModel
+        .findOne({ typeTag: dto.typeTag })
+        .lean();
       if (existing) {
         throw new BadRequestException(
           `Community with typeTag "${dto.typeTag}" already exists. Only one instance is allowed.`,
@@ -625,7 +667,7 @@ export class CommunityService {
       },
       dailyEmission: dto.settings?.dailyEmission ?? 10,
       documentsMode: 'visionOrDescriptionOnly',
-      documentCreators: 'members',
+      documentCreators: 'admins',
       documentVotingDurationHours: 48,
       documentDefaultMode: 'manual',
       documentAutoApplyTimerHours: 48,
@@ -653,12 +695,6 @@ export class CommunityService {
     }
     if (dto.settings?.documentCreators !== undefined) {
       settings.documentCreators = dto.settings.documentCreators;
-    }
-    if (dto.settings?.telegramPlatformIntegration !== undefined) {
-      settings.telegramPlatformIntegration = dto.settings.telegramPlatformIntegration;
-    }
-    if (dto.settings?.telegramPlatformVisibility !== undefined) {
-      settings.telegramPlatformVisibility = dto.settings.telegramPlatformVisibility;
     }
     const community: Record<string, unknown> = {
       id: dto.id || uid(),
@@ -705,22 +741,20 @@ export class CommunityService {
       community.projectInvestments = [];
     }
 
-    await this.communityPersistence.insertCommunity(community as CommunitySnapshot);
+    await this.communityModel.create([community]);
     this.logger.log(
       `Community created: ${community.id}${dto.typeTag ? ` (typeTag: ${dto.typeTag})` : ''}`,
     );
 
     try {
-      const skipObDocument = dto.settings?.telegramPlatformIntegration === false;
       await this.documentService.bootstrapForNewCommunity({
         communityId: community.id as string,
         typeTag: dto.typeTag,
         isProject: Boolean((community as Record<string, unknown>).isProject),
         createdByUserId: dto.creatorUserId ?? dto.founderUserId ?? 'system',
-        futureVisionText: skipObDocument ? undefined : dto.futureVisionText,
-        futureVisionDocumentSeed: skipObDocument ? undefined : dto.futureVisionDocumentSeed,
+        futureVisionText: dto.futureVisionText,
+        futureVisionDocumentSeed: dto.futureVisionDocumentSeed,
         description: dto.description,
-        skipImageOfFuture: skipObDocument,
       });
     } catch (err) {
       this.logger.error(
@@ -728,24 +762,18 @@ export class CommunityService {
       );
     }
 
-    const tgIntegration = dto.settings?.telegramPlatformIntegration;
-    const tgVisibility = dto.settings?.telegramPlatformVisibility;
-    const shouldPublishOb =
-      Boolean(dto.futureVisionText) &&
+    if (
+      dto.futureVisionText &&
       dto.typeTag !== 'future-vision' &&
-      dto.creatorUserId &&
-      (tgIntegration === undefined
-        ? true
-        : tgIntegration === true && tgVisibility === 'public');
-
-    if (shouldPublishOb) {
+      dto.creatorUserId
+    ) {
       const futureVision = await this.getCommunityByTypeTag('future-vision');
       if (futureVision) {
         try {
           await this.publicationService.createFutureVisionPost({
             futureVisionCommunityId: futureVision.id,
             authorId: dto.creatorUserId,
-            content: dto.futureVisionText!,
+            content: dto.futureVisionText,
             sourceEntityId: community.id as string,
           });
         } catch (e) {
@@ -763,27 +791,6 @@ export class CommunityService {
     communityId: string,
     dto: UpdateCommunityDto,
   ): Promise<Community> {
-    if (
-      dto.futureVisionText !== undefined ||
-      dto.futureVisionDocumentSeed !== undefined
-    ) {
-      throw new BadRequestException(
-        'Image of future must be edited via the collaborative document, not community update.',
-      );
-    }
-
-    if (dto.description !== undefined) {
-      const current = await this.communityPersistence.findById(communityId);
-      const documentsMode =
-        (current?.settings as { documentsMode?: string } | undefined)
-          ?.documentsMode ?? 'visionOrDescriptionOnly';
-      if (current?.isProject && documentsMode !== 'off') {
-        throw new BadRequestException(
-          'Project description must be edited via the collaborative document, not community update.',
-        );
-      }
-    }
-
     const updateData: any = {
       updatedAt: new Date(),
     };
@@ -801,6 +808,7 @@ export class CommunityService {
     if (dto.founderSharePercent !== undefined) updateData.founderSharePercent = dto.founderSharePercent;
     if (dto.projectStatus !== undefined) updateData.projectStatus = dto.projectStatus;
     if (dto.rejectionMessage !== undefined) updateData.rejectionMessage = dto.rejectionMessage;
+    if (dto.futureVisionText !== undefined) updateData.futureVisionText = dto.futureVisionText;
     if (dto.futureVisionTags !== undefined) updateData.futureVisionTags = dto.futureVisionTags;
     if (dto.futureVisionCover !== undefined) updateData.futureVisionCover = dto.futureVisionCover;
 
@@ -863,11 +871,6 @@ export class CommunityService {
       if ('allowWithdraw' in dto.settings) {
         settingsUpdate['settings.allowWithdraw'] = Boolean(dto.settings.allowWithdraw);
         this.logger.log(`Updating allowWithdraw to: ${Boolean(dto.settings.allowWithdraw)} for community ${communityId}`);
-      }
-      if ('sharedWalletWithProjects' in dto.settings) {
-        settingsUpdate['settings.sharedWalletWithProjects'] = Boolean(
-          dto.settings.sharedWalletWithProjects,
-        );
       }
       if (dto.settings.forwardRule !== undefined) {
         settingsUpdate['settings.forwardRule'] = dto.settings.forwardRule;
@@ -1032,7 +1035,7 @@ export class CommunityService {
 
     // Handle tappalkaSettings
     if (dto.tappalkaSettings) {
-      const existingCommunity = await this.communityPersistence.findById(communityId);
+      const existingCommunity = await this.communityModel.findOne({ id: communityId }).lean();
       if (
         dto.tappalkaSettings.enabled === true &&
         (existingCommunity as { isProject?: boolean } | null)?.isProject
@@ -1071,14 +1074,34 @@ export class CommunityService {
 
     this.logger.log(`Updating community ${communityId} with data: ${JSON.stringify(updateData)}`);
     
-    const payload: CommunityUpdatePayload = { set: updateData };
+    // Perform the update
+    const updatePayload: Record<string, unknown> = { $set: updateData };
     if (Object.keys(unsetData).length > 0) {
-      payload.unset = unsetData;
+      updatePayload.$unset = unsetData;
     }
-    const updatedCommunity = await this.communityPersistence.updateCommunity(
-      communityId,
-      payload,
-    );
+    await this.communityModel.updateOne({ id: communityId }, updatePayload);
+
+    if (dto.futureVisionText !== undefined) {
+      const futureVision = await this.getCommunityByTypeTag('future-vision');
+      if (futureVision) {
+        try {
+          await this.publicationService.updateFutureVisionPostContent(
+            futureVision.id,
+            communityId,
+            dto.futureVisionText,
+          );
+        } catch (e) {
+          this.logger.error(
+            `Failed to update OB post content for community ${communityId}: ${e instanceof Error ? e.message : 'Unknown error'}`,
+          );
+        }
+      }
+    }
+
+    // Explicitly re-fetch the document to ensure we get the updated values
+    const updatedCommunity = await this.communityModel
+      .findOne({ id: communityId })
+      .lean();
 
     if (!updatedCommunity) {
       throw new NotFoundException('Community not found');
@@ -1087,43 +1110,97 @@ export class CommunityService {
     this.logger.log(`Updated community ${communityId}, canPayPostFromQuota: ${(updatedCommunity as any).settings?.canPayPostFromQuota}, allowWithdraw: ${(updatedCommunity as any).settings?.allowWithdraw}, full settings: ${JSON.stringify((updatedCommunity as any).settings)}`);
     this.logger.log(`[UPDATE] After save, votingSettings.currencySource: ${(updatedCommunity as any).votingSettings?.currencySource}, full votingSettings: ${JSON.stringify((updatedCommunity as any).votingSettings)}`);
 
-    return asCommunity(updatedCommunity);
+    return (updatedCommunity as unknown) as Community;
   }
 
   async deleteCommunity(communityId: string): Promise<void> {
-    const deleted = await this.communityPersistence.deleteById(communityId);
-    if (!deleted) {
+    const result = await this.communityModel.deleteOne({ id: communityId });
+
+    if (result.deletedCount === 0) {
       throw new NotFoundException('Community not found');
     }
   }
 
   async addMember(communityId: string, userId: string): Promise<Community> {
-    return this.membership.addMember(communityId, userId);
+    return MongoArrayUpdateHelper.addToArray<Community>(
+      this.communityModel,
+      { id: communityId },
+      'members',
+      userId,
+      'Community',
+    );
   }
 
   async removeMember(communityId: string, userId: string): Promise<Community> {
-    return this.membership.removeMember(communityId, userId);
+    return MongoArrayUpdateHelper.removeFromArray<Community>(
+      this.communityModel,
+      { id: communityId },
+      'members',
+      userId,
+      'Community',
+    );
   }
 
+  /**
+   * Participant leaves a non-project local community (team/custom). Not allowed for priority hubs or leads.
+   * Community-scoped wallet and its transactions are removed (merits lost).
+   */
   async leaveLocalCommunity(userId: string, communityId: string): Promise<void> {
     const community = await this.getCommunity(communityId);
     if (!community) {
       throw new NotFoundException('Community not found');
     }
-    return this.membership.leaveLocalCommunity(community, userId, communityId);
+    if (community.isProject === true) {
+      throw new BadRequestException('Use leave project for projects');
+    }
+    if (isPriorityCommunity(community)) {
+      throw new BadRequestException('Cannot leave priority communities');
+    }
+    if (!this.isLocalMembershipCommunity(community)) {
+      throw new BadRequestException('Cannot leave this community type');
+    }
+    const role = await this.userCommunityRoleService.getRole(userId, communityId);
+    if (!role) {
+      throw new BadRequestException('You are not a member of this community');
+    }
+    if (role.role === COMMUNITY_ROLE_LEAD) {
+      throw new BadRequestException(
+        'Lead cannot leave; promote another lead first',
+      );
+    }
+
+    await this.walletService.removeUserWalletAndTransactionsForCommunity(
+      userId,
+      communityId,
+    );
+    await this.removeMember(communityId, userId);
+    await this.userService.removeCommunityMembership(userId, communityId);
+    await this.userCommunityRoleService.removeRole(userId, communityId);
   }
 
+  /**
+   * Membership is managed via roles / invites / join requests (not auto-joined base globals).
+   */
   isLocalMembershipCommunity(community: Community): boolean {
-    return this.membership.isLocalMembershipCommunity(community);
+    const tag = community.typeTag;
+    if (!tag) {
+      return true;
+    }
+    return !(TYPE_TAGS_INELIGIBLE_NON_PROJECT_BIRZHA_SOURCE as readonly string[]).includes(
+      tag,
+    );
   }
 
+  /**
+   * Validates a non-project local community may act as Birzha source (communities.publishToBirzha).
+   */
   assertEligibleCommunitySourceForBirzhaPublish(community: Community): void {
     if (community.isProject === true) {
       throw new BadRequestException(
         'Projects must use project.publishToBirzha',
       );
     }
-    if (!this.membership.isLocalMembershipCommunity(community)) {
+    if (!this.isLocalMembershipCommunity(community)) {
       throw new BadRequestException(
         'This community type cannot publish to Birzha as a source',
       );
@@ -1131,7 +1208,19 @@ export class CommunityService {
   }
 
   async isUserAdmin(communityId: string, userId: string): Promise<boolean> {
-    return this.membership.isUserAdmin(communityId, userId);
+    // 1. Check global superadmin role
+    const user = await this.userService.getUserById(userId);
+    if (user?.globalRole === GLOBAL_ROLE_SUPERADMIN) {
+      return true;
+    }
+
+    // 2. Check lead role in community
+    const userRole = await this.userCommunityRoleService.getRole(userId, communityId);
+    if (userRole?.role === COMMUNITY_ROLE_LEAD) {
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -1145,7 +1234,6 @@ export class CommunityService {
       description?: string;
       avatarUrl?: string;
       futureVisionText: string;
-      futureVisionDocumentSeed?: CreateCommunityDto['futureVisionDocumentSeed'];
       futureVisionTags?: string[];
       futureVisionCover?: string;
     },
@@ -1160,7 +1248,6 @@ export class CommunityService {
       typeTag: 'team',
       creatorUserId: userId,
       futureVisionText: data.futureVisionText,
-      futureVisionDocumentSeed: data.futureVisionDocumentSeed,
       futureVisionTags: data.futureVisionTags,
       futureVisionCover: data.futureVisionCover,
     });
@@ -1189,7 +1276,13 @@ export class CommunityService {
   }
 
   async isUserMember(communityId: string, userId: string): Promise<boolean> {
-    return this.membership.isUserMember(communityId, userId);
+    const community = await this.communityModel
+      .findOne({
+        id: communityId,
+        members: userId,
+      })
+      .lean();
+    return community !== null;
   }
 
   async getAllCommunities(
@@ -1197,16 +1290,28 @@ export class CommunityService {
     skip: number = 0,
     options?: { excludeProjects?: boolean },
   ): Promise<Community[]> {
-    const docs = await this.communityPersistence.findAll({
-      limit,
-      skip,
-      excludeProjects: options?.excludeProjects,
-    });
-    return docs.map(asCommunity);
+    const filter: Record<string, unknown> = {
+      typeTag: { $ne: 'global' }, // Exclude Global community — internal, not user-facing
+    };
+    if (options?.excludeProjects) {
+      filter.isProject = { $ne: true };
+    }
+    return this.communityModel
+      .find(filter)
+      .limit(limit)
+      .skip(skip)
+      .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
+      .lean() as unknown as Community[];
   }
 
   async countAllCommunities(options?: { excludeProjects?: boolean }): Promise<number> {
-    return this.communityPersistence.countAll(options);
+    const filter: Record<string, unknown> = {
+      typeTag: { $ne: 'global' },
+    };
+    if (options?.excludeProjects) {
+      filter.isProject = { $ne: true };
+    }
+    return this.communityModel.countDocuments(filter);
   }
 
   /**
@@ -1218,34 +1323,29 @@ export class CommunityService {
     skip: number,
     sort?: Record<string, 1 | -1>,
   ): Promise<Community[]> {
-    const docs = await this.communityPersistence.findByQuery({
-      query,
-      limit,
-      skip,
-      sort,
-    });
-    return docs.map(asCommunity);
+    const q = { ...query, typeTag: { $ne: 'global' } };
+    const order = sort ?? { createdAt: -1 };
+    return this.communityModel
+      .find(q)
+      .limit(limit)
+      .skip(skip)
+      .sort(order)
+      .lean() as unknown as Community[];
   }
 
   /**
    * Count communities matching query. Excludes global.
    */
   async countCommunitiesByQuery(query: Record<string, unknown>): Promise<number> {
-    return this.communityPersistence.countByQuery(query);
-  }
-
-  /** Child cooperative projects linked to a parent community. */
-  async listChildProjects(parentCommunityId: string): Promise<Community[]> {
-    return this.listCommunitiesByQuery(
-      { isProject: true, parentCommunityId },
-      500,
-      0,
-    );
+    const q = { ...query, typeTag: { $ne: 'global' } };
+    return this.communityModel.countDocuments(q);
   }
 
   async getUserCommunities(userId: string): Promise<Community[]> {
-    const docs = await this.communityPersistence.findByMemberUserId(userId);
-    return docs.map(asCommunity);
+    return this.communityModel
+      .find({ members: userId, typeTag: { $ne: 'global' } }) // Exclude Global community
+      .sort({ isPriority: -1, createdAt: -1 }) // Приоритетные сообщества сначала, затем по дате создания
+      .lean() as unknown as Community[];
   }
 
   async getUserManagedCommunities(userId: string): Promise<Community[]> {
@@ -1259,13 +1359,20 @@ export class CommunityService {
       return [];
     }
 
-    const docs = await this.communityPersistence.findManagedByIds(communityIds);
-    return docs.map(asCommunity);
+    // Fetch communities by IDs
+    return this.communityModel
+      .find({ id: { $in: communityIds } })
+      .sort({ createdAt: -1 })
+      .lean() as unknown as Community[];
   }
 
   async addHashtag(communityId: string, hashtag: string): Promise<Community> {
-    return asCommunity(
-      await this.communityPersistence.addArrayItem(communityId, 'hashtags', hashtag),
+    return MongoArrayUpdateHelper.addToArray<Community>(
+      this.communityModel,
+      { id: communityId },
+      'hashtags',
+      hashtag,
+      'Community',
     );
   }
 
@@ -1273,8 +1380,12 @@ export class CommunityService {
     communityId: string,
     hashtag: string,
   ): Promise<Community> {
-    return asCommunity(
-      await this.communityPersistence.removeArrayItem(communityId, 'hashtags', hashtag),
+    return MongoArrayUpdateHelper.removeFromArray<Community>(
+      this.communityModel,
+      { id: communityId },
+      'hashtags',
+      hashtag,
+      'Community',
     );
   }
 
@@ -1296,10 +1407,18 @@ export class CommunityService {
 
     // Update lastQuotaResetAt timestamp to current time
     const resetAt = new Date();
-    const updatedCommunity = await this.communityPersistence.resetDailyQuota(
-      communityId,
-      resetAt,
-    );
+    const updatedCommunity = await this.communityModel
+      .findOneAndUpdate(
+        { id: communityId },
+        {
+          $set: {
+            lastQuotaResetAt: resetAt,
+            updatedAt: new Date(),
+          },
+        },
+        { new: true },
+      )
+      .lean();
 
     if (!updatedCommunity) {
       throw new NotFoundException('Community not found');
@@ -1318,7 +1437,9 @@ export class CommunityService {
     search?: string,
   ): Promise<{ members: any[]; total: number }> {
     // 1. Get community to retrieve memberIds, settings, and total count
-    const community = await this.communityPersistence.findById(communityId);
+    const community = await this.communityModel
+      .findOne({ id: communityId })
+      .lean();
     if (!community) {
       throw new NotFoundException('Community not found');
     }
@@ -1328,26 +1449,262 @@ export class CommunityService {
       await this.userCommunityRoleService.getMemberUserIdsInCommunity(communityId);
     const memberIds = [...new Set([...legacyMemberIds, ...roleMemberIds])];
 
+    // Build search filter if search query is provided
+    const searchFilter: Record<string, unknown> = { id: { $in: memberIds } };
+    if (search && search.trim()) {
+      // Escape special regex characters and create case-insensitive regex
+      const escapedSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const searchRegex = new RegExp(escapedSearch, 'i');
+      searchFilter.$or = [
+        { username: searchRegex },
+        { displayName: searchRegex },
+      ];
+    }
+
     if (memberIds.length === 0) {
       return { members: [], total: 0 };
     }
 
-    const quotaStartTime = this.getQuotaStartTime(community);
-    const dailyEmission = this.getDailyEmissionCapForQuota(
+    // Calculate quota start time (needed for quota aggregation)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const quotaStartTime = community.lastQuotaResetAt
+      ? new Date(community.lastQuotaResetAt)
+      : today;
+    
+    const effectiveMeritSettings = this.getEffectiveMeritSettings(
       community as unknown as Community,
     );
+    const dailyQuota = effectiveMeritSettings?.dailyQuota ?? 0;
     const isFutureVision = community.typeTag === 'future-vision';
+    const isMarathonOfGood = community.typeTag === 'marathon-of-good';
 
-    const { members, total } = await this.userPersistence.aggregateCommunityMembers({
-      memberIds,
-      search,
-      communityId,
-      quotaStartTime,
-      dailyEmission,
-      isFutureVision,
-      limit,
-      skip,
-    });
+    // 2. Use aggregation pipeline to join users with roles, wallets, and quota
+    // Use $facet to get both filtered results and total count
+    const aggregationResult = await this.userModel.aggregate([
+      // Match users that are members AND match search criteria (if provided)
+      { $match: searchFilter },
+      
+      // Lookup user community role for this specific community
+      {
+        $lookup: {
+          from: 'user_community_roles',
+          let: { userId: '$id', communityId: communityId },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                  ],
+                },
+              },
+            },
+            { $limit: 1 },
+          ],
+          as: 'roleData',
+        },
+      },
+      
+      // Lookup wallet for this user in this community
+      {
+        $lookup: {
+          from: 'wallets',
+          let: { userId: '$id', communityId: communityId },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                  ],
+                },
+              },
+            },
+            { $limit: 1 },
+          ],
+          as: 'walletData',
+        },
+      },
+
+      // Add community context for quota calculation
+      {
+        $addFields: {
+          userRole: { $arrayElemAt: ['$roleData.role', 0] },
+          dailyQuota: dailyQuota,
+          quotaStartTime: quotaStartTime,
+          isFutureVision: isFutureVision,
+          isMarathonOfGood: isMarathonOfGood,
+        },
+      },
+
+      // Lookup and aggregate quota usage from votes
+      {
+        $lookup: {
+          from: 'votes',
+          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                    { $gt: ['$amountQuota', 0] },
+                    { $gte: ['$createdAt', '$$quotaStartTime'] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ],
+          as: 'votesQuota',
+        },
+      },
+
+      // Lookup and aggregate quota usage from poll_casts
+      {
+        $lookup: {
+          from: 'poll_casts',
+          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                    { $gt: ['$amountQuota', 0] },
+                    { $gte: ['$createdAt', '$$quotaStartTime'] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ],
+          as: 'pollCastsQuota',
+        },
+      },
+
+      // Lookup and aggregate quota usage from quota_usage
+      {
+        $lookup: {
+          from: 'quota_usage',
+          let: { userId: '$id', communityId: communityId, quotaStartTime: quotaStartTime },
+          pipeline: [
+            {
+              $match: {
+                $expr: {
+                  $and: [
+                    { $eq: ['$userId', '$$userId'] },
+                    { $eq: ['$communityId', '$$communityId'] },
+                    { $gt: ['$amountQuota', 0] },
+                    { $gte: ['$createdAt', '$$quotaStartTime'] },
+                  ],
+                },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ],
+          as: 'quotaUsageQuota',
+        },
+      },
+
+      // Calculate quota fields
+      {
+        $addFields: {
+          votesTotal: { $ifNull: [{ $arrayElemAt: ['$votesQuota.total', 0] }, 0] },
+          pollCastsTotal: { $ifNull: [{ $arrayElemAt: ['$pollCastsQuota.total', 0] }, 0] },
+          quotaUsageTotal: { $ifNull: [{ $arrayElemAt: ['$quotaUsageQuota.total', 0] }, 0] },
+        },
+      },
+
+      {
+        $addFields: {
+          usedToday: {
+            $add: ['$votesTotal', '$pollCastsTotal', '$quotaUsageTotal'],
+          },
+          // Calculate effective daily quota based on role and community type
+          effectiveDailyQuota: {
+            $cond: {
+              if: {
+                $or: [
+                  { $eq: ['$isFutureVision', true] },
+                  // Note: viewer role removed - all users are now participants
+                ],
+              },
+              then: 0,
+              else: '$dailyQuota',
+            },
+          },
+        },
+      },
+
+      {
+        $addFields: {
+          remainingToday: {
+            $max: [
+              0,
+              {
+                $subtract: ['$effectiveDailyQuota', '$usedToday'],
+              },
+            ],
+          },
+        },
+      },
+
+      // Project final structure
+      {
+        $project: {
+          id: 1,
+          username: 1,
+          displayName: 1,
+          avatarUrl: 1,
+          globalRole: 1,
+          role: '$userRole',
+          walletBalance: { $arrayElemAt: ['$walletData.balance', 0] },
+          quota: {
+            dailyQuota: '$effectiveDailyQuota',
+            usedToday: '$usedToday',
+            remainingToday: '$remainingToday',
+          },
+        },
+      },
+      // Use $facet to get both paginated results and total count
+      {
+        $facet: {
+          data: [
+            { $skip: skip },
+            { $limit: limit },
+          ],
+          totalCount: [
+            { $count: 'count' },
+          ],
+        },
+      },
+    ]);
+
+    // Extract results and total from facet
+    const facetResult = aggregationResult[0] || { data: [], totalCount: [] };
+    const members = facetResult.data || [];
+    const total = facetResult.totalCount[0]?.count ?? 0;
 
     // 3. Map to DTO format (handle undefined/null values)
     const mappedMembers = members.map((user: any) => ({
@@ -1360,12 +1717,9 @@ export class CommunityService {
       walletBalance: user.walletBalance ?? undefined,
       quota: user.quota
         ? {
-            dailyEmission: user.quota.dailyEmission ?? 0,
+            dailyQuota: user.quota.dailyQuota ?? 0,
             usedToday: user.quota.usedToday ?? 0,
-            remainingToday: this.computeRemainingQuota(
-              user.quota.dailyEmission ?? 0,
-              user.quota.usedToday ?? 0,
-            ),
+            remainingToday: user.quota.remainingToday ?? 0,
           }
         : undefined,
     }));
@@ -1390,8 +1744,6 @@ export class CommunityService {
       futureVisionText?: string;
       futureVisionTags?: string[];
       futureVisionCover?: string;
-      futureVisionDocumentId?: string;
-      futureVisionDocumentSections?: unknown;
       publicationId: string;
       score: number;
       memberCount: number;
@@ -1432,14 +1784,12 @@ export class CommunityService {
     });
 
     const communityIds = [...new Set(obPosts.map((p) => p.sourceEntityId))];
-    const communityDocs = await this.communityPersistence.findByIds(communityIds);
+    const communityDocs = await this.communityModel
+      .find({ id: { $in: communityIds } })
+      .lean()
+      .exec();
     const communityMap = new Map(
-      communityDocs.map((c) => [c.id, c]),
-    );
-
-    const obDocumentMap = await this.documentService.getOfficialByCommunities(
-      communityIds,
-      'imageOfFuture',
+      communityDocs.map((c: any) => [c.id, c]),
     );
 
     const tagsFilter = params.tags?.length ? new Set(params.tags) : null;
@@ -1450,8 +1800,6 @@ export class CommunityService {
       futureVisionText?: string;
       futureVisionTags?: string[];
       futureVisionCover?: string;
-      futureVisionDocumentId?: string;
-      futureVisionDocumentSections?: unknown;
       publicationId: string;
       score: number;
       memberCount: number;
@@ -1461,13 +1809,6 @@ export class CommunityService {
       const community = communityMap.get(post.sourceEntityId) as any;
       if (!community) continue;
       if (community.isProject === true || community.typeTag === 'project') continue;
-      if (
-        community.telegramChatId &&
-        (community.settings?.telegramPlatformIntegration !== true ||
-          community.settings?.telegramPlatformVisibility !== 'public')
-      ) {
-        continue;
-      }
       if (tagsFilter && community.futureVisionTags?.length) {
         const hasTag = community.futureVisionTags.some((t: string) =>
           tagsFilter.has(t),
@@ -1477,8 +1818,6 @@ export class CommunityService {
         continue;
       }
 
-      const obDocument = obDocumentMap.get(community.id);
-
       ordered.push({
         communityId: community.id,
         name: community.name,
@@ -1486,8 +1825,6 @@ export class CommunityService {
         futureVisionText: community.futureVisionText,
         futureVisionTags: community.futureVisionTags,
         futureVisionCover: community.futureVisionCover,
-        futureVisionDocumentId: obDocument?.id,
-        futureVisionDocumentSections: obDocument?.sections,
         publicationId: post.id,
         score: post.metrics.score,
         memberCount: Array.isArray(community.members) ? community.members.length : 0,
@@ -1572,7 +1909,10 @@ export class CommunityService {
     } else {
       invs.push({ userId, amount, totalEarnings: 0, createdAt: now, updatedAt: now });
     }
-    await this.communityPersistence.updateProjectInvestments(projectId, invs);
+    await this.communityModel.updateOne(
+      { id: projectId },
+      { $set: { projectInvestments: invs, updatedAt: now } },
+    );
   }
 
   /**
@@ -1603,22 +1943,33 @@ export class CommunityService {
       changed = true;
     }
     if (!changed) return;
-    await this.communityPersistence.updateProjectInvestments(
-      projectId,
-      invs,
-      session,
+    const opts = session ? { session } : {};
+    await this.communityModel.updateOne(
+      { id: projectId },
+      { $set: { projectInvestments: invs, updatedAt: now } },
+      opts,
     );
   }
 
   async listCommunitiesByIds(ids: string[]): Promise<Community[]> {
-    const rows = await this.communityPersistence.findByIds(ids);
-    return rows.map(asCommunity);
+    if (ids.length === 0) return [];
+    const rows = await this.communityModel
+      .find({ id: { $in: ids } })
+      .lean()
+      .exec();
+    return rows as unknown as Community[];
   }
 
   /** Projects (isProject) where the user has at least one projectInvestments row. */
   async findProjectsWhereUserInvested(userId: string): Promise<Community[]> {
-    const rows = await this.communityPersistence.findProjectsWhereUserInvested(userId);
-    return rows.map(asCommunity);
+    const rows = await this.communityModel
+      .find({
+        isProject: true,
+        projectInvestments: { $elemMatch: { userId } },
+      })
+      .lean()
+      .exec();
+    return rows as unknown as Community[];
   }
 }
 

@@ -106,6 +106,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: { dailyQuota: 100 },
         lastQuotaResetAt: today,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -221,7 +222,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
       expect(user1).toBeDefined();
       expect(user1?.role).toBe('lead');
       expect(user1?.walletBalance).toBe(500);
-      expect(user1?.quota?.dailyEmission).toBe(100);
+      expect(user1?.quota?.dailyQuota).toBe(100);
       expect(user1?.quota?.usedToday).toBe(10);
       expect(user1?.quota?.remainingToday).toBe(90);
 
@@ -229,7 +230,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
       expect(user2).toBeDefined();
       expect(user2?.role).toBe('participant');
       expect(user2?.walletBalance).toBe(200);
-      expect(user2?.quota?.dailyEmission).toBe(100);
+      expect(user2?.quota?.dailyQuota).toBe(100);
       expect(user2?.quota?.usedToday).toBe(5);
       expect(user2?.quota?.remainingToday).toBe(95);
     });
@@ -323,6 +324,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: { dailyQuota: 100 },
         lastQuotaResetAt: today,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -378,7 +380,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
       const result = await communityService.getCommunityMembers(testCommunityId, 50, 0);
 
       expect(result.members[0].quota?.usedToday).toBe(45); // 20 + 15 + 10
-      expect(result.members[0].quota?.dailyEmission).toBe(100);
+      expect(result.members[0].quota?.dailyQuota).toBe(100);
       expect(result.members[0].quota?.remainingToday).toBe(55);
     });
 
@@ -400,6 +402,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: { dailyQuota: 100 },
         lastQuotaResetAt: yesterday,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -495,7 +498,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
 
       const result = await communityService.getCommunityMembers(testCommunityId, 50, 0);
 
-      expect(result.members[0].quota?.dailyEmission).toBe(0);
+      expect(result.members[0].quota?.dailyQuota).toBe(0);
       expect(result.members[0].quota?.usedToday).toBe(0);
       expect(result.members[0].quota?.remainingToday).toBe(0);
     });
@@ -519,6 +522,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: { dailyQuota: 100 },
         createdAt: new Date(),
         updatedAt: new Date(),
       });
@@ -545,7 +549,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
 
       const result = await communityService.getCommunityMembers(testCommunityId, 50, 0);
 
-      expect(result.members[0].quota?.dailyEmission).toBe(100);
+      expect(result.members[0].quota?.dailyQuota).toBe(100);
     });
   });
 
@@ -840,6 +844,7 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
             genitive: 'merits',
           },
         },
+        meritSettings: { dailyQuota: 100 },
         lastQuotaResetAt: today,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -893,8 +898,8 @@ describe('CommunityService.getCommunityMembers - Aggregation Optimization', () =
 
       const result = await communityService.getCommunityMembers(testCommunityId, 50, 0);
 
-      // dailyEmission omitted in fixture: Mongoose applies settings.dailyEmission schema default (10)
-      expect(result.members[0].quota?.dailyEmission).toBe(10);
+      // No meritSettings in DB: effective dailyQuota comes from CommunityDefaultsService (10)
+      expect(result.members[0].quota?.dailyQuota).toBe(10);
     });
   });
 });

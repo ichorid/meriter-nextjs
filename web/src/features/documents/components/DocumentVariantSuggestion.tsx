@@ -1,16 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import type { DocumentCommunityContext } from '@/features/documents/lib/document-canvas-shared';
+import type { Community } from '@meriter/shared-types';
 import { trpc } from '@/lib/trpc/client';
 import { Button } from '@/components/ui/shadcn/button';
-import { DocumentVariantContextPreview } from '@/features/documents/components/DocumentVariantContextPreview';
 import { DocumentVariantRevisionView } from '@/features/documents/components/DocumentVariantRevisionView';
-import { buildVariantDisplayPreview } from '@/features/documents/lib/document-variant-preview';
 import { DocumentVariantReferencesList } from '@/features/documents/components/DocumentVariantReferencesList';
-import { DocumentProposalVariantRating } from '@/features/documents/components/DocumentProposalVariantRating';
-import { variantStatusToneClass, type DocTranslate } from '@/features/documents/lib/document-canvas-shared';
+import { variantStatusLabelKey, variantStatusToneClass, type DocTranslate } from '@/features/documents/lib/document-canvas-shared';
 import { openDocumentVariantVoting } from '@/features/documents/lib/document-variant-voting';
 import type { DocumentVariantReference } from '@/features/documents/types/document-variant-reference';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
@@ -32,22 +28,12 @@ export interface DocumentVariantSuggestionProps {
   docMode: 'manual' | 'auto';
   docAllowDownvotes: boolean;
   canManageDocument: boolean;
-  community: DocumentCommunityContext | null;
+  community: Community | null;
   userId: string;
   addToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
   t: DocTranslate;
   officialHtml?: string;
-  blockType?: string;
-  prevBlockHtml?: string;
-  nextBlockHtml?: string;
-  rangeStart?: number;
-  rangeEnd?: number;
-  proposedText?: string;
   className?: string;
-  onViewVariant?: () => void;
-  onDismissProposalsSheet?: () => void;
-  voteBreakdown?: React.ReactNode;
-  adminActions?: React.ReactNode;
 }
 
 export function DocumentVariantSuggestion({
@@ -61,34 +47,19 @@ export function DocumentVariantSuggestion({
   addToast,
   t,
   officialHtml = '',
-  blockType,
-  prevBlockHtml,
-  nextBlockHtml,
-  rangeStart,
-  rangeEnd,
-  proposedText,
   className,
-  onViewVariant,
-  onDismissProposalsSheet,
-  voteBreakdown,
-  adminActions,
 }: DocumentVariantSuggestionProps) {
-  const tGdocs = useTranslations('pages.documents.gdocs');
+  const tCanvas = useTranslations('pages.documents.canvas');
   const focus = useDocumentCanvasFocus();
   const utils = trpc.useUtils();
 
   const withdrawMutation = trpc.documentVariants.withdraw.useMutation({
     onSuccess: async () => {
-      await Promise.all([
-        utils.documents.getById.invalidate({ id: variant.documentId }),
-        utils.documentVariants.listByBlock.invalidate({
-          documentId: variant.documentId,
-          blockId,
-        }),
-        utils.documentVariants.listByDocument.invalidate({
-          documentId: variant.documentId,
-        }),
-      ]);
+      await utils.documents.getById.invalidate({ id: variant.documentId });
+      await utils.documentVariants.listByBlock.invalidate({
+        documentId: variant.documentId,
+        blockId,
+      });
     },
     onError: (err) => addToast(err.message, 'error'),
   });
@@ -97,34 +68,11 @@ export function DocumentVariantSuggestion({
   const isOwnOpen = isOpen && variant.proposedBy === userId;
   const communityId = community?.id ?? focus?.community?.id ?? '';
 
-  const contextPreview = useMemo(
-    () =>
-      buildVariantDisplayPreview(
-        officialHtml,
-        {
-          content: variant.content,
-          rangeStart,
-          rangeEnd,
-          proposedText,
-        },
-        { prevBlockHtml, nextBlockHtml },
-      ),
-    [
-      officialHtml,
-      variant.content,
-      rangeStart,
-      rangeEnd,
-      proposedText,
-      prevBlockHtml,
-      nextBlockHtml,
-    ],
-  );
-
   const openVote = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!communityId) return;
-    onDismissProposalsSheet?.();
     focus?.setFocusedBlockId(blockId);
+    focus?.setFocusedVariantId(variant.id);
     openDocumentVariantVoting({
       variantId: variant.id,
       communityId,
@@ -132,8 +80,6 @@ export function DocumentVariantSuggestion({
       userId,
       docAllowDownvotes,
       community,
-      documentContext: { documentId: variant.documentId, blockId },
-      returnToProposalsSheet: Boolean(onDismissProposalsSheet),
     });
   };
 
@@ -152,6 +98,11 @@ export function DocumentVariantSuggestion({
           )}
           aria-hidden
         />
+        <span className="font-medium text-base-content/80">
+          {t(variantStatusLabelKey(variant.status))}
+        </span>
+        <span className="text-base-content/45">·</span>
+        <span className="text-base-content/55">{t('rating', { rating: variant.rating ?? 0 })}</span>
         {isOwnOpen ? (
           <button
             type="button"
@@ -167,20 +118,10 @@ export function DocumentVariantSuggestion({
         ) : null}
       </div>
 
-      {contextPreview ? (
-        <DocumentVariantContextPreview
-          preview={contextPreview}
-          blockType={blockType}
-          className="text-base-content/90"
-        />
-      ) : null}
-
       <DocumentVariantRevisionView
         officialHtml={officialHtml}
         variantHtml={variant.content}
-        blockType={blockType}
         contentClassName="text-sm leading-relaxed text-base-content/90"
-        suppressDefaultPreview={contextPreview != null}
       />
 
       {variant.references.length > 0 ? (
@@ -190,39 +131,24 @@ export function DocumentVariantSuggestion({
         />
       ) : null}
 
-      <div className="my-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 py-0.5">
-        <DocumentProposalVariantRating score={variant.rating ?? 0} />
-        <div className="flex flex-wrap justify-end gap-2">
-          {onViewVariant ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-8 rounded-lg text-xs"
-              onClick={(e) => {
-                e.stopPropagation();
-                onViewVariant();
-              }}
-            >
-              {tGdocs('viewProposal')}
-            </Button>
-          ) : null}
-          {isOpen ? (
-            <Button
-              type="button"
-              size="sm"
-              className="h-8 rounded-lg text-xs"
-              onClick={openVote}
-            >
-              {tGdocs('supportProposal')}
-            </Button>
-          ) : null}
-        </div>
-      </div>
+      {isOpen ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="mt-3 h-8 rounded-lg text-xs"
+          onClick={openVote}
+        >
+          {tCanvas('sheetVote')}
+        </Button>
+      ) : null}
 
-      {voteBreakdown}
-
-      {adminActions}
+      {docMode === 'manual' &&
+      variant.status === 'closed-winner' &&
+      (variant.rating ?? 0) > 0 &&
+      canManageDocument ? (
+        <p className="mt-2 text-[10px] text-base-content/45 lg:hidden">{tCanvas('railApplyHint')}</p>
+      ) : null}
     </li>
   );
 }

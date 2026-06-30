@@ -4,23 +4,28 @@
  * One-time migration: add commentMode to Community settings.
  *
  * - Where settings.tappalkaOnlyMode === true → set settings.commentMode = 'neutralOnly'.
- * - Where settings.commentMode is missing → set settings.commentMode from CommunityDefaultsService.
+ * - Where settings.commentMode is missing → set settings.commentMode = 'all'.
  *
  * Idempotent: safe to run on every deploy (dev/prod from origin).
  *
  * Usage:
  *   pnpm exec ts-node scripts/migrate-comment-mode.ts [--dry-run]
+ *
+ * Environment:
+ *   MONGO_URL or MONGODB_URI - MongoDB connection string (default: mongodb://localhost:27017/meriter)
  */
 
-import { NestFactory } from '@nestjs/core';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { MeriterModule } from '../apps/meriter/src/meriter.module';
-import { CommunityDefaultsService } from '../apps/meriter/src/domain/services/community-defaults.service';
-import {
-  CommunitySchemaClass,
-  CommunityDocument,
-} from '../apps/meriter/src/domain/models/community/community.schema';
+import { MongoClient } from 'mongodb';
+import * as dotenv from 'dotenv';
+import { join } from 'path';
+
+dotenv.config({ path: join(__dirname, '../.env') });
+dotenv.config({ path: join(__dirname, '../.env.local') });
+dotenv.config({ path: join(__dirname, '../../.env') });
+dotenv.config({ path: join(__dirname, '../../.env.local') });
+
+const MONGO_URL =
+  process.env.MONGO_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/meriter';
 
 interface MigrationStats {
   tappalkaOnlyToNeutral: number;
@@ -29,28 +34,26 @@ interface MigrationStats {
 }
 
 async function migrateCommentMode(dryRun: boolean): Promise<MigrationStats> {
+  const client = new MongoClient(MONGO_URL);
   const stats: MigrationStats = {
     tappalkaOnlyToNeutral: 0,
     missingToAll: 0,
     errors: [],
   };
 
-  const app = await NestFactory.createApplicationContext(MeriterModule, {
-    logger: ['error', 'warn', 'log'],
-  });
-
   try {
-    const defaultsService = app.get(CommunityDefaultsService);
-    const communityModel = app.get<Model<CommunityDocument>>(
-      getModelToken(CommunitySchemaClass.name),
-    );
-    const defaultCommentMode = defaultsService.getDefaultSettings().commentMode ?? 'all';
+    await client.connect();
+    console.log('Connected to MongoDB');
 
-    console.log('Connected via NestJS application context');
+    const db = client.db();
+    const coll = db.collection('communities');
 
-    const withTappalkaOnly = await communityModel
-      .find({ 'settings.tappalkaOnlyMode': true })
-      .lean();
+    // 1) tappalkaOnlyMode === true → commentMode = 'neutralOnly'
+    const withTappalkaOnly = await coll
+      .find({
+        'settings.tappalkaOnlyMode': true,
+      })
+      .toArray();
 
     console.log(`Found ${withTappalkaOnly.length} communities with tappalkaOnlyMode=true`);
 
@@ -58,7 +61,7 @@ async function migrateCommentMode(dryRun: boolean): Promise<MigrationStats> {
       const id = doc.id ?? doc._id?.toString?.();
       try {
         if (!dryRun) {
-          await communityModel.updateOne(
+          await coll.updateOne(
             { _id: doc._id },
             {
               $set: {
@@ -79,11 +82,15 @@ async function migrateCommentMode(dryRun: boolean): Promise<MigrationStats> {
       }
     }
 
-    const missingCommentMode = await communityModel
+    // 2) commentMode missing → 'all'
+    const missingCommentMode = await coll
       .find({
-        $or: [{ 'settings.commentMode': { $exists: false } }, { 'settings.commentMode': null }],
+        $or: [
+          { 'settings.commentMode': { $exists: false } },
+          { 'settings.commentMode': null },
+        ],
       })
-      .lean();
+      .toArray();
 
     console.log(`Found ${missingCommentMode.length} communities without commentMode`);
 
@@ -91,20 +98,18 @@ async function migrateCommentMode(dryRun: boolean): Promise<MigrationStats> {
       const id = doc.id ?? doc._id?.toString?.();
       try {
         if (!dryRun) {
-          await communityModel.updateOne(
+          await coll.updateOne(
             { _id: doc._id },
             {
               $set: {
-                'settings.commentMode': defaultCommentMode,
+                'settings.commentMode': 'all',
                 updatedAt: new Date(),
               },
             },
           );
         }
         stats.missingToAll++;
-        console.log(
-          `[${dryRun ? 'DRY RUN' : 'OK'}] ${id}: settings.commentMode = '${defaultCommentMode}'`,
-        );
+        console.log(`[${dryRun ? 'DRY RUN' : 'OK'}] ${id}: settings.commentMode = 'all'`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         stats.errors.push({ id: id ?? 'unknown', error: msg });
@@ -114,7 +119,7 @@ async function migrateCommentMode(dryRun: boolean): Promise<MigrationStats> {
 
     console.log('\nMigration summary:');
     console.log(`  tappalkaOnlyMode → neutralOnly: ${stats.tappalkaOnlyToNeutral}`);
-    console.log(`  missing commentMode → ${defaultCommentMode}: ${stats.missingToAll}`);
+    console.log(`  missing commentMode → all:     ${stats.missingToAll}`);
     if (stats.errors.length > 0) {
       console.log(`  Errors: ${stats.errors.length}`);
       stats.errors.forEach((e) => console.error(`    - ${e.id}: ${e.error}`));
@@ -122,12 +127,12 @@ async function migrateCommentMode(dryRun: boolean): Promise<MigrationStats> {
 
     return stats;
   } finally {
-    await app.close();
-    console.log('\nApplication context closed');
+    await client.close();
+    console.log('\nConnection closed');
   }
 }
 
-async function main(): Promise<void> {
+async function main() {
   const dryRun = process.argv.includes('--dry-run');
   console.log(dryRun ? '=== DRY RUN ===' : '=== MIGRATION ===');
   await migrateCommentMode(dryRun);

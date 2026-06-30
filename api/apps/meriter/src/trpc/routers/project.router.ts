@@ -4,7 +4,6 @@ import { TRPCError } from '@trpc/server';
 import {
   ProjectDurationSchema,
   ProjectStatusSchema,
-  FutureVisionDocumentSeedSchema,
 } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 
@@ -22,8 +21,7 @@ const createProjectInputSchema = z
     newCommunity: z
       .object({
         name: z.string().min(1).max(200),
-        futureVisionText: z.string().min(1).max(10000),
-        futureVisionDocumentSeed: FutureVisionDocumentSeedSchema.optional(),
+        futureVisionText: z.string().max(5000).optional(),
         futureVisionTags: z.array(z.string()).optional(),
         futureVisionCover: z.string().url().optional(),
         typeTag: z.enum(['team', 'custom']).optional(),
@@ -379,18 +377,14 @@ export const projectRouter = router({
       if (!project?.isProject) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'Project not found' });
       }
-      const walletKey =
-        await ctx.walletContextResolverService.resolveCommunityWalletCommunityId(
-          input.projectId,
-        );
-      const wallet = await ctx.communityWalletService.getWallet(walletKey);
+      const wallet = await ctx.communityWalletService.getWallet(input.projectId);
       return (
         wallet ?? {
           balance: 0,
           totalReceived: 0,
           totalDistributed: 0,
           id: '',
-          communityId: walletKey,
+          communityId: input.projectId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }

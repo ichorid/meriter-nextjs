@@ -12,12 +12,5 @@ export {
   TappalkaMeritIcon,
   TappalkaOnboarding,
   TappalkaScreen,
-  BirzhaSourcePostsShell,
-  BirzhaPublishShell,
-} from './components';
-export type {
-  BirzhaSourceEntityType,
-  BirzhaSourcePostsShellProps,
-  BirzhaPublishShellProps,
 } from './components';
 

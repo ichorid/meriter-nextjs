@@ -4,13 +4,13 @@ import { Document } from 'mongoose';
 /**
  * Publication Mongoose Schema
  *
- * SOURCE OF TRUTH: @meriter/shared-types/schemas - PublicationSchema (Zod)
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - PublicationSchema (Zod)
  *
  * This Mongoose schema implements the Publication entity defined in shared-types.
  * Any changes to the Publication entity MUST be made in the Zod schema first,
  * then this Mongoose schema should be updated to match.
  *
- * Fields correspond to PublicationSchema in @meriter/shared-types/schemas
+ * Fields correspond to PublicationSchema in libs/shared-types/src/schemas.ts
  */
 
 export interface PublicationMetrics {
@@ -109,7 +109,6 @@ export interface Publication {
   forwardTargetCommunityId?: string;
   forwardProposedBy?: string;
   forwardProposedAt?: Date;
-  telegramModerationStatus?: 'pending' | 'approved' | 'rejected' | null;
   deleted?: boolean;
   deletedAt?: Date;
   // Edit history
@@ -147,8 +146,6 @@ export interface Publication {
   lastEarnedAt?: Date | null;
   ttlWarningNotified?: boolean;
   inactivityWarningNotified?: boolean;
-  /** Pinned to top of community feed (lead/superadmin only). */
-  isPinned?: boolean;
   /** When `postType === 'event'`: scheduled start (date-only semantics at product layer). */
   eventStartDate?: Date;
   /** When `postType === 'event'`: scheduled end. */
@@ -302,9 +299,6 @@ export class PublicationSchemaClass implements Publication {
   @Prop()
   forwardProposedAt?: Date;
 
-  @Prop({ type: String, enum: ['pending', 'approved', 'rejected'], default: null })
-  telegramModerationStatus?: 'pending' | 'approved' | 'rejected' | null;
-
   @Prop({ default: false })
   deleted?: boolean;
 
@@ -429,9 +423,6 @@ export class PublicationSchemaClass implements Publication {
   @Prop({ default: false })
   inactivityWarningNotified?: boolean;
 
-  @Prop({ default: false })
-  isPinned?: boolean;
-
   @Prop({ type: Date })
   eventStartDate?: Date;
 
@@ -486,8 +477,6 @@ PublicationSchema.index({ 'metrics.score': -1 });
 PublicationSchema.index({ beneficiaryId: 1 });
 PublicationSchema.index({ communityId: 1, deleted: 1, createdAt: -1 }); // For querying deleted items by community
 PublicationSchema.index({ 'investments.investorId': 1 }); // C-1: efficient investment lookups by investor
-PublicationSchema.index({ communityId: 1, isPinned: 1, createdAt: -1 });
-PublicationSchema.index({ communityId: 1, isPinned: 1, 'metrics.score': -1 });
 PublicationSchema.index({ status: 1 }); // D-1: cron and guards for closed posts
 PublicationSchema.index({ ttlExpiresAt: 1 }); // D-1: TTL cron queries
 PublicationSchema.index({ sourceEntityId: 1 }); // Sprint 3: project posts on Birzha

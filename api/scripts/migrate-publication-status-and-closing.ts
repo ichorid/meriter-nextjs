@@ -11,16 +11,22 @@
  *
  * Usage:
  *   pnpm exec ts-node scripts/migrate-publication-status-and-closing.ts [--dry-run]
+ *
+ * Environment:
+ *   MONGO_URL or MONGODB_URI - MongoDB connection string (default: mongodb://localhost:27017/meriter)
  */
 
-import { NestFactory } from '@nestjs/core';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { MeriterModule } from '../apps/meriter/src/meriter.module';
-import {
-  PublicationSchemaClass,
-  PublicationDocument,
-} from '../apps/meriter/src/domain/models/publication/publication.schema';
+import { MongoClient } from 'mongodb';
+import * as dotenv from 'dotenv';
+import { join } from 'path';
+
+dotenv.config({ path: join(__dirname, '../.env') });
+dotenv.config({ path: join(__dirname, '../.env.local') });
+dotenv.config({ path: join(__dirname, '../../.env') });
+dotenv.config({ path: join(__dirname, '../../.env.local') });
+
+const MONGO_URL =
+  process.env.MONGO_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/meriter';
 
 interface MigrationStats {
   updated: number;
@@ -30,23 +36,21 @@ interface MigrationStats {
 async function migratePublicationStatusAndClosing(
   dryRun: boolean,
 ): Promise<MigrationStats> {
+  const client = new MongoClient(MONGO_URL);
   const stats: MigrationStats = {
     updated: 0,
     errors: [],
   };
 
-  const app = await NestFactory.createApplicationContext(MeriterModule, {
-    logger: ['error', 'warn', 'log'],
-  });
-
   try {
-    const publicationModel = app.get<Model<PublicationDocument>>(
-      getModelToken(PublicationSchemaClass.name),
-    );
+    await client.connect();
+    console.log('Connected to MongoDB');
 
-    console.log('Connected via NestJS application context');
+    const db = client.db();
+    const coll = db.collection('publications');
 
-    const toUpdate = await publicationModel
+    // Documents that need any of: status, lastEarnedAt, ttlWarningNotified
+    const toUpdate = await coll
       .find({
         $or: [
           { status: { $exists: false } },
@@ -57,7 +61,7 @@ async function migratePublicationStatusAndClosing(
           { ttlWarningNotified: null },
         ],
       })
-      .lean();
+      .toArray();
 
     console.log(`Found ${toUpdate.length} publications to migrate`);
 
@@ -76,12 +80,18 @@ async function migratePublicationStatusAndClosing(
         if (doc.lastEarnedAt === undefined || doc.lastEarnedAt === null) {
           update.lastEarnedAt = createdAt;
         }
-        if (doc.ttlWarningNotified === undefined || doc.ttlWarningNotified === null) {
+        if (
+          doc.ttlWarningNotified === undefined ||
+          doc.ttlWarningNotified === null
+        ) {
           update.ttlWarningNotified = false;
         }
 
         if (!dryRun && Object.keys(update).length > 1) {
-          await publicationModel.updateOne({ _id: doc._id }, { $set: update });
+          await coll.updateOne(
+            { _id: doc._id },
+            { $set: update },
+          );
         }
         stats.updated++;
         if (dryRun || Object.keys(update).length > 1) {
@@ -105,12 +115,12 @@ async function migratePublicationStatusAndClosing(
 
     return stats;
   } finally {
-    await app.close();
-    console.log('\nApplication context closed');
+    await client.close();
+    console.log('\nConnection closed');
   }
 }
 
-async function main(): Promise<void> {
+async function main() {
   const dryRun = process.argv.includes('--dry-run');
   console.log(dryRun ? '=== DRY RUN ===' : '=== MIGRATION ===');
   await migratePublicationStatusAndClosing(dryRun);

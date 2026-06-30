@@ -5,13 +5,13 @@ import { ActionType } from '../../common/constants/action-types.constants';
 /**
  * Community Mongoose Schema
  *
- * SOURCE OF TRUTH: @meriter/shared-types/schemas - CommunitySchema (Zod)
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - CommunitySchema (Zod)
  *
  * This Mongoose schema implements the Community entity defined in shared-types.
  * Any changes to the Community entity MUST be made in the Zod schema first,
  * then this Mongoose schema should be updated to match.
  *
- * Fields correspond to CommunitySchema in @meriter/shared-types/schemas
+ * Fields correspond to CommunitySchema in libs/shared-types/src/schemas.ts
  */
 
 export interface CommunityCurrencyNames {
@@ -53,11 +53,6 @@ export interface CommunitySettings {
    * 'project': Post is forwarded with all votes, original is deleted.
    */
   forwardRule?: 'standard' | 'project';
-  /**
-   * When true, this community and all child isProject communities share one wallet key
-   * (parent communityId) for personal wallets and CommunityWallet.
-   */
-  sharedWalletWithProjects?: boolean;
   /** Enable merit investment in posts */
   investingEnabled?: boolean;
   /** Minimum investor share percentage (1-99) */
@@ -91,25 +86,6 @@ export interface CommunitySettings {
   documentVotingDurationHours?: number;
   documentDefaultMode?: 'manual' | 'auto';
   documentAutoApplyTimerHours?: number;
-  /** Telegram MVP: require lead approval before hashtag/bot posts go live. */
-  telegramModerationEnabled?: boolean;
-  /** Telegram MVP: bot replies in group when a hashtag post is saved (default off). */
-  telegramPublicationAckEnabled?: boolean;
-  /** Telegram MVP: ephemeral hint when voting emoji is used on a message without hashtag (default on). */
-  telegramReactionNoHashtagHintEnabled?: boolean;
-  /** Telegram MVP: bot posts persistent vote panel with merit counters after hashtag posts. */
-  telegramVotePanelEnabled?: boolean;
-  /** Per-command delivery for /balance, /members, /help, /link. */
-  telegramCommandRouting?: {
-    balance?: { destination: 'group' | 'dm'; ephemeral?: boolean };
-    members?: { destination: 'group' | 'dm'; ephemeral?: boolean };
-    help?: { destination: 'group' | 'dm'; ephemeral?: boolean };
-    link?: { destination: 'group' | 'dm'; ephemeral?: boolean };
-  };
-  /** Telegram MVP: mirror content to Meriter web platform. Default false (chat-only). */
-  telegramPlatformIntegration?: boolean;
-  /** When platform integration is on: private (default) or public OB card. */
-  telegramPlatformVisibility?: 'private' | 'public';
 }
 
 export interface CommunityMeritConversion {
@@ -274,12 +250,6 @@ export interface Community {
   };
   /** Cumulative investments in the project (global merits); used for payout investor pool. */
   projectInvestments?: ProjectInvestmentEntry[];
-  /** Linked Telegram group chat id (stringified). */
-  telegramChatId?: string;
-  /** Message id of the pinned mini-app launch link in the Telegram group. */
-  telegramPinnedMiniAppMessageId?: number;
-  /** Set when bot was removed from the linked Telegram group. */
-  telegramFrozenAt?: Date | null;
 }
 
 @Schema({ collection: 'communities', timestamps: true })
@@ -440,7 +410,6 @@ export class CommunitySchemaClass implements Community {
       canPayPostFromQuota: { type: Boolean, default: false },
       allowWithdraw: { type: Boolean, default: true },
       forwardRule: { type: String, enum: ['standard', 'project'], default: 'standard' },
-      sharedWalletWithProjects: { type: Boolean, default: false },
       investingEnabled: { type: Boolean, default: false },
       investorShareMin: { type: Number, default: 1 },
       investorShareMax: { type: Number, default: 99 },
@@ -465,54 +434,10 @@ export class CommunitySchemaClass implements Community {
       documentVotingDurationHours: { type: Number, default: 48 },
       documentDefaultMode: { type: String, enum: ['manual', 'auto'], default: 'manual' },
       documentAutoApplyTimerHours: { type: Number, default: 48 },
-      telegramModerationEnabled: { type: Boolean, default: false },
-      telegramPublicationAckEnabled: { type: Boolean, default: false },
-      telegramReactionNoHashtagHintEnabled: { type: Boolean, default: true },
-      telegramVotePanelEnabled: { type: Boolean, default: false },
-      telegramCommandRouting: {
-        type: {
-          balance: {
-            destination: { type: String, enum: ['group', 'dm'] },
-            ephemeral: { type: Boolean },
-          },
-          members: {
-            destination: { type: String, enum: ['group', 'dm'] },
-            ephemeral: { type: Boolean },
-          },
-          help: {
-            destination: { type: String, enum: ['group', 'dm'] },
-            ephemeral: { type: Boolean },
-          },
-          link: {
-            destination: { type: String, enum: ['group', 'dm'] },
-            ephemeral: { type: Boolean },
-          },
-        },
-        required: false,
-        _id: false,
-      },
-      telegramPlatformIntegration: { type: Boolean, default: false },
-      telegramPlatformVisibility: {
-        type: String,
-        enum: ['private', 'public'],
-        default: 'private',
-      },
     },
     default: {},
   })
   settings!: CommunitySettings;
-
-  /** Linked Telegram group chat id (stringified). One chat → one community. */
-  @Prop({ type: String, required: false, sparse: true, unique: true })
-  telegramChatId?: string;
-
-  /** Pinned mini-app launch link message in the linked Telegram group. */
-  @Prop({ type: Number, required: false })
-  telegramPinnedMiniAppMessageId?: number;
-
-  /** Set when bot was removed from the linked Telegram group. */
-  @Prop({ type: Date, required: false })
-  telegramFrozenAt?: Date | null;
 
   @Prop({ type: [String], default: [] })
   hashtags!: string[];
@@ -616,4 +541,3 @@ export const Community = CommunitySchemaClass;
 
 CommunitySchema.index({ isActive: 1 });
 CommunitySchema.index({ isProject: 1 }, { partialFilterExpression: { isProject: true } });
-CommunitySchema.index({ telegramChatId: 1 }, { sparse: true, unique: true });

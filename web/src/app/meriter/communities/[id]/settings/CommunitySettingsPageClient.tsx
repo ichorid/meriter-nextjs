@@ -6,8 +6,6 @@ import { useTranslations } from 'next-intl';
 import { CommunityForm } from '@/features/communities/components';
 import { CommunityRulesEditor } from '@/features/communities/components/CommunityRulesEditor';
 import { CommentSettingsSection } from '@/features/communities/components/CommentSettingsSection';
-import { CommunityDocumentsSettingsSection } from '@/features/communities/components/CommunityDocumentsSettingsSection';
-import { CommunityEventsSettingsSection } from '@/features/communities/components/CommunityEventsSettingsSection';
 import { TappalkaSettingsForm } from '@/features/communities/components/TappalkaSettingsForm';
 import { InvestingSettingsForm } from '@/features/communities/components/InvestingSettingsForm';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
@@ -18,8 +16,6 @@ import { useUserRoles } from '@/hooks/api/useProfile';
 import { Loader2 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/shadcn/tabs';
 import { routes } from '@/lib/constants/routes';
-import { trpc } from '@/lib/trpc/client';
-import { communityMayHaveOfficialObDocument } from '@/features/documents/lib/community-ob-document';
 
 interface CommunitySettingsPageClientProps {
   communityId: string;
@@ -56,30 +52,9 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
     // Check if user has access (superadmin or lead)
     const hasAccess = isSuperadmin || isUserLead;
 
-    const obDocForSettingsRedirect = trpc.documents.getOfficialByType.useQuery(
-        { communityId, type: 'imageOfFuture' },
-        {
-            enabled: Boolean(
-                focusFutureVisionText &&
-                    communityId &&
-                    hasAccess &&
-                    community &&
-                    communityMayHaveOfficialObDocument(community.typeTag),
-            ),
-        },
-    );
-
     useEffect(() => {
-        if (!focusFutureVisionText || !communityId || !hasAccess || communityLoading || rolesLoading) {
-            return;
-        }
-        if (!obDocForSettingsRedirect.isFetched) {
-            return;
-        }
-        const docId = obDocForSettingsRedirect.data?.id;
-        if (docId) {
-            router.replace(routes.communityDocument(communityId, docId));
-        }
+        if (!focusFutureVisionText || !communityId || !hasAccess || communityLoading || rolesLoading) return;
+        router.replace(routes.communityDocuments(communityId));
     }, [
         focusFutureVisionText,
         communityId,
@@ -87,8 +62,6 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
         communityLoading,
         rolesLoading,
         router,
-        obDocForSettingsRedirect.isFetched,
-        obDocForSettingsRedirect.data?.id,
     ]);
 
     // Redirect if no access
@@ -155,22 +128,6 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
             data,
         });
     };
-
-    const handleDocumentsSave = async (data: { settings?: Record<string, unknown> }) => {
-        await updateCommunity.mutateAsync({
-            id: communityId,
-            data,
-        });
-    };
-
-    const handleEventsSave = async (data: { settings?: Record<string, unknown> }) => {
-        await updateCommunity.mutateAsync({
-            id: communityId,
-            data,
-        });
-    };
-
-    const isFutureVisionHub = community?.typeTag === 'future-vision';
 
     const pageTitle = community?.name
         ? t('settingsTitle', { communityName: community.name })
@@ -259,29 +216,13 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
         >
             <div className="space-y-6">
                 <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="flex h-auto w-full flex-wrap gap-1 bg-base-200 rounded-xl p-1">
+                    <TabsList className="grid w-full grid-cols-5 bg-base-200 rounded-xl p-1">
                         <TabsTrigger 
                             value="general"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
                         >
                             {t('tabs.general')}
                         </TabsTrigger>
-                        {!isFutureVisionHub ? (
-                            <TabsTrigger
-                                value="documents"
-                                className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
-                            >
-                                {t('tabs.documents')}
-                            </TabsTrigger>
-                        ) : null}
-                        {!isFutureVisionHub ? (
-                            <TabsTrigger 
-                                value="events"
-                                className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
-                            >
-                                {t('tabs.events')}
-                            </TabsTrigger>
-                        ) : null}
                         <TabsTrigger 
                             value="rules"
                             className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
@@ -310,22 +251,6 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                     <TabsContent value="general" className="mt-6">
                         <CommunityForm communityId={communityId} />
                     </TabsContent>
-                    {!isFutureVisionHub ? (
-                        <TabsContent value="documents" className="mt-6">
-                            <CommunityDocumentsSettingsSection
-                                community={community}
-                                onSave={handleDocumentsSave}
-                            />
-                        </TabsContent>
-                    ) : null}
-                    {!isFutureVisionHub ? (
-                        <TabsContent value="events" className="mt-6">
-                            <CommunityEventsSettingsSection
-                                community={community}
-                                onSave={handleEventsSave}
-                            />
-                        </TabsContent>
-                    ) : null}
                     <TabsContent value="rules" className="mt-6">
                         <CommunityRulesEditor
                             community={community}

@@ -3,10 +3,4 @@ export { TappalkaHeader } from './TappalkaHeader';
 export { TappalkaMeritIcon } from './TappalkaMeritIcon';
 export { TappalkaOnboarding } from './TappalkaOnboarding';
 export { TappalkaScreen } from './TappalkaScreen';
-export {
-  BirzhaSourcePostsShell,
-  type BirzhaSourceEntityType,
-  type BirzhaSourcePostsShellProps,
-} from './BirzhaSourcePostsShell';
-export { BirzhaPublishShell, type BirzhaPublishShellProps } from './BirzhaPublishShell';
 

@@ -1,4 +1,4 @@
-import { DECREE_809_TAGS } from '@meriter/shared-types/value-rubricator';
+import { DECREE_809_TAGS } from '@meriter/shared-types';
 
 /**
  * Single superadmin recreated after platform wipe (all other users deleted).

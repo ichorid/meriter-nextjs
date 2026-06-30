@@ -141,7 +141,6 @@ Community
 | `canPayPostFromQuota` | Allow post payment from quota | `false` |
 | `allowWithdraw` | Stored community flag for withdrawal policy (`true` by default); `publications.withdraw` rejects when `false` before other authorization | `true` |
 | `forwardRule` | Forward behavior: `standard` or `project` | `standard` |
-| `sharedWalletWithProjects` | **Parent team only** (`!isProject`): when `true`, all child `isProject` communities under this parent share one personal-wallet key (`parentCommunityId`), one `CommunityWallet` on the parent id, and aggregate merit history resolved to the parent. **Quota** stays per `communityId`. **Fees** stay global. Enable is **fresh-only**: rejected if any child has `CommunityWallet.balance > 0` or a user wallet with `communityId = projectId` and `balance > 0`. Disabling v1 does not auto-split balances. See @business-projects.mdc | `false` |
 | `eventCreation` | Who may create **events** (`events.createEvent`): `admin` (lead/superadmin only) or `members` (any user with a role in the community) | `admin` |
 
 **Events (web):** hub lists at **`/meriter/communities/[id]/events`** and **`/meriter/projects/[id]/events`**; single event **`/meriter/event/[communityId]/[publicationId]`**; invites **`/meriter/event/invite/[token]`** (short redirect **`/event/invite/[token]`**). Full rules: @business-events.mdc.

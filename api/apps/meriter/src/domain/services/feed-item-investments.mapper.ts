@@ -1,4 +1,4 @@
-import type { Investment } from '@meriter/shared-types/schemas';
+import type { Investment } from '@meriter/shared-types';
 
 /** Shape stored on publication aggregate / snapshot before feed serialization. */
 export type RawPublicationInvestment = {

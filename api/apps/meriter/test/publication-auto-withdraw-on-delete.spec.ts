@@ -30,8 +30,8 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
           awardsMerits: true,
         }),
       },
-      walletContextResolverService: {
-        resolvePersonalWalletCommunityId: jest.fn().mockResolvedValue(communityId),
+      meritResolverService: {
+        getWalletCommunityId: jest.fn().mockReturnValue(communityId),
       },
       walletService: {
         addTransaction,
@@ -76,8 +76,8 @@ describe('autoWithdrawPublicationBalanceBeforeDelete', () => {
           awardsMerits: true,
         }),
       },
-      walletContextResolverService: {
-        resolvePersonalWalletCommunityId: jest.fn().mockResolvedValue('community-1'),
+      meritResolverService: {
+        getWalletCommunityId: jest.fn().mockReturnValue('community-1'),
       },
       walletService: {
         addTransaction: jest.fn(),

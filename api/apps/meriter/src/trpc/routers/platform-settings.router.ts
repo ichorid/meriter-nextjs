@@ -58,18 +58,6 @@ export const platformSettingsRouter = router({
       );
     }),
 
-  updateDemoPersonasEnabled: protectedProcedure
-    .input(z.object({ enabled: z.boolean() }))
-    .mutation(async ({ ctx, input }) => {
-      if (ctx.user?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: 'Only superadmin can update demo personas setting',
-        });
-      }
-      return ctx.platformSettingsService.setDemoPersonasEnabled(input.enabled);
-    }),
-
   getSuggestedValueTags: protectedProcedure
     .input(
       z

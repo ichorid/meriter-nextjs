@@ -25,9 +25,5 @@ export class FeatureFlagsService {
   isTelegramAuthEnabled(): boolean {
     return this.configService.get('features')?.telegramAuthEnabled ?? false;
   }
-
-  isTelegramMvpMode(): boolean {
-    return this.configService.get('app')?.productMode === 'telegram_mvp';
-  }
 }
 

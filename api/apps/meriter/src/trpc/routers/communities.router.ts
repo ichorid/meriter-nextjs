@@ -1,27 +1,15 @@
 import { z } from 'zod';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import {
-  CreateCommunityDtoSchema,
-  UpdateCommunityDtoSchema,
-  UpdateTappalkaSettingsInputSchema,
-  IdInputSchema,
-  FutureVisionDocumentSeedSchema,
-} from '@meriter/shared-types';
+import { CreateCommunityDtoSchema, UpdateCommunityDtoSchema, PaginationParamsSchema, IdInputSchema } from '@meriter/shared-types';
 import { CommunitySetupHelpers } from '../../api-v1/common/helpers/community-setup.helpers';
 import { GLOBAL_ROLE_SUPERADMIN, COMMUNITY_ROLE_LEAD, COMMUNITY_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
+import {
+  type VerifiedCommunityInvite,
+} from '../../common/helpers/community-invite-jwt';
 import { isEligibleNonProjectBirzhaSourceCommunity } from '../../domain/common/constants/birzha-source-entity.constants';
-import { effectiveAllowWithdraw } from '../../domain/common/helpers/community.helper';
 import { isProjectCommunity } from '../../domain/services/community.service';
-import { createCreateCommunityUseCase } from '../../application/use-cases/communities/create-community.use-case';
-import { createAcceptCommunityInviteUseCase } from '../../application/use-cases/communities/accept-community-invite.use-case';
-import { createLeaveCommunityUseCase } from '../../application/use-cases/communities/leave-community.use-case';
-import { createListCommunityMembersUseCase } from '../../application/use-cases/communities/list-community-members.use-case';
-import { createUpdateCommunitySettingsUseCase } from '../../application/use-cases/communities/update-community-settings.use-case';
-import { createGetFutureVisionsFeedUseCase } from '../../application/use-cases/communities/get-future-visions-feed.use-case';
-import { createGetCommunityFeedUseCaseFromContext } from '../../application/use-cases/feed/get-community-feed.use-case';
 
 export const communitiesRouter = router({
   /**
@@ -89,9 +77,8 @@ export const communitiesRouter = router({
           editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
           allowEditByOthers: community.settings?.allowEditByOthers ?? false,
           canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
-          allowWithdraw: effectiveAllowWithdraw(community),
+          allowWithdraw: community.settings?.allowWithdraw ?? true,
           forwardRule: community.settings?.forwardRule ?? 'standard',
-          sharedWalletWithProjects: community.settings?.sharedWalletWithProjects ?? false,
           investingEnabled: community.settings?.investingEnabled ?? false,
           investorShareMin: community.settings?.investorShareMin ?? 1,
           investorShareMax: community.settings?.investorShareMax ?? 99,
@@ -103,9 +90,6 @@ export const communitiesRouter = router({
           commentMode:
             community.settings?.commentMode ??
             (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all'),
-          eventCreation: community.settings?.eventCreation ?? 'members',
-          telegramModerationEnabled:
-            community.settings?.telegramModerationEnabled ?? false,
         },
         hashtagDescriptions: community.hashtagDescriptions instanceof Map
           ? Object.fromEntries(community.hashtagDescriptions)
@@ -194,18 +178,96 @@ export const communitiesRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const secret = (ctx.configService.getOrThrow as (k: string) => string)('jwt.secret');
-      return createAcceptCommunityInviteUseCase({
-        communityInviteService: ctx.communityInviteService,
-        communityService: ctx.communityService,
-        userCommunityRoleService: ctx.userCommunityRoleService,
-        userService: ctx.userService,
-        teamJoinRequestService: ctx.teamJoinRequestService,
-      }).execute({
-        token: input.token,
-        userId: ctx.user.id,
-        expectedCommunityId: input.expectedCommunityId,
-        jwtSecret: secret,
-      });
+      let invite: VerifiedCommunityInvite;
+      try {
+        invite = await ctx.communityInviteService.resolveInviteToken(input.token, secret);
+      } catch {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invalid or expired invite link',
+        });
+      }
+      const { communityId, parentCommunityId: parentFromToken } = invite;
+      if (
+        input.expectedCommunityId &&
+        input.expectedCommunityId !== communityId
+      ) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invite link does not match this community',
+        });
+      }
+      const community = await ctx.communityService.getCommunity(communityId);
+      if (!community) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Community not found' });
+      }
+      if (!ctx.communityService.isLocalMembershipCommunity(community)) {
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'Invalid invite' });
+      }
+      if (
+        parentFromToken &&
+        (!community.isProject || community.parentCommunityId !== parentFromToken)
+      ) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Invalid invite',
+        });
+      }
+
+      const addToParentIfNeeded = async () => {
+        if (!community.isProject || !community.parentCommunityId || !parentFromToken) {
+          return;
+        }
+        const parentId = community.parentCommunityId;
+        const parent = await ctx.communityService.getCommunity(parentId);
+        if (!parent || !ctx.communityService.isLocalMembershipCommunity(parent)) {
+          return;
+        }
+        const existingParent = await ctx.userCommunityRoleService.getRole(
+          ctx.user.id,
+          parentId,
+        );
+        if (existingParent) {
+          return;
+        }
+        const parentLeads = await ctx.userCommunityRoleService.getUsersByRole(
+          parentId,
+          'lead',
+        );
+        const parentInviterId = parentLeads[0]?.userId ?? ctx.user.id;
+        await ctx.userService.addUserToTeam(
+          parentInviterId,
+          ctx.user.id,
+          parentId,
+        );
+      };
+
+      const existing = await ctx.userCommunityRoleService.getRole(ctx.user.id, communityId);
+      if (existing) {
+        await addToParentIfNeeded();
+        return { communityId, alreadyMember: true as const };
+      }
+
+      if (invite.inviterIsAdmin) {
+        const leads = await ctx.userCommunityRoleService.getUsersByRole(communityId, 'lead');
+        const inviterId = leads[0]?.userId ?? ctx.user.id;
+        await ctx.userService.addUserToTeam(inviterId, ctx.user.id, communityId);
+        await addToParentIfNeeded();
+        return {
+          communityId,
+          alreadyMember: false as const,
+          joined: true as const,
+          pendingApproval: false as const,
+        };
+      }
+
+      await ctx.teamJoinRequestService.submitRequest(ctx.user.id, communityId);
+      return {
+        communityId,
+        alreadyMember: false as const,
+        joined: false as const,
+        pendingApproval: true as const,
+      };
     }),
 
   /**
@@ -213,17 +275,15 @@ export const communitiesRouter = router({
    */
   getFutureVisions: publicProcedure
     .input(
-      PaginationInputSchema.pick({ page: true, pageSize: true }).extend({
+      z.object({
+        page: z.number().int().min(1).optional(),
+        pageSize: z.number().int().min(1).max(100).optional(),
         tags: z.array(z.string()).optional(),
         sort: z.enum(['score', 'createdAt']).optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
-      return createGetFutureVisionsFeedUseCase({
-        communityService: ctx.communityService,
-        publicationService: ctx.publicationService,
-        documentService: ctx.documentService,
-      }).execute({
+      return ctx.communityService.getFutureVisions({
         page: input.page,
         pageSize: input.pageSize,
         tags: input.tags,
@@ -235,11 +295,11 @@ export const communitiesRouter = router({
    * Get all communities (paginated)
    */
   getAll: protectedProcedure
-    .input(PaginationInputSchema.optional())
+    .input(PaginationParamsSchema.optional())
     .query(async ({ ctx, input }) => {
-      const pagination = PaginationHelper.parseOptions(input || {});
-      const skip = PaginationHelper.getSkip(pagination);
-      const limit = pagination.limit || 20;
+      const pagination = input || { page: 1, pageSize: 20 };
+      const skip = (pagination.page - 1) * pagination.pageSize;
+      const limit = pagination.pageSize;
 
       // Superadmins can see all communities
       if (ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN) {
@@ -321,7 +381,6 @@ export const communitiesRouter = router({
         description: z.string().max(1000).optional(),
         avatarUrl: z.string().url().optional(),
         futureVisionText: z.string().min(1).max(10000),
-        futureVisionDocumentSeed: FutureVisionDocumentSeedSchema.optional(),
         futureVisionTags: z.array(z.string()).optional(),
         futureVisionCover: z.string().url().optional(),
       }),
@@ -336,16 +395,94 @@ export const communitiesRouter = router({
   create: protectedProcedure
     .input(CreateCommunityDtoSchema)
     .mutation(async ({ ctx, input }) => {
-      return createCreateCommunityUseCase({
-        communityService: ctx.communityService,
-        userService: ctx.userService,
-        userCommunityRoleService: ctx.userCommunityRoleService,
-        walletService: ctx.walletService,
-      }).execute({
-        ...input,
-        creatorUserId: ctx.user.id,
-        creatorGlobalRole: ctx.user.globalRole,
-      });
+      // Note: viewer role removed - all users can create communities
+
+      // Only superadmin can set isPriority
+      const isSuperadmin = ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
+      
+      // Build community DTO, only including isPriority if superadmin and it's a boolean
+      const communityDto: any = {
+        name: input.name,
+        description: input.description,
+        avatarUrl: input.avatarUrl,
+        settings: input.settings,
+        hashtags: input.hashtags,
+        hashtagDescriptions: input.hashtagDescriptions,
+        postingRules: input.postingRules,
+        votingRules: input.votingRules,
+        visibilityRules: input.visibilityRules,
+        meritRules: input.meritRules,
+        linkedCurrencies: input.linkedCurrencies,
+        typeTag: input.typeTag,
+        futureVisionText: input.futureVisionText,
+        futureVisionDocumentSeed: input.futureVisionDocumentSeed,
+        futureVisionTags: input.futureVisionTags,
+        futureVisionCover: input.futureVisionCover,
+      };
+      
+      if (isSuperadmin && typeof input.isPriority === 'boolean') {
+        communityDto.isPriority = input.isPriority;
+      }
+
+      communityDto.creatorUserId = ctx.user.id;
+
+      const community = await ctx.communityService.createCommunity(communityDto);
+
+      // Add creator as member and update memberships
+      await ctx.communityService.addMember(community.id, ctx.user.id);
+      await ctx.userService.addCommunityMembership(ctx.user.id, community.id);
+
+      // Set creator as lead
+      await ctx.userCommunityRoleService.setRole(
+        ctx.user.id,
+        community.id,
+        'lead',
+      );
+
+      // Create wallet for the creator
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+      await ctx.walletService.createOrGetWallet(
+        ctx.user.id,
+        community.id,
+        currency,
+        {
+          startingMeritsIfNewWallet: ctx.communityService.startingMeritsOnJoin(community),
+        },
+      );
+
+      const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
+      const adminRoles = await ctx.userCommunityRoleService.getUsersByRole(community.id, 'lead');
+      const adminIds = adminRoles.map(role => role.userId);
+
+      return {
+        ...community,
+        permissionRules: ctx.communityService.getEffectivePermissionRules(community),
+        meritSettings: ctx.communityService.getEffectiveMeritSettings(community),
+        votingSettings: ctx.communityService.getEffectiveVotingSettings(community),
+          settings: {
+          currencyNames: community.settings?.currencyNames,
+          dailyEmission: community.settings?.dailyEmission as number,
+          iconUrl: community.settings?.iconUrl,
+          language: community.settings?.language ?? 'en',
+          postCost: community.settings?.postCost ?? 1,
+          pollCost: community.settings?.pollCost ?? 1,
+            editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
+            allowEditByOthers: community.settings?.allowEditByOthers ?? false,
+            canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
+        },
+        hashtagDescriptions: community.hashtagDescriptions instanceof Map
+          ? Object.fromEntries(community.hashtagDescriptions)
+          : (community.hashtagDescriptions || {}),
+        adminIds,
+        isAdmin: true, // Creator is admin
+        needsSetup,
+        createdAt: community.createdAt.toISOString(),
+        updatedAt: community.updatedAt.toISOString(),
+      };
     }),
 
   /**
@@ -371,46 +508,105 @@ export const communitiesRouter = router({
       })
     ))
     .mutation(async ({ ctx, input }) => {
-      return createUpdateCommunitySettingsUseCase({
-        communityService: ctx.communityService,
-        userCommunityRoleService: ctx.userCommunityRoleService,
-        walletContextResolverService: ctx.walletContextResolverService,
-        communityWalletService: ctx.communityWalletService,
-      }).execute({
-        communityId: input.id,
-        data: input.data,
-        actorUserId: ctx.user.id,
-        actorGlobalRole: ctx.user.globalRole,
-      });
-    }),
-
-  /**
-   * Update tappalka settings for a community (admin only).
-   */
-  updateTappalkaSettings: protectedProcedure
-    .input(UpdateTappalkaSettingsInputSchema)
-    .mutation(async ({ ctx, input }) => {
-      const isAdmin = await ctx.communityService.isUserAdmin(
-        input.communityId,
-        ctx.user.id,
-      );
+      const isAdmin = await ctx.communityService.isUserAdmin(input.id, ctx.user.id);
       const isSuperadmin = ctx.user.globalRole === GLOBAL_ROLE_SUPERADMIN;
 
       if (!isAdmin && !isSuperadmin) {
         throw new TRPCError({
           code: 'FORBIDDEN',
-          message: 'Only administrators can update tappalka settings',
+          message: 'Only administrators can update community settings',
         });
       }
 
+      // Only superadmin can set isPriority
+      if (input.data.isPriority !== undefined && !isSuperadmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmin can set community priority',
+        });
+      }
+
+      // Validate investment settings if present
+      const invSettings = input.data.settings;
+      if (
+        invSettings &&
+        (invSettings.investorShareMin !== undefined ||
+          invSettings.investorShareMax !== undefined)
+      ) {
+        const min = invSettings.investorShareMin ?? 1;
+        const max = invSettings.investorShareMax ?? 99;
+        if (min < 1 || min > 99) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'investorShareMin must be between 1 and 99',
+          });
+        }
+        if (max < 1 || max > 99) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'investorShareMax must be between 1 and 99',
+          });
+        }
+        if (min > max) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'investorShareMin must be less than or equal to investorShareMax',
+          });
+        }
+      }
+
       const community = await ctx.communityService.updateCommunity(
-        input.communityId,
-        { tappalkaSettings: input.settings },
+        input.id,
+        input.data,
       );
 
+      const needsSetup = CommunitySetupHelpers.calculateNeedsSetup(community, false);
+      const adminRoles = await ctx.userCommunityRoleService.getUsersByRole(input.id, 'lead');
+      const adminIds = adminRoles.map(role => role.userId);
+
+      // Extract legacy fields if they exist in the document (they may not be in TypeScript interface)
+      const communityDoc = community as any;
+      
       return {
-        communityId: input.communityId,
-        tappalkaSettings: community.tappalkaSettings,
+        ...community,
+        permissionRules: ctx.communityService.getEffectivePermissionRules(community),
+        meritSettings: ctx.communityService.getEffectiveMeritSettings(community),
+        votingSettings: ctx.communityService.getEffectiveVotingSettings(community),
+        // Legacy fields for backward compatibility
+        postingRules: communityDoc.postingRules,
+        votingRules: communityDoc.votingRules,
+        visibilityRules: communityDoc.visibilityRules,
+        meritRules: communityDoc.meritRules,
+          settings: {
+          currencyNames: community.settings?.currencyNames,
+          dailyEmission: community.settings?.dailyEmission as number,
+          iconUrl: community.settings?.iconUrl,
+          language: community.settings?.language ?? 'en',
+          postCost: community.settings?.postCost ?? 1,
+          pollCost: community.settings?.pollCost ?? 1,
+            editWindowMinutes: community.settings?.editWindowMinutes ?? 30,
+            allowEditByOthers: community.settings?.allowEditByOthers ?? false,
+            canPayPostFromQuota: community.settings?.canPayPostFromQuota ?? false,
+          investingEnabled: community.settings?.investingEnabled ?? false,
+          investorShareMin: community.settings?.investorShareMin ?? 1,
+          investorShareMax: community.settings?.investorShareMax ?? 99,
+          requireTTLForInvestPosts: community.settings?.requireTTLForInvestPosts ?? false,
+          maxTTL: community.settings?.maxTTL ?? null,
+          inactiveCloseDays: community.settings?.inactiveCloseDays ?? 7,
+          distributeAllByContractOnClose: community.settings?.distributeAllByContractOnClose ?? true,
+          tappalkaOnlyMode: community.settings?.tappalkaOnlyMode ?? false,
+          commentMode:
+            community.settings?.commentMode ??
+            (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all'),
+        },
+        hashtagDescriptions: community.hashtagDescriptions instanceof Map
+          ? Object.fromEntries(community.hashtagDescriptions)
+          : (community.hashtagDescriptions || {}),
+        adminIds,
+        isAdmin: await ctx.communityService.isUserAdmin(input.id, ctx.user.id),
+        needsSetup,
+        createdAt: community.createdAt.toISOString(),
+        updatedAt: community.updatedAt.toISOString(),
       };
     }),
 
@@ -419,9 +615,11 @@ export const communitiesRouter = router({
    */
   getFeed: protectedProcedure
     .input(
-      PaginationInputSchema.extend({
+      z.object({
         communityId: z.string(),
+        page: z.number().int().min(1).optional().default(1),
         cursor: z.number().int().min(1).optional(), // tRPC adds this automatically for infinite queries
+        pageSize: z.number().int().min(1).max(100).optional().default(5),
         sort: z.enum(['recent', 'score']).optional().default('score'),
         tag: z.string().optional(),
         search: z.string().optional(),
@@ -438,13 +636,13 @@ export const communitiesRouter = router({
     )
     .query(async ({ ctx, input }) => {
       // Use cursor if provided (from tRPC infinite query), otherwise use page
-      const page = input.cursor ?? input.page ?? 1;
+      const page = input.cursor ?? input.page;
       const pagination = PaginationHelper.parseOptions({
         page,
-        limit: input.pageSize ?? 5,
+        limit: input.pageSize,
       });
 
-      const result = await createGetCommunityFeedUseCaseFromContext(ctx).execute(
+      const result = await ctx.communityFeedService.getCommunityFeed(
         input.communityId,
         {
           page: pagination.page,
@@ -793,22 +991,34 @@ export const communitiesRouter = router({
    * Get community members
    */
   getMembers: protectedProcedure
-    .input(PaginationInputSchema.extend({
+    .input(z.object({
       id: z.string(),
+      page: z.number().int().min(1).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      skip: z.number().int().min(0).optional(),
       search: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
-      return createListCommunityMembersUseCase({
-        communityService: ctx.communityService,
-      }).execute({
-        communityId: input.id,
-        pagination: {
-          page: input.page,
-          pageSize: input.pageSize,
-          limit: input.limit,
-        },
-        search: input.search,
+      const pagination = PaginationHelper.parseOptions({
+        page: input.page,
+        pageSize: input.pageSize,
+        limit: input.limit,
       });
+      const skip = PaginationHelper.getSkip(pagination);
+
+      const result = await ctx.communityService.getCommunityMembers(
+        input.id,
+        pagination.limit || 20,
+        skip,
+        input.search,
+      );
+
+      return PaginationHelper.createResult(
+        result.members,
+        result.total,
+        pagination,
+      );
     }),
 
   /**
@@ -869,12 +1079,14 @@ export const communitiesRouter = router({
   leaveCommunity: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return createLeaveCommunityUseCase({
-        communityService: ctx.communityService,
-      }).execute({
-        userId: ctx.user.id,
-        communityId: input.id,
-      });
+      if (!ctx.user) {
+        throw new TRPCError({
+          code: 'UNAUTHORIZED',
+          message: 'Not authenticated',
+        });
+      }
+      await ctx.communityService.leaveLocalCommunity(ctx.user.id, input.id);
+      return { success: true as const };
     }),
 
   /**
@@ -1154,18 +1366,14 @@ export const communitiesRouter = router({
           });
         }
       }
-      const walletKey =
-        await ctx.walletContextResolverService.resolveCommunityWalletCommunityId(
-          input.communityId,
-        );
-      const wallet = await ctx.communityWalletService.getWallet(walletKey);
+      const wallet = await ctx.communityWalletService.getWallet(input.communityId);
       return (
         wallet ?? {
           balance: 0,
           totalReceived: 0,
           totalDistributed: 0,
           id: '',
-          communityId: walletKey,
+          communityId: input.communityId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         }

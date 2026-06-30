@@ -73,3 +73,43 @@ export function AuthGuard({
   return <>{children}</>;
 }
 
+/**
+ * Higher-order component for protecting routes
+ */
+export function withAuthGuard<P extends object>(
+  Component: React.ComponentType<P>,
+  options: Omit<AuthGuardProps, 'children'> = {}
+) {
+  return function AuthGuardedComponent(props: P) {
+    return (
+      <AuthGuard {...options}>
+        <Component {...props} />
+      </AuthGuard>
+    );
+  };
+}
+
+/**
+ * Hook for checking authentication status in components
+ */
+export function useAuthGuard() {
+  const { user, isLoading, isAuthenticated } = useAuth();
+  const router = useRouter();
+  
+  const requireAuth = () => {
+    if (!isLoading && !isAuthenticated) {
+      const currentPath = window.location.pathname;
+      const returnTo = encodeURIComponent(currentPath);
+      router.push(`/meriter/login?returnTo=${returnTo}`);
+      return false;
+    }
+    return isAuthenticated;
+  };
+  
+  return {
+    requireAuth,
+    isAuthenticated,
+    isLoading,
+    user,
+  };
+}

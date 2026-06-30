@@ -40,8 +40,7 @@ export class PublicationCreatedEvent extends DomainEvent {
     private readonly publicationId: string,
     private readonly authorId: string,
     private readonly communityId: string,
-    private readonly skipTelegramMirror = false,
-    private readonly timestamp: Date = new Date(),
+    private readonly timestamp: Date = new Date()
   ) {
     super();
   }
@@ -64,10 +63,6 @@ export class PublicationCreatedEvent extends DomainEvent {
 
   getCommunityId(): string {
     return this.communityId;
-  }
-
-  getSkipTelegramMirror(): boolean {
-    return this.skipTelegramMirror;
   }
 }
 
@@ -236,12 +231,6 @@ export class PollCastedEvent extends DomainEvent {
     return this.amount;
   }
 }
-
-export {
-  TicketAssignedEvent,
-  TicketApplyEvent,
-  TicketRejectedEvent,
-} from './ticket.events';
 
 export class WalletBalanceChangedEvent extends DomainEvent {
   constructor(

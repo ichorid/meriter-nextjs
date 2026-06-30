@@ -1,13 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import DOMPurify, { type Config } from 'dompurify';
+import DOMPurify from 'dompurify';
 import { normalizeOfficialContentForDisplay } from '@/features/documents/lib/block-content-format';
-import { documentRichListProseClass } from '@/features/documents/lib/document-revision-styles';
 import { cn } from '@/lib/utils';
 
 /** Matches TipTap StarterKit + Link output used in RichTextEditor. */
-const PURIFY: Config = {
+const PURIFY: DOMPurify.Config = {
   ALLOWED_TAGS: [
     'p',
     'br',
@@ -18,8 +17,6 @@ const PURIFY: Config = {
     'u',
     's',
     'strike',
-    'del',
-    'ins',
     'a',
     'ul',
     'ol',
@@ -59,37 +56,24 @@ export interface DocumentRichContentProps {
 /**
  * Renders stored document / variant body: HTML from TipTap (sanitized) or legacy plain text.
  */
-/** Block-level headings sit below document section titles (h1). */
-export const documentBlockHeadingProseClass = cn(
-  '[&_h2]:mt-0 [&_h2]:mb-1.5 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-base-content',
-  '[&_h3]:mt-0 [&_h3]:mb-1 [&_h3]:text-base [&_h3]:font-semibold [&_h3]:tracking-tight [&_h3]:text-base-content/90',
-);
-
 function displayProseClass(blockType?: string): string {
-  const richBase =
-    'document-rich-content max-w-none text-base leading-relaxed text-base-content';
-
-  if (blockType === 'list-bullet' || blockType === 'list-numbered') {
-    return cn(richBase, documentRichListProseClass);
-  }
-
-  if (blockType === 'heading' || blockType === 'quote') {
+  if (
+    blockType === 'heading' ||
+    blockType === 'list-bullet' ||
+    blockType === 'list-numbered' ||
+    blockType === 'quote'
+  ) {
     return cn(
-      richBase,
-      'prose dark:prose-invert',
-      blockType === 'heading' && documentBlockHeadingProseClass,
-      documentRichListProseClass,
-      '[&_p]:my-0 [&_p]:leading-relaxed',
+      'max-w-none text-base-content',
+      '[&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight [&_h2]:text-base-content',
+      '[&_h3]:text-lg [&_h3]:font-semibold [&_h3]:tracking-tight [&_h3]:text-base-content',
+      '[&_ul]:my-1 [&_ul]:list-disc [&_ul]:space-y-1 [&_ul]:pl-5',
+      '[&_ol]:my-1 [&_ol]:list-decimal [&_ol]:space-y-1 [&_ol]:pl-5',
+      '[&_li]:pl-0',
       '[&_blockquote]:my-0 [&_blockquote]:border-l-2 [&_blockquote]:border-base-content/25 [&_blockquote]:pl-4 [&_blockquote]:italic [&_blockquote]:text-base-content/85',
     );
   }
-
-  return cn(
-    richBase,
-    'prose dark:prose-invert',
-    documentBlockHeadingProseClass,
-    documentRichListProseClass,
-  );
+  return 'prose prose-sm dark:prose-invert max-w-none text-base-content';
 }
 
 export function DocumentRichContent({ html, className, blockType }: DocumentRichContentProps) {

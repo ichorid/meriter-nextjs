@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { UploadsController } from './uploads.controller';
+import { UploadsService } from './uploads.service';
 import { DomainModule } from '../../domain.module';
 import { ApiV1CommonModule } from '../common/common.module';
-import { InfrastructureUploadsModule } from '../../infrastructure/uploads/infrastructure-uploads.module';
+
 @Module({
-  imports: [DomainModule, ApiV1CommonModule, InfrastructureUploadsModule],
+  imports: [DomainModule, ApiV1CommonModule],
   controllers: [UploadsController],
-  exports: [InfrastructureUploadsModule],
+  providers: [UploadsService],
+  exports: [UploadsService],
 })
 export class UploadsModule {}
+

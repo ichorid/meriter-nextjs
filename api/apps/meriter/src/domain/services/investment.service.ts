@@ -1,12 +1,14 @@
 import {
   Injectable,
-  Inject,
   Logger,
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
-import { ClientSession } from 'mongoose';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model, ClientSession, type PipelineStage } from 'mongoose';
 import {
+  PublicationSchemaClass,
+  PublicationDocument,
   type PublicationInvestment,
 } from '../models/publication/publication.schema';
 import type {
@@ -14,33 +16,12 @@ import type {
   ProjectInvestmentEntry,
 } from '../models/community/community.schema';
 import { WalletService } from './wallet.service';
-import { WalletContextResolverService } from './wallet-context-resolver.service';
+import { MeritResolverService } from './merit-resolver.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
 import { UserService } from './user.service';
 import { formatMeritsForDisplay } from '../../common/helpers/format-merits.helper';
 import { isPublicationEntitySourced } from '../../domain/common/helpers/publication-source.helper';
-import {
-  DISTRIBUTE_ON_WITHDRAWAL_PORT,
-  type DistributeOnWithdrawalPort,
-  type DistributeOnWithdrawalResult,
-} from '../ports/distribute-on-withdrawal.port';
-import {
-  HANDLE_POST_CLOSE_PORT,
-  type HandlePostClosePort,
-  type HandlePostCloseResult,
-} from '../ports/handle-post-close.port';
-import {
-  INVESTMENT_PERSISTENCE_PORT,
-  type InvestmentPersistencePort,
-} from '../ports/investment.persistence.port';
-
-export type {
-  DistributeOnWithdrawalResult,
-} from '../ports/distribute-on-withdrawal.port';
-export type {
-  HandlePostCloseResult,
-} from '../ports/handle-post-close.port';
 
 export interface ProcessInvestmentResult {
   postId: string;
@@ -55,6 +36,20 @@ export interface ProcessInvestmentResult {
   }>;
 }
 
+export interface DistributeOnWithdrawalResult {
+  authorAmount: number;
+  investorDistributions: Array<{
+    investorId: string;
+    amount: number;
+  }>;
+}
+
+export interface HandlePostCloseResult {
+  poolReturned: Array<{ investorId: string; amount: number }>;
+  ratingDistributed: DistributeOnWithdrawalResult;
+  /** Total rating that was distributed (for reduceScore) */
+  totalRatingDistributed: number;
+}
 
 /** C-3: Single investor entry in investment breakdown */
 export interface InvestmentBreakdownInvestor {
@@ -162,17 +157,13 @@ export class InvestmentService {
   private readonly logger = new Logger(InvestmentService.name);
 
   constructor(
-    @Inject(INVESTMENT_PERSISTENCE_PORT)
-    private readonly investmentPersistence: InvestmentPersistencePort,
+    @InjectModel(PublicationSchemaClass.name)
+    private publicationModel: Model<PublicationDocument>,
     private walletService: WalletService,
-    private walletContextResolverService: WalletContextResolverService,
+    private meritResolverService: MeritResolverService,
     private communityService: CommunityService,
     private notificationService: NotificationService,
     private userService: UserService,
-    @Inject(DISTRIBUTE_ON_WITHDRAWAL_PORT)
-    private readonly distributeOnWithdrawalUseCase: DistributeOnWithdrawalPort,
-    @Inject(HANDLE_POST_CLOSE_PORT)
-    private readonly handlePostCloseUseCase: HandlePostClosePort,
   ) {}
 
   /**
@@ -189,7 +180,7 @@ export class InvestmentService {
       throw new BadRequestException('Investment amount must be greater than 0');
     }
 
-    const post = await this.investmentPersistence.findPublicationById(postId);
+    const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -233,11 +224,10 @@ export class InvestmentService {
       genitive: 'merits',
     };
 
-    const walletCommunityId =
-      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
-        community,
-        'investment',
-      );
+    const walletCommunityId = this.meritResolverService.getWalletCommunityId(
+      community,
+      'investment',
+    );
     const wallet = await this.walletService.getWallet(investorId, walletCommunityId);
     const balance = wallet ? wallet.getBalance() : 0;
     if (balance < amount) {
@@ -303,13 +293,16 @@ export class InvestmentService {
       throw err;
     }
 
-    await this.investmentPersistence.updatePublication(postId, {
-      set: {
-        investmentPool: newPool,
-        investmentPoolTotal: newTotal,
-        investments: updatedInvestments,
+    await this.publicationModel.updateOne(
+      { id: postId },
+      {
+        $set: {
+          investmentPool: newPool,
+          investmentPoolTotal: newTotal,
+          investments: updatedInvestments,
+        },
       },
-    });
+    );
 
     const totalInvested = updatedInvestments.reduce((sum, inv) => sum + inv.amount, 0);
     const resultInvestments = updatedInvestments.map((inv) => ({
@@ -355,7 +348,7 @@ export class InvestmentService {
       sharePercent: number;
     }>
   > {
-    const post = await this.investmentPersistence.findPublicationById(postId);
+    const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -381,7 +374,7 @@ export class InvestmentService {
   async getInvestmentBreakdown(
     postId: string,
   ): Promise<InvestmentBreakdownResult> {
-    const post = await this.investmentPersistence.findPublicationById(postId);
+    const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -434,7 +427,13 @@ export class InvestmentService {
       investmentPoolTotal: number;
     }>
   > {
-    const posts = await this.investmentPersistence.findPublicationsByInvestor(userId);
+    const posts = await this.publicationModel
+      .find({
+        'investments.investorId': userId,
+        deleted: { $ne: true },
+      })
+      .lean()
+      .exec();
 
     return posts.map((post) => {
       const inv = post.investments?.find(
@@ -465,12 +464,67 @@ export class InvestmentService {
     userId: string,
     options: GetMyPortfolioOptions,
   ): Promise<GetMyPortfolioResult> {
+    const filterMatch =
+      options.filter === 'all' ? {} : { status: options.filter };
     const skip = (options.page - 1) * options.limit;
 
-    const postRaw = await this.investmentPersistence.aggregatePortfolioByInvestor(
-      userId,
-      options.filter === 'all' ? undefined : options.filter,
-    );
+    const postPipeline: PipelineStage[] = [
+      {
+        $match: {
+          'investments.investorId': userId,
+          deleted: { $ne: true },
+          ...filterMatch,
+        },
+      },
+      {
+        $addFields: {
+          myInv: {
+            $arrayElemAt: [
+              {
+                $filter: {
+                  input: '$investments',
+                  as: 'i',
+                  cond: { $eq: ['$$i.investorId', userId] },
+                },
+              },
+              0,
+            ],
+          },
+        },
+      },
+      { $match: { myInv: { $ne: null } } },
+      {
+        $project: {
+          id: 1,
+          title: 1,
+          authorId: 1,
+          communityId: 1,
+          status: 1,
+          'metrics.score': 1,
+          investmentPool: 1,
+          investmentPoolTotal: 1,
+          ttlExpiresAt: 1,
+          closingSummary: 1,
+          myInv: 1,
+        },
+      },
+    ];
+
+    const postRaw = await this.publicationModel
+      .aggregate<{
+        id: string;
+        title?: string;
+        authorId: string;
+        communityId: string;
+        status?: 'active' | 'closed';
+        metrics?: { score?: number };
+        investmentPool?: number;
+        investmentPoolTotal?: number;
+        ttlExpiresAt?: Date | null;
+        closingSummary?: unknown;
+        myInv: PublicationInvestment;
+      }>(postPipeline)
+      .exec();
 
     type PostRow = {
       kind: 'post';
@@ -691,7 +745,10 @@ export class InvestmentService {
     userId: string,
     postId: string,
   ): Promise<InvestmentDetailsResult> {
-    const post = await this.investmentPersistence.findPublicationById(postId);
+    const post = await this.publicationModel
+      .findOne({ id: postId })
+      .lean()
+      .exec();
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -728,26 +785,337 @@ export class InvestmentService {
     };
   }
 
-  /** Delegates to DistributeOnWithdrawalUseCase (BC-08). */
+  /**
+   * Distribute merits on withdrawal: X% to investors, rest to author.
+   * C-4: Round investor shares to 0.01; any remainder goes to author.
+   * Follows business-investing.mdc strictly.
+   * When session is provided (transaction), notifications are skipped (caller notifies after commit).
+   * F-1: Records totalEarnings and earningsHistory per investor; earningsReason defaults to 'withdrawal', use 'close' when called from handlePostClose.
+   */
   async distributeOnWithdrawal(
     postId: string,
     withdrawAmount: number,
     session?: ClientSession,
     earningsReason: 'withdrawal' | 'close' = 'withdrawal',
   ): Promise<DistributeOnWithdrawalResult> {
-    return this.distributeOnWithdrawalUseCase.execute({
-      postId,
-      withdrawAmount,
-      session,
-      earningsReason,
-    });
+    const post = await this.publicationModel.findOne({ id: postId }).lean().exec();
+    if (!post) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    const investments = post.investments || [];
+    if (investments.length === 0) {
+      return {
+        authorAmount: withdrawAmount,
+        investorDistributions: [],
+      };
+    }
+
+    const investorSharePercent = post.investorSharePercent ?? 0;
+    const totalInvested = investments.reduce(
+      (sum: number, inv: PublicationInvestment) => sum + inv.amount,
+      0,
+    );
+    if (totalInvested <= 0) {
+      return {
+        authorAmount: withdrawAmount,
+        investorDistributions: [],
+      };
+    }
+
+    // investorTotal = amount * contractPercent / 100, rounded to 0.01
+    const investorTotal = this.roundToHundredths(
+      withdrawAmount * (investorSharePercent / 100),
+    );
+
+    const community = await this.communityService.getCommunity(post.communityId);
+    if (!community) {
+      throw new NotFoundException('Community not found');
+    }
+    const currency = community.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+
+    // Per investor: share = investorTotal * (investor.amount / totalInvested), round to 0.01
+    const investorDistributions: Array<{ investorId: string; amount: number }> = [];
+    let distributedTotal = 0;
+
+    for (const inv of investments) {
+      const share = investorTotal * (inv.amount / totalInvested);
+      const amount = this.roundToHundredths(share);
+      distributedTotal += amount;
+      if (amount > 0) {
+        investorDistributions.push({
+          investorId: inv.investorId,
+          amount,
+        });
+      }
+    }
+
+    // Remainder from rounding goes to author (C-4)
+    const authorAmount = withdrawAmount - distributedTotal;
+
+    const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+      community,
+      'withdrawal',
+    );
+    for (const dist of investorDistributions) {
+      await this.walletService.addTransaction(
+        dist.investorId,
+        targetCommunityId,
+        'credit',
+        dist.amount,
+        'personal',
+        'investment_distribution',
+        postId,
+        currency,
+        `Investment distribution from post ${postId}`,
+        session,
+      );
+    }
+
+    // F-1: Update per-investor totalEarnings and earningsHistory
+    const updateOptions = session ? { session } : {};
+    await Promise.all(
+      investorDistributions.map((dist) =>
+        this.publicationModel.updateOne(
+          { id: postId, 'investments.investorId': dist.investorId },
+          {
+            $inc: { 'investments.$.totalEarnings': dist.amount },
+            $push: {
+              'investments.$.earningsHistory': {
+                amount: dist.amount,
+                date: new Date(),
+                reason: earningsReason,
+              },
+            },
+          },
+          updateOptions,
+        ),
+      ),
+    );
+
+    // C-10: Notify each investor (skip when inside transaction; caller notifies after commit)
+    if (!session) {
+      try {
+        const author = await this.userService.getUser(post.authorId);
+        const authorName = author?.displayName || 'Author';
+        await Promise.all(
+          investorDistributions.map((dist) =>
+            this.notificationService.createNotification({
+              userId: dist.investorId,
+              type: 'investment_distributed',
+              source: 'user',
+              sourceId: post.authorId,
+              metadata: {
+                postId,
+                communityId: post.communityId,
+                withdrawAmount,
+                amount: dist.amount,
+              },
+              title: 'Investment distributed',
+              message: `${authorName} withdrew ${formatMeritsForDisplay(withdrawAmount)} merits from post. Your share: ${formatMeritsForDisplay(dist.amount)} merits`,
+            }),
+          ),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Failed to create investment_distributed notifications: ${err}`,
+        );
+      }
+    }
+
+    return {
+      authorAmount,
+      investorDistributions,
+    };
   }
 
-  /** Delegates to HandlePostCloseUseCase (BC-08). */
+  /** Round to 2 decimal places (0.01). Used for merit distribution. */
+  private roundToHundredths(x: number): number {
+    return Math.round(x * 100) / 100;
+  }
+
+  /**
+   * Handle post close.
+   * Mode A (distributeAllByContractOnClose=true, default): ALL merits (pool + rating) distributed between author and investors by contract.
+   * Mode B (distributeAllByContractOnClose=false): pool returned to investors proportionally, then rating distributed by contract.
+   * When session is provided (transaction), all writes use it and investor notifications are skipped.
+   */
   async handlePostClose(
     postId: string,
     session?: ClientSession,
   ): Promise<HandlePostCloseResult> {
-    return this.handlePostCloseUseCase.execute({ postId, session });
+    const query = this.publicationModel.findOne({ id: postId });
+    if (session) query.session(session);
+    const post = await query.lean().exec();
+    if (!post) {
+      throw new NotFoundException('Publication not found');
+    }
+
+    const poolReturned: Array<{ investorId: string; amount: number }> = [];
+    let ratingDistributed: DistributeOnWithdrawalResult = {
+      authorAmount: 0,
+      investorDistributions: [],
+    };
+    let totalRatingDistributed = 0;
+
+    const investments = post.investments || [];
+    const currentPool = post.investmentPool ?? 0;
+    const currentScore = post.metrics?.score ?? 0;
+    const totalInvested = investments.reduce(
+      (sum: number, inv: PublicationInvestment) => sum + inv.amount,
+      0,
+    );
+
+    const distributeAllByContract =
+      investments.length > 0
+        ? (await this.communityService.getCommunity(post.communityId))?.settings
+            ?.distributeAllByContractOnClose ?? true
+        : false;
+
+    if (investments.length > 0 && distributeAllByContract) {
+      // Mode A: all merits (pool + rating) distributed by contract
+      const totalToDistribute = currentScore + currentPool;
+      await this.publicationModel.updateOne(
+        { id: postId },
+        { $set: { investmentPool: 0 } },
+        session ? { session } : {},
+      );
+      if (totalToDistribute > 0) {
+        ratingDistributed = await this.distributeOnWithdrawal(
+          postId,
+          totalToDistribute,
+          session,
+          'close',
+        );
+      }
+      totalRatingDistributed = currentScore;
+    } else if (
+      investments.length > 0 &&
+      !distributeAllByContract &&
+      currentPool > 0 &&
+      totalInvested > 0
+    ) {
+      // Mode B: return pool to investors proportionally
+      const community = await this.communityService.getCommunity(post.communityId);
+      if (community) {
+        const currency = community.settings?.currencyNames || {
+          singular: 'merit',
+          plural: 'merits',
+          genitive: 'merits',
+        };
+        const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+          community,
+          'withdrawal',
+        );
+
+        let returnedTotal = 0;
+        for (let i = 0; i < investments.length; i++) {
+          const inv = investments[i];
+          const share = (inv.amount / totalInvested) * currentPool;
+          const amount = Math.floor(share);
+          returnedTotal += amount;
+          if (amount > 0) {
+            poolReturned.push({ investorId: inv.investorId, amount });
+            await this.walletService.addTransaction(
+              inv.investorId,
+              targetCommunityId,
+              'credit',
+              amount,
+              'personal',
+              'investment_pool_return',
+              postId,
+              currency,
+              `Investment pool return from closed post ${postId}`,
+              session,
+            );
+          }
+        }
+        const remainder = currentPool - returnedTotal;
+        if (remainder > 0 && poolReturned.length > 0) {
+          poolReturned[0].amount += remainder;
+          await this.walletService.addTransaction(
+            poolReturned[0].investorId,
+            targetCommunityId,
+            'credit',
+            remainder,
+            'personal',
+            'investment_pool_return',
+            postId,
+            currency,
+            `Investment pool return (remainder) from closed post ${postId}`,
+            session,
+          );
+        }
+
+        await this.publicationModel.updateOne(
+          { id: postId },
+          { $set: { investmentPool: 0 } },
+          session ? { session } : {},
+        );
+
+        const updateOpts = session ? { session } : {};
+        await Promise.all(
+          poolReturned.map((p) =>
+            this.publicationModel.updateOne(
+              { id: postId, 'investments.investorId': p.investorId },
+              {
+                $inc: { 'investments.$.totalEarnings': p.amount },
+                $push: {
+                  'investments.$.earningsHistory': {
+                    amount: p.amount,
+                    date: new Date(),
+                    reason: 'pool_return' as const,
+                  },
+                },
+              },
+              updateOpts,
+            ),
+          ),
+        );
+      }
+    } else if (
+      investments.length > 0 &&
+      !distributeAllByContract &&
+      (currentPool === 0 || totalInvested === 0)
+    ) {
+      await this.publicationModel.updateOne(
+        { id: postId },
+        { $set: { investmentPool: 0 } },
+        session ? { session } : {},
+      );
+    }
+
+    if (
+      currentScore > 0 &&
+      investments.length > 0 &&
+      !distributeAllByContract
+    ) {
+      ratingDistributed = await this.distributeOnWithdrawal(
+        postId,
+        currentScore,
+        session,
+        'close',
+      );
+      totalRatingDistributed = currentScore;
+    } else if (currentScore > 0 && investments.length === 0) {
+      ratingDistributed = {
+        authorAmount: currentScore,
+        investorDistributions: [],
+      };
+      totalRatingDistributed = currentScore;
+    }
+
+    // Notifications are sent by the caller (PostClosingService.sendNotifications).
+    // Delete/permanentDelete flows do not use PostClosingService; they may add their own notifications if needed.
+
+    return {
+      poolReturned,
+      ratingDistributed,
+      totalRatingDistributed,
+    };
   }
 }

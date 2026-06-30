@@ -4,8 +4,7 @@ export class PublicationCreatedEvent extends DomainEvent {
   constructor(
     public readonly publicationId: string,
     public readonly authorId: string,
-    public readonly communityId: string,
-    public readonly skipTelegramMirror = false,
+    public readonly communityId: string
   ) {
     super();
   }

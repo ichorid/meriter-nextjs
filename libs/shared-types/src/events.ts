@@ -1,124 +1,6 @@
 import { z } from "zod";
 import { MeritTransferCreateProcedureInputSchema } from "./merit-transfer";
 
-/** ST-4: Optional event date/time/location fields (publication entity + DTOs). */
-export const EventOptionalDateFieldsSchema = z.object({
-  eventStartDate: z.coerce.date().optional(),
-  eventEndDate: z.coerce.date().optional(),
-  eventTime: z.string().max(500).optional(),
-  eventLocation: z.string().max(2000).optional(),
-});
-
-/** ST-4: Required event dates for dedicated event create inputs. */
-export const EventRequiredDateFieldsSchema = z.object({
-  eventStartDate: z.coerce.date(),
-  eventEndDate: z.coerce.date(),
-  eventTime: z.string().max(500).optional(),
-  eventLocation: z.string().max(2000).optional(),
-});
-
-export const EventParticipantViewSchema = z.object({
-  userId: z.string(),
-  attendance: z.enum(["checked_in", "no_show"]).nullable().optional(),
-  attendanceUpdatedAt: z.coerce.date().optional(),
-  attendanceUpdatedByUserId: z.string().optional(),
-});
-
-export type EventParticipantView = z.infer<typeof EventParticipantViewSchema>;
-
-/** ST-4: Event-only fields on Publication entity. */
-export const EventPublicationFieldsSchema = EventOptionalDateFieldsSchema.extend({
-  eventAttendees: z.array(z.string()).optional().default([]),
-  eventParticipants: z.array(EventParticipantViewSchema).optional().default([]),
-});
-
-/** ST-1: Shared event date-order validation. */
-export const EVENT_END_DATE_ORDER_MESSAGE =
-  "eventEndDate must be on or after eventStartDate";
-
-export const EVENT_DATES_REQUIRED_WHEN_POST_TYPE_EVENT_MESSAGE =
-  "eventStartDate and eventEndDate are required when postType is event";
-
-type EventDateFields = {
-  eventStartDate?: Date | null;
-  eventEndDate?: Date | null;
-};
-
-export function isEventEndDateOnOrAfterStart(
-  eventStartDate: Date | null | undefined,
-  eventEndDate: Date | null | undefined,
-): boolean {
-  if (eventStartDate != null && eventEndDate != null) {
-    return eventEndDate >= eventStartDate;
-  }
-  return true;
-}
-
-export const eventEndDateOrderRefineCheck = (data: EventDateFields) =>
-  isEventEndDateOnOrAfterStart(data.eventStartDate, data.eventEndDate);
-
-export const eventEndDateOrderRefineConfig = {
-  message: EVENT_END_DATE_ORDER_MESSAGE,
-  path: ["eventEndDate"],
-};
-
-export function eventDatesRequiredWhenPostTypeEvent(data: {
-  postType?: string;
-  eventStartDate?: Date | null;
-  eventEndDate?: Date | null;
-}): boolean {
-  if (data.postType !== "event") return true;
-  return data.eventStartDate != null && data.eventEndDate != null;
-}
-
-export const eventDatesRequiredWhenPostTypeEventRefineConfig = {
-  message: EVENT_DATES_REQUIRED_WHEN_POST_TYPE_EVENT_MESSAGE,
-  path: ["eventStartDate"],
-};
-
-export function eventEndDateOrderWhenPostTypeEvent(data: {
-  postType?: string;
-  eventStartDate?: Date | null;
-  eventEndDate?: Date | null;
-}): boolean {
-  if (data.postType !== "event") return true;
-  return isEventEndDateOnOrAfterStart(data.eventStartDate, data.eventEndDate);
-}
-
-/** PublicationSchema superRefine helper for postType === 'event'. */
-export function addEventPublicationValidationIssues(
-  data: {
-    postType?: string;
-    eventStartDate?: Date | null;
-    eventEndDate?: Date | null;
-  },
-  ctx: z.RefinementCtx,
-): void {
-  if (data.postType !== "event") return;
-
-  if (data.eventStartDate == null) {
-    ctx.addIssue({
-      code: "custom",
-      message: "eventStartDate is required when postType is event",
-      path: ["eventStartDate"],
-    });
-  }
-  if (data.eventEndDate == null) {
-    ctx.addIssue({
-      code: "custom",
-      message: "eventEndDate is required when postType is event",
-      path: ["eventEndDate"],
-    });
-  }
-  if (!isEventEndDateOnOrAfterStart(data.eventStartDate, data.eventEndDate)) {
-    ctx.addIssue({
-      code: "custom",
-      message: EVENT_END_DATE_ORDER_MESSAGE,
-      path: ["eventEndDate"],
-    });
-  }
-}
-
 /** Payload for creating an event post (`postType === 'event'`). */
 export const EventCreateInputSchema = z
   .object({
@@ -127,10 +9,16 @@ export const EventCreateInputSchema = z
     description: z.string().min(1).max(5000),
     content: z.string().min(1).max(10000),
     type: z.enum(["text", "image", "video"]),
+    eventStartDate: z.coerce.date(),
+    eventEndDate: z.coerce.date(),
+    eventTime: z.string().max(500).optional(),
+    eventLocation: z.string().max(2000).optional(),
   })
-  .merge(EventRequiredDateFieldsSchema)
   .strict()
-  .refine(eventEndDateOrderRefineCheck, eventEndDateOrderRefineConfig);
+  .refine((d) => d.eventEndDate >= d.eventStartDate, {
+    message: "eventEndDate must be on or after eventStartDate",
+    path: ["eventEndDate"],
+  });
 
 export type EventCreateInput = z.infer<typeof EventCreateInputSchema>;
 
@@ -141,30 +29,55 @@ export const EventUpdateInputSchema = z
     description: z.string().min(1).max(5000).optional(),
     content: z.string().min(1).max(10000).optional(),
     type: z.enum(["text", "image", "video"]).optional(),
+    eventStartDate: z.coerce.date().optional(),
+    eventEndDate: z.coerce.date().optional(),
+    eventTime: z.string().max(500).optional(),
+    eventLocation: z.string().max(2000).optional(),
   })
-  .merge(EventOptionalDateFieldsSchema)
-  .refine(eventEndDateOrderRefineCheck, eventEndDateOrderRefineConfig);
+  .refine(
+    (d) => {
+      if (d.eventStartDate != null && d.eventEndDate != null) {
+        return d.eventEndDate >= d.eventStartDate;
+      }
+      return true;
+    },
+    {
+      message: "eventEndDate must be on or after eventStartDate",
+      path: ["eventEndDate"],
+    },
+  );
 
 export type EventUpdateInput = z.infer<typeof EventUpdateInputSchema>;
 
+export const EventParticipantViewSchema = z.object({
+  userId: z.string(),
+  attendance: z.enum(["checked_in", "no_show"]).nullable().optional(),
+  attendanceUpdatedAt: z.coerce.date().optional(),
+  attendanceUpdatedByUserId: z.string().optional(),
+});
+
+export type EventParticipantView = z.infer<typeof EventParticipantViewSchema>;
+
 /** API view of an event post (subset + RSVP). */
-export const EventPublicationViewSchema = z
-  .object({
-    id: z.string(),
-    communityId: z.string(),
-    authorId: z.string(),
-    title: z.string().optional(),
-    description: z.string().optional(),
-    content: z.string(),
-    type: z.enum(["text", "image", "video"]),
-    postType: z.literal("event"),
-    /** Derived: user ids in participant list (RSVP + attendance rows). */
-    eventAttendees: z.array(z.string()),
-    eventParticipants: z.array(EventParticipantViewSchema).optional().default([]),
-    createdAt: z.coerce.date(),
-    updatedAt: z.coerce.date(),
-  })
-  .merge(EventRequiredDateFieldsSchema);
+export const EventPublicationViewSchema = z.object({
+  id: z.string(),
+  communityId: z.string(),
+  authorId: z.string(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  content: z.string(),
+  type: z.enum(["text", "image", "video"]),
+  postType: z.literal("event"),
+  eventStartDate: z.coerce.date(),
+  eventEndDate: z.coerce.date(),
+  eventTime: z.string().optional(),
+  eventLocation: z.string().optional(),
+  /** Derived: user ids in participant list (RSVP + attendance rows). */
+  eventAttendees: z.array(z.string()),
+  eventParticipants: z.array(EventParticipantViewSchema).optional().default([]),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+});
 
 export type EventPublicationView = z.infer<typeof EventPublicationViewSchema>;
 

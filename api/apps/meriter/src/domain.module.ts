@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { PersistenceModule } from './infrastructure/persistence/persistence.module';
 
 // Import schemas
 import {
@@ -105,10 +104,6 @@ import {
   DocumentBlockVariantSchemaClass,
   DocumentBlockVariantSchema,
 } from './domain/models/document-block-variant/document-block-variant.schema';
-import {
-  TelegramPublicationAnchorSchemaClass,
-  TelegramPublicationAnchorSchema,
-} from './domain/models/telegram/telegram-publication-anchor.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -133,18 +128,14 @@ import { NotificationHandlersService } from './domain/services/notification-hand
 import { FavoriteService } from './domain/services/favorite.service';
 import { QuotaUsageService } from './domain/services/quota-usage.service';
 import { CommunityDefaultsService } from './domain/services/community-defaults.service';
-import { CommunityEffectiveSettingsService } from './domain/services/community-effective-settings.service';
-import { CommunityMembershipService } from './domain/services/community-membership.service';
 import { CategoryService } from './domain/services/category.service';
 import { AboutService } from './domain/services/about.service';
 import { PermissionRuleEngine } from './domain/services/permission-rule-engine.service';
 import { PermissionContextService } from './domain/services/permission-context.service';
-import { PERMISSION_GATES_PORT } from './domain/ports/permission-gates.port';
 import { TappalkaService } from './domain/services/tappalka.service';
 import { InvestmentService } from './domain/services/investment.service';
 import { PostClosingService } from './domain/services/post-closing.service';
 import { MeritResolverService } from './domain/services/merit-resolver.service';
-import { WalletContextResolverService } from './domain/services/wallet-context-resolver.service';
 import { TeamJoinRequestService } from './domain/services/team-join-request.service';
 import { TeamInvitationService } from './domain/services/team-invitation.service';
 import { PlatformSettingsService } from './domain/services/platform-settings.service';
@@ -158,22 +149,15 @@ import { ProjectPayoutService } from './domain/services/project-payout.service';
 import { PlatformWipeService } from './domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from './domain/services/platform-demo-seed.service';
 import { PlatformDemoEventsSeedService } from './domain/services/platform-demo-events-seed.service';
-import { PlatformEntrepreneursDemoSeedService } from './domain/services/platform-entrepreneurs-demo-seed.service';
-import { CommunityWebDevSeedService } from './domain/services/community-web-dev-seed.service';
-import { CommunityWebDevAutoseedService } from './domain/services/community-web-dev-autoseed.service';
-import { PlatformDemoPackImportService } from './domain/services/platform-demo-pack-import.service';
 import { PlatformDatabaseDumpService } from './domain/services/platform-database-dump.service';
 import { Decree809TagMigrationService } from './domain/services/decree809-tag-migration.service';
 import { CollaborativeDocumentsMigrationService } from './domain/services/collaborative-documents-migration.service';
-import { TelegramCommunityPrivacyMigrationService } from './domain/services/telegram-community-privacy-migration.service';
 import { MeritTransferService } from './domain/services/merit-transfer.service';
 import { EventService } from './domain/services/event.service';
 import { CommunityInviteService } from './domain/services/community-invite.service';
 import { DocumentService } from './domain/services/document.service';
 import { DocumentVariantService } from './domain/services/document-variant.service';
 import { DocumentStructureService } from './domain/services/document-structure.service';
-import { DocumentHtmlSyncService } from './domain/services/document-html-sync.service';
-import { DocumentLiveUpdatesService } from './domain/services/document-live-updates.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -187,7 +171,6 @@ import { EventBus } from './domain/events/event-bus';
 
 @Module({
   imports: [
-    PersistenceModule,
     // Mongoose schemas
     MongooseModule.forFeature([
       { name: PublicationSchemaClass.name, schema: PublicationSchema },
@@ -226,10 +209,6 @@ import { EventBus } from './domain/events/event-bus';
         name: DocumentBlockVariantSchemaClass.name,
         schema: DocumentBlockVariantSchema,
       },
-      {
-        name: TelegramPublicationAnchorSchemaClass.name,
-        schema: TelegramPublicationAnchorSchema,
-      },
     ]),
   ],
   providers: [
@@ -246,13 +225,7 @@ import { EventBus } from './domain/events/event-bus';
     UserService,
     CommunityService,
     CommunityDefaultsService,
-    CommunityEffectiveSettingsService,
-    CommunityMembershipService,
     PermissionRuleEngine,
-    {
-      provide: PERMISSION_GATES_PORT,
-      useExisting: PermissionRuleEngine,
-    },
     PermissionContextService,
     UserUpdatesService,
     UserSettingsService,
@@ -270,7 +243,6 @@ import { EventBus } from './domain/events/event-bus';
     InvestmentService,
     PostClosingService,
     MeritResolverService,
-    WalletContextResolverService,
     TeamJoinRequestService,
     TeamInvitationService,
     PlatformSettingsService,
@@ -284,22 +256,15 @@ import { EventBus } from './domain/events/event-bus';
     PlatformWipeService,
     PlatformDemoSeedService,
     PlatformDemoEventsSeedService,
-    PlatformEntrepreneursDemoSeedService,
-    CommunityWebDevSeedService,
-    CommunityWebDevAutoseedService,
-    PlatformDemoPackImportService,
     PlatformDatabaseDumpService,
     Decree809TagMigrationService,
     CollaborativeDocumentsMigrationService,
-    TelegramCommunityPrivacyMigrationService,
     MeritTransferService,
     EventService,
     CommunityInviteService,
     DocumentService,
     DocumentVariantService,
     DocumentStructureService,
-    DocumentHtmlSyncService,
-    DocumentLiveUpdatesService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -325,13 +290,7 @@ import { EventBus } from './domain/events/event-bus';
     UserService,
     CommunityService,
     CommunityDefaultsService,
-    CommunityEffectiveSettingsService,
-    CommunityMembershipService,
     PermissionRuleEngine,
-    {
-      provide: PERMISSION_GATES_PORT,
-      useExisting: PermissionRuleEngine,
-    },
     PermissionContextService,
     UserUpdatesService,
     UserSettingsService,
@@ -349,7 +308,6 @@ import { EventBus } from './domain/events/event-bus';
     InvestmentService,
     PostClosingService,
     MeritResolverService,
-    WalletContextResolverService,
     TeamJoinRequestService,
     TeamInvitationService,
     PlatformSettingsService,
@@ -362,10 +320,6 @@ import { EventBus } from './domain/events/event-bus';
     PlatformWipeService,
     PlatformDemoSeedService,
     PlatformDemoEventsSeedService,
-    PlatformEntrepreneursDemoSeedService,
-    CommunityWebDevSeedService,
-    CommunityWebDevAutoseedService,
-    PlatformDemoPackImportService,
     PlatformDatabaseDumpService,
     MeritTransferService,
     EventService,
@@ -373,8 +327,6 @@ import { EventBus } from './domain/events/event-bus';
     DocumentService,
     DocumentVariantService,
     DocumentStructureService,
-    DocumentHtmlSyncService,
-    DocumentLiveUpdatesService,
 
     // Export vote factor services
     RoleHierarchyFactor,

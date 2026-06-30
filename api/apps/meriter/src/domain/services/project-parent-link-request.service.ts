@@ -4,21 +4,20 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-  Inject,
 } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { uid } from 'uid';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { NotificationService } from './notification.service';
-import { CommunityWalletService } from './community-wallet.service';
-import { WalletContextResolverService } from './wallet-context-resolver.service';
+import {
+  ProjectParentLinkRequestSchemaClass,
+  ProjectParentLinkRequestDocument,
+} from '../models/project-parent-link-request/project-parent-link-request.schema';
 import type { ProjectParentLinkRequest } from '../models/project-parent-link-request/project-parent-link-request.schema';
 import type { Community } from '../models/community/community.schema';
-import {
-  PROJECT_PARENT_LINK_REQUEST_PERSISTENCE_PORT,
-  type ProjectParentLinkRequestPersistencePort,
-} from '../ports/project-parent-link-request.persistence.port';
 
 export interface ProjectParentLinkRequestWithProject extends ProjectParentLinkRequest {
   projectName: string;
@@ -31,14 +30,12 @@ export class ProjectParentLinkRequestService {
   private readonly logger = new Logger(ProjectParentLinkRequestService.name);
 
   constructor(
-    @Inject(PROJECT_PARENT_LINK_REQUEST_PERSISTENCE_PORT)
-    private readonly requestPersistence: ProjectParentLinkRequestPersistencePort,
+    @InjectModel(ProjectParentLinkRequestSchemaClass.name)
+    private readonly requestModel: Model<ProjectParentLinkRequestDocument>,
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
     private readonly notificationService: NotificationService,
-    private readonly communityWalletService: CommunityWalletService,
-    private readonly walletContextResolverService: WalletContextResolverService,
   ) {}
 
   assertEligibleParentCommunity(parent: Community): void {
@@ -53,14 +50,16 @@ export class ProjectParentLinkRequestService {
   }
 
   async getPendingForProject(projectId: string): Promise<ProjectParentLinkRequest | null> {
-    const doc = await this.requestPersistence.findPendingByProject(projectId);
+    const doc = await this.requestModel
+      .findOne({ projectId, status: 'pending' })
+      .lean();
     return doc ? (doc as unknown as ProjectParentLinkRequest) : null;
   }
 
   async cancelAllPendingForProject(projectId: string): Promise<void> {
-    await this.requestPersistence.updateMany(
+    await this.requestModel.updateMany(
       { projectId, status: 'pending' },
-      { status: 'cancelled', updatedAt: new Date() },
+      { $set: { status: 'cancelled', updatedAt: new Date() } },
     );
   }
 
@@ -110,7 +109,7 @@ export class ProjectParentLinkRequestService {
 
     const id = uid();
     const now = new Date();
-    const created = await this.requestPersistence.create({
+    const created = await this.requestModel.create({
       id,
       projectId: params.projectId,
       targetParentCommunityId: params.targetParentCommunityId,
@@ -120,7 +119,7 @@ export class ProjectParentLinkRequestService {
       updatedAt: now,
     });
 
-    const row = created as unknown as ProjectParentLinkRequest;
+    const row = created.toObject() as unknown as ProjectParentLinkRequest;
     await this.notifyParentLeadsNewRequest(row, project.name);
     return row;
   }
@@ -175,9 +174,10 @@ export class ProjectParentLinkRequestService {
       throw new ForbiddenException('Only parent community leads can view link requests');
     }
 
-    const rows = await this.requestPersistence.listPendingForTargetParent(
-      parentCommunityId,
-    );
+    const rows = await this.requestModel
+      .find({ targetParentCommunityId: parentCommunityId, status: 'pending' })
+      .sort({ createdAt: -1 })
+      .lean();
 
     const parent = await this.communityService.getCommunity(parentCommunityId);
     const parentCommunityName = parent?.name ?? parentCommunityId;
@@ -204,7 +204,10 @@ export class ProjectParentLinkRequestService {
   }
 
   async listMyPendingRequests(userId: string): Promise<ProjectParentLinkRequestWithProject[]> {
-    const rows = await this.requestPersistence.listPendingByRequester(userId);
+    const rows = await this.requestModel
+      .find({ requesterUserId: userId, status: 'pending' })
+      .sort({ createdAt: -1 })
+      .lean();
 
     const out: ProjectParentLinkRequestWithProject[] = [];
     for (const raw of rows) {
@@ -223,7 +226,7 @@ export class ProjectParentLinkRequestService {
   }
 
   async approve(requestId: string, actorUserId: string): Promise<ProjectParentLinkRequest> {
-    const doc = await this.requestPersistence.findById(requestId);
+    const doc = await this.requestModel.findOne({ id: requestId }).lean();
     if (!doc) {
       throw new NotFoundException('Request not found');
     }
@@ -254,43 +257,33 @@ export class ProjectParentLinkRequestService {
       throw new BadRequestException('Cannot approve link for an archived project');
     }
 
-    await this.requestPersistence.updateMany(
+    await this.requestModel.updateMany(
       {
         projectId: req.projectId,
         status: 'pending',
         id: { $ne: requestId },
       },
-      { status: 'cancelled', updatedAt: new Date() },
+      { $set: { status: 'cancelled', updatedAt: new Date() } },
     );
 
-    if (parent.settings?.sharedWalletWithProjects === true) {
-      await this.walletContextResolverService.assertProjectEligibleForSharedWallet(
-        req.projectId,
-      );
-      const wallet = await this.communityWalletService.createWallet(
-        req.targetParentCommunityId,
-      );
-      await this.communityService.updateCommunity(req.projectId, {
-        parentCommunityId: req.targetParentCommunityId,
-        isPersonalProject: false,
-        communityWalletId: wallet.id,
-      });
-    } else {
-      await this.communityService.updateCommunity(req.projectId, {
-        parentCommunityId: req.targetParentCommunityId,
-        isPersonalProject: false,
-      });
-    }
+    await this.communityService.updateCommunity(req.projectId, {
+      parentCommunityId: req.targetParentCommunityId,
+      isPersonalProject: false,
+    });
 
     const now = new Date();
-    const updated = await this.requestPersistence.updateById(requestId, {
-      status: 'approved',
-      resolvedByUserId: actorUserId,
-      updatedAt: now,
-    });
-    if (!updated) {
-      throw new NotFoundException('Request not found');
-    }
+    await this.requestModel.updateOne(
+      { id: requestId },
+      {
+        $set: {
+          status: 'approved',
+          resolvedByUserId: actorUserId,
+          updatedAt: now,
+        },
+      },
+    );
+
+    const updated = await this.requestModel.findOne({ id: requestId }).lean();
     const result = updated as unknown as ProjectParentLinkRequest;
 
     try {
@@ -320,7 +313,7 @@ export class ProjectParentLinkRequestService {
     actorUserId: string,
     rejectionReason?: string,
   ): Promise<ProjectParentLinkRequest> {
-    const doc = await this.requestPersistence.findById(requestId);
+    const doc = await this.requestModel.findOne({ id: requestId }).lean();
     if (!doc) {
       throw new NotFoundException('Request not found');
     }
@@ -340,15 +333,19 @@ export class ProjectParentLinkRequestService {
     const parent = await this.communityService.getCommunity(req.targetParentCommunityId);
     const project = await this.communityService.getCommunity(req.projectId);
     const now = new Date();
-    const updated = await this.requestPersistence.updateById(requestId, {
-      status: 'rejected',
-      resolvedByUserId: actorUserId,
-      rejectionReason: rejectionReason?.trim() || undefined,
-      updatedAt: now,
-    });
-    if (!updated) {
-      throw new NotFoundException('Request not found');
-    }
+    await this.requestModel.updateOne(
+      { id: requestId },
+      {
+        $set: {
+          status: 'rejected',
+          resolvedByUserId: actorUserId,
+          rejectionReason: rejectionReason?.trim() || undefined,
+          updatedAt: now,
+        },
+      },
+    );
+
+    const updated = await this.requestModel.findOne({ id: requestId }).lean();
     const result = updated as unknown as ProjectParentLinkRequest;
 
     try {
@@ -377,7 +374,7 @@ export class ProjectParentLinkRequestService {
   }
 
   async cancel(requestId: string, actorUserId: string): Promise<ProjectParentLinkRequest> {
-    const doc = await this.requestPersistence.findById(requestId);
+    const doc = await this.requestModel.findOne({ id: requestId }).lean();
     if (!doc) {
       throw new NotFoundException('Request not found');
     }
@@ -394,13 +391,12 @@ export class ProjectParentLinkRequestService {
     }
 
     const now = new Date();
-    const updated = await this.requestPersistence.updateById(requestId, {
-      status: 'cancelled',
-      updatedAt: now,
-    });
-    if (!updated) {
-      throw new NotFoundException('Request not found');
-    }
+    await this.requestModel.updateOne(
+      { id: requestId },
+      { $set: { status: 'cancelled', updatedAt: now } },
+    );
+
+    const updated = await this.requestModel.findOne({ id: requestId }).lean();
     return updated as unknown as ProjectParentLinkRequest;
   }
 }

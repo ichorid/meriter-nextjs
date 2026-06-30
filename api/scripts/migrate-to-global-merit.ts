@@ -13,27 +13,38 @@
  *
  * Usage:
  *   pnpm exec ts-node scripts/migrate-to-global-merit.ts [--dry-run]
+ *
+ * Environment:
+ *   MONGO_URL or MONGODB_URI - MongoDB connection string (default: mongodb://localhost:27017/meriter)
  */
 
-import { NestFactory } from '@nestjs/core';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { MongoClient, Db, ObjectId } from 'mongodb';
+import * as dotenv from 'dotenv';
+import { join } from 'path';
 import { uid } from 'uid';
-import { MeriterModule } from '../apps/meriter/src/meriter.module';
-import { CommunityDefaultsService } from '../apps/meriter/src/domain/services/community-defaults.service';
-import { GLOBAL_COMMUNITY_ID } from '../apps/meriter/src/domain/common/constants/global.constant';
-import {
-  CommunitySchemaClass,
-  CommunityDocument,
-} from '../apps/meriter/src/domain/models/community/community.schema';
-import {
-  WalletSchemaClass,
-  WalletDocument,
-} from '../apps/meriter/src/domain/models/wallet/wallet.schema';
-import {
-  UserSchemaClass,
-  UserDocument,
-} from '../apps/meriter/src/domain/models/user/user.schema';
+
+dotenv.config({ path: join(__dirname, '../.env') });
+dotenv.config({ path: join(__dirname, '../.env.local') });
+dotenv.config({ path: join(__dirname, '../../.env') });
+dotenv.config({ path: join(__dirname, '../../.env.local') });
+
+const MONGO_URL =
+  process.env.MONGO_URL || process.env.MONGODB_URI || 'mongodb://localhost:27017/meriter';
+
+const GLOBAL_COMMUNITY_ID = '__global__';
+
+const PRIORITY_TYPE_TAGS = [
+  'marathon-of-good',
+  'future-vision',
+  'team-projects',
+  'support',
+] as const;
+
+const STANDARD_CURRENCY = {
+  singular: 'merit',
+  plural: 'merits',
+  genitive: 'merits',
+};
 
 interface MigrationStats {
   usersProcessed: number;
@@ -43,32 +54,53 @@ interface MigrationStats {
   errors: Array<{ userId: string; error: string }>;
 }
 
-async function ensureGlobalCommunity(
-  communityModel: Model<CommunityDocument>,
-  defaultsService: CommunityDefaultsService,
-): Promise<void> {
-  const existing = await communityModel.findOne({ id: GLOBAL_COMMUNITY_ID }).lean();
+interface WalletDoc {
+  _id: ObjectId;
+  userId?: string;
+  communityId?: string;
+  balance?: number;
+  migratedToGlobal?: boolean;
+}
+
+async function ensureGlobalCommunity(db: Db): Promise<void> {
+  const coll = db.collection('communities');
+  const existing = await coll.findOne({ id: GLOBAL_COMMUNITY_ID });
   if (existing) {
     return;
   }
 
-  await communityModel.create(defaultsService.getGlobalCommunitySeedDocument());
+  const now = new Date();
+  await coll.insertOne({
+    id: GLOBAL_COMMUNITY_ID,
+    name: 'Global',
+    description: 'Platform-wide merit storage for fees and priority communities.',
+    typeTag: 'global',
+    members: [],
+    settings: {
+      currencyNames: STANDARD_CURRENCY,
+      dailyEmission: 0,
+    },
+    hashtags: [],
+    hashtagDescriptions: {},
+    isActive: true,
+    isPriority: false,
+    createdAt: now,
+    updatedAt: now,
+  });
   console.log('Created Global community');
 }
 
-async function getPriorityCommunityIds(
-  communityModel: Model<CommunityDocument>,
-  defaultsService: CommunityDefaultsService,
-): Promise<string[]> {
-  const typeTags = defaultsService.getPriorityHubTypeTags();
-  const docs = await communityModel
-    .find({ typeTag: { $in: [...typeTags] } })
-    .select({ id: 1 })
-    .lean();
-  return docs.map((d) => d.id).filter(Boolean) as string[];
+async function getPriorityCommunityIds(db: Db): Promise<string[]> {
+  const coll = db.collection('communities');
+  const docs = await coll
+    .find({ typeTag: { $in: [...PRIORITY_TYPE_TAGS] } })
+    .project({ id: 1 })
+    .toArray();
+  return docs.map((d: { id?: string }) => d.id).filter(Boolean) as string[];
 }
 
 async function migrateToGlobalMerit(dryRun: boolean): Promise<MigrationStats> {
+  const client = new MongoClient(MONGO_URL);
   const stats: MigrationStats = {
     usersProcessed: 0,
     usersSkipped: 0,
@@ -77,39 +109,39 @@ async function migrateToGlobalMerit(dryRun: boolean): Promise<MigrationStats> {
     errors: [],
   };
 
-  const app = await NestFactory.createApplicationContext(MeriterModule, {
-    logger: ['error', 'warn', 'log'],
-  });
-
   try {
-    const defaultsService = app.get(CommunityDefaultsService);
-    const communityModel = app.get<Model<CommunityDocument>>(
-      getModelToken(CommunitySchemaClass.name),
+    await client.connect();
+    console.log('Connected to MongoDB');
+    const db = client.db();
+
+    await ensureGlobalCommunity(db);
+
+    const priorityIds = await getPriorityCommunityIds(db);
+    console.log(
+      `Priority community IDs: ${priorityIds.length} [${priorityIds.join(', ')}]`,
     );
-    const walletModel = app.get<Model<WalletDocument>>(getModelToken(WalletSchemaClass.name));
-    const userModel = app.get<Model<UserDocument>>(getModelToken(UserSchemaClass.name));
-    const standardCurrency = defaultsService.getStandardCurrencyNames();
-
-    console.log('Connected via NestJS application context');
-
-    await ensureGlobalCommunity(communityModel, defaultsService);
-
-    const priorityIds = await getPriorityCommunityIds(communityModel, defaultsService);
-    console.log(`Priority community IDs: ${priorityIds.length} [${priorityIds.join(', ')}]`);
 
     if (priorityIds.length === 0) {
-      console.log('No priority communities found. Ensure base communities exist.');
+      console.log(
+        'No priority communities found. Ensure base communities exist.',
+      );
       return stats;
     }
 
-    const userDocs = await userModel.find({}).select({ id: 1 }).lean();
-    const userIds = userDocs.map((u) => u.id).filter(Boolean) as string[];
+    const walletsColl = db.collection('wallets');
+    const usersColl = db.collection('users');
+
+    // Users who have at least one wallet in a priority community
+    const userDocs = await usersColl.find({}).project({ id: 1 }).toArray();
+    const userIds = userDocs
+      .map((u: { id?: string }) => u.id)
+      .filter(Boolean) as string[];
 
     console.log(`Found ${userIds.length} users to process`);
 
     for (const userId of userIds) {
       try {
-        const priorityWallets = await walletModel
+        const priorityWallets = (await walletsColl
           .find({
             userId,
             communityId: { $in: priorityIds },
@@ -118,16 +150,22 @@ async function migrateToGlobalMerit(dryRun: boolean): Promise<MigrationStats> {
               { migratedToGlobal: { $exists: false } },
             ],
           })
-          .lean();
+          .toArray()) as WalletDoc[];
 
-        const sum = priorityWallets.reduce((acc, w) => acc + (w.balance ?? 0), 0);
+        const sum = priorityWallets.reduce(
+          (acc, w) => acc + (w.balance ?? 0),
+          0,
+        );
 
+        // Skip if no priority wallets or all already migrated with zero
         if (priorityWallets.length === 0) {
           stats.usersSkipped++;
           continue;
         }
 
-        const alreadyMigrated = priorityWallets.every((w) => w.migratedToGlobal === true);
+        const alreadyMigrated = priorityWallets.every(
+          (w) => w.migratedToGlobal === true,
+        );
         if (alreadyMigrated && sum === 0) {
           stats.usersSkipped++;
           continue;
@@ -135,19 +173,26 @@ async function migrateToGlobalMerit(dryRun: boolean): Promise<MigrationStats> {
 
         stats.totalBalanceBefore += sum;
 
-        const oldBalances = priorityWallets.map((w) => `${w.communityId}:${w.balance ?? 0}`);
+        const oldBalances = priorityWallets.map(
+          (w) => `${w.communityId}:${w.balance ?? 0}`,
+        );
 
         const existingGlobal = !dryRun
-          ? await walletModel.findOne({ userId, communityId: GLOBAL_COMMUNITY_ID }).lean()
+          ? await walletsColl.findOne({
+              userId,
+              communityId: GLOBAL_COMMUNITY_ID,
+            })
           : null;
 
         const newBalance = (existingGlobal?.balance ?? 0) + sum;
+        stats.totalBalanceAfter += newBalance;
 
         if (!dryRun) {
           const now = new Date();
 
+          // Create or update global wallet (add sum to existing for idempotency on partial retry)
           if (existingGlobal) {
-            await walletModel.updateOne(
+            await walletsColl.updateOne(
               { userId, communityId: GLOBAL_COMMUNITY_ID },
               {
                 $set: {
@@ -158,20 +203,21 @@ async function migrateToGlobalMerit(dryRun: boolean): Promise<MigrationStats> {
               },
             );
           } else {
-            await walletModel.create({
+            await walletsColl.insertOne({
               id: uid(),
               userId,
               communityId: GLOBAL_COMMUNITY_ID,
               balance: sum,
-              currency: standardCurrency,
+              currency: STANDARD_CURRENCY,
               lastUpdated: now,
               createdAt: now,
               updatedAt: now,
             });
           }
 
+          // Zero out and mark old priority wallets
           for (const w of priorityWallets) {
-            await walletModel.updateOne(
+            await walletsColl.updateOne(
               { _id: w._id },
               {
                 $set: {
@@ -186,7 +232,7 @@ async function migrateToGlobalMerit(dryRun: boolean): Promise<MigrationStats> {
           }
         }
 
-        stats.totalBalanceAfter += dryRun ? sum : newBalance;
+        stats.totalBalanceAfter += dryRun ? sum : (existingGlobal?.balance ?? 0) + sum;
         stats.usersProcessed++;
 
         console.log(
@@ -206,17 +252,19 @@ async function migrateToGlobalMerit(dryRun: boolean): Promise<MigrationStats> {
     console.log(`Total balance after (in global): ${stats.totalBalanceAfter}`);
     if (stats.errors.length > 0) {
       console.log(`Errors: ${stats.errors.length}`);
-      stats.errors.forEach((e) => console.error(`  - ${e.userId}: ${e.error}`));
+      stats.errors.forEach((e) =>
+        console.error(`  - ${e.userId}: ${e.error}`),
+      );
     }
 
     return stats;
   } finally {
-    await app.close();
-    console.log('\nApplication context closed');
+    await client.close();
+    console.log('\nConnection closed');
   }
 }
 
-async function main(): Promise<void> {
+async function main() {
   const dryRun = process.argv.includes('--dry-run');
   console.log(dryRun ? '=== DRY RUN ===' : '=== MIGRATION ===');
   await migrateToGlobalMerit(dryRun);

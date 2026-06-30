@@ -3,7 +3,6 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
-import { createPublicationDocument } from './helpers/fixtures';
 import { CommunitySchemaClass, CommunityDocument } from '../src/domain/models/community/community.schema';
 import { UserSchemaClass, UserDocument } from '../src/domain/models/user/user.schema';
 import {
@@ -80,14 +79,26 @@ describe('PlatformWipeService (e2e)', () => {
     const fv = await communityModel.findOne({ typeTag: 'future-vision' }).lean();
     expect(fv).toBeTruthy();
     const pubId = uid();
-    await publicationModel.create(
-      createPublicationDocument(fv!.id, regularId, {
-        id: pubId,
-        content: 'Wipe me',
-        createdAt: now,
-        updatedAt: now,
-      }),
-    );
+    await publicationModel.create({
+      id: pubId,
+      communityId: fv!.id,
+      authorId: regularId,
+      content: 'Wipe me',
+      type: 'text',
+      hashtags: [],
+      categories: [],
+      images: [],
+      metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+      investingEnabled: false,
+      investmentPool: 0,
+      investmentPoolTotal: 0,
+      investments: [],
+      status: 'active',
+      postType: 'basic',
+      isProject: false,
+      createdAt: now,
+      updatedAt: now,
+    });
 
     const beforeCommunities = await communityModel.countDocuments();
     expect(beforeCommunities).toBeGreaterThanOrEqual(5);

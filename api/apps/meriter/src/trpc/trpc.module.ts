@@ -6,12 +6,10 @@ import { AuthModule } from '../api-v1/auth/auth.module';
 import { QuotaResetModule } from '../domain/services/quota-reset.module';
 import { UploadsModule } from '../api-v1/uploads/uploads.module';
 import { CommonServicesModule } from '../common/services/common-services.module';
-import { ApplicationModule } from '../application/application.module';
 
 @Module({
   imports: [
     DomainModule,
-    ApplicationModule,
     ApiV1CommonModule,
     AuthModule,
     QuotaResetModule,

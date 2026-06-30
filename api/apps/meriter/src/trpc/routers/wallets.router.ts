@@ -1,27 +1,18 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
+import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
 import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
 import {
   MERIT_HISTORY_FILTER_KEYS,
+  meritHistoryCategoryForReferenceType,
+  meritHistoryLedgerMultiplier,
   type MeritHistoryDashboardPeriodDays,
   type MeritHistoryFilterKey,
 } from '../../domain/common/helpers/wallet-transaction-history';
-import { GetWalletBalanceUseCase } from '../../application/use-cases/wallets/get-wallet-balance.use-case';
-import {
-  createGetCommunityMeritHistoryUseCase,
-} from '../../application/use-cases/wallets/get-community-merit-history.use-case';
-import {
-  createGetMeritHistoryDashboardUseCase,
-} from '../../application/use-cases/wallets/get-merit-history-dashboard.use-case';
-import {
-  createGetMeritHistoryTransactionsUseCase,
-  type GetMeritHistoryTransactionsDeps,
-} from '../../application/use-cases/wallets/get-merit-history-transactions.use-case';
-import { createGetQuotaUseCaseFromContext } from '../../application/use-cases/wallets/get-quota.use-case';
+import { enrichMeritHistoryTransactions } from '../../domain/common/helpers/merit-history-enrichment';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -34,36 +25,47 @@ function hasStableCommunityId(community: { id?: unknown }): boolean {
   return typeof community.id === 'string' && community.id.length > 0;
 }
 
-function createGetWalletBalanceUseCase(ctx: {
-  walletService: import('../../domain/services/wallet.service').WalletService;
-  walletContextResolverService: import('../../domain/services/wallet-context-resolver.service').WalletContextResolverService;
-}): GetWalletBalanceUseCase {
-  return new GetWalletBalanceUseCase(
-    ctx.walletService,
-    ctx.walletContextResolverService,
+async function assertMeritHistoryTransactionsAccess(
+  ctx: {
+    user: { id: string };
+    userService: { getUserById: (id: string) => Promise<{ globalRole?: string | null } | null> };
+    permissionService: {
+      canViewUserMerits: (
+        viewerId: string,
+        targetUserId: string,
+        communityId: string,
+      ) => Promise<boolean>;
+    };
+  },
+  actualUserId: string,
+  permissionCommunityId: string | undefined,
+): Promise<void> {
+  if (actualUserId === ctx.user.id) {
+    return;
+  }
+  const requester = await ctx.userService.getUserById(ctx.user.id);
+  const isSuperadmin = requester?.globalRole === GLOBAL_ROLE_SUPERADMIN;
+  if (isSuperadmin) {
+    return;
+  }
+  const ctxCommunity = permissionCommunityId?.trim();
+  if (!ctxCommunity) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'permissionCommunityId is required to view another user\'s transactions',
+    });
+  }
+  const canView = await ctx.permissionService.canViewUserMerits(
+    ctx.user.id,
+    actualUserId,
+    ctxCommunity,
   );
-}
-
-function createMeritHistoryTransactionsDeps(ctx: {
-  walletService: import('../../domain/services/wallet.service').WalletService;
-  userService: import('../../domain/services/user.service').UserService;
-  permissionService: import('../../domain/services/permission.service').PermissionService;
-  communityService: import('../../domain/services/community.service').CommunityService;
-  walletContextResolverService: import('../../domain/services/wallet-context-resolver.service').WalletContextResolverService;
-  connection: { db?: import('mongoose').Connection['db'] };
-  userEnrichmentService: {
-    batchFetchUsers: (userIds: string[]) => Promise<Map<string, unknown>>;
-  };
-}): GetMeritHistoryTransactionsDeps {
-  return {
-    walletService: ctx.walletService,
-    userService: ctx.userService,
-    permissionService: ctx.permissionService,
-    communityService: ctx.communityService,
-    walletContextResolverService: ctx.walletContextResolverService,
-    db: ctx.connection.db ?? undefined,
-    batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
-  };
+  if (!canView) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'You do not have permission to view this user\'s transactions',
+    });
+  }
 }
 
 export const walletsRouter = router({
@@ -92,27 +94,43 @@ export const walletsRouter = router({
       }
 
       // G-11: For priority communities, return global wallet
-      const walletSnapshot = await createGetWalletBalanceUseCase(ctx).getWalletByCommunity({
-        userId: actualUserId,
-        communityId: input.communityId,
-      });
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      const walletCommunityId = community && isPriorityCommunity(community)
+        ? GLOBAL_COMMUNITY_ID
+        : input.communityId;
 
-      if (!walletSnapshot) {
+      // Get wallet
+      const wallet = await ctx.walletService.getUserWallet(
+        actualUserId,
+        walletCommunityId,
+      );
+      
+      if (!wallet) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Wallet not found',
         });
       }
-
-      return walletSnapshot;
+      
+      const snapshot = wallet.toSnapshot();
+      return {
+        ...snapshot,
+        lastUpdated: snapshot.lastUpdated.toISOString(),
+        createdAt: snapshot.lastUpdated.toISOString(),
+        updatedAt: snapshot.lastUpdated.toISOString(),
+      };
     }),
 
   /**
    * Get user transactions
    */
   getTransactions: protectedProcedure
-    .input(PaginationInputSchema.extend({
+    .input(z.object({
       userId: z.string(),
+      page: z.number().int().min(1).optional(),
+      pageSize: z.number().int().min(1).max(100).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+      skip: z.number().int().min(0).optional(),
       /** Offset for infinite queries (`useInfiniteQuery` pageParam → cursor). */
       cursor: z.number().int().min(0).optional(),
       communityId: z.string().optional(),
@@ -139,22 +157,79 @@ export const walletsRouter = router({
         });
       }
 
+      // Handle 'me' token for current user
       const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
 
-      return createGetMeritHistoryTransactionsUseCase(
-        createMeritHistoryTransactionsDeps(ctx),
-      ).execute({
-        viewerId: ctx.user.id,
-        userId: actualUserId,
-        communityId: input.communityId,
-        category: input.category,
-        permissionCommunityId: input.permissionCommunityId,
-        cursor: input.cursor,
-        skip: input.skip,
-        page: input.page,
-        limit: input.limit,
-        pageSize: input.pageSize,
+      await assertMeritHistoryTransactionsAccess(
+        ctx,
+        actualUserId,
+        input.permissionCommunityId,
+      );
+
+      const pagination = PaginationHelper.parseOptions(input);
+      const limit = pagination.limit || 20;
+      let skip: number;
+      if (typeof input.cursor === 'number') {
+        skip = input.cursor;
+      } else if (typeof input.skip === 'number') {
+        skip = input.skip;
+      } else {
+        skip = PaginationHelper.getSkip(pagination);
+      }
+
+      const result = await ctx.walletService.getUserTransactions(
+        actualUserId,
+        'all',
+        limit,
+        skip,
+        {
+          communityId: input.communityId,
+          category: input.category,
+        },
+      );
+
+      const loaded = result.data.length;
+
+      const enrichmentById = await enrichMeritHistoryTransactions(
+        actualUserId,
+        result.data.map((tx) => ({
+          id: tx.id,
+          referenceType: tx.referenceType,
+          referenceId: tx.referenceId,
+        })),
+        {
+          db: ctx.connection.db ?? undefined,
+          batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
+        },
+      );
+
+      const data = result.data.map((tx) => {
+        const createdAt =
+          tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt);
+        const updatedAt =
+          tx.updatedAt instanceof Date ? tx.updatedAt.toISOString() : String(tx.updatedAt);
+        const enriched = enrichmentById.get(tx.id);
+        return {
+          ...tx,
+          createdAt,
+          updatedAt,
+          meritHistoryCategory: meritHistoryCategoryForReferenceType(tx.referenceType),
+          ledgerMultiplier: meritHistoryLedgerMultiplier({
+            type: tx.type,
+            referenceType: tx.referenceType,
+          }),
+          meritHistoryEnrichment:
+            enriched && Object.keys(enriched).length > 0 ? enriched : null,
+        };
       });
+
+      return {
+        data,
+        total: result.total,
+        skip,
+        limit,
+        hasMore: skip + loaded < result.total,
+      };
     }),
 
   /**
@@ -163,8 +238,12 @@ export const walletsRouter = router({
    */
   getCommunityMeritHistory: protectedProcedure
     .input(
-      PaginationInputSchema.extend({
+      z.object({
         communityId: z.string().min(1),
+        page: z.number().int().min(1).optional(),
+        pageSize: z.number().int().min(1).max(100).optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+        skip: z.number().int().min(0).optional(),
         cursor: z.number().int().min(0).optional(),
         category: z
           .enum(
@@ -177,24 +256,101 @@ export const walletsRouter = router({
       }),
     )
     .query(async ({ ctx, input }) => {
-      return createGetCommunityMeritHistoryUseCase({
-        walletService: ctx.walletService,
-        communityService: ctx.communityService,
-        userService: ctx.userService,
-        userCommunityRoleService: ctx.userCommunityRoleService,
-        walletContextResolverService: ctx.walletContextResolverService,
-        db: ctx.connection.db ?? undefined,
-        batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
-      }).execute({
-        viewerId: ctx.user.id,
-        communityId: input.communityId,
-        category: input.category,
-        cursor: input.cursor,
-        skip: input.skip,
-        page: input.page,
-        limit: input.limit,
-        pageSize: input.pageSize,
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      const requester = await ctx.userService.getUserById(ctx.user.id);
+      const isSuperadmin = requester?.globalRole === GLOBAL_ROLE_SUPERADMIN;
+      if (!isSuperadmin) {
+        const role = await ctx.userCommunityRoleService.getRole(ctx.user.id, input.communityId);
+        if (!role) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'You must be a member of this community to view merit history',
+          });
+        }
+      }
+
+      const category = input.category ?? 'all';
+      const pagination = PaginationHelper.parseOptions(input);
+      const limit = pagination.limit || 20;
+      let skip: number;
+      if (typeof input.cursor === 'number') {
+        skip = input.cursor;
+      } else if (typeof input.skip === 'number') {
+        skip = input.skip;
+      } else {
+        skip = PaginationHelper.getSkip(pagination);
+      }
+
+      const result = await ctx.walletService.getCommunityMeritHistoryTransactions(
+        input.communityId,
+        category,
+        limit,
+        skip,
+      );
+
+      const loaded = result.data.length;
+
+      const enrichmentById = await enrichMeritHistoryTransactions(
+        ctx.user.id,
+        result.data.map((tx) => ({
+          id: tx.id,
+          referenceType: tx.referenceType,
+          referenceId: tx.referenceId,
+        })),
+        {
+          db: ctx.connection.db ?? undefined,
+          batchFetchUsers: (ids) => ctx.userEnrichmentService.batchFetchUsers(ids),
+          meritTransferWalletOwnerByTxId: result.walletOwnerByTxId,
+        },
+      );
+
+      const subjectIds = [
+        ...new Set(
+          result.data
+            .map((tx) => result.walletOwnerByTxId.get(tx.id))
+            .filter((id): id is string => typeof id === 'string' && id.length > 0),
+        ),
+      ];
+      const subjectNames = await ctx.userService.getDisplayNamesByUserIds(subjectIds);
+
+      const data = result.data.map((tx) => {
+        const createdAt =
+          tx.createdAt instanceof Date ? tx.createdAt.toISOString() : String(tx.createdAt);
+        const updatedAt =
+          tx.updatedAt instanceof Date ? tx.updatedAt.toISOString() : String(tx.updatedAt);
+        const enriched = enrichmentById.get(tx.id);
+        const subjectUserId = result.walletOwnerByTxId.get(tx.id) ?? null;
+        return {
+          ...tx,
+          createdAt,
+          updatedAt,
+          meritHistoryCategory: meritHistoryCategoryForReferenceType(tx.referenceType),
+          ledgerMultiplier: meritHistoryLedgerMultiplier({
+            type: tx.type,
+            referenceType: tx.referenceType,
+          }),
+          meritHistoryEnrichment:
+            enriched && Object.keys(enriched).length > 0 ? enriched : null,
+          subjectUserId,
+          subjectDisplayName:
+            subjectUserId != null ? subjectNames.get(subjectUserId) ?? subjectUserId : null,
+        };
       });
+
+      return {
+        data,
+        total: result.total,
+        skip,
+        limit,
+        hasMore: skip + loaded < result.total,
+      };
     }),
 
   /**
@@ -221,17 +377,16 @@ export const walletsRouter = router({
     )
     .query(async ({ ctx, input }) => {
       const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
-      const accessDeps = createMeritHistoryTransactionsDeps(ctx);
-      return createGetMeritHistoryDashboardUseCase({
-        walletService: ctx.walletService,
-        accessDeps,
-      }).execute({
-        viewerId: ctx.user.id,
-        userId: actualUserId,
-        category: input.category,
-        periodDays: input.periodDays satisfies MeritHistoryDashboardPeriodDays,
-        permissionCommunityId: input.permissionCommunityId,
-      });
+      await assertMeritHistoryTransactionsAccess(
+        ctx,
+        actualUserId,
+        input.permissionCommunityId,
+      );
+      return ctx.walletService.getMeritHistoryDashboard(
+        actualUserId,
+        input.category,
+        input.periodDays satisfies MeritHistoryDashboardPeriodDays,
+      );
     }),
 
   /**
@@ -243,12 +398,135 @@ export const walletsRouter = router({
       communityId: z.string(),
     }))
     .query(async ({ ctx, input }) => {
+      // Handle 'me' token for current user
       const actualUserId = input.userId === 'me' ? ctx.user.id : input.userId;
-      return createGetQuotaUseCaseFromContext(ctx).getQuota({
-        viewerId: ctx.user.id,
-        userId: actualUserId,
-        communityId: input.communityId,
-      });
+
+      // Check permissions
+      const canView = await ctx.permissionService.canViewUserMerits(
+        ctx.user.id,
+        actualUserId,
+        input.communityId,
+      );
+      
+      if (!canView) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to view this user\'s quota',
+        });
+      }
+
+      // Get community
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      // Check if quota is enabled in community settings
+      const quotaEnabled = community?.meritSettings?.quotaEnabled !== false;
+      
+      // Calculate effective daily quota with special-group rules
+      const baseDailyQuota = quotaEnabled ? (community.settings?.dailyEmission || 0) : 0;
+      const _userRole = await ctx.permissionService.getUserRoleInCommunity(
+        actualUserId,
+        input.communityId,
+      );
+      void _userRole;
+      const dailyQuota =
+        !quotaEnabled ||
+        community.typeTag === 'future-vision'
+          ? 0
+          : baseDailyQuota;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const quotaStartTime = community.lastQuotaResetAt
+        ? new Date(community.lastQuotaResetAt)
+        : today;
+
+      if (!ctx.connection.db) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Database connection not available',
+        });
+      }
+
+      const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
+        ctx.connection.db
+          .collection('votes')
+          .aggregate([
+            {
+              $match: {
+                userId: actualUserId,
+                communityId: input.communityId,
+                createdAt: { $gte: quotaStartTime },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ])
+          .toArray(),
+        ctx.connection.db
+          .collection('poll_casts')
+          .aggregate([
+            {
+              $match: {
+                userId: actualUserId,
+                communityId: input.communityId,
+                createdAt: { $gte: quotaStartTime },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ])
+          .toArray(),
+        ctx.connection.db
+          .collection('quota_usage')
+          .aggregate([
+            {
+              $match: {
+                userId: actualUserId,
+                communityId: input.communityId,
+                createdAt: { $gte: quotaStartTime },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ])
+          .toArray(),
+      ]);
+
+      const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
+      const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
+      const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
+      const usedRaw = votesTotal + pollCastsTotal + quotaUsageTotal;
+      const used = dailyQuota === 0 ? 0 : usedRaw;
+      const remaining = dailyQuota === 0 ? 0 : Math.max(0, dailyQuota - used);
+
+      // Calculate resetAt: next midnight or next reset time
+      const resetAt = new Date(quotaStartTime);
+      resetAt.setDate(resetAt.getDate() + 1);
+      resetAt.setHours(0, 0, 0, 0);
+
+      return {
+        dailyQuota,
+        used,
+        remaining,
+        resetAt: resetAt.toISOString(),
+      };
     }),
 
   /**
@@ -260,10 +538,89 @@ export const walletsRouter = router({
       communityIds: z.array(z.string()).max(100),
     }))
     .query(async ({ ctx, input }) => {
-      return createGetQuotaUseCaseFromContext(ctx).getQuotaBatch({
-        userId: ctx.user.id,
-        communityIds: input.communityIds,
-      });
+      const userId = ctx.user.id;
+
+      if (input.communityIds.length === 0) {
+        return {} as Record<string, { dailyQuota: number; used: number; remaining: number; resetAt: string }>;
+      }
+
+      const communities = await ctx.communityService.listCommunitiesByIds(input.communityIds);
+
+      if (!ctx.connection.db) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Database connection not available',
+        });
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const communityQuotaConfig = new Map<string, { dailyQuota: number; quotaStartTime: Date }>();
+      for (const community of communities) {
+        const quotaEnabled = community?.meritSettings?.quotaEnabled !== false;
+        const baseDailyQuota = quotaEnabled ? (community.settings?.dailyEmission || 0) : 0;
+        const dailyQuota =
+          !quotaEnabled || community.typeTag === 'future-vision'
+            ? 0
+            : baseDailyQuota;
+        const quotaStartTime = community.lastQuotaResetAt
+          ? new Date(community.lastQuotaResetAt)
+          : today;
+        communityQuotaConfig.set(community.id, { dailyQuota, quotaStartTime });
+      }
+
+      // Group IDs by quotaStartTime so each group shares one $gte filter
+      const startTimeGroups = new Map<number, string[]>();
+      for (const [communityId, config] of communityQuotaConfig) {
+        const key = config.quotaStartTime.getTime();
+        if (!startTimeGroups.has(key)) {
+          startTimeGroups.set(key, []);
+        }
+        startTimeGroups.get(key)!.push(communityId);
+      }
+
+      const aggregateUsage = async (
+        collection: string,
+        ids: string[],
+        since: Date,
+      ): Promise<Array<{ _id: string; total: number }>> =>
+        ctx.connection.db!
+          .collection(collection)
+          .aggregate<{ _id: string; total: number }>([
+            { $match: { userId, communityId: { $in: ids }, createdAt: { $gte: since } } },
+            { $group: { _id: '$communityId', total: { $sum: '$amountQuota' } } },
+          ])
+          .toArray();
+
+      const usedMap = new Map<string, number>();
+
+      for (const [startTimeMs, ids] of startTimeGroups) {
+        const since = new Date(startTimeMs);
+        const [votesResults, pollCastsResults, quotaUsageResults] = await Promise.all([
+          aggregateUsage('votes', ids, since),
+          aggregateUsage('poll_casts', ids, since),
+          aggregateUsage('quota_usage', ids, since),
+        ]);
+        for (const row of [...votesResults, ...pollCastsResults, ...quotaUsageResults]) {
+          usedMap.set(row._id, (usedMap.get(row._id) || 0) + row.total);
+        }
+      }
+
+      const result: Record<string, { dailyQuota: number; used: number; remaining: number; resetAt: string }> = {};
+      for (const [communityId, config] of communityQuotaConfig) {
+        const usedRaw = usedMap.get(communityId) || 0;
+        const used = config.dailyQuota === 0 ? 0 : usedRaw;
+        const remaining = config.dailyQuota === 0 ? 0 : Math.max(0, config.dailyQuota - used);
+
+        const resetAt = new Date(config.quotaStartTime);
+        resetAt.setDate(resetAt.getDate() + 1);
+        resetAt.setHours(0, 0, 0, 0);
+
+        result[communityId] = { dailyQuota: config.dailyQuota, used, remaining, resetAt: resetAt.toISOString() };
+      }
+
+      return result;
     }),
 
   /**
@@ -414,10 +771,16 @@ export const walletsRouter = router({
   getBalance: protectedProcedure
     .input(z.object({ communityId: z.string() }))
     .query(async ({ ctx, input }) => {
-      return createGetWalletBalanceUseCase(ctx).getBalance({
-        userId: ctx.user.id,
-        communityId: input.communityId,
-      });
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      const walletCommunityId = community && isPriorityCommunity(community)
+        ? GLOBAL_COMMUNITY_ID
+        : input.communityId;
+
+      const wallet = await ctx.walletService.getWallet(ctx.user.id, walletCommunityId);
+      if (!wallet) {
+        return 0;
+      }
+      return wallet.getBalance();
     }),
 
   /**
@@ -427,10 +790,106 @@ export const walletsRouter = router({
   getFreeBalance: protectedProcedure
     .input(z.object({ communityId: z.string() }))
     .query(async ({ ctx, input }) => {
-      return createGetQuotaUseCaseFromContext(ctx).getFreeBalance({
-        userId: ctx.user.id,
-        communityId: input.communityId,
-      });
+      const userId = ctx.user.id;
+
+      // Get community
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (!community) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Community not found',
+        });
+      }
+
+      // Calculate effective daily quota with special-group rules
+      const baseDailyQuota = community.settings?.dailyEmission || 0;
+      const _userRole = await ctx.permissionService.getUserRoleInCommunity(
+        userId,
+        input.communityId,
+      );
+      void _userRole;
+      const dailyQuota =
+        community.typeTag === 'future-vision'
+          ? 0
+          : baseDailyQuota;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const quotaStartTime = community.lastQuotaResetAt
+        ? new Date(community.lastQuotaResetAt)
+        : today;
+
+      if (!ctx.connection.db) {
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Database connection not available',
+        });
+      }
+
+      const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
+        ctx.connection.db
+          .collection('votes')
+          .aggregate([
+            {
+              $match: {
+                userId,
+                communityId: input.communityId,
+                createdAt: { $gte: quotaStartTime },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ])
+          .toArray(),
+        ctx.connection.db
+          .collection('poll_casts')
+          .aggregate([
+            {
+              $match: {
+                userId,
+                communityId: input.communityId,
+                createdAt: { $gte: quotaStartTime },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ])
+          .toArray(),
+        ctx.connection.db
+          .collection('quota_usage')
+          .aggregate([
+            {
+              $match: {
+                userId,
+                communityId: input.communityId,
+                createdAt: { $gte: quotaStartTime },
+              },
+            },
+            {
+              $group: {
+                _id: null,
+                total: { $sum: '$amountQuota' },
+              },
+            },
+          ])
+          .toArray(),
+      ]);
+
+      const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
+      const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
+      const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
+      const usedRaw = votesTotal + pollCastsTotal + quotaUsageTotal;
+      const used = dailyQuota === 0 ? 0 : usedRaw;
+      const remaining = dailyQuota === 0 ? 0 : Math.max(0, dailyQuota - used);
+
+      return remaining;
     }),
 
   /**

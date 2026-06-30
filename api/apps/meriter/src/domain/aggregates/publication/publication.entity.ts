@@ -95,7 +95,6 @@ export class Publication implements EditableEntity {
     private readonly lastEarnedAt?: Date | null,
     private readonly ttlWarningNotified?: boolean,
     private readonly inactivityWarningNotified?: boolean,
-    private readonly isPinned?: boolean,
     private readonly authorKind: 'user' | 'community' = 'user',
     private readonly authoredCommunityId?: string,
     private readonly publishedByUserId?: string,
@@ -183,7 +182,6 @@ export class Publication implements EditableEntity {
       undefined, // lastEarnedAt
       false, // ttlWarningNotified
       false, // inactivityWarningNotified
-      false, // isPinned
       options.authorKind ?? 'user',
       options.authoredCommunityId,
       options.publishedByUserId,
@@ -239,7 +237,6 @@ export class Publication implements EditableEntity {
       snapshot.lastEarnedAt != null ? (snapshot.lastEarnedAt instanceof Date ? snapshot.lastEarnedAt : new Date(snapshot.lastEarnedAt)) : null,
       snapshot.ttlWarningNotified ?? false,
       snapshot.inactivityWarningNotified ?? false,
-      snapshot.isPinned ?? false,
       snapshot.authorKind === 'community' ? 'community' : 'user',
       snapshot.authoredCommunityId,
       snapshot.publishedByUserId,
@@ -437,7 +434,6 @@ export class Publication implements EditableEntity {
       lastEarnedAt: this.lastEarnedAt ?? undefined,
       ttlWarningNotified: this.ttlWarningNotified ?? false,
       inactivityWarningNotified: this.inactivityWarningNotified ?? false,
-      isPinned: this.isPinned ?? false,
       sourceEntityId: this.sourceEntityId,
       sourceEntityType: this.sourceEntityType,
       authorKind: this.authorKind,

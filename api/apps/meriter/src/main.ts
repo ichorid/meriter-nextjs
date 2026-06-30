@@ -139,51 +139,7 @@ async function bootstrap() {
     );
     logger.log('✅ Large JSON body limit for tRPC (database restore)');
 
-    if (!isProduction) {
-      const devOrigins = new Set([
-        'http://localhost:8001',
-        'http://localhost:8003',
-        'http://localhost:3000',
-        'http://localhost:8080',
-        'http://127.0.0.1:8001',
-        'http://127.0.0.1:8003',
-        'http://127.0.0.1:3000',
-      ]);
-      expressApp.use((req: any, res: any, next: () => void) => {
-        const origin = req.headers.origin as string | undefined;
-        if (origin && devOrigins.has(origin)) {
-          res.setHeader('Access-Control-Allow-Origin', origin);
-          res.setHeader('Access-Control-Allow-Credentials', 'true');
-          res.setHeader(
-            'Access-Control-Allow-Methods',
-            'GET,POST,PUT,DELETE,PATCH,OPTIONS',
-          );
-          res.setHeader(
-            'Access-Control-Allow-Headers',
-            'Content-Type, Authorization, x-meriter-product, trpc-accept',
-          );
-          res.setHeader('Vary', 'Origin');
-        }
-        if (req.method === 'OPTIONS') {
-          res.status(204).end();
-          return;
-        }
-        next();
-      });
-      logger.log('✅ Express CORS for tRPC (dev origins incl. :8003)');
-    }
-
     const trpcService = app.get(TrpcService);
-    // Community router must mount BEFORE /trpc — otherwise /trpc catches /trpc/community/*.
-    const communityTrpcMiddleware = createExpressMiddleware({
-      router: trpcService.getCommunityAppRouter(),
-      createContext: ({ req, res }) => trpcService.createContext(req, res),
-      onError({ error, path }) {
-        logger.error(`tRPC community error on '${path}':`, error);
-      },
-    });
-    expressApp.use('/trpc/community', communityTrpcMiddleware);
-
     const trpcMiddleware = createExpressMiddleware({
       router: trpcService.getRouter(),
       createContext: ({ req, res }) => trpcService.createContext(req, res),
@@ -192,7 +148,7 @@ async function bootstrap() {
       },
     });
     expressApp.use('/trpc', trpcMiddleware);
-    logger.log('✅ tRPC middleware mounted at /trpc/community and /trpc');
+    logger.log('✅ tRPC middleware mounted at /trpc');
   } catch (error) {
     logger.error('❌ Failed to mount tRPC middleware at /trpc', error as any);
     throw error;
@@ -209,18 +165,10 @@ async function bootstrap() {
   // In production, Caddy handles routing and CORS is not needed
   if (!isProduction) {
     app.enableCors({
-      origin: [
-        'http://localhost:8001',
-        'http://localhost:8003',
-        'http://localhost:3000',
-        'http://localhost:8080',
-        'http://127.0.0.1:8001',
-        'http://127.0.0.1:8003',
-        'http://127.0.0.1:3000',
-      ],
+      origin: ['http://localhost:8001', 'http://localhost:3000', 'http://localhost:8080', 'http://127.0.0.1:8001', 'http://127.0.0.1:3000'],
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-      allowedHeaders: ['Content-Type', 'Authorization', 'x-meriter-product', 'trpc-accept'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
     });
     logger.log('CORS enabled for development');
   }

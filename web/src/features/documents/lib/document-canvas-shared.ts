@@ -1,6 +1,6 @@
+import type { Community } from '@meriter/shared-types';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { canUseWalletForVoting } from '@/components/organisms/VotingPopup/voting-utils';
-import { htmlToPlainText } from '@/features/documents/lib/document-text-diff';
 
 export const MAX_VARIANT_HTML_LENGTH = 5000;
 export const MERIT_VOTE_UNIT = 1;
@@ -9,21 +9,6 @@ export const MAX_VISIBLE_VARIANTS = 2;
 export const VARIANT_LIST_SCROLL_THRESHOLD = 12;
 
 export type OfficialContentReason = 'vote' | 'admin' | 'initial';
-
-/**
- * Structural subset of a community used by the documents feature.
- * Both the shared-types `Community` and tRPC `communities.getById` output satisfy it,
- * so components don't depend on the exact serialized shape.
- */
-export type DocumentCommunityContext = {
-  id: string;
-  typeTag?: string;
-  settings?: { canPayPostFromQuota?: boolean } | null;
-  votingSettings?: {
-    currencySource?: 'quota-and-wallet' | 'quota-only' | 'wallet-only';
-    spendsMerits?: boolean;
-  } | null;
-};
 
 export interface BlockEditHistoryEntry {
   changedAt: string | Date;
@@ -41,10 +26,6 @@ export interface DocBlock {
   officialContentReason?: OfficialContentReason;
   currentWaveStartedAt?: string | Date | null;
   editHistory?: BlockEditHistoryEntry[];
-  /** When true, non-admin members cannot propose variants for this block. */
-  proposalsLocked?: boolean;
-  /** Pinned plain-text spans (UTF-16 offsets in block official HTML). */
-  lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
 }
 
 export interface DocSection {
@@ -141,7 +122,7 @@ export function variantStatusToneClass(
 export function computeVariantProposalFeeSplit(
   variantCost: number,
   quotaRemaining: number,
-  community: DocumentCommunityContext | null | undefined,
+  community: Community | null | undefined,
 ): { quotaAmount: number; walletAmount: number } {
   if (variantCost <= 0) {
     return { quotaAmount: 0, walletAmount: 0 };
@@ -159,7 +140,7 @@ export function canAffordVariantProposal(
   variantCost: number,
   quotaRemaining: number,
   globalWalletBalance: number,
-  community: DocumentCommunityContext | null | undefined,
+  community: Community | null | undefined,
 ): boolean {
   if (variantCost <= 0) {
     return true;
@@ -187,7 +168,7 @@ export function computeDocumentVariantVoteSplit(args: {
   meritAmount: number;
   direction: 'up' | 'down';
   quotaRemaining: number;
-  community: DocumentCommunityContext | null | undefined;
+  community: Community | null | undefined;
 }): { quotaAmount: number; walletAmount: number } {
   const { meritAmount, direction, quotaRemaining, community } = args;
   if (direction === 'down') {
@@ -214,18 +195,4 @@ export function sectionTitleForDisplay(title: string | undefined): string | null
   const lowered = t.toLowerCase();
   if (lowered === 'новый раздел' || lowered === 'new section') return null;
   return t;
-}
-
-/** Lowercase plain text from document sections for client-side search (e.g. future visions feed). */
-export function documentSectionsSearchPlainText(sections: unknown): string {
-  const parts: string[] = [];
-  for (const { section, blocks } of groupBlocksBySection(sections)) {
-    const title = section.title?.trim();
-    if (title) parts.push(title);
-    for (const block of blocks) {
-      const plain = htmlToPlainText(block.officialContent ?? '');
-      if (plain) parts.push(plain);
-    }
-  }
-  return parts.join(' ').toLowerCase();
 }

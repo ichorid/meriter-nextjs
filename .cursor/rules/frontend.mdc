@@ -7,18 +7,7 @@ alwaysApply: false
 
 # Frontend Patterns (React + Next.js)
 
-Full monorepo and layer overview: @architecture.mdc · target web layout: TARGET §8 · intrinsic UI concepts: `NECESSARY_COMPLEXITY.md` §1 ranks 22–23, 30.
-
-## Feature-module target (migration)
-
-| Path | Status | Phase |
-|------|--------|-------|
-| `features/*/` (general) | Partial — prefer for new domain UI | ongoing |
-| `features/notifications/` | **Landed** — `routing-matrix.ts`, tests, shared-types `NotificationRoutingSchema` | migrate organism list UI from `components/organisms/` over time |
-| `features/favorites/` | **Does not exist** | future feature module |
-| `features/tappalka/` | Partial / duplicated Birzha shells | consolidate Phase 7 |
-
-**Rules:** features own domain UI; consume tRPC + `@meriter/shared-types` only; no `api/apps/meriter/src/**` imports; cross-feature via public `index.ts` only; no client-side permission invariants (server `ResourcePermissions` authoritative).
+Full monorepo and layer overview: @architecture.mdc.
 
 ## Tech Stack
 - React 19 + Next.js 16 (App Router)
@@ -31,9 +20,9 @@ Full monorepo and layer overview: @architecture.mdc · target web layout: TARGET
 - Telegram Mini App: `@telegram-apps/sdk-react`, `@telegram-apps/telegram-ui` (where WebApp behavior is needed)
 
 ## Web Structure (web/src)
-- `app/` — App Router thin shells (`*Client.tsx`); no business invariants in `page.tsx`
-- `components/` — design system (`atoms|molecules|ui`) + shared `organisms/` chrome
-- `features/` — domain-scoped modules (hooks, forms, routing-matrix); **target home for notifications/favorites/tappalka**
+- `app/` — App Router pages/layouts/routes
+- `components/` — UI building blocks
+- `features/` — feature-focused modules
 - `hooks/` — reusable hooks (`hooks/api/*` for API-facing hooks)
 - `stores/` — Zustand stores
 - `contexts/` — React Context providers (auth/app mode)
@@ -101,14 +90,6 @@ Use this when wiring UI or docs so marketing names are not confused with `typeTa
 ## Notifications list UI
 
 Subtitle typography, stacked lines, and profile/community/post links: @frontend-notifications.mdc (`NotificationsClient`, `InfoCard`).
-
-**Routing:** `features/notifications/routing-matrix.ts` imports `NotificationRoutingSchema` from `@meriter/shared-types/schemas/notifications`. Legacy `notificationClientFormat.ts` may still exist — prefer feature module for new work.
-
-## Merit display (inv-26)
-
-- Authoritative wallet math is server-side; UI uses `web/src/lib/utils/currency.ts` for display.
-- Display rounds to **one decimal** — must match backend `formatMeritsForDisplay` (Phase 1 paired tests: `currency.test.ts` + `merit-display-rounding.spec.ts`).
-- Product label: **«Заслуги»** only — @design-system.mdc.
 
 ## Component Guidelines
 
@@ -423,17 +404,8 @@ export function useVoteOnPublicationWithComment() {
 - `VoteWithCommentDtoSchema` currently allows `targetType: 'publication' | 'comment' | 'vote'`, but `votes.createWithComment` enforces runtime validation and rejects `'comment'` (requires `'publication'` or `'vote'`).
 - `communityId` is resolved server-side from target and is not part of `votes.create` or `votes.createWithComment` **Zod** input schemas. Some **client hooks** (e.g. `useVoteOnPublicationWithComment`, `useVoteOnPublication`) still pass `communityId` on the mutation call for optimistic quota/wallet updates and targeted cache invalidation; that field is not in the schema and is not used by the server procedure input.
 
-## Route consolidation (Phase 7 targets)
-
-- Magic link: canonical `app/a/[token]/route.ts` — delete duplicate `app/auth/link/[token]/`
-- 404: canonical `app/not-found.tsx` — delete `app/meriter/not-found/page.tsx`
-- Birzha shells: parameterize `features/tappalka/` instead of duplicating community/project clients
-
 ## Common Mistakes
 
-❌ Importing `api/apps/meriter/src/**` runtime code (type-only `AppRouter` bridge allowed)
-❌ Cross-feature imports of another feature's internals (use public `index.ts`)
-❌ Client-side permission gates contradicting server `ResourcePermissions`
 ❌ Assuming strict "one component per file" (project allows multiple related exports per file)
 ❌ Importing paths/modules that are not present in the project structure
 ❌ Mixing old singular router naming with current tRPC routers (`publications`, `votes`, etc.)

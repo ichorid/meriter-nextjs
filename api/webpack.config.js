@@ -10,9 +10,7 @@ module.exports = function (options, webpack) {
     ...options,
     externals: [
       nodeExternals({
-        // Bundle all shared-types entrypoints (root + Phase 1 subpaths) — runtime
-        // `node dist/.../main` must not require unresolved subpath exports in Docker.
-        allowlist: [/^@meriter\/shared-types/],
+        allowlist: ['@meriter/shared-types'],
       }),
     ],
     resolve: {

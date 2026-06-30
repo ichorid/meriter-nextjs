@@ -1,9 +1,11 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { Cron } from '@nestjs/schedule';
 import {
-  PUBLICATION_PERSISTENCE_PORT,
-  type PublicationPersistencePort,
-} from '../ports/publication.persistence.port';
+  PublicationSchemaClass,
+  PublicationDocument,
+} from '../models/publication/publication.schema';
 import { PostClosingService } from './post-closing.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
@@ -12,17 +14,15 @@ import { WalletService } from './wallet.service';
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /**
- * D-5, D-6, D-7: TTL auto-close, TTL warning, and inactivity close.
- * inv-21: cron schedules migrate to infrastructure/cron/post-closing.cron.ts — interim @Cron
- * here until meriter.module imports CronInfrastructureModule.
+ * D-5, D-6, D-7: Scheduled jobs for TTL auto-close, TTL warning, and inactivity close.
  */
 @Injectable()
 export class PostClosingCronService {
   private readonly logger = new Logger(PostClosingCronService.name);
 
   constructor(
-    @Inject(PUBLICATION_PERSISTENCE_PORT)
-    private readonly publicationPersistence: PublicationPersistencePort,
+    @InjectModel(PublicationSchemaClass.name)
+    private readonly publicationModel: Model<PublicationDocument>,
     private readonly postClosingService: PostClosingService,
     private readonly communityService: CommunityService,
     private readonly notificationService: NotificationService,
@@ -36,13 +36,14 @@ export class PostClosingCronService {
   @Cron('0 * * * *')
   async closeExpiredTtlPosts(): Promise<void> {
     const now = new Date();
-    const posts = await this.publicationPersistence.findByQuery({
-      query: {
+    const posts = await this.publicationModel
+      .find({
         status: 'active',
         ttlExpiresAt: { $ne: null, $lt: now },
-      },
-      select: { id: 1 },
-    });
+      })
+      .select({ id: 1 })
+      .lean()
+      .exec();
 
     if (posts.length === 0) return;
 
@@ -70,8 +71,8 @@ export class PostClosingCronService {
     const now = new Date();
     const in24h = new Date(now.getTime() + MS_PER_DAY);
 
-    const posts = await this.publicationPersistence.findByQuery({
-      query: {
+    const posts = await this.publicationModel
+      .find({
         status: 'active',
         ttlExpiresAt: { $gt: now, $lte: in24h },
         $or: [
@@ -79,9 +80,10 @@ export class PostClosingCronService {
           { ttlWarningNotified: null },
           { ttlWarningNotified: { $exists: false } },
         ],
-      },
-      select: { id: 1, authorId: 1, title: 1, communityId: 1 },
-    });
+      })
+      .select({ id: 1, authorId: 1, title: 1, communityId: 1 })
+      .lean()
+      .exec();
 
     if (posts.length === 0) return;
 
@@ -103,9 +105,10 @@ export class PostClosingCronService {
           title: 'Post closing soon',
           message: `Your post "${post.title ?? 'Untitled'}" will close in 24 hours (TTL).`,
         });
-        await this.publicationPersistence.patchById(post.id, {
-          set: { ttlWarningNotified: true },
-        });
+        await this.publicationModel.updateOne(
+          { id: post.id },
+          { $set: { ttlWarningNotified: true } },
+        );
         this.logger.debug(`[D-6] Sent TTL warning for post ${post.id}`);
       } catch (err) {
         this.logger.warn(
@@ -123,16 +126,16 @@ export class PostClosingCronService {
   async closeInactivePostsAndSendWarnings(): Promise<void> {
     const now = new Date();
 
-    const candidates = await this.publicationPersistence.findByQuery({
-      query: {
+    const candidates = await this.publicationModel
+      .find({
         status: 'active',
         $and: [
           { $or: [{ investmentPool: { $exists: false } }, { investmentPool: { $lte: 0 } }] },
           { $or: [{ 'metrics.score': { $exists: false } }, { 'metrics.score': { $lte: 0 } }] },
         ],
         lastEarnedAt: { $exists: true, $ne: null },
-      },
-      select: {
+      })
+      .select({
         id: 1,
         authorId: 1,
         communityId: 1,
@@ -140,8 +143,9 @@ export class PostClosingCronService {
         noAuthorWalletSpend: 1,
         lastEarnedAt: 1,
         inactivityWarningNotified: 1,
-      },
-    });
+      })
+      .lean()
+      .exec();
 
     let closed = 0;
     let warned = 0;
@@ -207,9 +211,10 @@ export class PostClosingCronService {
             title: 'Post will close soon',
             message: `Your post "${post.title ?? 'Untitled'}" will be closed in 24 hours due to no activity for ${inactiveCloseDays} days.`,
           });
-          await this.publicationPersistence.patchById(post.id, {
-            set: { inactivityWarningNotified: true },
-          });
+          await this.publicationModel.updateOne(
+            { id: post.id },
+            { $set: { inactivityWarningNotified: true } },
+          );
           warned++;
           this.logger.debug(`[D-7] Sent inactivity warning for post ${post.id}`);
         } catch (err) {

@@ -1,5 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectModel, InjectConnection } from '@nestjs/mongoose';
+import { Model, Connection } from 'mongoose';
 import { Cron } from '@nestjs/schedule';
+import { CommunitySchemaClass, CommunityDocument } from '../models/community/community.schema';
+import { UserCommunityRoleSchemaClass, UserCommunityRoleDocument } from '../models/user-community-role/user-community-role.schema';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { NotificationService, CreateNotificationDto } from './notification.service';
@@ -17,6 +21,11 @@ export class QuotaResetService {
   private readonly logger = new Logger(QuotaResetService.name);
 
   constructor(
+    @InjectModel(CommunitySchemaClass.name)
+    private readonly communityModel: Model<CommunityDocument>,
+    @InjectModel(UserCommunityRoleSchemaClass.name)
+    private readonly userCommunityRoleModel: Model<UserCommunityRoleDocument>,
+    @InjectConnection() private readonly mongoose: Connection,
     private readonly communityService: CommunityService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly notificationService: NotificationService,
@@ -27,7 +36,11 @@ export class QuotaResetService {
    * Get all user IDs in a community
    */
   private async getUsersInCommunity(communityId: string): Promise<string[]> {
-    return this.userCommunityRoleService.getMemberUserIdsInCommunity(communityId);
+    const roles = await this.userCommunityRoleModel
+      .find({ communityId })
+      .distinct('userId')
+      .exec();
+    return roles;
   }
 
   /**
@@ -38,21 +51,29 @@ export class QuotaResetService {
     userId: string,
     communityId: string,
   ): Promise<QuotaInfo | null> {
-    const community = await this.communityService.getCommunity(communityId);
+    const community = await this.communityModel
+      .findOne({ id: communityId })
+      .lean();
 
     if (!community) {
       return null;
     }
 
-    const dailyQuota = this.communityService.getDailyEmissionCapForQuota(community);
-
-    if (dailyQuota === 0) {
+    // Check if quota is enabled in community settings
+    if (community?.meritSettings?.quotaEnabled === false) {
       return {
         dailyQuota: 0,
         usedToday: 0,
         remainingToday: 0,
       };
     }
+
+    // Check if community has quota configured
+    if (!community.settings?.dailyEmission || typeof community.settings.dailyEmission !== 'number') {
+      return null;
+    }
+
+    const dailyQuota = community.settings.dailyEmission;
 
     // Check user role (for future role-based quota rules)
     const _userRole = await this.permissionService.getUserRoleInCommunity(
@@ -61,17 +82,83 @@ export class QuotaResetService {
     );
     void _userRole;
 
-    const quotaStartTime = this.communityService.getQuotaStartTime(community);
-    const used = await this.communityService.aggregateQuotaUsedSince(
-      userId,
-      community.id,
-      quotaStartTime,
-    );
+    // Future Vision communities don't use quota regardless of role
+    // Note: viewer role removed - all users are now participants
+    if (community.typeTag === 'future-vision') {
+      return {
+        dailyQuota: 0,
+        usedToday: 0,
+        remainingToday: 0,
+      };
+    }
+
+    // Determine the start time for quota calculation
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const quotaStartTime = community.lastQuotaResetAt
+      ? new Date(community.lastQuotaResetAt)
+      : today;
+
+    // Query votes and poll casts with amountQuota > 0 for this user in this community created after quotaStartTime
+    const [votesUsed, pollCastsUsed] = await Promise.all([
+      this.mongoose.db!
+        .collection('votes')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId: community.id,
+              amountQuota: { $gt: 0 },
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $project: {
+              absAmount: '$amountQuota',
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$absAmount' },
+            },
+          },
+        ])
+        .toArray(),
+      this.mongoose.db!
+        .collection('poll_casts')
+        .aggregate([
+          {
+            $match: {
+              userId,
+              communityId: community.id,
+              amountQuota: { $gt: 0 },
+              createdAt: { $gte: quotaStartTime },
+            },
+          },
+          {
+            $project: {
+              absAmount: '$amountQuota',
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: '$absAmount' },
+            },
+          },
+        ])
+        .toArray(),
+    ]);
+
+    const votesTotal = votesUsed.length > 0 ? votesUsed[0].total : 0;
+    const pollCastsTotal = pollCastsUsed.length > 0 ? pollCastsUsed[0].total : 0;
+    const used = votesTotal + pollCastsTotal;
 
     return {
       dailyQuota,
       usedToday: used,
-      remainingToday: this.communityService.computeRemainingQuota(dailyQuota, used),
+      remainingToday: Math.max(0, dailyQuota - used),
     };
   }
 
@@ -93,7 +180,7 @@ export class QuotaResetService {
     this.logger.log(`Resetting quota for community ${communityId}`);
 
     // Get community to check if it exists and has quota configured
-    const community = await this.communityService.getCommunity(communityId);
+    const community = await this.communityModel.findOne({ id: communityId }).lean();
     if (!community) {
       throw new Error(`Community ${communityId} not found`);
     }
@@ -169,7 +256,7 @@ export class QuotaResetService {
   async resetAllCommunitiesQuota(): Promise<{ totalReset: number; totalNotifications: number }> {
     this.logger.log('Starting quota reset for all communities');
 
-    const communities = await this.communityService.getAllCommunities(100000, 0);
+    const communities = await this.communityModel.find({}).lean();
     this.logger.log(`Found ${communities.length} communities`);
 
     let totalReset = 0;
@@ -196,9 +283,7 @@ export class QuotaResetService {
   }
 
   /**
-   * Midnight UTC quota reset (inv-21).
-   * Target schedule: infrastructure/cron/quota-reset.cron.ts — interim @Cron here until
-   * meriter.module imports CronInfrastructureModule and domain decorator is removed.
+   * Cron job to reset all communities' quota at midnight UTC
    */
   @Cron('0 0 * * *')
   async resetAllCommunitiesQuotaAtMidnight(): Promise<void> {

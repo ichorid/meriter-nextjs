@@ -8,7 +8,6 @@ import { PaginationInputSchema } from '../../common/schemas/pagination.schema';
 import { VoteTransactionCalculatorService } from '../../api-v1/common/services/vote-transaction-calculator.service';
 import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
-import { VoteCommentResolver } from '../../adapters/resolvers/vote-comment.resolver';
 
 export const commentsRouter = router({
   /**
@@ -17,9 +16,37 @@ export const commentsRouter = router({
   getById: publicProcedure
     .input(IdInputSchema)
     .query(async ({ ctx, input }) => {
-      const { entity, authorId } = await VoteCommentResolver.fromTrpcContext(
-        ctx,
-      ).resolveEntity(input.id);
+      // Comments can be either Comment entities or Vote objects (votes contain comments)
+      // Try to get as comment first, then as vote
+      let comment: any = null;
+      let vote: any = null;
+
+      try {
+        comment = await ctx.commentService.getComment(input.id);
+      } catch (_err) {
+        // Comment not found, might be a vote
+      }
+
+      if (!comment) {
+        // Try to get as vote
+        try {
+          vote = await ctx.voteService.getVoteById(input.id);
+        } catch (_err) {
+          // Vote not found either
+        }
+      }
+
+      if (!comment && !vote) {
+        throw new TRPCError({
+          code: 'NOT_FOUND',
+          message: 'Comment not found',
+        });
+      }
+
+      const entity = comment || vote;
+      const authorId = comment 
+        ? comment.getAuthorId.getValue()
+        : vote.userId;
 
       // Fetch author
       const usersMap = await ctx.userEnrichmentService.batchFetchUsers([authorId]);

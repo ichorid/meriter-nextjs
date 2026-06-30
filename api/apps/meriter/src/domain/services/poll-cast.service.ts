@@ -1,12 +1,11 @@
-import { Inject, Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
 import { PollCastRepository } from '../models/poll/poll-cast.repository';
+import { PollSchemaClass, PollDocument } from '../models/poll/poll.schema';
 import type { PollCast } from '../models/poll/poll-cast.schema';
 import { PollCastedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
-import {
-  POLL_PERSISTENCE_PORT,
-  type PollPersistencePort,
-} from '../ports/poll.persistence.port';
 import { uid } from 'uid';
 
 @Injectable()
@@ -15,8 +14,7 @@ export class PollCastService {
 
   constructor(
     private pollCastRepository: PollCastRepository,
-    @Inject(POLL_PERSISTENCE_PORT)
-    private readonly pollPersistence: PollPersistencePort,
+    @InjectModel(PollSchemaClass.name) private pollModel: Model<PollDocument>,
     private eventBus: EventBus,
   ) {}
 
@@ -26,14 +24,13 @@ export class PollCastService {
     optionId: string,
     quotaAmount: number,
     walletAmount: number,
-    communityId: string,
+    communityId: string
   ): Promise<PollCast> {
     const totalAmount = quotaAmount + walletAmount;
-    this.logger.log(
-      `Creating poll cast: poll=${pollId}, user=${userId}, option=${optionId}, quota=${quotaAmount}, wallet=${walletAmount}, total=${totalAmount}`,
-    );
+    this.logger.log(`Creating poll cast: poll=${pollId}, user=${userId}, option=${optionId}, quota=${quotaAmount}, wallet=${walletAmount}, total=${totalAmount}`);
 
-    const poll = await this.pollPersistence.findById(pollId);
+    // Validate poll exists and is active
+    const poll = await this.pollModel.findOne({ id: pollId }).lean();
     if (!poll) {
       throw new NotFoundException('Poll not found');
     }
@@ -46,14 +43,17 @@ export class PollCastService {
       throw new BadRequestException('Poll has expired');
     }
 
-    const validOptionIds = poll.options.map((opt) => opt.id);
+    // Validate option ID
+    const validOptionIds = poll.options.map(opt => opt.id);
     if (!validOptionIds.includes(optionId)) {
       throw new BadRequestException('Invalid option ID');
     }
 
+    // Validate amounts - poll casts can use both quota and wallet
     if (totalAmount <= 0) {
       throw new BadRequestException('Cast amount must be positive');
     }
+    // At least one of quotaAmount or walletAmount must be positive
     if (quotaAmount <= 0 && walletAmount <= 0) {
       throw new BadRequestException('Cast amount must be positive (quota or wallet)');
     }
@@ -69,7 +69,10 @@ export class PollCastService {
       createdAt: new Date(),
     });
 
-    await this.eventBus.publish(new PollCastedEvent(pollId, userId, optionId, totalAmount));
+    // Publish event - use total amount (quota + wallet) for the event
+    await this.eventBus.publish(
+      new PollCastedEvent(pollId, userId, optionId, totalAmount)
+    );
 
     this.logger.log(`Poll cast created successfully: ${cast.id}`);
     return cast;
@@ -79,9 +82,7 @@ export class PollCastService {
     return this.pollCastRepository.findByPollAndUser(pollId, userId);
   }
 
-  async getPollResults(
-    pollId: string,
-  ): Promise<Array<{ optionId: string; totalAmount: number; castCount: number }>> {
+  async getPollResults(pollId: string): Promise<Array<{ optionId: string; totalAmount: number; castCount: number }>> {
     return this.pollCastRepository.aggregateByOption(pollId);
   }
 
@@ -89,13 +90,8 @@ export class PollCastService {
     return this.pollCastRepository.findByPoll(pollId);
   }
 
-  async castPoll(
-    pollId: string,
-    userId: string,
-    optionId: string,
-    amount: number,
-    communityId: string,
-  ): Promise<PollCast> {
+  async castPoll(pollId: string, userId: string, optionId: string, amount: number, communityId: string): Promise<PollCast> {
+    // Poll casts only use wallet, quotaAmount is always 0
     return this.createCast(pollId, userId, optionId, 0, amount, communityId);
   }
 }

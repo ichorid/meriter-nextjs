@@ -90,11 +90,9 @@ Key fields (non-exhaustive; see `community.schema.ts`):
 
 | Field | Role |
 |-------|------|
-| `communityId` | Project (or source) id — when parent has `settings.sharedWalletWithProjects`, operational key is **`parentCommunityId`** for all child projects (`WalletContextResolverService`) |
+| `communityId` | Project (or source) id |
 | `balance` | Operational: top-up, `postCost`, tappalka show cost from wallet |
 | `totalReceived`, `totalDistributed` | `deposit` increments **`balance`** and **`totalReceived`**; **`debit`** (payout from wallet) decrements **`balance`** and increments **`totalDistributed`**; **`addTotalDistributed`** increments only **`totalDistributed`** (transit helper; used by `ProjectDistributionService` when that path runs) |
-
-**Shared wallet with parent team:** when the parent community sets `settings.sharedWalletWithProjects`, child projects do not get a separate `CommunityWallet` on `projectId`; `project.create`, `topUpWallet`, Birzha `postCost` (`source_community_wallet`), payout, and `project.getWallet` / `communities.getCommunityWallet` resolve to the parent wallet. Personal merits for voting, transfers, withdrawals, investments, and tappalka in the group also use the parent wallet key. Quota remains per project/parent context. Enable guard and UI: @business-communities.mdc (`sharedWalletWithProjects`).
 
 ### Membership
 

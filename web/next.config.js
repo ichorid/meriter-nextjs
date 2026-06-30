@@ -1,5 +1,6 @@
 const withNextIntl = require('next-intl/plugin')(
-    './src/i18n/request.config.ts'
+    // This is the default (also the `src` folder is supported out of the box)
+    './src/i18n/request.ts'
 );
 const { withSentryConfig } = require('@sentry/nextjs');
 const path = require('path');

@@ -41,22 +41,8 @@ const BlockEmbeddedSchema = new MongooseRawSchema(
       enum: ['vote', 'admin', 'initial'],
     },
     officialContentVariantId: { type: String },
-    /** When true, members cannot propose variants for this block (admins may still propose). */
-    proposalsLocked: { type: Boolean, default: false },
-    /** UTF-16 plain-text spans where proposals are forbidden (sub-block pin). */
-    lockedRanges: {
-      type: [
-        {
-          rangeStart: { type: Number, required: true },
-          rangeEnd: { type: Number, required: true },
-        },
-      ],
-      default: [],
-    },
     /** Voting wave anchor — см. ТЗ §13.3 */
     currentWaveStartedAt: { type: Date },
-    /** Weighted vote total for keeping current official text during an open wave. */
-    officialRating: { type: Number, default: 0 },
     editHistory: { type: [EditHistoryEntrySchema], default: [] },
   },
   { _id: false },

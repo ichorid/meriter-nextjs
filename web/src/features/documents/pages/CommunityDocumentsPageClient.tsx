@@ -24,7 +24,7 @@ export function CommunityDocumentsPageClient({ communityId }: CommunityDocuments
 
   const canManageDocsSettings =
     user?.globalRole === 'superadmin' ||
-    roles.some((r) => r?.communityId === communityId && r?.role === 'lead');
+    roles.some((r) => r.communityId === communityId && r.role === 'lead');
 
   const listQuery = trpc.documents.listByCommunity.useQuery(
     { communityId },
@@ -85,18 +85,7 @@ export function CommunityDocumentsPageClient({ communityId }: CommunityDocuments
             <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
           </div>
         ) : listQuery.error ? (
-          <div className="flex flex-col items-start gap-3 py-6">
-            <p className="text-sm text-error">{t('loadError')}</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="rounded-xl"
-              onClick={() => listQuery.refetch()}
-            >
-              {t('retryLoad')}
-            </Button>
-          </div>
+          <p className="text-sm text-error">{t('loadError')}</p>
         ) : !listQuery.data?.length ? (
           <p className="text-sm text-base-content/70">{t('empty')}</p>
         ) : (

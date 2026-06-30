@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { config } from '@/config';
 
 /**
- * Canonical magic-link entry (BC-12): /a/[token] -> /api/v1/auth/link/[token]
- * Short path for SMS links (MAGIC_LINK_PATH default). Legacy /auth/link/[token] redirects here.
- * Uses config.app.url so redirect stays on the public origin.
+ * Magic link redirect: /a/[token] -> /api/v1/auth/link/[token]
+ * Short path for SMS links. Uses config.app.url so redirect stays on the public origin.
  */
 export async function GET(
   _request: NextRequest,

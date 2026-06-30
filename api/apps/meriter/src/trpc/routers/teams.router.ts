@@ -5,8 +5,7 @@ import { TRPCError } from '@trpc/server';
 
 export const teamsRouter = router({
   /**
-   * Submit a request to join a team.
-   * Delegates to TeamJoinRequestService → SubmitTeamJoinRequestUseCase (BC-11 / P-9).
+   * Submit a request to join a team
    */
   submitTeamRequest: protectedProcedure
     .input(z.object({
@@ -172,8 +171,7 @@ export const teamsRouter = router({
     }),
 
   /**
-   * Approve a team join request.
-   * Delegates to TeamJoinRequestService → ApproveTeamJoinRequestUseCase (BC-11 / P-9).
+   * Approve a team join request
    */
   approveTeamRequest: protectedProcedure
     .input(z.object({
@@ -205,8 +203,7 @@ export const teamsRouter = router({
     }),
 
   /**
-   * Reject a team join request.
-   * Delegates to TeamJoinRequestService → RejectTeamJoinRequestUseCase (BC-11 / P-9).
+   * Reject a team join request
    */
   rejectTeamRequest: protectedProcedure
     .input(z.object({

@@ -15,7 +15,6 @@ import { WalletService } from './wallet.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { NotificationService } from './notification.service';
 import { UserService } from './user.service';
-import { WalletContextResolverService } from './wallet-context-resolver.service';
 
 const DEFAULT_CURRENCY = {
   singular: 'merit',
@@ -46,12 +45,7 @@ export class ProjectPayoutService {
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly notificationService: NotificationService,
     private readonly userService: UserService,
-    private readonly walletContextResolverService: WalletContextResolverService,
   ) {}
-
-  private async resolveCommunityWalletKey(communityId: string): Promise<string> {
-    return this.walletContextResolverService.resolveCommunityWalletCommunityId(communityId);
-  }
 
   async previewPayout(
     projectId: string,
@@ -65,8 +59,7 @@ export class ProjectPayoutService {
       throw new BadRequestException('Amount must be a positive integer');
     }
     const target = await this.requireWalletPayoutCommunity(projectId);
-    const walletKey = await this.resolveCommunityWalletKey(projectId);
-    const balance = await this.communityWalletService.getBalance(walletKey);
+    const balance = await this.communityWalletService.getBalance(projectId);
     if (amount > balance) {
       throw new BadRequestException(
         `Insufficient project wallet balance. Available: ${balance}, requested: ${amount}`,
@@ -110,8 +103,7 @@ export class ProjectPayoutService {
       throw new ForbiddenException('Only the project lead can pay out merits');
     }
 
-    const walletKey = await this.resolveCommunityWalletKey(projectId);
-    const balance = await this.communityWalletService.getBalance(walletKey);
+    const balance = await this.communityWalletService.getBalance(projectId);
     if (amount > balance) {
       throw new BadRequestException(
         `Insufficient project wallet balance. Available: ${balance}, requested: ${amount}`,
@@ -125,7 +117,7 @@ export class ProjectPayoutService {
 
     const debitReason =
       target.isProject === true ? 'project_payout' : 'community_wallet_payout';
-    await this.communityWalletService.debit(walletKey, amount, debitReason);
+    await this.communityWalletService.debit(projectId, amount, debitReason);
 
     const globalComm = await this.communityService.getCommunity(GLOBAL_COMMUNITY_ID);
     const currency = globalComm?.settings?.currencyNames ?? DEFAULT_CURRENCY;
@@ -214,8 +206,7 @@ export class ProjectPayoutService {
     actorUserId: string,
     options?: { globalRole?: string | null; session?: ClientSession },
   ): Promise<{ lines: PayoutLine[]; totalCredits: number; amount: number } | null> {
-    const walletKey = await this.resolveCommunityWalletKey(projectId);
-    const balance = await this.communityWalletService.getBalance(walletKey);
+    const balance = await this.communityWalletService.getBalance(projectId);
     if (balance < 1) {
       return null;
     }

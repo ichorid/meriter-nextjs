@@ -1,7 +1,3 @@
-.serena
-.index
-
-
 # Dependencies
 node_modules/
 package-lock.json
@@ -31,7 +27,6 @@ web-static/
 # IDE and Editor
 .vscode/
 .idea/
-.claude/
 *.swp
 *.swo
 *~

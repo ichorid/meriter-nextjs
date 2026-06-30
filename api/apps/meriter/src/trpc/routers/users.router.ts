@@ -5,7 +5,6 @@ import { TRPCError } from '@trpc/server';
 import { JwtService } from '../../api-v1/common/utils/jwt-service.util';
 import { UpdateUserProfileSchema, IdInputSchema } from '@meriter/shared-types';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import { createAssignLeadUseCase } from '../../application/use-cases/users/assign-lead.use-case';
 export const usersRouter = router({
   /**
    * Get current authenticated user
@@ -19,10 +18,7 @@ export const usersRouter = router({
       });
     }
 
-    return JwtService.mapUserToV1Format({
-      ...user,
-      linkedProviders: await ctx.userService.getLinkedProviders(ctx.user.id),
-    });
+    return JwtService.mapUserToV1Format(user);
   }),
 
   /**
@@ -653,17 +649,29 @@ export const usersRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      return createAssignLeadUseCase({
-        userService: ctx.userService,
-        communityService: ctx.communityService,
-        userCommunityRoleService: ctx.userCommunityRoleService,
-        walletService: ctx.walletService,
-        notificationService: ctx.notificationService,
-      }).execute({
-        adminId: ctx.user.id,
-        targetUserId: input.targetUserId,
-        communityId: input.communityId,
-      });
+      const previous = await ctx.userCommunityRoleService.getRole(
+        input.targetUserId,
+        input.communityId,
+      );
+      await ctx.userService.assignLead(
+        ctx.user.id,
+        input.targetUserId,
+        input.communityId,
+      );
+      if (previous?.role === 'lead') {
+        return { success: true };
+      }
+      const community = await ctx.communityService.getCommunity(input.communityId);
+      if (community) {
+        await ctx.notificationService.notifyCommunityRolePromotedToLead({
+          targetUserId: input.targetUserId,
+          actorUserId: ctx.user.id,
+          communityId: input.communityId,
+          communityName: community.name,
+          isProject: Boolean(community.isProject),
+        });
+      }
+      return { success: true };
     }),
 
   /**

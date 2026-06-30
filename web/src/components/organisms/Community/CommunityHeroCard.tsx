@@ -57,8 +57,7 @@ interface CommunityHeroCardProps {
   obDocumentFetched?: boolean;
   /** Lead / permitted editor — edit icon opens OB document or documents hub. */
   canEditFutureVisionDocument?: boolean;
-  /** Initial expanded state for the future vision subsection (default: expanded). */
-  defaultFutureVisionSectionOpen?: boolean;
+  documentsMode?: string;
 }
 
 /**
@@ -75,7 +74,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   obDocumentLoading = false,
   obDocumentFetched = false,
   canEditFutureVisionDocument = false,
-  defaultFutureVisionSectionOpen = true,
+  documentsMode = 'visionOrDescriptionOnly',
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -111,12 +110,14 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
   const headerImageUrl = obCover || community.coverImageUrl;
   const hasCoverImage = !!headerImageUrl;
   const obCoverUsedInHeader = !!obCover;
-  const obDocumentsEnabled = communityMayHaveOfficialObDocument(community.typeTag);
+  const obDocumentsEnabled =
+    documentsMode !== 'off' && communityMayHaveOfficialObDocument(community.typeTag);
 
-  const futureVisionDocumentEditHref =
-    canEditFutureVisionDocument && obDocument?.id
+  const futureVisionDocumentEditHref = canEditFutureVisionDocument
+    ? obDocument?.id
       ? routes.communityDocument(community.id, obDocument.id)
-      : undefined;
+      : routes.communityDocuments(community.id)
+    : undefined;
 
   const obSections = obDocument?.sections;
   const hasObDocumentPreview = Boolean(obDocument?.id && obSections);
@@ -132,9 +133,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
     !!community.futureVisionText?.trim() ||
     Boolean(obDocument?.id) ||
     (community.futureVisionTags && community.futureVisionTags.length > 0);
-  const [isFutureVisionSectionOpen, setIsFutureVisionSectionOpen] = useState(
-    defaultFutureVisionSectionOpen,
-  );
+  const [isFutureVisionSectionOpen, setIsFutureVisionSectionOpen] = useState(true);
 
   const obPublicationId = community.futureVisionPublicationId;
   const obScore = community.futureVisionPublicationScore ?? 0;
@@ -386,7 +385,7 @@ export const CommunityHeroCard: React.FC<CommunityHeroCardProps> = ({
                         onClick={(e) => e.stopPropagation()}
                         className="inline-block text-sm font-medium text-primary hover:underline"
                       >
-                        {tCommunities('showDocumentEditProposals')}
+                        {tCommunities('openCollaborativeDocument')}
                       </Link>
                     ) : null}
                   </>

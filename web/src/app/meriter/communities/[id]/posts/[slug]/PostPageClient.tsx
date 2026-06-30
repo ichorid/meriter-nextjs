@@ -19,7 +19,6 @@ import { getWalletBalance } from '@/lib/utils/wallet';
 import { trpc } from '@/lib/trpc/client';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { PublicationHeader } from '@/components/organisms/Publication/PublicationHeader';
-import { PinnedPostBadge } from '@/components/molecules/ProjectPostBadge';
 import { PublicationContent } from '@/components/organisms/Publication/PublicationContent';
 import { PublicationActions } from '@/components/organisms/Publication/PublicationActions';
 import { InvestmentBreakdownInline } from '@/components/organisms/InvestmentBreakdownPopup';
@@ -352,7 +351,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                 publishedByUserId: pub.publishedByUserId,
                             }}
                             showCommunityAvatar={false}
-                            className={pub.isPinned ? 'mb-0' : 'mb-3'}
+                            className="mb-3"
                             authorId={(publication as any).authorId}
                             metrics={(publication as any).metrics}
                             publicationId={(publication as any).id}
@@ -360,12 +359,6 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                             isPoll={false}
                             ticketToolbarOnly={isTicketPost}
                         />
-
-                        {pub.isPinned ? (
-                            <div className="mb-3 mt-1 flex w-full justify-end">
-                                <PinnedPostBadge />
-                            </div>
-                        ) : null}
 
                         {isTicketPost ? (() => {
                             const pub = publication as Record<string, unknown>;

@@ -1,11 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { DECREE_809_TAGS } from '@meriter/shared-types/value-rubricator';
 import {
+  DECREE_809_TAGS,
   DECREE_809_TAGS_REVISION,
   remapDecree809ValueTags,
-} from '@meriter/shared-types/decree809-tag-remap';
+} from '@meriter/shared-types';
 import { PUBLIC_PLATFORM_SETTINGS_BOOTSTRAP } from '../common/constants/platform-bootstrap.constants';
 import {
   CommunitySchemaClass,
@@ -30,11 +30,11 @@ export class Decree809TagMigrationService implements OnModuleInit {
   private readonly logger = new Logger(Decree809TagMigrationService.name);
 
   constructor(
-    @InjectModel(PlatformSettingsSchemaClass.name) // V-12-residual
+    @InjectModel(PlatformSettingsSchemaClass.name)
     private readonly platformSettingsModel: Model<PlatformSettingsDocument>,
-    @InjectModel(CommunitySchemaClass.name) // V-12-residual
+    @InjectModel(CommunitySchemaClass.name)
     private readonly communityModel: Model<CommunityDocument>,
-    @InjectModel(PublicationSchemaClass.name) // V-12-residual
+    @InjectModel(PublicationSchemaClass.name)
     private readonly publicationModel: Model<PublicationDocument>,
   ) {}
 

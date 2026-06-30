@@ -169,13 +169,12 @@ jest.mock('@/lib/utils/oauth-providers', () => ({
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppMode } from '@/contexts/AppModeContext';
 import { getOAuthUrl } from '@/lib/utils/oauth-providers';
-import { isFakeDataMode, isTestAuthMode } from '@/config';
+import { isFakeDataMode } from '@/config';
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 const mockUseAppMode = useAppMode as jest.MockedFunction<typeof useAppMode>;
 const mockGetOAuthUrl = getOAuthUrl as jest.MockedFunction<typeof getOAuthUrl>;
 const mockIsFakeDataMode = isFakeDataMode as jest.MockedFunction<typeof isFakeDataMode>;
-const mockIsTestAuthMode = isTestAuthMode as jest.MockedFunction<typeof isTestAuthMode>;
 
 // Create QueryClient at module level to ensure it's fully initialized
 // This ensures compatibility with tRPC which expects certain QueryClient methods
@@ -238,7 +237,6 @@ describe('Login Page Integration', () => {
 
     // Reset fake data mode to false by default
     mockIsFakeDataMode.mockReturnValue(false);
-    mockIsTestAuthMode.mockReturnValue(false);
 
     // Default auth context mock
     mockUseAuth.mockReturnValue({
@@ -288,28 +286,14 @@ describe('Login Page Integration', () => {
       expect(input).toBeInTheDocument();
     });
 
-    it('shows only email sign-in in production mode', () => {
-      render(
-        <TestWrapper>
-          <LoginForm emailEnabled={true} />
-        </TestWrapper>
-      );
-
-      expect(screen.getByText('login.signInWithEmail')).toBeInTheDocument();
-      expect(screen.queryByText('login.signInWithSms')).not.toBeInTheDocument();
-      expect(screen.queryByText('login.signInWithCall')).not.toBeInTheDocument();
-      expect(screen.queryByText('login.signInWith')).not.toBeInTheDocument();
-    });
-
-    it('should render OAuth provider buttons in test auth mode', () => {
-      mockIsTestAuthMode.mockReturnValue(true);
-
+    it('should render OAuth provider buttons', () => {
       render(
         <TestWrapper>
           <LoginForm />
         </TestWrapper>
       );
 
+      // Buttons contain translation key "login.signInWith"
       const buttons = screen.getAllByText(/login\.signInWith/i);
       expect(buttons.length).toBeGreaterThan(0);
     });
@@ -332,8 +316,7 @@ describe('Login Page Integration', () => {
       expect(inviteInput).toHaveValue('TEST123');
     });
 
-    it.skip('should handle OAuth provider click (test-auth mock flow; production is email-only)', async () => {
-      mockIsTestAuthMode.mockReturnValue(true);
+    it('should handle OAuth provider click', async () => {
       const user = userEvent.setup();
 
       render(
@@ -342,8 +325,13 @@ describe('Login Page Integration', () => {
         </TestWrapper>
       );
 
-      const buttons = screen.getAllByText(/^login\.signInWith$/i);
+      // Click the first OAuth button (Google)
+      const buttons = screen.getAllByText(/login\.signInWith/i);
       await user.click(buttons[0]!);
+
+      // Verify getOAuthUrl was called (component uses it to generate the URL)
+      // The component calls getOAuthUrl and then sets window.location.href
+      // When no search params are present, it defaults to '/meriter/profile'
       expect(mockGetOAuthUrl).toHaveBeenCalledWith('google', '/meriter/profile');
     });
 
@@ -433,27 +421,29 @@ describe('Login Page Integration', () => {
   });
 
   describe('OAuth Provider Filtering', () => {
-    beforeEach(() => {
-      mockIsTestAuthMode.mockReturnValue(true);
-    });
-
-    it.skip('should filter providers when enabledProviders prop is passed (superseded by email-only UI)', () => {
+    it('should filter providers when enabledProviders prop is passed', () => {
+      // Ensure fake data mode is off for this test
+      mockIsFakeDataMode.mockReturnValue(false);
+      
       render(
         <TestWrapper>
           <LoginForm enabledProviders={['google']} />
         </TestWrapper>
       );
+
+      // Should have one OAuth button
+      const buttons = screen.getAllByText(/login\.signInWith/i);
+      expect(buttons.length).toBe(1);
     });
 
     it('should show error message when no providers are enabled', () => {
-      mockIsTestAuthMode.mockReturnValue(false);
-
       render(
         <TestWrapper>
-          <LoginForm enabledProviders={[]} emailEnabled={false} />
+          <LoginForm enabledProviders={[]} />
         </TestWrapper>
       );
 
+      // Component uses translation key login.noAuthenticationProviders
       expect(screen.getByText(/login\.noAuthenticationProviders/i)).toBeInTheDocument();
     });
 
@@ -478,21 +468,38 @@ describe('Login Page Integration', () => {
   });
 
   describe('URL Parameters', () => {
-    beforeEach(() => {
-      mockIsTestAuthMode.mockReturnValue(true);
-    });
+    it('should include returnTo in OAuth URL', async () => {
+      const user = userEvent.setup();
 
-    it.skip('should include returnTo in OAuth URL (production is email-only)', async () => {});
+      // Mock useSearchParams to return params with a different returnTo path
+      jest.spyOn(require('next/navigation'), 'useSearchParams').mockReturnValue(
+        new URLSearchParams('returnTo=/meriter/communities/123')
+      );
+
+      render(
+        <TestWrapper>
+          <LoginForm />
+        </TestWrapper>
+      );
+
+      // Click the first OAuth button
+      const buttons = screen.getAllByText(/login\.signInWith/i);
+      await user.click(buttons[0]!);
+
+      // Verify getOAuthUrl was called with the returnTo path
+      expect(mockGetOAuthUrl).toHaveBeenCalled();
+      const callArgs = mockGetOAuthUrl.mock.calls[0];
+      if (callArgs && callArgs[1]) {
+        // The returnTo path should be passed directly, not as a query parameter
+        expect(callArgs[1]).toBe('/meriter/communities/123');
+        // Invite code feature has been removed
+        expect(callArgs[1]).not.toContain('invite');
+      }
+    });
   });
 
   describe('Captive browser', () => {
-    beforeEach(() => {
-      mockIsTestAuthMode.mockReturnValue(true);
-    });
-
-    it('when captiveBrowser is true shows only email in production mode', () => {
-      mockIsTestAuthMode.mockReturnValue(false);
-
+    it('when captiveBrowser is true shows only SMS and Email (tg-hint overlay handles instructions)', () => {
       render(
         <TestWrapper>
           <LoginForm
@@ -506,8 +513,9 @@ describe('Login Page Integration', () => {
         </TestWrapper>
       );
 
+      // No captive banner in LoginForm; tg-hint overlay is shown separately when in Telegram
+      expect(screen.getByText('login.signInWithSms')).toBeInTheDocument();
       expect(screen.getByText('login.signInWithEmail')).toBeInTheDocument();
-      expect(screen.queryByText('login.signInWithSms')).not.toBeInTheDocument();
       expect(screen.queryByText('login.signInWithCall')).not.toBeInTheDocument();
     });
 

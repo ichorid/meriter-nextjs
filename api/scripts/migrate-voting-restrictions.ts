@@ -2,24 +2,24 @@
 
 /**
  * Migration script to update voting restrictions in communities
- *
+ * 
  * Changes:
- * 1. Remove 'not-own' restriction (set to CommunityDefaultsService default) - self-voting uses currency constraint
+ * 1. Remove 'not-own' restriction (set to 'any') - self-voting now uses currency constraint
  * 2. Rename 'not-same-group' to 'not-same-team' - for clarity
- *
+ * 
  * Usage:
  *   ts-node api/scripts/migrate-voting-restrictions.ts [--dry-run] [--rollback]
  */
 
-import { NestFactory } from '@nestjs/core';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { MeriterModule } from '../apps/meriter/src/meriter.module';
-import { CommunityDefaultsService } from '../apps/meriter/src/domain/services/community-defaults.service';
-import {
-  CommunitySchemaClass,
-  CommunityDocument,
-} from '../apps/meriter/src/domain/models/community/community.schema';
+import { MongoClient } from 'mongodb';
+import * as dotenv from 'dotenv';
+import { join } from 'path';
+
+// Load environment variables
+dotenv.config({ path: join(__dirname, '../.env') });
+dotenv.config({ path: join(__dirname, '../.env.local') });
+
+const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017/meriter';
 
 interface MigrationStats {
   communitiesProcessed: number;
@@ -29,6 +29,7 @@ interface MigrationStats {
 }
 
 async function migrateVotingRestrictions(dryRun: boolean = false): Promise<MigrationStats> {
+  const client = new MongoClient(MONGO_URL);
   const stats: MigrationStats = {
     communitiesProcessed: 0,
     notOwnRemoved: 0,
@@ -36,30 +37,24 @@ async function migrateVotingRestrictions(dryRun: boolean = false): Promise<Migra
     errors: [],
   };
 
-  const app = await NestFactory.createApplicationContext(MeriterModule, {
-    logger: ['error', 'warn', 'log'],
-  });
-
   try {
-    const defaultsService = app.get(CommunityDefaultsService);
-    const communityModel = app.get<Model<CommunityDocument>>(
-      getModelToken(CommunitySchemaClass.name),
-    );
-    const defaultRestriction =
-      defaultsService.getDefaultVotingSettings().votingRestriction ?? 'any';
+    await client.connect();
+    console.log('Connected to MongoDB');
 
-    console.log('Connected via NestJS application context');
+    const db = client.db();
+    const communitiesCollection = db.collection('communities');
 
-    const communities = await communityModel
+    // Find all communities with votingSettings
+    const communities = await communitiesCollection
       .find({
         'votingSettings.votingRestriction': { $in: ['not-own', 'not-same-group'] },
       })
-      .lean();
+      .toArray();
 
     console.log(`Found ${communities.length} communities to migrate`);
 
     for (const community of communities) {
-      const communityId = community.id || String(community._id);
+      const communityId = community.id || community._id;
       const currentRestriction = community.votingSettings?.votingRestriction;
 
       if (!currentRestriction) {
@@ -72,12 +67,14 @@ async function migrateVotingRestrictions(dryRun: boolean = false): Promise<Migra
         let newRestriction: 'any' | 'not-same-team' | undefined;
 
         if (currentRestriction === 'not-own') {
-          newRestriction = defaultRestriction;
+          // Remove 'not-own' - set to 'any' (self-voting now uses currency constraint)
+          newRestriction = 'any';
           stats.notOwnRemoved++;
           console.log(
-            `[${dryRun ? 'DRY RUN' : 'MIGRATING'}] Community ${communityId}: 'not-own' → '${defaultRestriction}'`,
+            `[${dryRun ? 'DRY RUN' : 'MIGRATING'}] Community ${communityId}: 'not-own' → 'any'`,
           );
         } else if (currentRestriction === 'not-same-group') {
+          // Rename 'not-same-group' to 'not-same-team'
           newRestriction = 'not-same-team';
           stats.notSameGroupRenamed++;
           console.log(
@@ -86,7 +83,7 @@ async function migrateVotingRestrictions(dryRun: boolean = false): Promise<Migra
         }
 
         if (newRestriction && !dryRun) {
-          await communityModel.updateOne(
+          await communitiesCollection.updateOne(
             { id: communityId },
             {
               $set: {
@@ -96,7 +93,7 @@ async function migrateVotingRestrictions(dryRun: boolean = false): Promise<Migra
             },
           );
         }
-      } catch (error: unknown) {
+      } catch (error: any) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         stats.errors.push({ communityId, error: errorMessage });
         console.error(`Error migrating community ${communityId}:`, errorMessage);
@@ -109,40 +106,40 @@ async function migrateVotingRestrictions(dryRun: boolean = false): Promise<Migra
     console.log(`  'not-same-group' renamed: ${stats.notSameGroupRenamed}`);
     if (stats.errors.length > 0) {
       console.log(`  Errors: ${stats.errors.length}`);
-      stats.errors.forEach((err) => {
+      stats.errors.forEach(err => {
         console.error(`    - ${err.communityId}: ${err.error}`);
       });
     }
 
     return stats;
   } finally {
-    await app.close();
-    console.log('\nApplication context closed');
+    await client.close();
+    console.log('\nConnection closed');
   }
 }
 
 async function rollback(): Promise<void> {
-  const app = await NestFactory.createApplicationContext(MeriterModule, {
-    logger: ['error', 'warn', 'log'],
-  });
-
+  const client = new MongoClient(MONGO_URL);
   try {
-    const communityModel = app.get<Model<CommunityDocument>>(
-      getModelToken(CommunitySchemaClass.name),
-    );
+    await client.connect();
+    console.log('Connected to MongoDB (ROLLBACK)');
 
-    console.log('Connected via NestJS application context (ROLLBACK)');
+    const db = client.db();
+    const communitiesCollection = db.collection('communities');
 
-    const communities = await communityModel
-      .find({ 'votingSettings.votingRestriction': 'not-same-team' })
-      .lean();
+    // Find communities with 'not-same-team' (to rename back to 'not-same-group')
+    const communities = await communitiesCollection
+      .find({
+        'votingSettings.votingRestriction': 'not-same-team',
+      })
+      .toArray();
 
     console.log(`Found ${communities.length} communities to rollback`);
 
     let rolledBack = 0;
     for (const community of communities) {
-      const communityId = community.id || String(community._id);
-      await communityModel.updateOne(
+      const communityId = community.id || community._id;
+      await communitiesCollection.updateOne(
         { id: communityId },
         {
           $set: {
@@ -157,12 +154,13 @@ async function rollback(): Promise<void> {
 
     console.log(`\nRollback complete: ${rolledBack} communities rolled back`);
   } finally {
-    await app.close();
-    console.log('Application context closed');
+    await client.close();
+    console.log('Connection closed');
   }
 }
 
-async function main(): Promise<void> {
+// Main execution
+async function main() {
   const args = process.argv.slice(2);
   const isDryRun = args.includes('--dry-run');
   const shouldRollback = args.includes('--rollback');
@@ -172,7 +170,7 @@ async function main(): Promise<void> {
     await rollback();
   } else {
     console.log(isDryRun ? '=== DRY RUN MODE ===' : '=== MIGRATION MODE ===');
-    await migrateVotingRestrictions(isDryRun);
+    const stats = await migrateVotingRestrictions(isDryRun);
     if (isDryRun) {
       console.log('\nThis was a dry run. Run without --dry-run to apply changes.');
     }

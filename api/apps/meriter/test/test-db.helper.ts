@@ -1,31 +1,54 @@
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { MongooseModule, MongooseModuleOptions } from '@nestjs/mongoose';
 import { Connection, connect } from 'mongoose';
-import {
-  createSuiteDatabaseName,
-  getSharedMongoMemoryServer,
-} from './mongo-memory-shared';
 
 /**
  * Test database helper using mongodb-memory-server
  * Provides an in-memory MongoDB instance for integration tests
  */
 export class TestDatabaseHelper {
-  private mongod?: MongoMemoryServer;
-  private connection?: Connection;
-  private readonly dbName: string;
-
-  constructor(dbName?: string) {
-    this.dbName = dbName ?? createSuiteDatabaseName();
-  }
+  private mongod: MongoMemoryServer;
+  private connection: Connection;
 
   /**
-   * Start the in-memory MongoDB instance.
-   * Reuses one mongod per Jest worker; each helper gets its own database name.
+   * Start the in-memory MongoDB instance
+   * Wraps MongoMemoryServer.create() with a timeout to prevent hanging in CI/CD
+   * Always creates a new instance to avoid conflicts with global setup
    */
   async start(): Promise<string> {
-    this.mongod = await getSharedMongoMemoryServer();
-    return this.mongod.getUri(this.dbName);
+    // Always create a new instance, even if MONGO_URL is set (from global setup)
+    // This ensures each test gets its own isolated MongoDB instance
+    // Wrap MongoMemoryServer.create() with a timeout to fail fast
+    const createPromise = MongoMemoryServer.create({
+      binary: {
+        downloadDir: process.env.MONGOMS_DOWNLOAD_DIR,
+      },
+      instance: {
+        dbName: 'test',
+      },
+    });
+
+    let timeoutId: NodeJS.Timeout | undefined;
+    const timeoutMs = process.env.CI ? 120_000 : 30_000;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(
+          new Error(
+            `MongoMemoryServer.create() timed out after ${Math.round(timeoutMs / 1000)} seconds. This may indicate network issues or insufficient resources in CI/CD.`,
+          ),
+        );
+      }, timeoutMs);
+    });
+
+    try {
+      this.mongod = await Promise.race([createPromise, timeoutPromise]);
+    } finally {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    }
+    const uri = this.mongod.getUri();
+    return uri;
   }
 
   /**
@@ -33,16 +56,15 @@ export class TestDatabaseHelper {
    */
   async connect(uri?: string): Promise<Connection> {
     const mongoUri = uri || (await this.start());
-    this.connection = (
-      await connect(mongoUri, {
-        serverSelectionTimeoutMS: 3000,
-        connectTimeoutMS: 3000,
-        socketTimeoutMS: 3000,
-        maxPoolSize: 1,
-        retryWrites: false,
-        retryReads: false,
-      })
-    ).connection;
+    // Add connection timeout options to fail fast
+    this.connection = (await connect(mongoUri, {
+      serverSelectionTimeoutMS: 3000, // 3 seconds - fail fast
+      connectTimeoutMS: 3000, // 3 seconds - fail fast
+      socketTimeoutMS: 3000, // 3 seconds - fail fast
+      maxPoolSize: 1, // Single connection for tests
+      retryWrites: false, // Disable retries
+      retryReads: false, // Disable retries
+    })).connection;
     return this.connection;
   }
 
@@ -87,16 +109,17 @@ export class TestDatabaseHelper {
   async closeConnection(): Promise<void> {
     if (this.connection) {
       await this.connection.close();
-      this.connection = undefined;
     }
   }
 
   /**
-   * Close this helper's connection only.
-   * The shared worker mongod is stopped via mongo-memory-registry teardown hooks.
+   * Stop the in-memory MongoDB instance
    */
   async stop(): Promise<void> {
     await this.closeConnection();
+    if (this.mongod) {
+      await this.mongod.stop();
+    }
   }
 
   /**
@@ -106,7 +129,7 @@ export class TestDatabaseHelper {
     if (!this.mongod) {
       throw new Error('MongoDB instance not started');
     }
-    return this.mongod.getUri(this.dbName);
+    return this.mongod.getUri();
   }
 
   /**
@@ -122,20 +145,20 @@ export class TestDatabaseHelper {
 
 /**
  * Helper function for setting up test database in beforeAll/afterAll hooks
- *
+ * 
  * Example usage:
- *
+ * 
  * ```typescript
  * const testDb = new TestDatabaseHelper();
- *
+ * 
  * beforeAll(async () => {
  *   await testDb.start();
  * });
- *
+ * 
  * afterEach(async () => {
  *   await testDb.clearDatabase();
  * });
- *
+ * 
  * afterAll(async () => {
  *   await testDb.stop();
  * });
@@ -158,3 +181,4 @@ export const setupTestDatabase = () => {
 
   return testDb;
 };
+

@@ -46,8 +46,6 @@ RUN mkdir -p /out && \
     cp libs/shared-types/package.json /out/libs/shared-types/package.json && \
     # Copy public directory (favicon)
     cp -R api/apps/meriter/public /out/public && \
-    mkdir -p /out/scripts && \
-    cp api/scripts/setup-webhook.js /out/scripts/setup-webhook.js && \
     # Demo seed TSV (webpack bundle does not include these; platformDemo.seedDemoWorld reads from here)
     mkdir -p /out/dist/apps/meriter/seed-data && \
     cp -R api/apps/meriter/seed-data/. /out/dist/apps/meriter/seed-data/
@@ -68,5 +66,4 @@ RUN pnpm install --prod && \
 
 USER nestjs
 EXPOSE 8002
-# Collaborative documents migration runs on process start (CollaborativeDocumentsMigrationService.onModuleInit).
 CMD ["node", "dist/apps/meriter/main"]

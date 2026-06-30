@@ -9,14 +9,9 @@ import {
   CommentAddedEvent,
   CommentVotedEvent,
   PollCastedEvent,
-  TicketAssignedEvent,
-  TicketApplyEvent,
-  TicketRejectedEvent,
 } from '../events';
-import { TicketService } from './ticket.service';
 import { NotificationService, CreateNotificationDto } from './notification.service';
 import { PublicationService } from './publication.service';
-import { CommunityService } from './community.service';
 import { VoteService } from './vote.service';
 import { UserService } from './user.service';
 import { PollService } from './poll.service';
@@ -33,16 +28,12 @@ export class NotificationHandlersService implements OnModuleInit {
     private readonly notificationService: NotificationService,
     @Inject(forwardRef(() => PublicationService))
     private readonly publicationService: PublicationService,
-    @Inject(forwardRef(() => CommunityService))
-    private readonly communityService: CommunityService,
     @Inject(forwardRef(() => VoteService))
     private readonly voteService: VoteService,
     private readonly userService: UserService,
     @Inject(forwardRef(() => PollService))
     private readonly pollService: PollService,
     private readonly favoriteService: FavoriteService,
-    @Inject(forwardRef(() => TicketService))
-    private readonly ticketService: TicketService,
     @InjectConnection() private readonly mongoose: Connection,
   ) {}
 
@@ -65,15 +56,6 @@ export class NotificationHandlersService implements OnModuleInit {
     );
     this.eventBus.subscribe('PollCasted', (event) =>
       this.handlePollCasted(event as PollCastedEvent),
-    );
-    this.eventBus.subscribe('TicketAssigned', (event) =>
-      this.handleTicketAssigned(event as TicketAssignedEvent),
-    );
-    this.eventBus.subscribe('TicketApply', (event) =>
-      this.handleTicketApply(event as TicketApplyEvent),
-    );
-    this.eventBus.subscribe('TicketRejected', (event) =>
-      this.handleTicketRejected(event as TicketRejectedEvent),
     );
 
     this.logger.log('Notification handlers registered');
@@ -262,56 +244,6 @@ export class NotificationHandlersService implements OnModuleInit {
     }
   }
 
-  private async handleObVoteJoinOffer(
-    publicationId: string,
-    voterId: string,
-    communityId: string,
-  ): Promise<void> {
-    try {
-      const pubDoc = await this.publicationService.getPublicationDocument(publicationId);
-      const community = await this.communityService.getCommunity(communityId);
-      if (
-        community?.typeTag !== 'future-vision' ||
-        pubDoc?.sourceEntityType !== 'community' ||
-        !pubDoc?.sourceEntityId
-      ) {
-        return;
-      }
-
-      const voteCount = await this.mongoose.db!.collection('votes').countDocuments({
-        userId: voterId,
-        targetType: 'publication',
-        targetId: publicationId,
-      });
-      if (voteCount !== 1) {
-        return;
-      }
-
-      const sourceCommunity = await this.communityService.getCommunity(
-        pubDoc.sourceEntityId as string,
-      );
-      const communityName = sourceCommunity?.name ?? 'Community';
-
-      await this.notificationService.createNotification({
-        userId: voterId,
-        type: 'ob_vote_join_offer',
-        source: 'system',
-        metadata: {
-          communityId: pubDoc.sourceEntityId,
-          publicationId,
-          publicationCommunityId: communityId,
-          sourceCommunityName: communityName,
-        },
-        title: 'Join the community?',
-        message: `You voted for "${communityName}". Would you like to join?`,
-      });
-    } catch (err) {
-      this.logger.warn(
-        `ob_vote_join_offer check failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      );
-    }
-  }
-
   async handlePublicationVoted(event: PublicationVotedEvent): Promise<void> {
     try {
       const publicationId = event.getAggregateId();
@@ -329,8 +261,6 @@ export class NotificationHandlersService implements OnModuleInit {
 
       const authorId = publication.getAuthorId.getValue();
       const communityId = publication.getCommunityId.getValue();
-
-      await this.handleObVoteJoinOffer(publicationId, voterId, communityId);
       const publicationSnapshot = publication.toSnapshot();
       const isProject =
         publicationSnapshot.isProject === true || publicationSnapshot.postType === 'project';
@@ -671,72 +601,6 @@ export class NotificationHandlersService implements OnModuleInit {
       );
     } catch (error) {
       this.logger.error(`Error handling CommentVoted event:`, error);
-    }
-  }
-
-  private async handleTicketAssigned(event: TicketAssignedEvent): Promise<void> {
-    try {
-      const metadata = await this.ticketService.buildTicketNotificationMetadata(
-        event.getTicketId(),
-        event.getProjectId(),
-        { leadUserId: event.getActorUserId() },
-      );
-      await this.notificationService.createNotification({
-        userId: event.getBeneficiaryId(),
-        type: 'ticket_assigned',
-        source: 'system',
-        sourceId: event.getActorUserId(),
-        metadata,
-        title: 'Ticket assigned',
-        message: 'You were assigned a ticket in the project.',
-      });
-    } catch (error) {
-      this.logger.error('Error handling TicketAssigned event:', error);
-    }
-  }
-
-  private async handleTicketApply(event: TicketApplyEvent): Promise<void> {
-    try {
-      const metadata = await this.ticketService.buildTicketNotificationMetadata(
-        event.getTicketId(),
-        event.getProjectId(),
-        {
-          applicantUserId: event.getApplicantUserId(),
-          applicantName: event.getApplicantName(),
-        },
-      );
-      await this.notificationService.createNotification({
-        userId: event.getLeadUserId(),
-        type: 'ticket_apply',
-        source: 'system',
-        sourceId: event.getApplicantUserId(),
-        metadata,
-        title: 'New ticket application',
-        message: 'Someone applied for a neutral ticket in your project.',
-      });
-    } catch (error) {
-      this.logger.error('Error handling TicketApply event:', error);
-    }
-  }
-
-  private async handleTicketRejected(event: TicketRejectedEvent): Promise<void> {
-    try {
-      const metadata = await this.ticketService.buildTicketNotificationMetadata(
-        event.getTicketId(),
-        event.getProjectId(),
-        { rejectionMessage: event.getRejectionMessage() },
-      );
-      await this.notificationService.createNotification({
-        userId: event.getRecipientUserId(),
-        type: 'ticket_rejection',
-        source: 'system',
-        sourceId: event.getActorUserId(),
-        metadata,
-        title: 'Application not selected',
-        message: event.getRejectionMessage(),
-      });
-    } catch (error) {
-      this.logger.error('Error handling TicketRejected event:', error);
     }
   }
 }

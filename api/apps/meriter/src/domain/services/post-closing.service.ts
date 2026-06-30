@@ -3,18 +3,18 @@ import {
   Logger,
   BadRequestException,
   NotFoundException,
-  Inject,
 } from '@nestjs/common';
-import type { PublicationClosingSummary } from '../models/publication/publication.schema';
+import { InjectConnection, InjectModel } from '@nestjs/mongoose';
+import { ClientSession, Connection, Model } from 'mongoose';
 import {
-  PUBLICATION_PERSISTENCE_PORT,
-  type PublicationPersistencePort,
-  type PublicationPersistenceSession,
-} from '../ports/publication.persistence.port';
+  PublicationSchemaClass,
+  PublicationDocument,
+  type PublicationClosingSummary,
+} from '../models/publication/publication.schema';
 import { InvestmentService, HandlePostCloseResult } from './investment.service';
 import { PublicationService } from './publication.service';
 import { WalletService } from './wallet.service';
-import { WalletContextResolverService } from './wallet-context-resolver.service';
+import { MeritResolverService } from './merit-resolver.service';
 import { CommunityService } from './community.service';
 import { NotificationService } from './notification.service';
 import { CommunityWalletService } from './community-wallet.service';
@@ -30,27 +30,22 @@ export interface ClosePostResult {
   closingSummary: PublicationClosingSummary;
 }
 
-/** Manual close from author/beneficiary: negative score → negative_rating, else manual. */
-export function resolveManualCloseReason(currentScore: number): PostCloseReason {
-  return currentScore < 0 ? 'negative_rating' : 'manual';
-}
-
 /**
  * D-2: Atomic post closing: pool return, rating distribution, status update.
- * inv-04: closed posts are archived — status='closed' removes them from feeds/tappalka
- * (getEligiblePosts excludes closed) and blocks further modification.
+ * "Remove from tappalka" is achieved by setting status='closed' (getEligiblePosts excludes closed).
  */
 @Injectable()
 export class PostClosingService {
   private readonly logger = new Logger(PostClosingService.name);
 
   constructor(
-    @Inject(PUBLICATION_PERSISTENCE_PORT)
-    private readonly publicationPersistence: PublicationPersistencePort,
+    @InjectModel(PublicationSchemaClass.name)
+    private readonly publicationModel: Model<PublicationDocument>,
+    @InjectConnection() private readonly connection: Connection,
     private readonly investmentService: InvestmentService,
     private readonly publicationService: PublicationService,
     private readonly walletService: WalletService,
-    private readonly walletContextResolverService: WalletContextResolverService,
+    private readonly meritResolverService: MeritResolverService,
     private readonly communityService: CommunityService,
     private readonly notificationService: NotificationService,
     private readonly communityWalletService: CommunityWalletService,
@@ -64,7 +59,10 @@ export class PostClosingService {
     postId: string,
     reason: PostCloseReason,
   ): Promise<ClosePostResult> {
-    const post = await this.publicationPersistence.findById(postId);
+    const post = await this.publicationModel
+      .findOne({ id: postId })
+      .lean()
+      .exec();
     if (!post) {
       throw new NotFoundException('Publication not found');
     }
@@ -94,7 +92,7 @@ export class PostClosingService {
     let result: HandlePostCloseResult;
     let closingSummary: PublicationClosingSummary;
 
-    const runCloseLogic = async (session?: PublicationPersistenceSession) => {
+    const runCloseLogic = async (session: ClientSession | undefined) => {
       result = await this.investmentService.handlePostClose(postId, session);
 
       const authorAmount = result.ratingDistributed.authorAmount;
@@ -106,22 +104,17 @@ export class PostClosingService {
           (sourceEntityType === 'project' || sourceEntityType === 'community') &&
           sourceEntityId
         ) {
-          const communityWalletId =
-            await this.walletContextResolverService.resolveCommunityWalletCommunityId(
-              sourceEntityId,
-            );
-          await this.communityWalletService.createWallet(communityWalletId);
+          await this.communityWalletService.createWallet(sourceEntityId);
           await this.communityWalletService.deposit(
-            communityWalletId,
+            sourceEntityId,
             authorAmount,
             'publication_close',
           );
         } else {
-          const targetCommunityId =
-            await this.walletContextResolverService.resolvePersonalWalletCommunityId(
-              community,
-              'withdrawal',
-            );
+          const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+            community,
+            'withdrawal',
+          );
           await this.walletService.addTransaction(
             beneficiaryId,
             targetCommunityId,
@@ -168,17 +161,44 @@ export class PostClosingService {
         poolReturned: poolReturnedTotal,
       };
 
-      await this.publicationPersistence.closePublication({
-        id: postId,
-        reason,
-        closingSummary,
-        session,
-      });
+      const now = new Date();
+      await this.publicationModel.updateOne(
+        { id: postId },
+        {
+          $set: {
+            status: 'closed',
+            closedAt: now,
+            closeReason: reason,
+            closingSummary,
+            investmentPool: 0,
+            'metrics.score': 0,
+          },
+        },
+        session ? { session } : {},
+      );
     };
 
-    await this.publicationPersistence.runInTransaction(async (session) => {
-      await runCloseLogic(session);
-    });
+    const transactionErrorMsg =
+      'Transaction numbers are only allowed on a replica set member or mongos';
+
+    try {
+      const session = await this.connection.startSession();
+      try {
+        await session.withTransaction(async () => runCloseLogic(session));
+      } finally {
+        await session.endSession();
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes(transactionErrorMsg)) {
+        this.logger.warn(
+          'MongoDB standalone detected; running post close without transaction',
+        );
+        await runCloseLogic(undefined);
+      } else {
+        throw err;
+      }
+    }
 
     const res = result!;
     const summary = closingSummary!;

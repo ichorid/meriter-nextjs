@@ -34,7 +34,6 @@ import { TappalkaService } from '../domain/services/tappalka.service';
 import { InvestmentService } from '../domain/services/investment.service';
 import { PostClosingService } from '../domain/services/post-closing.service';
 import { MeritResolverService } from '../domain/services/merit-resolver.service';
-import { WalletContextResolverService } from '../domain/services/wallet-context-resolver.service';
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
 import { PlatformSettingsService } from '../domain/services/platform-settings.service';
@@ -47,8 +46,6 @@ import { ProjectPayoutService } from '../domain/services/project-payout.service'
 import { PlatformWipeService } from '../domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
 import { PlatformDemoEventsSeedService } from '../domain/services/platform-demo-events-seed.service';
-import { PlatformEntrepreneursDemoSeedService } from '../domain/services/platform-entrepreneurs-demo-seed.service';
-import { PlatformDemoPackImportService } from '../domain/services/platform-demo-pack-import.service';
 import { PlatformDatabaseDumpService } from '../domain/services/platform-database-dump.service';
 import { MeritTransferService } from '../domain/services/merit-transfer.service';
 import { EventService } from '../domain/services/event.service';
@@ -56,16 +53,10 @@ import { CommunityInviteService } from '../domain/services/community-invite.serv
 import { DocumentService } from '../domain/services/document.service';
 import { DocumentVariantService } from '../domain/services/document-variant.service';
 import { DocumentStructureService } from '../domain/services/document-structure.service';
-import { DocumentHtmlSyncService } from '../domain/services/document-html-sync.service';
-import { DocumentLiveUpdatesService } from '../domain/services/document-live-updates.service';
-import { PermissionRuleEngine } from '../domain/services/permission-rule-engine.service';
 import { createContext } from './context';
 import { appRouter } from './router';
 import type { AppRouter } from './router';
-import { communityAppRouter } from '../adapters/trpc/handlers/community-app.router';
-import type { CommunityAppRouter } from '../adapters/trpc/handlers/community-app.router';
 import { JwtVerificationService } from '../common/services/authentication.service';
-import { SeedCommunityWebDevUseCase } from '../application/use-cases/dev/seed-community-web-dev.use-case';
 
 @Injectable()
 export class TrpcService {
@@ -100,7 +91,6 @@ export class TrpcService {
     private investmentService: InvestmentService,
     private postClosingService: PostClosingService,
     private meritResolverService: MeritResolverService,
-    private walletContextResolverService: WalletContextResolverService,
     private teamJoinRequestService: TeamJoinRequestService,
     private teamInvitationService: TeamInvitationService,
     private platformSettingsService: PlatformSettingsService,
@@ -113,8 +103,6 @@ export class TrpcService {
     private platformWipeService: PlatformWipeService,
     private platformDemoSeedService: PlatformDemoSeedService,
     private platformDemoEventsSeedService: PlatformDemoEventsSeedService,
-    private platformEntrepreneursDemoSeedService: PlatformEntrepreneursDemoSeedService,
-    private platformDemoPackImportService: PlatformDemoPackImportService,
     private platformDatabaseDumpService: PlatformDatabaseDumpService,
     private meritTransferService: MeritTransferService,
     private eventService: EventService,
@@ -122,22 +110,14 @@ export class TrpcService {
     private documentService: DocumentService,
     private documentVariantService: DocumentVariantService,
     private documentStructureService: DocumentStructureService,
-    private documentHtmlSyncService: DocumentHtmlSyncService,
-    private documentLiveUpdates: DocumentLiveUpdatesService,
-    private permissionRuleEngine: PermissionRuleEngine,
     @InjectConnection() private connection: Connection,
     private configService: ConfigService<AppConfig>,
     private cookieManager: CookieManager,
     private authenticationService: JwtVerificationService,
-    private seedCommunityWebDevUseCase: SeedCommunityWebDevUseCase,
   ) {}
 
   getRouter(): AppRouter {
     return appRouter;
-  }
-
-  getCommunityAppRouter(): CommunityAppRouter {
-    return communityAppRouter;
   }
 
   async createContext(req: any, res: any) {
@@ -174,7 +154,6 @@ export class TrpcService {
       investmentService: this.investmentService,
       postClosingService: this.postClosingService,
       meritResolverService: this.meritResolverService,
-      walletContextResolverService: this.walletContextResolverService,
       teamJoinRequestService: this.teamJoinRequestService,
       teamInvitationService: this.teamInvitationService,
       platformSettingsService: this.platformSettingsService,
@@ -187,8 +166,6 @@ export class TrpcService {
       platformWipeService: this.platformWipeService,
       platformDemoSeedService: this.platformDemoSeedService,
       platformDemoEventsSeedService: this.platformDemoEventsSeedService,
-      platformEntrepreneursDemoSeedService: this.platformEntrepreneursDemoSeedService,
-      platformDemoPackImportService: this.platformDemoPackImportService,
       platformDatabaseDumpService: this.platformDatabaseDumpService,
       meritTransferService: this.meritTransferService,
       eventService: this.eventService,
@@ -196,14 +173,10 @@ export class TrpcService {
       documentService: this.documentService,
       documentVariantService: this.documentVariantService,
       documentStructureService: this.documentStructureService,
-      documentHtmlSyncService: this.documentHtmlSyncService,
-      documentLiveUpdates: this.documentLiveUpdates,
-      permissionRuleEngine: this.permissionRuleEngine,
       connection: this.connection,
       configService: this.configService,
       cookieManager: this.cookieManager,
       authenticationService: this.authenticationService,
-      seedCommunityWebDevUseCase: this.seedCommunityWebDevUseCase,
     });
   }
 }

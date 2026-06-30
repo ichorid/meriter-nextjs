@@ -28,14 +28,14 @@ function numberFrom(metadata: Record<string, unknown>, key: string): number {
 }
 
 describe('NotificationService vote aggregation', () => {
-  jest.setTimeout(60000);
-
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let notificationService: NotificationService;
   let connection: Connection;
 
   beforeAll(async () => {
+    jest.setTimeout(30000);
+
     testDb = new TestDatabaseHelper();
     const mongoUri = await testDb.start();
     process.env.MONGO_URL = mongoUri;
@@ -51,7 +51,7 @@ describe('NotificationService vote aggregation', () => {
 
     notificationService = app.get(NotificationService);
     connection = app.get(getConnectionToken());
-  }, 60000);
+  }, 30000);
 
   afterAll(async () => {
     if (connection) await connection.close();

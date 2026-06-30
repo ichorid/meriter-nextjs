@@ -24,40 +24,28 @@ describe('Auth Magic Link (e2e)', () => {
   });
 
   describe('GET /api/v1/auth/link/:token', () => {
-    it('valid token (SMS, new user) redirects to welcome and sets JWT cookie', async () => {
+    it('valid token (SMS) redirects to profile and sets JWT cookie', async () => {
       const { token } = await authMagicLinkService.createToken('sms', '+79991234567');
       const response = await request(app.getHttpServer())
         .get(`/api/v1/auth/link/${token}`)
         .expect(302);
 
-      expect(response.headers.location).toContain('/meriter/welcome');
+      expect(response.headers.location).toContain('/meriter/profile');
       const setCookie = response.headers['set-cookie'];
       expect(setCookie).toBeDefined();
       expect(Array.isArray(setCookie) ? setCookie.join(' ') : setCookie).toMatch(/jwt=/);
     });
 
-    it('valid token (email, new user) redirects to welcome and sets JWT cookie', async () => {
+    it('valid token (email) redirects to profile and sets JWT cookie', async () => {
       const { token } = await authMagicLinkService.createToken('email', 'e2e@example.com');
       const response = await request(app.getHttpServer())
         .get(`/api/v1/auth/link/${token}`)
         .expect(302);
 
-      expect(response.headers.location).toContain('/meriter/welcome');
+      expect(response.headers.location).toContain('/meriter/profile');
       const setCookie = response.headers['set-cookie'];
       expect(setCookie).toBeDefined();
       expect(Array.isArray(setCookie) ? setCookie.join(' ') : setCookie).toMatch(/jwt=/);
-    });
-
-    it('valid token for existing user redirects to profile', async () => {
-      const first = await authMagicLinkService.createToken('email', 'returning@example.com');
-      await request(app.getHttpServer()).get(`/api/v1/auth/link/${first.token}`).expect(302);
-
-      const second = await authMagicLinkService.createToken('email', 'returning@example.com');
-      const response = await request(app.getHttpServer())
-        .get(`/api/v1/auth/link/${second.token}`)
-        .expect(302);
-
-      expect(response.headers.location).toContain('/meriter/profile');
     });
 
     it('invalid/unknown token redirects to login with error', async () => {
@@ -73,7 +61,7 @@ describe('Auth Magic Link (e2e)', () => {
       const { token } = await authMagicLinkService.createToken('sms', '+79995551111');
       const first = await request(app.getHttpServer()).get(`/api/v1/auth/link/${token}`);
       expect(first.status).toBe(302);
-      expect(first.headers.location).toContain('/meriter/welcome');
+      expect(first.headers.location).toContain('/meriter/profile');
 
       const second = await request(app.getHttpServer()).get(`/api/v1/auth/link/${token}`);
       expect(second.status).toBe(302);

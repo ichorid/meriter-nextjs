@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 
 /**
  * Same rules as bottom-nav FAB: CreateMenu only inside /meriter/communities/[id]/…
- * excluding members, settings, create, events, and document editor subtrees.
+ * excluding members, settings, create, and events subtrees.
  */
 export function useMeriterCommunityCreateContext(): {
   communityContextId: string | null;
@@ -32,14 +32,7 @@ export function useMeriterCommunityCreateContext(): {
     const isSettingsPage = pathname.includes('/settings');
     const isCreatePage = pathname.includes('/create');
     const isEventsPage = pathname.includes('/events');
-    const isDocumentsPage = pathname.includes('/documents');
-    return (
-      !isMembersPage &&
-      !isSettingsPage &&
-      !isCreatePage &&
-      !isEventsPage &&
-      !isDocumentsPage
-    );
+    return !isMembersPage && !isSettingsPage && !isCreatePage && !isEventsPage;
   }, [pathname, communityContextId]);
 
   const shouldShowFabCreateMenu = useMemo(

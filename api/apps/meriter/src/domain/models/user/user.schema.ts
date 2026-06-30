@@ -4,13 +4,13 @@ import { Document } from 'mongoose';
 /**
  * User Mongoose Schema
  *
- * SOURCE OF TRUTH: @meriter/shared-types/schemas - UserSchema (Zod)
+ * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - UserSchema (Zod)
  *
  * This Mongoose schema implements the User entity defined in shared-types.
  * Any changes to the User entity MUST be made in the Zod schema first,
  * then this Mongoose schema should be updated to match.
  *
- * Fields correspond to UserSchema in @meriter/shared-types/schemas:
+ * Fields correspond to UserSchema in libs/shared-types/src/schemas.ts:
  * - id, authProvider, authId, username, firstName, lastName, displayName, avatarUrl
  * - profile (bio, location, website, isVerified)
  * - communityTags, communityMemberships

@@ -5,49 +5,8 @@ import { CreateVoteDtoSchema, VoteWithCommentDtoSchema, WithdrawAmountDtoSchema,
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { NotFoundError } from '../../common/exceptions/api.exceptions';
 import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
-import { createWithdrawFromVoteUseCase } from '../../application/use-cases/voting/withdraw-from-vote.use-case';
-import {
-  createCreateVoteUseCaseFromContext,
-} from '../../application/use-cases/voting/create-vote.use-case';
-import { parseOfficialBlockVoteTargetId } from '../../domain/common/document-official-vote.util';
-import {
-  isDocumentVoteTargetType,
-  type DocumentVoteTargetType,
-} from '../../application/use-cases/voting/document-vote.helper';
-import type { Context } from '../context';
-
-function publishDocumentVoteLiveEvent(
-  ctx: Context,
-  targetType: DocumentVoteTargetType,
-  targetId: string,
-  actorUserId: string,
-): void {
-  if (targetType === 'document-variant') {
-    void ctx.documentService.getVariantById(targetId).then((variant) => {
-      if (!variant) {
-        return;
-      }
-      ctx.documentLiveUpdates.publish({
-        type: 'vote.cast',
-        documentId: variant.documentId,
-        blockId: variant.blockId,
-        variantId: variant.id,
-        actorUserId,
-      });
-    });
-    return;
-  }
-  const parsed = parseOfficialBlockVoteTargetId(targetId);
-  if (!parsed) {
-    return;
-  }
-  ctx.documentLiveUpdates.publish({
-    type: 'vote.cast',
-    documentId: parsed.documentId,
-    blockId: parsed.blockId,
-    actorUserId,
-  });
-}
+import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
+import { isPublicationEntitySourced } from '../../domain/common/helpers/publication-source.helper';
 
 /**
  * Helper function to process withdrawal and credit wallet.
@@ -75,22 +34,21 @@ async function processWithdrawal(
       plural: 'merits',
       genitive: 'merits',
     };
-    const targetCommunityId =
-      await ctx.walletContextResolverService.resolvePersonalWalletCommunityId(
-        publicationCommunity,
-        'withdrawal',
-      );
+    const targetCommunityId = ctx.meritResolverService.getWalletCommunityId(
+      publicationCommunity,
+      'withdrawal',
+    );
     return {
       targetCommunityId,
       currency,
     };
   }
 
-  const targetCommunityId =
-    await ctx.walletContextResolverService.resolvePersonalWalletCommunityId(
-      publicationCommunity,
-      'withdrawal',
-    );
+  // Credit to wallet: global for priority communities, community for local
+  const targetCommunityId = ctx.meritResolverService.getWalletCommunityId(
+    publicationCommunity,
+    'withdrawal',
+  );
 
   const targetCommunity =
     targetCommunityId === GLOBAL_COMMUNITY_ID
@@ -122,6 +80,767 @@ async function processWithdrawal(
   };
 }
 
+/**
+ * Helper to calculate remaining quota for a user in a community.
+ * Priority communities: quota disabled in MVP, return 0.
+ */
+async function getRemainingQuota(
+  userId: string,
+  communityId: string,
+  community: any,
+  communityService: any,
+  connection: any,
+): Promise<number> {
+  // Priority communities use global merit, quota disabled in MVP
+  if (isPriorityCommunity(community)) {
+    return 0;
+  }
+
+  // Check if quota is enabled in community settings
+  if (community?.meritSettings?.quotaEnabled === false) {
+    return 0;
+  }
+
+  const effectiveMeritSettings = communityService.getEffectiveMeritSettings(community);
+  const dailyQuota =
+    typeof effectiveMeritSettings?.dailyQuota === 'number'
+      ? effectiveMeritSettings.dailyQuota
+      : 0;
+
+  if (dailyQuota <= 0) {
+    return 0;
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const quotaStartTime = community.lastQuotaResetAt
+    ? new Date(community.lastQuotaResetAt)
+    : today;
+
+  if (!connection.db) {
+    throw new Error('Database connection not available');
+  }
+
+  const [votesUsed, quotaUsageUsed] = await Promise.all([
+    connection.db
+      .collection('votes')
+      .aggregate([
+        {
+          $match: {
+            userId,
+            communityId,
+            createdAt: { $gte: quotaStartTime },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$amountQuota' },
+          },
+        },
+      ])
+      .toArray(),
+    connection.db
+      .collection('quota_usage')
+      .aggregate([
+        {
+          $match: {
+            userId,
+            communityId,
+            createdAt: { $gte: quotaStartTime },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$amountQuota' },
+          },
+        },
+      ])
+      .toArray(),
+  ]);
+
+  const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
+  const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
+  const used = votesTotal + quotaUsageTotal;
+  return Math.max(0, dailyQuota - used);
+}
+
+/**
+ * Helper to get wallet balance
+ */
+async function getWalletBalance(
+  userId: string,
+  communityId: string,
+  walletService: any,
+): Promise<number> {
+  const wallet = await walletService.getWallet(userId, communityId);
+  return wallet ? wallet.getBalance() : 0;
+}
+
+function ticketHasWorkAccepted(
+  doc: { ticketActivityLog?: Array<{ action?: string }> } | null | undefined,
+): boolean {
+  return (doc?.ticketActivityLog ?? []).some((e) => e.action === 'work_accepted');
+}
+
+function shouldUseProjectInstantAppreciation(
+  community: { isProject?: boolean } | null | undefined,
+  publicationDoc: {
+    postType?: string;
+    ticketStatus?: string;
+    status?: string;
+    beneficiaryId?: string | null;
+    authorId?: string;
+    ticketActivityLog?: Array<{ action?: string }>;
+  } | null | undefined,
+  direction: 'up' | 'down',
+  totalAmount: number,
+): boolean {
+  if (!community?.isProject || direction !== 'up' || totalAmount <= 0 || !publicationDoc) {
+    return false;
+  }
+  const pt = publicationDoc.postType;
+  if (pt === 'discussion') {
+    return (publicationDoc.status ?? 'active') !== 'closed';
+  }
+  if (pt === 'ticket') {
+    return (
+      publicationDoc.ticketStatus === 'closed' && ticketHasWorkAccepted(publicationDoc)
+    );
+  }
+  return false;
+}
+
+/**
+ * Helper to get communityId from target
+ */
+async function getCommunityIdFromTarget(
+  targetType: 'publication' | 'vote' | 'document-variant',
+  targetId: string,
+  publicationService: any,
+  voteService: any,
+  documentService: any,
+): Promise<string> {
+  if (targetType === 'document-variant') {
+    const variant = await documentService.getVariantById(targetId);
+    if (!variant) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Document variant not found',
+      });
+    }
+    const doc = await documentService.getById(variant.documentId);
+    if (!doc) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Document not found',
+      });
+    }
+    return doc.communityId;
+  }
+  if (targetType === 'publication') {
+    const publication = await publicationService.getPublication(targetId);
+    if (!publication) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Publication not found',
+      });
+    }
+    return publication.getCommunityId.getValue();
+  }
+  const vote = await voteService.getVoteById(targetId);
+  if (!vote) {
+    throw new TRPCError({
+      code: 'NOT_FOUND',
+      message: 'Vote not found',
+    });
+  }
+  return vote.communityId;
+}
+
+/**
+ * Shared vote creation logic (exported for publications.topUpRating personal funding path).
+ */
+export async function createVoteLogic(
+  ctx: any,
+  input: {
+    targetType: 'publication' | 'vote' | 'document-variant';
+    targetId: string;
+    quotaAmount?: number;
+    walletAmount?: number;
+    direction?: 'up' | 'down';
+    comment?: string;
+    images?: string[];
+  },
+) {
+  let publicationDoc: Awaited<
+    ReturnType<typeof ctx.publicationService.getPublicationDocument>
+  > | null = null;
+
+  let documentVoteCtx:
+    | {
+        variant: NonNullable<Awaited<ReturnType<typeof ctx.documentService.getVariantById>>>;
+        doc: NonNullable<Awaited<ReturnType<typeof ctx.documentService.getById>>>;
+      }
+    | undefined;
+
+  if (input.targetType === 'document-variant') {
+    const variant = await ctx.documentService.getVariantById(input.targetId);
+    if (!variant || variant.deleted || variant.status !== 'open') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This document variant is not open for voting',
+      });
+    }
+    const doc = await ctx.documentService.getById(variant.documentId);
+    if (!doc || doc.deleted) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Document not found',
+      });
+    }
+    documentVoteCtx = { variant, doc };
+  } else if (input.targetType === 'publication') {
+    publicationDoc = await ctx.publicationService.getPublicationDocument(
+      input.targetId,
+    );
+  }
+
+  if (publicationDoc?.postType === 'event') {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Event publications cannot be voted on',
+    });
+  }
+
+  const requestedQuotaEarly = input.quotaAmount ?? 0;
+  const requestedWalletEarly = input.walletAmount ?? 0;
+  const requestedTotalEarly = requestedQuotaEarly + requestedWalletEarly;
+
+  // Personal author / Birzha source-manager top-up: not a normal vote; allow without canVote.
+  if (input.targetType === 'publication') {
+    const isPersonalAuthorTopUp =
+      !!publicationDoc &&
+      publicationDoc.authorId === ctx.user.id &&
+      !isPublicationEntitySourced(publicationDoc);
+    const bypassCanVoteForTopUp =
+      requestedTotalEarly > 0 &&
+      !!publicationDoc &&
+      (isPersonalAuthorTopUp ||
+        (await ctx.permissionService.isUserManagingBirzhaSourcePost(
+          ctx.user.id,
+          input.targetId,
+        )));
+    if (!bypassCanVoteForTopUp) {
+      const canVote = await ctx.permissionService.canVote(ctx.user.id, input.targetId);
+      if (!canVote) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You do not have permission to vote on this publication',
+        });
+      }
+    }
+  } else if (input.targetType === 'vote') {
+    const canVote = await ctx.permissionService.canVoteOnVote(ctx.user.id, input.targetId);
+    if (!canVote) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to vote on this comment',
+      });
+    }
+  } else if (input.targetType === 'document-variant') {
+    const canVote = await ctx.permissionService.canVoteOnDocumentVariant(
+      ctx.user.id,
+      input.targetId,
+    );
+    if (!canVote) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'You do not have permission to vote on this document variant',
+      });
+    }
+  }
+
+  // Get communityId from target
+  const communityId = await getCommunityIdFromTarget(
+    input.targetType,
+    input.targetId,
+    ctx.publicationService,
+    ctx.voteService,
+    ctx.documentService,
+  );
+
+  // Get community
+  const community = await ctx.communityService.getCommunity(communityId);
+  if (!community) {
+    throw new TRPCError({
+      code: 'NOT_FOUND',
+      message: 'Community not found',
+    });
+  }
+
+  if (input.targetType === 'document-variant' && documentVoteCtx) {
+    const documentsMode =
+      community.settings?.documentsMode ?? 'visionOrDescriptionOnly';
+    if (documentsMode === 'off') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Collaborative documents are disabled in this community',
+      });
+    }
+    if (
+      !ctx.documentService.isDocumentBlockVotingOpen(
+        documentVoteCtx.doc,
+        documentVoteCtx.variant.blockId,
+      )
+    ) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Voting for this document block wave has ended',
+      });
+    }
+  }
+
+  const isTicketPublication = publicationDoc?.postType === 'ticket';
+
+  // Validate amounts
+  const requestedQuotaAmount = input.quotaAmount ?? 0;
+  const requestedWalletAmount = input.walletAmount ?? 0;
+  const requestedTotalAmount = requestedQuotaAmount + requestedWalletAmount;
+
+  // Author top-up: when post author adds merits to their own post (direct top-up to rating),
+  // this bypasses commentMode — it is not a vote/comment, just a transfer.
+  let isAuthorTopup = false;
+  if (input.targetType === 'publication' && requestedTotalAmount > 0) {
+    if (
+      publicationDoc &&
+      publicationDoc.authorId === ctx.user.id &&
+      !isPublicationEntitySourced(publicationDoc)
+    ) {
+      isAuthorTopup = true;
+    }
+    if (
+      !isAuthorTopup &&
+      publicationDoc &&
+      (await ctx.permissionService.isUserManagingBirzhaSourcePost(
+        ctx.user.id,
+        input.targetId,
+      ))
+    ) {
+      isAuthorTopup = true;
+    }
+    if ((publicationDoc?.status ?? 'active') === 'closed') {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This post is closed and cannot be modified',
+      });
+    }
+  }
+
+  if (requestedTotalAmount < 0) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Vote amount cannot be negative',
+    });
+  }
+
+  if (isTicketPublication && requestedTotalAmount > 0) {
+    const allowTicketMerits =
+      community.isProject === true &&
+      publicationDoc?.ticketStatus === 'closed' &&
+      ticketHasWorkAccepted(publicationDoc);
+    if (!allowTicketMerits) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Task posts only accept free text comments (no merits)',
+      });
+    }
+  }
+
+  // commentMode validation: which comment/vote types are allowed in this community
+  // Skip for author top-up — author adding merits to own post is direct transfer, not a vote
+  if (!isAuthorTopup) {
+    const commentMode =
+      community.settings?.commentMode ??
+      (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all');
+    if (commentMode === 'neutralOnly' && requestedTotalAmount !== 0) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This community only allows neutral comments',
+      });
+    }
+    if (
+      commentMode === 'weightedOnly' &&
+      requestedTotalAmount === 0 &&
+      !isTicketPublication
+    ) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'This community requires comments to have merit weight',
+      });
+    }
+    // commentMode "all": allow text-only neutral comments (zero quota + zero wallet).
+    if (
+      requestedTotalAmount === 0 &&
+      commentMode === 'all' &&
+      !isTicketPublication &&
+      !input.comment?.trim()
+    ) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Comment text is required for neutral comments',
+      });
+    }
+    if (
+      requestedTotalAmount === 0 &&
+      commentMode !== 'neutralOnly' &&
+      commentMode !== 'all' &&
+      !isTicketPublication
+    ) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'At least one of quotaAmount or walletAmount must be greater than zero',
+      });
+    }
+    if (isTicketPublication && requestedTotalAmount === 0 && !input.comment?.trim()) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Comment text is required for task comments',
+      });
+    }
+  }
+
+  // Determine direction
+  // Default to "up" when not specified. Downvotes must be explicit.
+  const direction: 'up' | 'down' = input.direction ?? 'up';
+
+  if (input.targetType === 'document-variant' && !input.comment?.trim()) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Comment is required when voting on document variants',
+    });
+  }
+
+  // Future Vision (OB): wallet-only on posts/comments; comment required for weighted votes
+  if (
+    community?.typeTag === 'future-vision' &&
+    (input.targetType === 'publication' || input.targetType === 'vote')
+  ) {
+    if (!input.comment?.trim()) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Comment is required in Future Vision',
+      });
+    }
+  }
+
+  // Community-level setting: allow/disallow negative (down) votes.
+  if (direction === 'down' && community?.votingSettings?.allowNegativeVoting === false) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Downvotes are disabled in this community',
+    });
+  }
+
+  if (
+    input.targetType === 'document-variant' &&
+    direction === 'down' &&
+    documentVoteCtx &&
+    documentVoteCtx.doc.allowDownvotes === false
+  ) {
+    throw new TRPCError({
+      code: 'FORBIDDEN',
+      message: 'Downvotes are disabled for this document',
+    });
+  }
+
+  // Role-specific and community-specific voting rules should be enforced BEFORE balance/quota checks
+  // so we don't mask the real reason with "Insufficient quota/balance" errors.
+  const _userRole = await ctx.permissionService.getUserRoleInCommunity(
+    ctx.user.id,
+    communityId,
+  );
+
+  // Effective currencySource (DB + typeTag defaults, e.g. project quota-and-wallet)
+  const currencySource = ctx.communityService.getEffectiveVotingSettings(community)
+    .currencySource;
+
+  // Note: viewer role removed - all users are now participants
+  // With global merit, Marathon uses global wallet (quota disabled in MVP). No quota-only restriction.
+
+  // Backward compatibility: Special case: Future Vision blocks quota voting (wallet only) for posts/comments (if currencySource not set).
+  if (
+    (input.targetType === 'publication' ||
+      input.targetType === 'vote' ||
+      input.targetType === 'document-variant') &&
+    community?.typeTag === 'future-vision' &&
+    !currencySource &&
+    requestedQuotaAmount > 0
+  ) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message:
+        'Future Vision only allows wallet voting on posts and comments. Please use wallet merits to vote.',
+    });
+  }
+
+  // Default rule: both quota and wallet voting are allowed in all other communities.
+
+  // Validate quota cannot be used for downvotes
+  if (direction === 'down' && requestedQuotaAmount > 0) {
+    throw new TRPCError({
+      code: 'BAD_REQUEST',
+      message: 'Quota cannot be used for downvotes',
+    });
+  }
+
+  // Auto-split for upvotes: quota first, then wallet.
+  // Keeps runtime behavior consistent regardless of client-provided split.
+  let quotaAmount = requestedQuotaAmount;
+  let walletAmount = requestedWalletAmount;
+  if (
+    direction === 'up' &&
+    !isAuthorTopup &&
+    requestedTotalAmount > 0
+  ) {
+    const effectiveMeritSettings = ctx.communityService.getEffectiveMeritSettings(
+      community,
+    );
+    const quotaRecipients = effectiveMeritSettings?.quotaRecipients ?? [];
+    const canUseQuotaByRole = _userRole ? quotaRecipients.includes(_userRole) : true;
+    const quotaEnabled = effectiveMeritSettings?.quotaEnabled !== false;
+    const quotaAllowedByCurrency = currencySource !== 'wallet-only';
+    const canUseQuota = quotaEnabled && canUseQuotaByRole && quotaAllowedByCurrency;
+
+    let remainingQuota = 0;
+    if (canUseQuota) {
+      remainingQuota = await getRemainingQuota(
+        ctx.user.id,
+        communityId,
+        community,
+        ctx.communityService,
+        ctx.connection,
+      );
+    }
+
+    quotaAmount = Math.min(requestedTotalAmount, remainingQuota);
+    walletAmount = requestedTotalAmount - quotaAmount;
+
+    if (currencySource === 'quota-only' && walletAmount > 0) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Insufficient quota. Available: ${remainingQuota}, Requested: ${requestedTotalAmount}`,
+      });
+    }
+  }
+
+  // Check quota availability
+  if (quotaAmount > 0) {
+    const remainingQuota = await getRemainingQuota(
+      ctx.user.id,
+      communityId,
+      community,
+      ctx.communityService,
+      ctx.connection,
+    );
+
+    if (quotaAmount > remainingQuota) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Insufficient quota. Available: ${remainingQuota}, Requested: ${quotaAmount}`,
+      });
+    }
+  }
+
+  // Check wallet balance (global for priority communities, community for local)
+  const walletCommunityId = ctx.meritResolverService.getWalletCommunityId(
+    community,
+    'voting',
+  );
+  if (walletAmount > 0) {
+    const walletBalance = await getWalletBalance(
+      ctx.user.id,
+      walletCommunityId,
+      ctx.walletService,
+    );
+
+    if (walletAmount > walletBalance) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: `Insufficient wallet balance. Available: ${walletBalance}, Requested: ${walletAmount}`,
+      });
+    }
+  }
+
+  const totalMeritVoteAmount = quotaAmount + walletAmount;
+  const useProjectInstantAppreciation =
+    input.targetType === 'publication' &&
+    shouldUseProjectInstantAppreciation(
+      community,
+      publicationDoc,
+      direction,
+      totalMeritVoteAmount,
+    );
+
+  if (community.isProject === true && totalMeritVoteAmount > 0) {
+    const actor = await ctx.userService.getUserById(ctx.user.id);
+    const isSuperadmin = actor?.globalRole === 'superadmin';
+    if (!isSuperadmin) {
+      const memberRole = await ctx.userCommunityRoleService.getRole(
+        ctx.user.id,
+        communityId,
+      );
+      if (input.targetType === 'document-variant') {
+        if (!memberRole) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only project members can vote with merits in this project',
+          });
+        }
+      } else {
+        const allowNonMemberMerit =
+          publicationDoc &&
+          (publicationDoc.postType === 'discussion' ||
+            (publicationDoc.postType === 'ticket' &&
+              publicationDoc.ticketStatus === 'closed' &&
+              ticketHasWorkAccepted(publicationDoc)));
+        if (!memberRole && !allowNonMemberMerit) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Only project members can vote with merits in this project',
+          });
+        }
+      }
+    }
+  }
+
+  // Create vote (document-variant rating is updated in the same transaction)
+  let vote: Awaited<ReturnType<typeof ctx.voteService.createVote>>;
+  if (input.targetType === 'document-variant') {
+    const totalAmount = quotaAmount + walletAmount;
+    const delta = direction === 'up' ? totalAmount : -totalAmount;
+    const session = await ctx.connection.startSession();
+    try {
+      await session.withTransaction(async () => {
+        vote = await ctx.voteService.createVote(
+          ctx.user.id,
+          input.targetType,
+          input.targetId,
+          quotaAmount,
+          walletAmount,
+          direction,
+          input.comment || '',
+          communityId,
+          input.images,
+          session,
+        );
+        await ctx.documentService.applyRatingDelta(input.targetId, delta, session);
+      });
+    } finally {
+      await session.endSession();
+    }
+  } else {
+    vote = await ctx.voteService.createVote(
+      ctx.user.id,
+      input.targetType,
+      input.targetId,
+      quotaAmount,
+      walletAmount,
+      direction,
+      input.comment || '',
+      communityId,
+      input.images,
+    );
+  }
+
+  // Update publication metrics if voting on a publication.
+  // Project instant appreciation: credit beneficiary wallet AND update publication metrics (rating UI / lists).
+  if (input.targetType === 'publication') {
+    const totalAmount = quotaAmount + walletAmount;
+    if (useProjectInstantAppreciation && publicationDoc) {
+      const beneficiaryId =
+        publicationDoc.postType === 'ticket'
+          ? (publicationDoc.beneficiaryId ?? publicationDoc.authorId)
+          : publicationDoc.authorId;
+      const currency = community.settings?.currencyNames || {
+        singular: 'merit',
+        plural: 'merits',
+        genitive: 'merits',
+      };
+      await ctx.walletService.addTransaction(
+        beneficiaryId,
+        communityId,
+        'credit',
+        totalAmount,
+        'personal',
+        'project_appreciation',
+        input.targetId,
+        currency,
+        `Project appreciation for publication ${input.targetId}`,
+      );
+      await ctx.publicationService.voteOnPublication(
+        input.targetId,
+        ctx.user.id,
+        totalAmount,
+        direction,
+      );
+    } else {
+      await ctx.publicationService.voteOnPublication(
+        input.targetId,
+        ctx.user.id,
+        totalAmount,
+        direction,
+      );
+    }
+  }
+
+  // Deduct from wallet if wallet amount was used (global for priority, community for local)
+  if (walletAmount > 0) {
+    const transactionType =
+      input.targetType === 'publication'
+        ? 'publication_vote'
+        : input.targetType === 'vote'
+          ? 'vote_vote'
+          : 'document_variant_vote';
+    const targetCommunity =
+      walletCommunityId === GLOBAL_COMMUNITY_ID
+        ? await ctx.communityService.getCommunity(GLOBAL_COMMUNITY_ID)
+        : community;
+    const currency = targetCommunity?.settings?.currencyNames || {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    await ctx.walletService.addTransaction(
+      ctx.user.id,
+      walletCommunityId,
+      'debit',
+      walletAmount,
+      'personal',
+      transactionType,
+      input.targetId,
+      currency,
+      `Vote on ${input.targetType} ${input.targetId}`,
+    );
+  }
+
+  // Return vote as plain object (Vote is a Mongoose document, not an entity)
+  return {
+    id: vote.id,
+    targetType: vote.targetType,
+    targetId: vote.targetId,
+    userId: vote.userId,
+    direction: vote.direction,
+    amountQuota: vote.amountQuota,
+    amountWallet: vote.amountWallet,
+    communityId: vote.communityId,
+    comment: vote.comment,
+    images: vote.images || [],
+    createdAt: vote.createdAt.toISOString(),
+    updatedAt: vote.updatedAt?.toISOString() || vote.createdAt.toISOString(),
+  };
+}
+
 export const votesRouter = router({
   /**
    * Create vote
@@ -129,13 +848,12 @@ export const votesRouter = router({
   create: protectedProcedure
     .input(CreateVoteDtoSchema)
     .mutation(async ({ ctx, input }) => {
-      return createCreateVoteUseCaseFromContext(ctx).execute({
-        userId: ctx.user.id,
+      return createVoteLogic(ctx, {
         targetType: input.targetType,
         targetId: input.targetId,
         quotaAmount: input.quotaAmount,
         walletAmount: input.walletAmount,
-        comment: '',
+        comment: '', // votes.create doesn't require a comment
       });
     }),
 
@@ -155,20 +873,16 @@ export const votesRouter = router({
         !input.targetType ||
         (input.targetType !== 'publication' &&
           input.targetType !== 'vote' &&
-          !isDocumentVoteTargetType(input.targetType))
+          input.targetType !== 'document-variant')
       ) {
         throw new TRPCError({
           code: 'BAD_REQUEST',
           message:
-            'targetType must be "publication", "vote", "document-variant", or "document-block-official"',
+            'targetType must be "publication", "vote", or "document-variant"',
         });
       }
-      const vote = await createCreateVoteUseCaseFromContext(ctx).execute({
-        userId: ctx.user.id,
-        targetType: input.targetType as
-          | 'publication'
-          | 'vote'
-          | DocumentVoteTargetType,
+      return createVoteLogic(ctx, {
+        targetType: input.targetType,
         targetId: input.targetId!,
         quotaAmount: input.quotaAmount,
         walletAmount: input.walletAmount,
@@ -176,10 +890,6 @@ export const votesRouter = router({
         comment: input.comment,
         images: input.images,
       });
-      if (isDocumentVoteTargetType(input.targetType)) {
-        publishDocumentVoteLiveEvent(ctx, input.targetType, input.targetId!, ctx.user.id);
-      }
-      return vote;
     }),
 
   /**
@@ -445,10 +1155,121 @@ export const votesRouter = router({
   withdrawFromVote: protectedProcedure
     .input(WithdrawAmountDtoSchema.extend({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      return createWithdrawFromVoteUseCase(ctx).execute({
-        userId: ctx.user.id,
-        voteId: input.id,
-        amount: input.amount,
-      });
+      const userId = ctx.user.id;
+      const amount = input.amount;
+      if (!amount || amount <= 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Withdrawal amount must be greater than 0',
+        });
+      }
+
+      // Get vote (which represents a comment)
+      const vote = await ctx.voteService.getVoteById(input.id);
+      if (!vote) {
+        throw new NotFoundError('Vote', input.id);
+      }
+
+      // Validate user can withdraw
+      const canWithdraw = await ctx.voteService.canUserWithdraw(
+        userId,
+        'vote',
+        input.id,
+      );
+      if (!canWithdraw) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You are not authorized to withdraw from this comment',
+        });
+      }
+
+      // Get comment to get its score and find the publication
+      const comment = await ctx.commentService.getComment(input.id);
+      if (!comment) {
+        throw new NotFoundError('Comment', input.id);
+      }
+
+      // Get current score
+      const currentScore = comment.getScore;
+      if (currentScore <= 0) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'No votes available to withdraw',
+        });
+      }
+
+      // Comment score represents the remaining withdrawable balance.
+      if (amount > currentScore) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: `Insufficient votes to withdraw. Available: ${currentScore}, Requested: ${amount}`,
+        });
+      }
+
+      // Find the root publication to get the community
+      let publicationId: string | null = null;
+      let currentComment = comment;
+      let depth = 0;
+      while (currentComment.getTargetType === 'comment' && depth < 20) {
+        const parentComment = await ctx.commentService.getComment(currentComment.getTargetId);
+        if (!parentComment) break;
+        currentComment = parentComment;
+        depth++;
+      }
+      if (currentComment.getTargetType === 'publication') {
+        publicationId = currentComment.getTargetId;
+      }
+
+      if (!publicationId) {
+        throw new TRPCError({
+          code: 'BAD_REQUEST',
+          message: 'Could not find publication for this comment',
+        });
+      }
+
+      // Get publication to determine community
+      const publication = await ctx.publicationService.getPublication(publicationId);
+      if (!publication) {
+        throw new NotFoundError('Publication', publicationId);
+      }
+
+      const communityId = publication.getCommunityId.getValue();
+
+      // Future Vision: users can't withdraw merits from posts/comments.
+      {
+        const community = await ctx.communityService.getCommunity(communityId);
+        if (community?.typeTag === 'future-vision') {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: 'Withdrawals are not allowed in Future Vision',
+          });
+        }
+      }
+
+      // Get effective beneficiary (comment author)
+      const beneficiaryId = comment.getAuthorId.getValue();
+
+      // Process withdrawal (handles marathon bridge)
+      const { targetCommunityId } = await processWithdrawal(
+        beneficiaryId,
+        communityId,
+        input.id,
+        amount,
+        'vote_withdrawal',
+        ctx,
+      );
+
+      // Reduce comment score
+      await ctx.commentService.reduceScore(input.id, amount);
+
+      // Get updated wallet balance
+      const wallet = await ctx.walletService.getWallet(beneficiaryId, targetCommunityId);
+      const balance = wallet ? wallet.getBalance() : 0;
+
+      return {
+        amount,
+        balance,
+        message: 'Withdrawal successful',
+      };
     }),
 });

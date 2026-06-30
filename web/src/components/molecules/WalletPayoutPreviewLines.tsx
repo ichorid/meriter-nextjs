@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { routes } from '@/lib/constants/routes';
-import { formatMerits } from '@/lib/utils/currency';
 
 export type WalletPayoutPreviewLine = {
   userId: string;
@@ -16,6 +15,13 @@ export type WalletPayoutPreviewLine = {
 
 function floor2(n: number): number {
   return Math.floor(n * 100) / 100;
+}
+
+function formatMeritAmount(n: number): string {
+  return new Intl.NumberFormat(undefined, {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  }).format(n);
 }
 
 function formatPercent(n: number): string {
@@ -97,7 +103,7 @@ export function WalletPayoutPreviewLines({
                     </span>
                   </div>
                   <div className="shrink-0 text-right tabular-nums">
-                    <span className="font-medium text-base-content">+{formatMerits(line.amount)}</span>
+                    <span className="font-medium text-base-content">+{formatMeritAmount(line.amount)}</span>
                     <span className="text-base-content/80"> · {formatPercent(line.percentOfPayout)}%</span>
                   </div>
                 </div>
@@ -116,7 +122,7 @@ export function WalletPayoutPreviewLines({
                 </Link>
                 <div className="shrink-0 text-right tabular-nums">
                   <span className="font-medium text-base-content">
-                    +{formatMerits(totalAmt)}
+                    +{formatMeritAmount(totalAmt)}
                   </span>
                   <span className="text-base-content/80"> · {formatPercent(totalPct)}%</span>
                 </div>
@@ -129,7 +135,7 @@ export function WalletPayoutPreviewLines({
                   >
                     <span className="min-w-0">{bucketLabel(line)}</span>
                     <span className="shrink-0 text-right">
-                      +{formatMerits(line.amount)} · {formatPercent(line.percentOfPayout)}%
+                      +{formatMeritAmount(line.amount)} · {formatPercent(line.percentOfPayout)}%
                     </span>
                   </li>
                 ))}

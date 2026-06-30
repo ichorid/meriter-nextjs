@@ -28,7 +28,6 @@ const REFERENCE_TYPES = {
     'comment_vote',
     'document_variant_vote',
     'project_appreciation',
-    'telegram_vote_mirror',
   ] as const,
 
   investment: ['investment', 'investment_distribution', 'investment_pool_return'] as const,

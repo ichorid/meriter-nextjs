@@ -1,23 +1,25 @@
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { z } from 'zod';
-import { GLOBAL_ROLE_SUPERADMIN } from '../../domain/common/constants/roles.constants';
-import {
-  createEstablishSessionUseCase,
-  FakeAuthDisabledError,
-} from '../../application/use-cases/auth/establish-session.use-case';
-import {
-  AuthenticateDemoPersonaUseCase,
-  DemoPersonaAuthDisabledError,
-  DemoPersonaNotAllowedError,
-} from '../../application/use-cases/auth/authenticate-demo-persona.use-case';
+
+function isHttpsRequest(req: any): boolean {
+  if (req?.secure === true) return true;
+  const forwardedProto = req?.headers?.['x-forwarded-proto'];
+  if (!forwardedProto) return false;
+  const raw = Array.isArray(forwardedProto) ? forwardedProto[0] : String(forwardedProto);
+  const first = raw.split(',')[0]?.trim().toLowerCase();
+  return first === 'https';
+}
 
 export const authRouter = router({
   /**
    * Logout - clear JWT cookie
    */
   logout: protectedProcedure.mutation(async ({ ctx }) => {
-    ctx.cookieManager.logoutJwt(ctx.res, ctx.req);
+    const cookieDomain = ctx.cookieManager.getCookieDomain();
+    const isSecure = isHttpsRequest(ctx.req);
+    const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
+    const isProduction = nodeEnv === 'production' || isSecure;
+    ctx.cookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
 
     return { message: 'Logged out successfully' };
   }),
@@ -25,95 +27,155 @@ export const authRouter = router({
   /**
    * Clear all cookies
    * Must be public - used to clear cookies when authentication fails
-   *
+   * 
    * @deprecated Use REST endpoint POST /api/v1/auth/clear-cookies instead.
    * Public/unauthenticated endpoints should use REST for simplicity.
    */
   clearCookies: publicProcedure.mutation(async ({ ctx }) => {
-    ctx.cookieManager.clearAllRequestCookies(ctx.res, ctx.req);
+    const cookieDomain = ctx.cookieManager.getCookieDomain();
+    const isSecure = isHttpsRequest(ctx.req);
+    const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
+    const isProduction = nodeEnv === 'production' || isSecure;
+
+    // Get all cookie names from the request
+    const cookieNames = new Set<string>();
+    if (ctx.req.cookies) {
+      Object.keys(ctx.req.cookies).forEach(name => cookieNames.add(name));
+    }
+
+    // Always ensure JWT cookie is cleared
+    cookieNames.add('jwt');
+
+    // Also clear known cookies that might exist
+    const knownCookies = ['fake_user_id', 'fake_superadmin_id', 'NEXT_LOCALE'];
+    knownCookies.forEach(name => cookieNames.add(name));
+
+    // Clear each cookie with all possible attribute combinations
+    for (const cookieName of cookieNames) {
+      ctx.cookieManager.clearCookieVariants(ctx.res, cookieName, cookieDomain, isProduction);
+    }
 
     return { message: 'Cookies cleared successfully' };
   }),
 
   /**
    * Fake user authentication (development only)
-   *
+   * 
    * @deprecated Use REST endpoint POST /api/v1/auth/fake instead.
    * Public/unauthenticated endpoints should use REST for simplicity.
    */
   authenticateFake: publicProcedure.mutation(async ({ ctx }) => {
-    const establishSession = createEstablishSessionUseCase({
-      cookieManager: ctx.cookieManager,
-      configService: ctx.configService,
-      authService: ctx.authService,
+    // Check if fake data mode is enabled
+    const fakeDataMode = ctx.configService.get('dev')?.fakeDataMode ?? false;
+    if (!fakeDataMode) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Fake data mode is not enabled',
+      });
+    }
+
+    // Get or generate a session-specific fake user ID
+    let fakeUserId = ctx.req.cookies?.fake_user_id;
+
+    // If no cookie exists, generate a new unique fake user ID
+    if (!fakeUserId) {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 9);
+      fakeUserId = `fake_user_${timestamp}_${random}`;
+    }
+
+    const result = await ctx.authService.authenticateFakeUser(fakeUserId);
+
+    // Set JWT cookie with proper domain for Caddy reverse proxy
+    const cookieDomain = ctx.cookieManager.getCookieDomain();
+    const isSecure = isHttpsRequest(ctx.req);
+    const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
+    const isProduction = nodeEnv === 'production' || isSecure;
+
+    // Clear any existing JWT cookie first to ensure clean state
+    ctx.cookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
+
+    // Set new JWT cookie (pass req to detect HTTPS reliably)
+    ctx.cookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction, ctx.req);
+
+    // Set fake_user_id cookie (session cookie - expires when browser closes)
+    // Use same robust HTTPS detection as JWT cookie
+    const actualIsSecure = isHttpsRequest(ctx.req);
+    const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
+    const sameSite = 'lax' as const;
+    const secure = actualIsSecure || actualIsProduction;
+    ctx.res.cookie('fake_user_id', fakeUserId, {
+      httpOnly: true,
+      secure,
+      sameSite,
+      path: '/',
+      domain: cookieDomain,
     });
 
-    try {
-      return await establishSession.authenticateFakeUser(ctx.req, ctx.res);
-    } catch (error) {
-      if (error instanceof FakeAuthDisabledError) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: error.message,
-        });
-      }
-      throw error;
-    }
+    return {
+      user: result.user,
+      hasPendingCommunities: result.hasPendingCommunities,
+    };
   }),
 
   /**
    * Fake superadmin authentication (development only)
-   *
+   * 
    * @deprecated Use REST endpoint POST /api/v1/auth/fake/superadmin instead.
    * Public/unauthenticated endpoints should use REST for simplicity.
    */
   authenticateFakeSuperadmin: publicProcedure.mutation(async ({ ctx }) => {
-    const establishSession = createEstablishSessionUseCase({
-      cookieManager: ctx.cookieManager,
-      configService: ctx.configService,
-      authService: ctx.authService,
+    // Check if fake data mode is enabled
+    const fakeDataMode = ctx.configService.get('dev')?.fakeDataMode ?? false;
+    if (!fakeDataMode) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Fake data mode is not enabled',
+      });
+    }
+
+    // Get or generate a session-specific fake superadmin user ID
+    let fakeUserId = ctx.req.cookies?.fake_superadmin_id;
+
+    // If no cookie exists, generate a new unique fake superadmin user ID
+    if (!fakeUserId) {
+      const timestamp = Date.now();
+      const random = Math.random().toString(36).substring(2, 9);
+      fakeUserId = `fake_superadmin_${timestamp}_${random}`;
+    }
+
+    const result = await ctx.authService.authenticateFakeSuperadmin(fakeUserId);
+
+    // Set JWT cookie with proper domain for Caddy reverse proxy
+    const cookieDomain = ctx.cookieManager.getCookieDomain();
+    const isSecure = isHttpsRequest(ctx.req);
+    const nodeEnv = ctx.configService.get('NODE_ENV', 'development');
+    const isProduction = nodeEnv === 'production' || isSecure;
+
+    // Clear any existing JWT cookie first to ensure clean state
+    ctx.cookieManager.clearAllJwtCookieVariants(ctx.res, cookieDomain, isProduction);
+
+    // Set new JWT cookie (pass req to detect HTTPS reliably)
+    ctx.cookieManager.setJwtCookie(ctx.res, result.jwt, cookieDomain, isProduction, ctx.req);
+
+    // Set fake_superadmin_id cookie (session cookie - expires when browser closes)
+    // Use same robust HTTPS detection as JWT cookie
+    const actualIsSecure = isHttpsRequest(ctx.req);
+    const actualIsProduction = nodeEnv === 'production' || actualIsSecure;
+    const sameSite = 'lax' as const;
+    const secure = actualIsSecure || actualIsProduction;
+    ctx.res.cookie('fake_superadmin_id', fakeUserId, {
+      httpOnly: true,
+      secure,
+      sameSite,
+      path: '/',
+      domain: cookieDomain,
     });
 
-    try {
-      return await establishSession.authenticateFakeSuperadmin(ctx.req, ctx.res);
-    } catch (error) {
-      if (error instanceof FakeAuthDisabledError) {
-        throw new TRPCError({
-          code: 'FORBIDDEN',
-          message: error.message,
-        });
-      }
-      throw error;
-    }
+    return {
+      user: result.user,
+      hasPendingCommunities: result.hasPendingCommunities,
+    };
   }),
-
-  /** Login as entrepreneurs demo persona (gated by demoPersonasEnabled or superadmin). */
-  authenticateDemoPersona: publicProcedure
-    .input(z.object({ authId: z.string().min(1) }))
-    .mutation(async ({ ctx, input }) => {
-      const establishSession = createEstablishSessionUseCase({
-        cookieManager: ctx.cookieManager,
-        configService: ctx.configService,
-        authService: ctx.authService,
-      });
-      const useCase = new AuthenticateDemoPersonaUseCase(
-        ctx.platformSettingsService,
-        ctx.platformEntrepreneursDemoSeedService,
-        establishSession,
-      );
-
-      try {
-        return await useCase.authenticate(ctx.req, ctx.res, input.authId, {
-          isSuperadmin: ctx.user?.globalRole === GLOBAL_ROLE_SUPERADMIN,
-        });
-      } catch (error) {
-        if (error instanceof DemoPersonaAuthDisabledError) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: error.message });
-        }
-        if (error instanceof DemoPersonaNotAllowedError) {
-          throw new TRPCError({ code: 'FORBIDDEN', message: error.message });
-        }
-        throw error;
-      }
-    }),
 });
+

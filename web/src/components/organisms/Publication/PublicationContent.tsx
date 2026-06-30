@@ -3,7 +3,6 @@
 import React, { useMemo, useState } from 'react';
 import { WithTelegramEntities } from '@shared/components/with-telegram-entities';
 import DOMPurify from 'dompurify';
-import { looksLikeHtml, MarkdownContent } from '@/lib/utils/markdown-content';
 import { ImageLightbox } from '@shared/components/image-lightbox';
 import { ImageViewer } from '@/components/ui/ImageViewer/ImageViewer';
 import { ImageGalleryDisplay } from '@shared/components/image-gallery-display';
@@ -89,16 +88,14 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
       ? publication.content
       : '';
 
-  const isHtmlContent = useMemo(() => looksLikeHtml(content), [content]);
+  const isHtmlContent = useMemo(() => {
+    return content.includes('<') && content.includes('>');
+  }, [content]);
 
   const sanitizedHtml = useMemo(() => {
     if (isHtmlContent && typeof window !== 'undefined') {
       return DOMPurify.sanitize(content, {
-        ALLOWED_TAGS: [
-          'p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'h4',
-          'ul', 'ol', 'li', 'a', 'blockquote', 'code',
-          'table', 'thead', 'tbody', 'tr', 'th', 'td',
-        ],
+        ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'h1', 'h2', 'h3', 'ul', 'ol', 'li', 'a', 'blockquote', 'code'],
         ALLOWED_ATTR: ['href', 'target', 'rel'],
       });
     }
@@ -185,12 +182,12 @@ export const PublicationContent: React.FC<PublicationContentProps> = ({
         (postType === 'ticket' || postType === 'event' || !description) &&
         (isHtmlContent ? (
           <div className="text-base-content" dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
-        ) : publication.meta?.commentTgEntities?.length ? (
-          <WithTelegramEntities entities={publication.meta.commentTgEntities}>
+        ) : (
+          <WithTelegramEntities
+            entities={publication.meta?.commentTgEntities || []}
+          >
             {content}
           </WithTelegramEntities>
-        ) : (
-          <MarkdownContent content={content} className="text-base-content" />
         ))}
       
       {/* Hashtags or Categories - show if they exist */}

@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
-import {
-  createSearchUseCase,
-  type SearchResultItem,
-} from '../../application/use-cases/search/search.use-case';
+import { isProjectCommunity } from '../../domain/services/community.service';
 
 export const searchRouter = router({
   /**
@@ -54,32 +51,143 @@ export const searchRouter = router({
         };
       }
 
-      const results: SearchResultItem[] = [];
-      const searchUseCase = createSearchUseCase({
-        user: ctx.user,
-        publicationService: ctx.publicationService,
-        communityService: ctx.communityService,
-        userCommunityRoleService: ctx.userCommunityRoleService,
-        userService: ctx.userService,
-      });
+      const results: Array<{
+        type: string;
+        id: string;
+        title: string;
+        description?: string;
+        createdAt: string;
+        url: string;
+        author?: { id: string; name: string; avatarUrl?: string };
+        community?: { id: string; name: string; avatarUrl?: string };
+      }> = [];
 
       // Search publications
       if (contentType === 'all' || contentType === 'publications') {
-        const publicationResults = await searchUseCase.searchPublications({
-          query,
-          tags,
-          authorId,
-          communityId,
-          page,
-          pageSize,
-        });
-        results.push(...publicationResults);
+        try {
+          const pagination = PaginationHelper.parseOptions({ page, limit: pageSize });
+          const skip = PaginationHelper.getSkip(pagination);
+
+          let publications: any[] = [];
+          if (communityId) {
+            const result = await ctx.publicationService.getPublicationsByCommunity(
+              communityId,
+              pagination.limit || 100, // Get more to filter
+              skip,
+              undefined,
+              undefined,
+              undefined,
+              undefined,
+              true,
+            );
+            publications = result.map((p) => p.toSnapshot());
+          } else {
+            // For now, search only in user's communities
+            const userRoles = await ctx.userCommunityRoleService.getUserRoles(ctx.user.id);
+            const userCommunityIds = userRoles.map((role) => role.communityId);
+            
+            // Get publications from all user's communities
+            const allPublications = await Promise.all(
+              userCommunityIds.map((cid) =>
+                ctx.publicationService.getPublicationsByCommunity(
+                  cid,
+                  50,
+                  0,
+                  undefined,
+                  undefined,
+                  undefined,
+                  undefined,
+                  true,
+                ),
+              ),
+            );
+            publications = allPublications.flat().map((p) => p.toSnapshot());
+          }
+
+          // Filter by query if provided and process publications
+          for (const pub of publications) {
+            if (query) {
+              const searchText = `${pub.title || ''} ${pub.content || ''}`.toLowerCase();
+              if (!searchText.includes(query.toLowerCase())) {
+                continue;
+              }
+            }
+
+            // Filter by author if provided
+            if (authorId && pub.authorId !== authorId) {
+              continue;
+            }
+
+            // Filter by tags if provided
+            if (tags && tags.length > 0) {
+              const pubTags = pub.hashtags || [];
+              if (!tags.some((tag) => pubTags.includes(tag))) {
+                continue;
+              }
+            }
+
+            // Get author and community info
+            const [author, community] = await Promise.all([
+              pub.authorId ? ctx.userService.getUser(pub.authorId) : null,
+              pub.communityId ? ctx.communityService.getCommunity(pub.communityId) : null,
+            ]);
+
+            results.push({
+              type: 'publications',
+              id: pub.id,
+              title: pub.title || 'Untitled Publication',
+              description: pub.description || pub.content,
+              createdAt: pub.createdAt?.toISOString() || new Date().toISOString(),
+              url: `/meriter/communities/${pub.communityId}/publications/${pub.id}`,
+              author: author
+                ? {
+                    id: author.id,
+                    name: author.displayName || author.username || 'Unknown',
+                    avatarUrl: author.avatarUrl,
+                  }
+                : undefined,
+              community: community
+                ? {
+                    id: community.id,
+                    name: community.name || 'Unknown',
+                    avatarUrl: community.avatarUrl,
+                  }
+                : undefined,
+            });
+          }
+        } catch (_error) {
+          // Continue with other content types if publications search fails
+        }
       }
 
       // Search communities
       if (contentType === 'all' || contentType === 'communities') {
-        const communityResults = await searchUseCase.searchCommunities({ query });
-        results.push(...communityResults);
+        try {
+          const allCommunities = await ctx.communityService.getAllCommunities(100, 0, {
+            excludeProjects: true,
+          });
+
+          allCommunities.forEach((comm) => {
+            if (isProjectCommunity(comm)) return;
+            if (query) {
+              const searchText = `${comm.name || ''} ${comm.description || ''}`.toLowerCase();
+              if (!searchText.includes(query.toLowerCase())) {
+                return;
+              }
+            }
+
+            results.push({
+              type: 'communities',
+              id: comm.id,
+              title: comm.name || 'Unnamed Community',
+              description: comm.description,
+              createdAt: comm.createdAt?.toISOString() || new Date().toISOString(),
+              url: `/meriter/communities/${comm.id}`,
+            });
+          });
+        } catch (_error) {
+          // Continue with other content types if communities search fails
+        }
       }
 
       // Search polls
@@ -200,3 +308,4 @@ export const searchRouter = router({
       };
     }),
 });
+

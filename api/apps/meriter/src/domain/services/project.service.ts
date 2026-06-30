@@ -1,6 +1,5 @@
 import {
   Injectable,
-  Inject,
   Logger,
   NotFoundException,
   BadRequestException,
@@ -8,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { CommunityService } from './community.service';
 import { CommunityWalletService } from './community-wallet.service';
-import { WalletContextResolverService } from './wallet-context-resolver.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
 import { WalletService } from './wallet.service';
@@ -18,14 +16,7 @@ import { PublicationService } from './publication.service';
 import { TicketService } from './ticket.service';
 import { NotificationService } from './notification.service';
 import { ProjectParentLinkRequestService } from './project-parent-link-request.service';
-import {
-  EXECUTE_PROJECT_PAYOUT_PORT,
-  type ExecuteProjectPayoutPort,
-} from '../ports/execute-project-payout.port';
-import {
-  INVEST_IN_PROJECT_PORT,
-  type InvestInProjectPort,
-} from '../ports/invest-in-project.port';
+import { ProjectPayoutService } from './project-payout.service';
 import type { Community, ProjectInvestmentEntry } from '../models/community/community.schema';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 
@@ -51,18 +42,6 @@ export interface CreateProjectDto {
   newCommunity?: {
     name: string;
     futureVisionText?: string;
-    futureVisionDocumentSeed?: {
-      sections: Array<{
-        title?: string;
-        order: number;
-        blocks: Array<{
-          order: number;
-          blockType: string;
-          officialContent: string;
-          proposalsLocked?: boolean;
-        }>;
-      }>;
-    };
     futureVisionTags?: string[];
     futureVisionCover?: string;
     typeTag?: 'team' | 'custom';
@@ -104,7 +83,6 @@ export class ProjectService {
   constructor(
     private readonly communityService: CommunityService,
     private readonly communityWalletService: CommunityWalletService,
-    private readonly walletContextResolverService: WalletContextResolverService,
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly userService: UserService,
     private readonly walletService: WalletService,
@@ -114,10 +92,7 @@ export class ProjectService {
     private readonly ticketService: TicketService,
     private readonly notificationService: NotificationService,
     private readonly projectParentLinkRequestService: ProjectParentLinkRequestService,
-    @Inject(INVEST_IN_PROJECT_PORT)
-    private readonly investInProjectUseCase: InvestInProjectPort,
-    @Inject(EXECUTE_PROJECT_PAYOUT_PORT)
-    private readonly executeProjectPayoutUseCase: ExecuteProjectPayoutPort,
+    private readonly projectPayoutService: ProjectPayoutService,
   ) {}
 
   private async createPersonalProjectAndSetup(
@@ -185,7 +160,6 @@ export class ProjectService {
           name: dto.newCommunity.name,
           description: undefined,
           futureVisionText: dto.newCommunity.futureVisionText,
-          futureVisionDocumentSeed: dto.newCommunity.futureVisionDocumentSeed,
           futureVisionTags: dto.newCommunity.futureVisionTags,
           futureVisionCover: dto.newCommunity.futureVisionCover,
           typeTag: dto.newCommunity.typeTag ?? 'custom',
@@ -261,17 +235,10 @@ export class ProjectService {
         futureVisionTags: dto.futureVisionTags,
       });
 
-      if (parentExists.settings?.sharedWalletWithProjects === true) {
-        const wallet = await this.communityWalletService.createWallet(parentCommunityId);
-        await this.communityService.updateCommunity(project.id, {
-          communityWalletId: wallet.id,
-        });
-      } else {
-        const wallet = await this.communityWalletService.createWallet(project.id);
-        await this.communityService.updateCommunity(project.id, {
-          communityWalletId: wallet.id,
-        });
-      }
+      const wallet = await this.communityWalletService.createWallet(project.id);
+      await this.communityService.updateCommunity(project.id, {
+        communityWalletId: wallet.id,
+      });
 
       await this.communityService.addMember(project.id, userId);
       await this.userService.addCommunityMembership(userId, project.id);
@@ -326,9 +293,7 @@ export class ProjectService {
       throw new NotFoundException('Not a project');
     }
 
-    const walletKey =
-      await this.walletContextResolverService.resolveCommunityWalletCommunityId(projectId);
-    const walletBalance = await this.communityWalletService.getBalance(walletKey);
+    const walletBalance = await this.communityWalletService.getBalance(projectId);
     const parentCommunity = project.parentCommunityId
       ? await this.communityService.getCommunity(project.parentCommunityId)
       : null;
@@ -551,7 +516,7 @@ export class ProjectService {
       await this.postClosingService.closePost(postId, 'manual');
     }
 
-    await this.executeProjectPayoutUseCase.executeAll(projectId, leadUserId, { globalRole });
+    await this.projectPayoutService.executePayoutAll(projectId, leadUserId, { globalRole });
 
     await this.communityService.updateCommunity(projectId, {
       projectStatus: 'archived',
@@ -877,15 +842,13 @@ export class ProjectService {
       throw new NotFoundException('Project not found');
     }
 
-    const walletKey =
-      await this.walletContextResolverService.resolveCommunityWalletCommunityId(projectId);
     const role = await this.userCommunityRoleService.getRole(userId, projectId);
     const investingEnabled = project.settings?.investingEnabled === true;
 
     if (!role) {
       if (investingEnabled) {
         await this.investInProject(userId, projectId, amount);
-        const balance = await this.communityWalletService.getBalance(walletKey);
+        const balance = await this.communityWalletService.getBalance(projectId);
         return { balance, mode: 'investment' };
       }
       await this.walletService.addTransaction(
@@ -899,8 +862,8 @@ export class ProjectService {
         DEFAULT_CURRENCY,
         'Project wallet top-up (donation)',
       );
-      await this.communityWalletService.createWallet(walletKey);
-      const wallet = await this.communityWalletService.deposit(walletKey, amount, 'topup');
+      await this.communityWalletService.createWallet(projectId);
+      const wallet = await this.communityWalletService.deposit(projectId, amount, 'topup');
       return { balance: wallet.balance, mode: 'donation' };
     }
 
@@ -915,14 +878,39 @@ export class ProjectService {
       DEFAULT_CURRENCY,
       'Project wallet top-up',
     );
-    await this.communityWalletService.createWallet(walletKey);
-    const wallet = await this.communityWalletService.deposit(walletKey, amount, 'topup');
+    await this.communityWalletService.createWallet(projectId);
+    const wallet = await this.communityWalletService.deposit(projectId, amount, 'topup');
     return { balance: wallet.balance, mode: 'member_topup' };
   }
 
-  /** Delegates to InvestInProjectUseCase (BC-08). */
   async investInProject(userId: string, projectId: string, amount: number): Promise<void> {
-    return this.investInProjectUseCase.execute({ userId, projectId, amount });
+    if (amount < 1 || !Number.isInteger(amount)) {
+      throw new BadRequestException('Amount must be a positive integer');
+    }
+    const project = await this.communityService.getCommunity(projectId);
+    if (!project?.isProject) {
+      throw new NotFoundException('Project not found');
+    }
+    if (project.projectStatus === 'archived') {
+      throw new BadRequestException('Cannot invest in an archived project');
+    }
+    if (project.settings?.investingEnabled !== true) {
+      throw new BadRequestException('Investing is not enabled for this project');
+    }
+    await this.walletService.addTransaction(
+      userId,
+      GLOBAL_COMMUNITY_ID,
+      'debit',
+      amount,
+      'personal',
+      'project_investment',
+      projectId,
+      DEFAULT_CURRENCY,
+      `Investment in project ${project.name}`,
+    );
+    await this.communityService.appendProjectInvestment(projectId, userId, amount);
+    await this.communityWalletService.createWallet(projectId);
+    await this.communityWalletService.deposit(projectId, amount, 'investment');
   }
 
   async listProjectInvestments(
@@ -963,26 +951,21 @@ export class ProjectService {
     return enriched;
   }
 
-  /** Delegates to ExecuteProjectPayoutUseCase (BC-08). */
   async previewProjectPayout(projectId: string, amount: number, viewerUserId: string) {
-    return this.executeProjectPayoutUseCase.preview({
-      projectId,
-      amount,
-      viewerUserId,
-    });
+    const role = await this.userCommunityRoleService.getRole(viewerUserId, projectId);
+    if (!role) {
+      throw new ForbiddenException('Only project members can preview payouts');
+    }
+    return this.projectPayoutService.previewPayout(projectId, amount);
   }
 
-  /** Delegates to ExecuteProjectPayoutUseCase (BC-08). */
   async executeProjectPayout(
     projectId: string,
     amount: number,
     actorUserId: string,
     globalRole?: string | null,
   ) {
-    return this.executeProjectPayoutUseCase.execute({
-      projectId,
-      amount,
-      actorUserId,
+    return this.projectPayoutService.executePayout(projectId, amount, actorUserId, {
       globalRole,
     });
   }

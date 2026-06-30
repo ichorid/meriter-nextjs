@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { Label } from '@/components/ui/shadcn/label';
@@ -14,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
-import { Loader2, FlaskConical, Skull, Database, Upload, Tags, CalendarPlus, Building2, UserCircle } from 'lucide-react';
+import { Loader2, FlaskConical, Skull, Database, Upload, Tags, CalendarPlus } from 'lucide-react';
 import { DEMO_EVENT_SEED_COMMUNITY_IDS } from '@meriter/shared-types';
 import { trpc } from '@/lib/trpc/client';
 import { useToastStore } from '@/shared/stores/toast.store';
@@ -26,24 +25,16 @@ const PLATFORM_WIPE_EXTRA_PASSWORD = '1243';
 const WIPE_COUNTDOWN_SEC = 12;
 const SEED_COUNTDOWN_SEC = 3;
 const DEMO_EVENTS_COUNTDOWN_SEC = 3;
-const ENTREPRENEURS_SEED_COUNTDOWN_SEC = 5;
 const DUMP_COUNTDOWN_SEC = 5;
 const RESET809_COUNTDOWN_SEC = 5;
 const RESTORE_COUNTDOWN_SEC = 12;
 /** Must match `DATABASE_RESTORE_CONFIRM_TOKEN` in API. */
 const RESTORE_CONFIRM_TOKEN = 'RESTORE';
-const ENTREPRENEURS_DEMO_COMMUNITY_ID = 'demo_ent_community';
 
 export function PlatformDevDangerSection() {
   const t = useTranslations('settings');
-  const router = useRouter();
   const addToast = useToastStore((s) => s.addToast);
   const utils = trpc.useUtils();
-
-  const platformSettingsQuery = trpc.platformSettings.get.useQuery();
-  const demoPersonasQuery = trpc.platformDev.getEntrepreneursDemoPersonas.useQuery(undefined, {
-    retry: false,
-  });
 
   const [wipeOpen, setWipeOpen] = useState(false);
   const [wipeSeconds, setWipeSeconds] = useState(WIPE_COUNTDOWN_SEC);
@@ -71,12 +62,6 @@ export function PlatformDevDangerSection() {
   const [restorePassword, setRestorePassword] = useState('');
   const [restoreDumpJson, setRestoreDumpJson] = useState<string | null>(null);
   const restoreFileInputRef = useRef<HTMLInputElement>(null);
-
-  const [entrepreneursOpen, setEntrepreneursOpen] = useState(false);
-  const [entrepreneursSeconds, setEntrepreneursSeconds] = useState(ENTREPRENEURS_SEED_COUNTDOWN_SEC);
-  const [entrepreneursForce, setEntrepreneursForce] = useState(false);
-  const [entrepreneursPackJson, setEntrepreneursPackJson] = useState<string | undefined>(undefined);
-  const entrepreneursFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!wipeOpen) {
@@ -159,21 +144,6 @@ export function PlatformDevDangerSection() {
     return () => window.clearInterval(tmr);
   }, [restoreOpen]);
 
-  useEffect(() => {
-    if (!entrepreneursOpen) {
-      setEntrepreneursSeconds(ENTREPRENEURS_SEED_COUNTDOWN_SEC);
-      setEntrepreneursForce(false);
-      setEntrepreneursPackJson(undefined);
-      if (entrepreneursFileInputRef.current) entrepreneursFileInputRef.current.value = '';
-      return;
-    }
-    setEntrepreneursSeconds(ENTREPRENEURS_SEED_COUNTDOWN_SEC);
-    const tmr = window.setInterval(() => {
-      setEntrepreneursSeconds((s) => (s <= 1 ? 0 : s - 1));
-    }, 1000);
-    return () => window.clearInterval(tmr);
-  }, [entrepreneursOpen]);
-
   const wipeMutation = trpc.platformDev.wipeUserContent.useMutation({
     onSuccess: async (data) => {
       await Promise.all([
@@ -226,49 +196,6 @@ export function PlatformDevDangerSection() {
         'success',
       );
       setDemoEventsOpen(false);
-    },
-    onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
-  });
-
-  const entrepreneursSeedMutation = trpc.platformDev.seedEntrepreneursCommunity.useMutation({
-    onSuccess: async (data) => {
-      await Promise.all([
-        utils.users.getMe.invalidate(),
-        utils.communities.getAll.invalidate(),
-        utils.communities.getById.invalidate({ id: ENTREPRENEURS_DEMO_COMMUNITY_ID }),
-        utils.publications.getAll.invalidate(),
-        utils.wallets.getAll.invalidate(),
-        utils.platformSettings.get.invalidate(),
-        utils.platformDev.getEntrepreneursDemoPersonas.invalidate(),
-      ]);
-      const balance =
-        'communityWalletBalance' in data && typeof data.communityWalletBalance === 'number'
-          ? String(data.communityWalletBalance)
-          : '—';
-      addToast(t('platformDevEntrepreneursSuccess', { balance }), 'success');
-      setEntrepreneursOpen(false);
-    },
-    onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
-  });
-
-  const demoPersonaLoginMutation = trpc.auth.authenticateDemoPersona.useMutation({
-    onSuccess: async (_data, variables) => {
-      await utils.users.getMe.invalidate();
-      const persona = demoPersonasQuery.data?.find((p) => p.authId === variables.authId);
-      addToast(
-        t('platformDevEntrepreneursLoginSuccess', {
-          name: persona?.displayName ?? variables.authId,
-        }),
-        'success',
-      );
-      router.push(`/meriter/communities/${ENTREPRENEURS_DEMO_COMMUNITY_ID}`);
-    },
-    onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
-  });
-
-  const demoPersonasEnabledMutation = trpc.platformSettings.updateDemoPersonasEnabled.useMutation({
-    onSuccess: async () => {
-      await utils.platformSettings.get.invalidate();
     },
     onError: (e) => addToast(resolveApiErrorToastMessage(e.message), 'error'),
   });
@@ -350,11 +277,6 @@ export function PlatformDevDangerSection() {
 
   const demoEventsEnabled = demoEventsSeconds === 0 && !demoEventsMutation.isPending;
 
-  const entrepreneursEnabled =
-    entrepreneursSeconds === 0 && !entrepreneursSeedMutation.isPending;
-
-  const demoPersonasEnabled = platformSettingsQuery.data?.demoPersonasEnabled === true;
-
   return (
     <div className="space-y-6 border-t border-base-300 pt-6">
       <div className="rounded-lg border border-error/40 bg-error/5 p-4 space-y-2">
@@ -423,68 +345,6 @@ export function PlatformDevDangerSection() {
             <Upload className="w-4 h-4 mr-1" />
             {t('platformDevRestoreOpen')}
           </Button>
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-stitch-border/60 bg-stitch-surface/40 p-4 space-y-3">
-        <div className="flex items-center gap-2 font-semibold text-base-content">
-          <Building2 className="w-4 h-4 shrink-0 text-primary" />
-          {t('platformDevEntrepreneursTitle')}
-        </div>
-        <p className="text-xs text-base-content/70">{t('platformDevEntrepreneursIntro')}</p>
-
-        <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setEntrepreneursOpen(true)}
-            className="border-primary/50 text-primary hover:bg-primary/10"
-          >
-            <FlaskConical className="w-4 h-4 mr-1" />
-            {t('platformDevEntrepreneursLoadOpen')}
-          </Button>
-        </div>
-
-        <div className="flex items-start gap-2 pt-1">
-          <Checkbox
-            id="demo-personas-enabled"
-            checked={demoPersonasEnabled}
-            disabled={demoPersonasEnabledMutation.isPending || platformSettingsQuery.isLoading}
-            onCheckedChange={(v) => {
-              demoPersonasEnabledMutation.mutate({ enabled: v === true });
-            }}
-          />
-          <div>
-            <Label htmlFor="demo-personas-enabled" className="text-sm font-normal cursor-pointer">
-              {t('platformDevDemoPersonasEnabled')}
-            </Label>
-            <p className="text-xs text-base-content/60 mt-0.5">
-              {t('platformDevDemoPersonasEnabledHelp')}
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-2 pt-2 border-t border-base-300/60">
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <UserCircle className="w-4 h-4 text-base-content/70" />
-            {t('platformDevEntrepreneursPersonasTitle')}
-          </div>
-          <p className="text-xs text-base-content/60">{t('platformDevEntrepreneursPersonasHelp')}</p>
-          <div className="flex flex-wrap gap-2">
-            {(demoPersonasQuery.data ?? []).map((persona) => (
-              <Button
-                key={persona.authId}
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={demoPersonaLoginMutation.isPending}
-                onClick={() => demoPersonaLoginMutation.mutate({ authId: persona.authId })}
-              >
-                {t('platformDevEntrepreneursLoginAs', { name: persona.displayName })}
-              </Button>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -698,75 +558,6 @@ export function PlatformDevDangerSection() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
                 t('platformDevDumpConfirm')
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={entrepreneursOpen} onOpenChange={setEntrepreneursOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{t('platformDevEntrepreneursDialogTitle')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 text-sm text-base-content/80">
-            <p>{t('platformDevEntrepreneursHelp')}</p>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="entrepreneurs-force"
-                checked={entrepreneursForce}
-                onCheckedChange={(v) => setEntrepreneursForce(v === true)}
-              />
-              <Label htmlFor="entrepreneurs-force" className="text-sm font-normal cursor-pointer">
-                {t('platformDevEntrepreneursForce')}
-              </Label>
-            </div>
-            <div>
-              <Label htmlFor="entrepreneurs-pack-file">{t('platformDevEntrepreneursPackFileLabel')}</Label>
-              <Input
-                id="entrepreneurs-pack-file"
-                ref={entrepreneursFileInputRef}
-                type="file"
-                accept="application/json,.json"
-                className="mt-1 cursor-pointer"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) {
-                    setEntrepreneursPackJson(undefined);
-                    return;
-                  }
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    setEntrepreneursPackJson(
-                      typeof reader.result === 'string' ? reader.result : undefined,
-                    );
-                  };
-                  reader.readAsText(f);
-                }}
-              />
-            </div>
-            <p className="text-xs text-base-content/60">
-              {t('platformDevEntrepreneursTimer', { seconds: entrepreneursSeconds })}
-            </p>
-          </div>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="button" variant="outline" onClick={() => setEntrepreneursOpen(false)}>
-              {t('platformDevCancel')}
-            </Button>
-            <Button
-              type="button"
-              disabled={!entrepreneursEnabled}
-              onClick={() =>
-                entrepreneursSeedMutation.mutate({
-                  force: entrepreneursForce,
-                  packJson: entrepreneursPackJson,
-                })
-              }
-            >
-              {entrepreneursSeedMutation.isPending ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                t('platformDevEntrepreneursConfirm')
               )}
             </Button>
           </DialogFooter>

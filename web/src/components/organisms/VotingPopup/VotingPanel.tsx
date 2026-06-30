@@ -49,9 +49,6 @@ interface VotingPanelProps {
     hintMode?: 'add' | 'withdraw';
     /** When withdrawing from a Birzha post published on behalf of a project/community, merits credit the source wallet (not personal). */
     withdrawMeritsDestination?: 'personal' | 'sourceProject' | 'sourceCommunity';
-    /** Collaborative document block: variant proposal or official text */
-    documentVoteTarget?: 'variant' | 'official';
-    documentAllowDownvotes?: boolean;
 }
 
 export const VotingPanel: React.FC<VotingPanelProps> = ({
@@ -84,8 +81,6 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     neutralHelperText,
     hintMode = 'withdraw',
     withdrawMeritsDestination = 'personal',
-    documentVoteTarget,
-    documentAllowDownvotes = true,
 }) => {
     const t = useTranslations("comments");
     const tShared = useTranslations("shared");
@@ -134,31 +129,6 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     
     // Determine which hint text to show
     const votingMechanicsText = useMemo(() => {
-        if (documentVoteTarget === 'variant' || documentVoteTarget === 'official') {
-            if (isOwnPost) {
-                return t('documentVariantOwnVotingMechanics');
-            }
-            if (!documentAllowDownvotes) {
-                if (currencySource === 'quota-only') {
-                    return t('documentBlockVotingMechanicsQuotaOnlyNoDownvote');
-                }
-                if (currencySource === 'wallet-only') {
-                    return t('documentBlockVotingMechanicsWalletOnlyNoDownvote');
-                }
-                return t('documentBlockVotingMechanicsNoDownvote');
-            }
-            if (currencySource === 'quota-only') {
-                return t('documentBlockVotingMechanicsQuotaOnly');
-            }
-            if (currencySource === 'wallet-only') {
-                return t('documentBlockVotingMechanicsWalletOnly');
-            }
-            return t(
-                documentVoteTarget === 'official'
-                    ? 'documentOfficialVotingMechanics'
-                    : 'documentVariantVotingMechanics',
-            );
-        }
         if (isOwnPost) {
             return t("ownPostVotingMechanics");
         }
@@ -172,40 +142,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             return t("votingMechanicsWalletOnly");
         }
         return t("votingMechanics");
-    }, [
-        documentVoteTarget,
-        documentAllowDownvotes,
-        isOwnPost,
-        isFutureVision,
-        currencySource,
-        t,
-    ]);
-
-    const commentHelperText = useMemo(() => {
-        if (documentVoteTarget === 'official') {
-            return t('documentOfficialCommentHelper');
-        }
-        if (documentVoteTarget === 'variant') {
-            return t('documentVariantCommentHelper');
-        }
-        if (isFutureVision) {
-            return t('futureVisionCommentHelper');
-        }
-        return t('explanationPlaceholder');
-    }, [documentVoteTarget, isFutureVision, t]);
-
-    const commentRequiredText = useMemo(() => {
-        if (documentVoteTarget === 'official') {
-            return t('documentOfficialCommentRequired');
-        }
-        if (documentVoteTarget === 'variant') {
-            return t('documentVariantCommentRequired');
-        }
-        if (isFutureVision) {
-            return t('futureVisionCommentRequired');
-        }
-        return t('commentRequired');
-    }, [documentVoteTarget, isFutureVision, t]);
+    }, [isOwnPost, isFutureVision, currencySource, t]);
 
     const headerTitle = useMemo(() => {
         if (title) return title;
@@ -780,17 +717,15 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {/* Withdraw Progress Bar (when hideQuota is true, not in neutralOnly) */}
             {hideQuota && commentMode !== 'neutralOnly' && (
                 <div className="flex flex-col gap-4">
-                    {/* Hint: document votes use mechanics copy; withdraw/add for post withdraw UI */}
-                    <p className="text-xs text-base-content/60 leading-relaxed whitespace-pre-line">
-                        {documentVoteTarget === 'variant' || documentVoteTarget === 'official'
-                            ? votingMechanicsText
-                            : hintMode === 'add'
-                              ? tShared('addMeritsHint')
-                              : withdrawMeritsDestination === 'sourceProject'
-                                ? tShared('withdrawHintSourceProject')
-                                : withdrawMeritsDestination === 'sourceCommunity'
-                                  ? tShared('withdrawHintSourceCommunity')
-                                  : tShared('withdrawHint')}
+                    {/* Hint text: different for "add merits" vs "withdraw" */}
+                    <p className="text-xs text-base-content/60 leading-relaxed">
+                        {hintMode === 'add'
+                            ? tShared('addMeritsHint')
+                            : withdrawMeritsDestination === 'sourceProject'
+                              ? tShared('withdrawHintSourceProject')
+                              : withdrawMeritsDestination === 'sourceCommunity'
+                                ? tShared('withdrawHintSourceCommunity')
+                                : tShared('withdrawHint')}
                     </p>
 
                     {/* Available Progress Bar - above amount input */}
@@ -876,7 +811,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     </label>
                     {commentMode !== 'neutralOnly' && (
                         <p className="text-xs text-base-content/60 mb-2">
-                            {commentHelperText}
+                            {isFutureVision ? t("futureVisionCommentHelper") : t("explanationPlaceholder")}
                         </p>
                     )}
                     <Textarea
@@ -893,7 +828,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         <p className="text-xs text-error">
                             {commentMode === 'neutralOnly'
                                 ? t("commentEmptyHint")
-                                : commentRequiredText}
+                                : (isFutureVision ? t("futureVisionCommentRequired") : t("commentRequired"))}
                         </p>
                     )}
                 </div>
@@ -931,10 +866,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             : "bg-base-content text-base-100 hover:bg-base-content/90 border border-base-content/20"
                     )}
                 >
-                    {hideQuota
-                        ? (submitButtonLabel ??
-                          (documentVoteTarget ? t('voteTitle') : tShared('withdrawButton')))
-                        : t('voteTitle')}
+                    {hideQuota ? (submitButtonLabel ?? tShared("withdrawButton")) : t("voteTitle")}
                 </button>
                 {/* Server error (if any) */}
                 {error && (
