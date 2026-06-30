@@ -56,7 +56,7 @@ runs:
         scp scripts/vps/profiles/dev.env "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/profiles/dev.env"
         scp scripts/vps/profiles/prod.env "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/profiles/prod.env"
         scp scripts/vps/mongodb-backup.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/mongodb-backup.sh"
-        ssh "deploy@${VPS_HOST}" "chmod +x /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh /opt/meriter/scripts/vps/apply-telegram-profile.sh /opt/meriter/scripts/vps/mongodb-backup.sh"
+        ssh "deploy@${VPS_HOST}" "sed -i 's/\\r\$//' /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh /opt/meriter/scripts/vps/apply-telegram-profile.sh /opt/meriter/scripts/vps/mongodb-backup.sh && chmod +x /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh /opt/meriter/scripts/vps/apply-telegram-profile.sh /opt/meriter/scripts/vps/mongodb-backup.sh"
         ssh "deploy@${VPS_HOST}" "rm -rf /opt/meriter/mongodb-init"
         scp -r mongodb-init "deploy@${VPS_HOST}:/opt/meriter/"
     - name: Run remote deploy script

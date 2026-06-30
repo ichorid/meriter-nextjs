@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Idempotently merge scripts/vps/profiles/{dev|prod}.env into /opt/meriter/.env
-# Optional: BOT_TOKEN env var updates token (used by CI prod deploy from GitHub secret).
+# Optional: BOT_TOKEN env var updates token (used by CI deploy from GitHub secret).
 
 set -euo pipefail
 
