@@ -53,6 +53,17 @@ else
   echo "[deploy] No COMMIT_SHA / USE_DEV_IMAGE_TAGS; using compose defaults (often :latest)"
 fi
 
+TELEGRAM_PROFILE=""
+if [ "${USE_DEV_IMAGE_TAGS:-}" = "true" ]; then
+  TELEGRAM_PROFILE="dev"
+elif [ -n "${COMMIT_SHA:-}" ]; then
+  TELEGRAM_PROFILE="prod"
+fi
+if [ -n "$TELEGRAM_PROFILE" ] && [ -f scripts/vps/apply-telegram-profile.sh ]; then
+  echo "[deploy] Applying Telegram env profile: ${TELEGRAM_PROFILE}"
+  bash scripts/vps/apply-telegram-profile.sh "$TELEGRAM_PROFILE"
+fi
+
 echo "[deploy] Pulling images..."
 docker compose pull
 

@@ -1,7 +1,7 @@
 # Community-web MVP (фаза 2 Telegram)
 
 **Пакет:** `@meriter/community-web`  
-**Домен:** `community-dobro.meriter.pro` (dev: `community-dev.meriter.pro` или отдельный dev-хост)  
+**Домен:** `community-dobro.meriter.pro` (prod) · dev: `community-dev.meriter.pro` на `dev.meriter.pro`  
 **Backend:** общий `@meriter/api`, режим `MERITER_PRODUCT_MODE=telegram_mvp`
 
 ---
