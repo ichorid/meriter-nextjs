@@ -537,7 +537,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
     expect(tgSendSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        text: expect.stringMatching(/Шаг 5 из 5[\s\S]*приветственных заслуг/),
+        text: expect.stringMatching(/Шаг 5 из 7[\s\S]*приветственных заслуг/),
       }),
     );
     const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
@@ -719,10 +719,9 @@ describe('TelegramBotOrchestrator (integration)', () => {
     expect(updated?.settings?.telegramReactionNoHashtagHintEnabled).toBe(false);
   });
 
-  it('group /link posts mini-app launch link without pinning', async () => {
+  it('group /link sends ephemeral mini-app link by default routing', async () => {
     await seedLinkedCommunity();
-    const sendMessageSpy = jest.spyOn(tgBotsService, 'tgSendMessage').mockResolvedValue(2002);
-    const replySpy = jest.spyOn(tgBotsService, 'tgReplyMessage').mockResolvedValue(2001);
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(2001);
     const pinSpy = jest.spyOn(tgBotsService, 'tgPinChatMessage');
 
     await webhookController.handleWebhook(botUsername, {
@@ -741,11 +740,11 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    expect(replySpy).toHaveBeenCalledWith(
-      expect.objectContaining({ text: TG_MSG.groupMiniAppLinkHint, reply_to_message_id: 59 }),
-    );
-    expect(sendMessageSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ text: expect.stringContaining('startapp=') }),
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reply_to_message_id: 59,
+        text: expect.stringMatching(/startapp=/),
+      }),
     );
     expect(pinSpy).not.toHaveBeenCalled();
   });

@@ -4,6 +4,7 @@ export type OnboardingFlowPayload = {
   platformIntegration?: boolean;
   platformVisibility?: 'private' | 'public';
   quotaEnabled?: boolean;
+  votePanelEnabled?: boolean;
 };
 
 /**
@@ -24,6 +25,8 @@ const ONBOARDING_FLOW_ACTIONS: TelegramBotPendingActionType[] = [
   'onboarding_moderation',
   'onboarding_publication_ack',
   'onboarding_welcome_merits',
+  'onboarding_vote_panel',
+  'onboarding_command_delivery',
 ];
 
 /** Ordered onboarding steps for the current answers (platform-only steps omitted when integration is off). */

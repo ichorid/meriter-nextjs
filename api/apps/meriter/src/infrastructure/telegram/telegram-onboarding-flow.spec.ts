@@ -15,6 +15,8 @@ describe('telegram-onboarding-flow', () => {
       'onboarding_hashtag',
       'onboarding_post_cost',
       'onboarding_welcome_merits',
+      'onboarding_vote_panel',
+      'onboarding_command_delivery',
     ]);
     expect(actions).not.toContain('onboarding_platform_integration');
     expect(actions).not.toContain('onboarding_moderation');
@@ -39,11 +41,11 @@ describe('telegram-onboarding-flow', () => {
     expect(actions).not.toContain('onboarding_publication_ack');
   });
 
-  it('numbers welcome step as last step in chat-only flow', () => {
+  it('numbers welcome step before vote panel in chat-only flow', () => {
     const prompt = formatOnboardingStepPrompt('onboarding_welcome_merits', {
       platformIntegration: false,
       quotaEnabled: false,
     }, 'Welcome body');
-    expect(prompt).toBe('Шаг 5 из 5\n\nWelcome body');
+    expect(prompt).toBe('Шаг 5 из 7\n\nWelcome body');
   });
 });

@@ -97,6 +97,15 @@ export interface CommunitySettings {
   telegramPublicationAckEnabled?: boolean;
   /** Telegram MVP: ephemeral hint when voting emoji is used on a message without hashtag (default on). */
   telegramReactionNoHashtagHintEnabled?: boolean;
+  /** Telegram MVP: bot posts persistent vote panel with merit counters after hashtag posts. */
+  telegramVotePanelEnabled?: boolean;
+  /** Per-command delivery for /balance, /members, /help, /link. */
+  telegramCommandRouting?: {
+    balance?: { destination: 'group' | 'dm'; ephemeral?: boolean };
+    members?: { destination: 'group' | 'dm'; ephemeral?: boolean };
+    help?: { destination: 'group' | 'dm'; ephemeral?: boolean };
+    link?: { destination: 'group' | 'dm'; ephemeral?: boolean };
+  };
   /** Telegram MVP: mirror content to Meriter web platform. Default false (chat-only). */
   telegramPlatformIntegration?: boolean;
   /** When platform integration is on: private (default) or public OB card. */
@@ -459,6 +468,29 @@ export class CommunitySchemaClass implements Community {
       telegramModerationEnabled: { type: Boolean, default: false },
       telegramPublicationAckEnabled: { type: Boolean, default: false },
       telegramReactionNoHashtagHintEnabled: { type: Boolean, default: true },
+      telegramVotePanelEnabled: { type: Boolean, default: false },
+      telegramCommandRouting: {
+        type: {
+          balance: {
+            destination: { type: String, enum: ['group', 'dm'] },
+            ephemeral: { type: Boolean },
+          },
+          members: {
+            destination: { type: String, enum: ['group', 'dm'] },
+            ephemeral: { type: Boolean },
+          },
+          help: {
+            destination: { type: String, enum: ['group', 'dm'] },
+            ephemeral: { type: Boolean },
+          },
+          link: {
+            destination: { type: String, enum: ['group', 'dm'] },
+            ephemeral: { type: Boolean },
+          },
+        },
+        required: false,
+        _id: false,
+      },
       telegramPlatformIntegration: { type: Boolean, default: false },
       telegramPlatformVisibility: {
         type: String,

@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-export type TelegramPublicationAnchorType = 'bot_mirror' | 'hashtag';
+export type TelegramPublicationAnchorType = 'bot_mirror' | 'hashtag' | 'vote_panel';
 
 export interface TelegramPublicationAnchor {
   id: string;
@@ -31,7 +31,7 @@ export class TelegramPublicationAnchorSchemaClass implements TelegramPublication
   @Prop({ required: true, index: true })
   publicationId!: string;
 
-  @Prop({ required: true, enum: ['bot_mirror', 'hashtag'] })
+  @Prop({ required: true, enum: ['bot_mirror', 'hashtag', 'vote_panel'] })
   anchorType!: TelegramPublicationAnchorType;
 
   @Prop({ required: true })

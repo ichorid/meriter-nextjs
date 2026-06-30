@@ -445,10 +445,13 @@ export class TgBotsService {
     firstName?: string;
     lastName?: string;
     entities?: any[];
-  }) {
+  }): Promise<
+    | { publicationId: string; communityId: string; hashtagMessageId: number }
+    | undefined
+  > {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       this.logger.debug('Telegram bot is disabled; skipping processRecieveMessageFromGroup');
-      return;
+      return undefined;
     }
     const tgChatId = String(numTgChatId);
     const tgUserId = String(numTgUserId);
@@ -459,13 +462,13 @@ export class TgBotsService {
       const result = await this.tgChatGetKeywords({ tgChatId });
       if (!result) {
         this.logger.warn(`⚠️  Community not found for chat ${tgChatId}. Message will be ignored. Communities must be created manually through the API.`);
-        return;
+        return undefined;
       }
       keywords = result;
     } catch (e) {
       if (e && typeof e === 'object' && 'toString' in e && e.toString().includes('chatNotFound')) {
         this.logger.warn(`⚠️  Community not found for chat ${tgChatId}. Message will be ignored. Communities must be created manually through the API.`);
-        return;
+        return undefined;
       } else {
         throw e;
       }
@@ -495,7 +498,7 @@ export class TgBotsService {
 
     if (!kw || kw?.length == 0) {
       this.logger.log(`⏭️  No matching keyword found, skipping message`);
-      return;
+      return undefined;
     }
 
     // Parse and validate beneficiary
@@ -505,7 +508,7 @@ export class TgBotsService {
       .lean();
     if (!communityDoc?.id) {
       this.logger.warn(`Community not found for chat ${tgChatId} during beneficiary resolve`);
-      return;
+      return undefined;
     }
 
     const { beneficiary, cleanedText, error } = await this.resolvePublicationBeneficiary({
@@ -527,7 +530,7 @@ export class TgBotsService {
           text: error,
         });
       }
-      return; // Don't create the publication
+      return undefined;
     }
 
     const finalMessageText = cleanedText || messageText || '';
@@ -596,6 +599,15 @@ export class TgBotsService {
         });
       }
     }
+
+    if (messageId == null) {
+      return undefined;
+    }
+    return {
+      publicationId: slug,
+      communityId,
+      hashtagMessageId: messageId,
+    };
   }
 
   async processRecieveMessageFromUser({ tgUserId, messageText, tgUserName }: { tgUserId: string | number; messageText: string; tgUserName?: string }) {
@@ -672,11 +684,13 @@ export class TgBotsService {
     text,
     parseMode,
     reply_to_message_id,
+    reply_markup,
   }: {
     chat_id: string | number;
     text: string;
     parseMode?: 'MarkdownV2' | 'HTML';
     reply_to_message_id?: number;
+    reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
   }): Promise<number | null> {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       return null;
@@ -696,6 +710,9 @@ export class TgBotsService {
     if (reply_to_message_id != null) {
       params.reply_to_message_id = reply_to_message_id;
     }
+    if (reply_markup) {
+      params.reply_markup = JSON.stringify(reply_markup);
+    }
     try {
       const noAxios = this.configService.get('noAxios');
       if (noAxios) {
@@ -711,6 +728,44 @@ export class TgBotsService {
         (e as { response?: { data?: unknown } })?.response?.data,
       );
       return null;
+    }
+  }
+
+  async tgEditMessageReplyMarkup({
+    chat_id,
+    message_id,
+    reply_markup,
+  }: {
+    chat_id: string | number;
+    message_id: number;
+    reply_markup: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+  }): Promise<boolean> {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      return false;
+    }
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) {
+      return true;
+    }
+    const botToken = (this.configService.get as (key: string) => string | undefined)('bot.token');
+    if (!botToken) {
+      return false;
+    }
+    try {
+      await Axios.get(BOT_URL + '/editMessageReplyMarkup', {
+        params: {
+          chat_id,
+          message_id,
+          reply_markup: JSON.stringify(reply_markup),
+        },
+      });
+      return true;
+    } catch (e) {
+      this.logger.debug(
+        'tgEditMessageReplyMarkup failed',
+        (e as { response?: { data?: unknown } })?.response?.data,
+      );
+      return false;
     }
   }
 
@@ -1356,7 +1411,7 @@ export class TgBotsService {
     telegramChatId: string,
     telegramMessageId: number,
     publicationId: string,
-    anchorType: 'bot_mirror' | 'hashtag',
+    anchorType: 'bot_mirror' | 'hashtag' | 'vote_panel',
   ): Promise<void> {
     const now = new Date();
     await this.anchorModel.updateOne(

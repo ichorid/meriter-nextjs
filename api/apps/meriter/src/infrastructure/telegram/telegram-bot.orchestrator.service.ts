@@ -78,6 +78,21 @@ import {
   isGenericTelegramMemberDisplayName,
 } from './telegram-member-label';
 import { TELEGRAM_ONBOARDING_PLATFORM_INTEGRATION_STEP_ENABLED } from './telegram-onboarding-flow';
+import {
+  resolveTelegramCommandDelivery,
+  cycleTelegramCommandDelivery,
+  commandRoutingFromOnboardingPreset,
+  parseOnboardingCommandDeliveryInput,
+  formatTelegramCommandDeliveryLabel,
+  type TelegramRoutableCommand,
+  type TelegramCommandDelivery,
+  type TelegramCommandRoutingSettings,
+} from './telegram-command-routing';
+import {
+  buildVotePanelMessageText,
+  buildVotePanelKeyboard,
+  parseVotePanelCallback,
+} from './telegram-vote-panel';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -114,11 +129,17 @@ type OnboardingPayload = {
   moderation?: boolean;
   telegramPublicationAckEnabled?: boolean;
   welcomeMerits?: number;
+  votePanelEnabled?: boolean;
+  telegramCommandRouting?: TelegramCommandRoutingSettings;
 };
 
 @Injectable()
 export class TelegramBotOrchestratorService {
   private readonly logger = new Logger(TelegramBotOrchestratorService.name);
+  private readonly votePanelRefreshTimers = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
 
   constructor(
     private readonly configService: ConfigService<AppConfig>,
@@ -452,7 +473,7 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
-    if (replyTo?.message_id) {
+    if (replyTo?.message_id && community.settings?.telegramVotePanelEnabled !== true) {
       const voteParsed = text.trim().match(/^([+-]?\d+(?:[.,]\d+)?)\s+([\s\S]+)$/);
       if (voteParsed) {
         const amount = Math.abs(parseFloat(voteParsed[1].replace(',', '.')));
@@ -471,7 +492,7 @@ export class TelegramBotOrchestratorService {
       });
     }
 
-    await this.tgBots.processRecieveMessageFromGroup({
+    const publishResult = await this.tgBots.processRecieveMessageFromGroup({
       tgChatId: chatId,
       tgUserId,
       tgAuthorUsername: from.username,
@@ -494,6 +515,17 @@ export class TelegramBotOrchestratorService {
       lastName: from.last_name,
       entities: message.entities as TelegramTypes.Message['entities'],
     });
+
+    if (
+      publishResult &&
+      community.settings?.telegramVotePanelEnabled === true
+    ) {
+      await this.createVotePanelForPublication(
+        community,
+        publishResult.publicationId,
+        publishResult.hashtagMessageId,
+      );
+    }
   }
 
   private async handleDirectBotCommand(
@@ -557,13 +589,52 @@ export class TelegramBotOrchestratorService {
     try {
       switch (cmd) {
       case 'баланс':
-      case 'balance':
-        await this.sendBalance(community, userId, replyChatId, message?.message_id as number | undefined);
+      case 'balance': {
+        const delivery = resolveTelegramCommandDelivery(
+          community.settings?.telegramCommandRouting,
+          'balance',
+        );
+        await this.deliverRoutedCommand(ctx, delivery, async () => {
+          const { wallet, pct, quota, quotaMax } = await this.getMemberStats(community, userId);
+          return TG_MSG.balanceSelf(community.name, wallet, quota, quotaMax, pct);
+        });
         break;
+      }
       case 'участники':
-      case 'members':
-        await this.sendMembers(community, replyChatId, message?.message_id as number | undefined);
+      case 'members': {
+        const delivery = resolveTelegramCommandDelivery(
+          community.settings?.telegramCommandRouting,
+          'members',
+        );
+        await this.deliverRoutedCommand(ctx, delivery, async () => {
+          const memberIds = await this.rolePersistence.distinctActiveMemberUserIds(community.id);
+          const sliceIds = memberIds.slice(0, 30);
+          const lines: string[] = [TG_MSG.membersHeader];
+          const wallets: number[] = [];
+          const walletCommunityId = await this.walletContextResolver.resolvePersonalWalletCommunityId(
+            community,
+            'voting',
+          );
+          for (const memberId of sliceIds) {
+            const bal = await this.readWalletBalance(memberId, walletCommunityId);
+            wallets.push(bal);
+          }
+          const users = await this.userModel
+            .find({ id: { $in: sliceIds } })
+            .select({ id: 1, displayName: 1, username: 1, firstName: 1, lastName: 1 })
+            .lean();
+          const userById = new Map(users.map((u) => [u.id, u]));
+          const total = wallets.reduce((a, b) => a + b, 0) || 1;
+          for (let i = 0; i < sliceIds.length; i++) {
+            const memberId = sliceIds[i];
+            const pct = (wallets[i] / total) * 100;
+            const label = formatTelegramMemberLabel(userById.get(memberId), memberId);
+            lines.push(TG_MSG.memberLine(label, wallets[i], pct));
+          }
+          return lines.join('\n');
+        });
         break;
+      }
       case 'settings':
       case 'настройки':
         if (replyInGroup && message?.message_id) {
@@ -574,12 +645,11 @@ export class TelegramBotOrchestratorService {
         break;
       case 'help':
       case 'справка': {
-        const helpText = await this.helpMessage(community.id);
-        await this.sendBotEphemeral(
-          replyChatId,
-          helpText,
-          replyInGroup ? (message?.message_id as number | undefined) : undefined,
+        const delivery = resolveTelegramCommandDelivery(
+          community.settings?.telegramCommandRouting,
+          'help',
         );
+        await this.deliverRoutedCommand(ctx, delivery, () => this.helpMessage(community.id));
         break;
       }
       case 'guide':
@@ -604,14 +674,35 @@ export class TelegramBotOrchestratorService {
             : undefined,
         });
         break;
-      case 'link':
-        await this.sendMiniAppLink(community, replyChatId, {
-          pin: false,
-          replyToMessageId: replyInGroup
-            ? (message?.message_id as number | undefined)
-            : undefined,
-        });
+      case 'link': {
+        const delivery = resolveTelegramCommandDelivery(
+          community.settings?.telegramCommandRouting,
+          'link',
+        );
+        if (delivery.destination === 'dm') {
+          await this.deliverRoutedCommand(ctx, delivery, () => '', {
+            onDm: async () => {
+              await this.sendMiniAppLinkToDm(community, tgUserId);
+            },
+          });
+        } else if (delivery.ephemeral) {
+          await this.deliverRoutedCommand(ctx, delivery, async () => {
+            const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '').trim();
+            if (!botUsername) {
+              return TG_MSG.miniAppLinkUnavailable;
+            }
+            return `${TG_MSG.groupMiniAppLinkHint}\n\n${buildTelegramMiniAppStartLink(botUsername, community.id)}`;
+          });
+        } else {
+          await this.sendMiniAppLink(community, replyChatId, {
+            pin: false,
+            replyToMessageId: replyInGroup
+              ? (message?.message_id as number | undefined)
+              : undefined,
+          });
+        }
         break;
+      }
       default:
         break;
       }
@@ -675,6 +766,9 @@ export class TelegramBotOrchestratorService {
     const community = await this.findCommunityByChatId(chatId);
     if (!community || community.telegramFrozenAt) {
       this.logger.warn('message_reaction: community missing or frozen', { chatId, messageId });
+      return;
+    }
+    if (community.settings?.telegramVotePanelEnabled === true) {
       return;
     }
 
@@ -786,6 +880,30 @@ export class TelegramBotOrchestratorService {
     if (
       parts[0] === 'settings' &&
       parts[1] === 'toggle' &&
+      parts[2] === 'vote_panel' &&
+      parts[3]
+    ) {
+      const toast = await this.toggleVotePanel(tgUserId, parts[3]);
+      await this.answerCallback(id, toast);
+      return;
+    }
+    if (
+      parts[0] === 'settings' &&
+      parts[1] === 'cmd_route' &&
+      parts[2] &&
+      parts[3]
+    ) {
+      const toast = await this.cycleCommandRoute(
+        tgUserId,
+        parts[3],
+        parts[2] as TelegramRoutableCommand,
+      );
+      await this.answerCallback(id, toast);
+      return;
+    }
+    if (
+      parts[0] === 'settings' &&
+      parts[1] === 'toggle' &&
       parts[2] === 'reaction_no_hashtag' &&
       parts[3]
     ) {
@@ -795,6 +913,12 @@ export class TelegramBotOrchestratorService {
     }
 
     await this.answerCallback(id);
+
+    const votePanelParsed = parseVotePanelCallback(data);
+    if (votePanelParsed) {
+      await this.handleVotePanelCallback(tgUserId, votePanelParsed, query);
+      return;
+    }
 
     if (parts[0] === 'settings' && parts[1] === 'edit' && parts[2] && parts[3]) {
       if (isSettingsEditField(parts[2])) {
@@ -806,6 +930,23 @@ export class TelegramBotOrchestratorService {
       const amount = Number.parseInt(parts[2], 10);
       if (Number.isFinite(amount) && amount > 0) {
         await this.handleVoteAmountCallback(tgUserId, parts[1], amount, query);
+      }
+      return;
+    }
+    if (
+      parts[0] === 'onboard' &&
+      parts[1] === 'cmd_del' &&
+      (parts[2] === 'group_ephemeral' ||
+        parts[2] === 'group_permanent' ||
+        parts[2] === 'dm')
+    ) {
+      const pending = await this.pendingModel.findOne({ telegramUserId: tgUserId }).exec();
+      if (pending?.action === 'onboarding_command_delivery') {
+        const payload = (pending.payload ?? {}) as OnboardingPayload;
+        payload.telegramCommandRouting = commandRoutingFromOnboardingPreset(
+          parts[2] as 'group_ephemeral' | 'group_permanent' | 'dm',
+        );
+        await this.finishOnboarding(tgUserId, payload);
       }
       return;
     }
@@ -942,6 +1083,23 @@ export class TelegramBotOrchestratorService {
       case 'onboarding_welcome_merits': {
         const w = parseFloat(text.trim().replace(',', '.'));
         payload.welcomeMerits = Number.isFinite(w) && w >= 0 ? w : 0;
+        await this.advanceOnboarding(tgUserId, 'onboarding_vote_panel', payload);
+        return true;
+      }
+      case 'onboarding_vote_panel':
+        payload.votePanelEnabled = normalized === 'да' || normalized === 'yes';
+        await this.advanceOnboarding(tgUserId, 'onboarding_command_delivery', payload);
+        return true;
+      case 'onboarding_command_delivery': {
+        const preset = parseOnboardingCommandDeliveryInput(text);
+        if (!preset) {
+          await this.tgBots.tgSend({
+            tgChatId: tgUserId,
+            text: 'Ответьте 1, 2 или 3 — см. варианты в вопросе выше.',
+          });
+          return true;
+        }
+        payload.telegramCommandRouting = commandRoutingFromOnboardingPreset(preset);
         await this.finishOnboarding(tgUserId, payload);
         return true;
       }
@@ -1017,9 +1175,12 @@ export class TelegramBotOrchestratorService {
       'onboarding_quota_enabled',
       'onboarding_moderation',
       'onboarding_publication_ack',
+      'onboarding_vote_panel',
     ];
     if (yesNoSteps.includes(nextAction)) {
       await this.sendCallbackPrompt(tgUserId, prompt, 'onboard:yes', 'onboard:no');
+    } else if (nextAction === 'onboarding_command_delivery') {
+      await this.sendCommandDeliveryPrompt(tgUserId, prompt);
     } else {
       await this.tgBots.tgSend({ tgChatId: tgUserId, text: prompt });
     }
@@ -1089,6 +1250,8 @@ export class TelegramBotOrchestratorService {
           'settings.telegramPublicationAckEnabled': platformIntegration
             ? (payload.telegramPublicationAckEnabled ?? false)
             : false,
+          'settings.telegramVotePanelEnabled': payload.votePanelEnabled === true,
+          'settings.telegramCommandRouting': payload.telegramCommandRouting ?? {},
           'settings.allowWithdraw': false,
           updatedAt: new Date(),
         },
@@ -1114,6 +1277,7 @@ export class TelegramBotOrchestratorService {
     const usageInput = this.buildCommunityUsageInput(community, platformIntegration, {
       dailyEmission: payload.quotaEnabled ? (payload.dailyEmission ?? 0) : 0,
       welcomeMerits: payload.welcomeMerits ?? 0,
+      votePanelEnabled: payload.votePanelEnabled === true,
     });
     await this.tgBots.tgSend({
       tgChatId: tgUserId,
@@ -1206,7 +1370,7 @@ export class TelegramBotOrchestratorService {
   private buildCommunityUsageInput(
     community: Community,
     platformIntegration?: boolean,
-    overrides?: Pick<CommunityUsageRulesInput, 'dailyEmission' | 'welcomeMerits'>,
+    overrides?: Pick<CommunityUsageRulesInput, 'dailyEmission' | 'welcomeMerits' | 'votePanelEnabled'>,
   ): CommunityUsageRulesInput {
     const integrated =
       platformIntegration ?? community.settings?.telegramPlatformIntegration === true;
@@ -1226,6 +1390,9 @@ export class TelegramBotOrchestratorService {
       botUsername,
       dailyEmission: dailyEmission > 0 ? dailyEmission : 0,
       welcomeMerits,
+      votePanelEnabled:
+        overrides?.votePanelEnabled ??
+        community.settings?.telegramVotePanelEnabled === true,
     };
   }
 
@@ -1415,6 +1582,7 @@ export class TelegramBotOrchestratorService {
       hashtags: community.hashtags,
       botUsername,
       platformIntegration: community.settings?.telegramPlatformIntegration === true,
+      votePanelEnabled: community.settings?.telegramVotePanelEnabled === true,
     });
   }
 
@@ -1506,6 +1674,7 @@ export class TelegramBotOrchestratorService {
         const recipient = await this.resolveVoteRecipientLabels(publicationId);
         await this.sendVoteSuccessReport(groupFeedback, voterLabel, amount, direction, recipient);
       }
+      this.scheduleRefreshVotePanel(publicationId);
     } catch (e) {
       const msg =
         e instanceof Error ? mapTelegramUserFacingError(e.message) : TG_MSG.insufficientMerits;
@@ -1603,6 +1772,7 @@ export class TelegramBotOrchestratorService {
     context?: {
       groupChatId?: string;
       replyToMessageId?: number;
+      reactedMessageId?: number;
       voterFirstName?: string;
       voterLastName?: string;
       voterUsername?: string;
@@ -1651,7 +1821,8 @@ export class TelegramBotOrchestratorService {
         publicationId,
         direction,
         groupChatId: context.groupChatId,
-        reactedMessageId: context.replyToMessageId,
+        reactedMessageId: context.reactedMessageId ?? context.replyToMessageId,
+        promptMessageId: context.replyToMessageId,
       },
       expiresAt: new Date(Date.now() + PENDING_TTL_MS),
       createdAt: new Date(),
@@ -1865,10 +2036,12 @@ export class TelegramBotOrchestratorService {
         chat_id: chatId,
         reply_to_message_id: replyToMessageId,
         text: summary,
-        reply_markup: buildSettingsEditKeyboard(
-          community.id,
-          community.settings?.telegramReactionNoHashtagHintEnabled !== false,
-        ),
+        reply_markup: buildSettingsEditKeyboard(community.id, {
+          reactionNoHashtagHintEnabled:
+            community.settings?.telegramReactionNoHashtagHintEnabled !== false,
+          votePanelEnabled: community.settings?.telegramVotePanelEnabled === true,
+          commandRouting: community.settings?.telegramCommandRouting,
+        }),
       });
       const messageId = res.data?.result?.message_id;
       if (typeof messageId === 'number') {
@@ -2143,6 +2316,357 @@ export class TelegramBotOrchestratorService {
     }
     const pct = total > 0 ? (wallet / total) * 100 : 0;
     return { wallet, quota, quotaMax, pct };
+  }
+
+  private async sendCommandDeliveryPrompt(tgUserId: string, text: string): Promise<void> {
+    const token = this.configService.get('bot')?.token;
+    if (!token || this.configService.get('noAxios')) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: `${text}\n\nОтветьте 1, 2 или 3.`,
+      });
+      return;
+    }
+    try {
+      const Axios = (await import('axios')).default;
+      const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
+      await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
+        chat_id: tgUserId,
+        text,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: '1 — группа, исчезает', callback_data: 'onboard:cmd_del:group_ephemeral' },
+            { text: '2 — группа, остаётся', callback_data: 'onboard:cmd_del:group_permanent' },
+          ], [
+            { text: '3 — личка', callback_data: 'onboard:cmd_del:dm' },
+          ]],
+        },
+      });
+    } catch {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text });
+    }
+  }
+
+  private async deliverRoutedCommand(
+    ctx: BotCommandContext,
+    delivery: TelegramCommandDelivery,
+    buildText: () => Promise<string> | string,
+    options?: { onDm?: () => Promise<void> },
+  ): Promise<void> {
+    const { tgUserId, replyChatId, message, replyInGroup } = ctx;
+    const replyTo = replyInGroup ? (message?.message_id as number | undefined) : undefined;
+
+    if (delivery.destination === 'dm') {
+      if (options?.onDm) {
+        await options.onDm();
+      } else {
+        const text = await buildText();
+        await this.tgBots.tgSend({ tgChatId: tgUserId, text });
+      }
+      if (replyInGroup && replyTo != null) {
+        await this.sendBotEphemeral(replyChatId, TG_MSG.commandAnswerInDm, replyTo);
+      }
+      return;
+    }
+
+    if (options?.onDm) {
+      return;
+    }
+
+    const text = await buildText();
+    if (delivery.ephemeral) {
+      await this.sendBotEphemeral(replyChatId, text, replyTo);
+    } else if (replyTo != null) {
+      await this.tgBots.tgReplyMessage({
+        chat_id: replyChatId,
+        reply_to_message_id: replyTo,
+        text,
+      });
+    } else {
+      await this.tgBots.tgSendMessage({ chat_id: replyChatId, text });
+    }
+  }
+
+  private async sendMiniAppLinkToDm(community: Community, tgUserId: string): Promise<void> {
+    const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '').trim();
+    if (!botUsername) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.miniAppLinkUnavailable });
+      return;
+    }
+    await this.tgBots.tgSend({
+      tgChatId: tgUserId,
+      text: `${TG_MSG.groupMiniAppLinkHint}\n\n${buildTelegramMiniAppStartLink(botUsername, community.id)}`,
+    });
+  }
+
+  private async toggleVotePanel(tgUserId: string, communityId: string): Promise<string> {
+    const user = await this.userService.getUserByAuthId('telegram', tgUserId);
+    if (!user) {
+      return TG_MSG.settingsLeadOnly;
+    }
+    const role = await this.userCommunityRoleService.getRole(user.id, communityId);
+    if (role?.role !== 'lead') {
+      return TG_MSG.settingsLeadOnly;
+    }
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      return TG_MSG.noLinkedCommunity;
+    }
+    const enabled = community.settings?.telegramVotePanelEnabled === true;
+    const next = !enabled;
+    await this.communityModel.updateOne(
+      { id: communityId },
+      {
+        $set: {
+          'settings.telegramVotePanelEnabled': next,
+          updatedAt: new Date(),
+        },
+      },
+    );
+    return TG_MSG.settingsVotePanelToggled(next);
+  }
+
+  private async cycleCommandRoute(
+    tgUserId: string,
+    communityId: string,
+    cmd: TelegramRoutableCommand,
+  ): Promise<string> {
+    const user = await this.userService.getUserByAuthId('telegram', tgUserId);
+    if (!user) {
+      return TG_MSG.settingsLeadOnly;
+    }
+    const role = await this.userCommunityRoleService.getRole(user.id, communityId);
+    if (role?.role !== 'lead') {
+      return TG_MSG.settingsLeadOnly;
+    }
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      return TG_MSG.noLinkedCommunity;
+    }
+    const routing = { ...(community.settings?.telegramCommandRouting ?? {}) };
+    const current = resolveTelegramCommandDelivery(routing, cmd);
+    const next = cycleTelegramCommandDelivery(current);
+    routing[cmd] = next;
+    await this.communityModel.updateOne(
+      { id: communityId },
+      {
+        $set: {
+          'settings.telegramCommandRouting': routing,
+          updatedAt: new Date(),
+        },
+      },
+    );
+    return TG_MSG.settingsCommandRouteCycled(formatTelegramCommandDeliveryLabel(cmd, next));
+  }
+
+  private async createVotePanelForPublication(
+    community: Community,
+    publicationId: string,
+    hashtagMessageId: number,
+  ): Promise<void> {
+    const chatId = community.telegramChatId;
+    if (!chatId) {
+      return;
+    }
+
+    const recipient = await this.resolveVotePanelRecipient(publicationId);
+    const publication = await this.publicationService.getPublication(publicationId);
+    if (!publication) {
+      return;
+    }
+
+    const metrics = {
+      upMerits: publication.getMetrics.upvotes,
+      downMerits: publication.getMetrics.downvotes,
+    };
+
+    const panelMessageId = await this.tgBots.tgSendMessage({
+      chat_id: chatId,
+      text: buildVotePanelMessageText(recipient),
+      reply_to_message_id: hashtagMessageId,
+      reply_markup: buildVotePanelKeyboard(publicationId, metrics),
+    });
+    if (panelMessageId == null) {
+      return;
+    }
+
+    const now = new Date();
+    await this.anchorModel.updateOne(
+      { telegramChatId: chatId, telegramMessageId: panelMessageId },
+      {
+        $set: {
+          communityId: community.id,
+          publicationId,
+          anchorType: 'vote_panel',
+          updatedAt: now,
+        },
+        $setOnInsert: {
+          id: uid(),
+          telegramChatId: chatId,
+          telegramMessageId: panelMessageId,
+          createdAt: now,
+        },
+      },
+      { upsert: true },
+    );
+  }
+
+  private async resolveVotePanelRecipient(publicationId: string) {
+    const publication = await this.publicationService.getPublication(publicationId);
+    if (!publication) {
+      return { displayName: 'автор', isNomination: false };
+    }
+    const authorId = publication.getAuthorId.getValue();
+    const beneficiaryId = publication.getBeneficiaryId?.getValue() ?? authorId;
+    const beneficiaryUser = await this.userService.getUserById(beneficiaryId);
+    const beneficiaryDisplay = beneficiaryUser
+      ? formatTelegramMemberLabel(
+          { displayName: beneficiaryUser.displayName, username: beneficiaryUser.username },
+          beneficiaryId,
+        )
+      : 'получателю';
+    if (beneficiaryId === authorId) {
+      return { displayName: beneficiaryDisplay, isNomination: false };
+    }
+    const authorUser = await this.userService.getUserById(authorId);
+    const nominatorDisplay = authorUser
+      ? formatTelegramMemberLabel(
+          { displayName: authorUser.displayName, username: authorUser.username },
+          authorId,
+        )
+      : 'автор';
+    return {
+      displayName: beneficiaryDisplay,
+      isNomination: true,
+      nominatorDisplayName: nominatorDisplay,
+    };
+  }
+
+  private async handleVotePanelCallback(
+    tgUserId: string,
+    parsed: ReturnType<typeof parseVotePanelCallback>,
+    query: Record<string, unknown>,
+  ): Promise<void> {
+    if (!parsed) {
+      return;
+    }
+
+    const from = query.from as {
+      id: number;
+      first_name?: string;
+      last_name?: string;
+      username?: string;
+    };
+    const message = query.message as { chat?: { id: number }; message_id?: number } | undefined;
+    const panelChatId = message?.chat?.id != null ? String(message.chat.id) : undefined;
+    const panelMessageId = message?.message_id;
+
+    const publication = await this.publicationService.getPublication(parsed.publicationId);
+    if (!publication) {
+      return;
+    }
+
+    const community = await this.communityService.getCommunity(
+      publication.getCommunityId.getValue(),
+    );
+    if (!community?.telegramChatId || community.telegramFrozenAt) {
+      return;
+    }
+
+    const voter = await this.provisionMember(community, tgUserId, from);
+    if (!voter || (await this.isMemberFrozen(voter.id, community.id))) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.frozenMember });
+      return;
+    }
+
+    const voteBlockReason = await this.getPublicationVoteBlockReason(
+      voter.id,
+      parsed.publicationId,
+    );
+    if (voteBlockReason) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text:
+          voteBlockReason === 'beneficiary'
+            ? TG_MSG.cannotVoteAsBeneficiary
+            : TG_MSG.cannotVoteOwnPost,
+      });
+      return;
+    }
+
+    const hashtagAnchor = await this.anchorModel
+      .findOne({ publicationId: parsed.publicationId, anchorType: 'hashtag' })
+      .lean();
+    const hashtagMessageId = hashtagAnchor?.telegramMessageId;
+
+    const wantsCustom =
+      ('custom' in parsed && parsed.custom === true) || parsed.direction === 'down';
+    if (wantsCustom) {
+      await this.promptVoteAmount(voter.id, tgUserId, parsed.publicationId, parsed.direction, {
+        groupChatId: panelChatId ?? community.telegramChatId,
+        replyToMessageId: panelMessageId ?? hashtagMessageId,
+        reactedMessageId: hashtagMessageId,
+        voterFirstName: from.first_name,
+        voterLastName: from.last_name,
+        voterUsername: from.username,
+      });
+      return;
+    }
+
+    const groupFeedback =
+      hashtagMessageId != null
+        ? {
+            groupChatId: community.telegramChatId,
+            replyToMessageId: hashtagMessageId,
+          }
+        : undefined;
+
+    await this.executeVote(
+      voter.id,
+      parsed.publicationId,
+      parsed.amount,
+      parsed.direction,
+      undefined,
+      tgUserId,
+      groupFeedback,
+    );
+  }
+
+  private scheduleRefreshVotePanel(publicationId: string): void {
+    const existing = this.votePanelRefreshTimers.get(publicationId);
+    if (existing) {
+      clearTimeout(existing);
+    }
+    const timer = setTimeout(() => {
+      this.votePanelRefreshTimers.delete(publicationId);
+      void this.refreshVotePanel(publicationId);
+    }, 1000);
+    this.votePanelRefreshTimers.set(publicationId, timer);
+  }
+
+  private async refreshVotePanel(publicationId: string): Promise<void> {
+    const panelAnchor = await this.anchorModel
+      .findOne({ publicationId, anchorType: 'vote_panel' })
+      .lean();
+    if (!panelAnchor) {
+      return;
+    }
+
+    const publication = await this.publicationService.getPublication(publicationId);
+    if (!publication) {
+      return;
+    }
+
+    const metrics = {
+      upMerits: publication.getMetrics.upvotes,
+      downMerits: publication.getMetrics.downvotes,
+    };
+
+    await this.tgBots.tgEditMessageReplyMarkup({
+      chat_id: panelAnchor.telegramChatId,
+      message_id: panelAnchor.telegramMessageId,
+      reply_markup: buildVotePanelKeyboard(publicationId, metrics),
+    });
   }
 
   private async savePending(

@@ -101,6 +101,8 @@ describe('telegram group welcome copy', () => {
     expect(text).toContain('5 заслуг в день');
     expect(text).toContain('#идея');
     expect(text).toContain('Подсказка без хэштега');
+    expect(text).toContain('Панель голосования');
+    expect(text).toContain('/balance:');
     expect(text).not.toContain('Пост сохранён');
   });
 

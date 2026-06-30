@@ -5,6 +5,12 @@ import {
   formatOnboardingStepPrompt,
   type OnboardingFlowPayload,
 } from './telegram-onboarding-flow';
+import {
+  formatTelegramCommandDeliveryLabel,
+  resolveTelegramCommandDelivery,
+  type TelegramCommandRoutingSettings,
+  type TelegramRoutableCommand,
+} from './telegram-command-routing';
 
 export type CommunityUsageRulesInput = {
   communityName: string;
@@ -16,6 +22,8 @@ export type CommunityUsageRulesInput = {
   dailyEmission?: number;
   /** Welcome merits credited to new members. */
   welcomeMerits?: number;
+  /** When true, voting uses persistent button panel under posts. */
+  votePanelEnabled?: boolean;
 };
 
 const ONBOARDING_STEP_BODIES: Partial<Record<TelegramBotPendingActionType, string>> = {
@@ -47,6 +55,14 @@ const ONBOARDING_STEP_BODIES: Partial<Record<TelegramBotPendingActionType, strin
     'Писать в группу «Пост сохранён», когда сообщение с хэштегом попало в Meriter?\n\nПо умолчанию лучше выключить.',
   onboarding_welcome_merits:
     'Сколько приветственных заслуг дать новому участнику?\n\n0 — не начислять. Напишите число.',
+  onboarding_vote_panel:
+    'Показывать под постами кнопки начисления заслуг со счётчиками?\n\n' +
+    'Если да — участники голосуют кнопками (+1, своя сумма, против). Реакции 👍❤️👎 для голосования не используются.',
+  onboarding_command_delivery:
+    'Куда отвечать на /balance, /members, /help и /link?\n\n' +
+    '1 — в группу, сообщение исчезает через минуту (по умолчанию)\n' +
+    '2 — в группу, остаётся в чате\n' +
+    '3 — в личку с ботом',
 };
 
 export function getOnboardingPrompt(
@@ -72,6 +88,8 @@ export type CommunitySettingsSnapshotInput = {
     dailyEmission?: number;
     postCost?: number;
     telegramReactionNoHashtagHintEnabled?: boolean;
+    telegramVotePanelEnabled?: boolean;
+    telegramCommandRouting?: TelegramCommandRoutingSettings;
   };
   meritSettings?: { startingMerits?: number };
 };
@@ -122,6 +140,15 @@ export function buildSettingsLeadSummary(community: CommunitySettingsSnapshotInp
       : 'выключена';
   const noHashtagHint =
     community.settings?.telegramReactionNoHashtagHintEnabled !== false ? 'вкл' : 'выкл';
+  const votePanel =
+    community.settings?.telegramVotePanelEnabled === true ? 'вкл' : 'выкл';
+  const routing = community.settings?.telegramCommandRouting;
+  const routeLines = (['balance', 'members', 'help', 'link'] as TelegramRoutableCommand[])
+    .map((cmd) => {
+      const d = resolveTelegramCommandDelivery(routing, cmd);
+      return `• ${formatTelegramCommandDeliveryLabel(cmd, d)}`;
+    })
+    .join('\n');
   return (
     `Настройки Meriter\n\n` +
     `• Название: «${s.name}»\n` +
@@ -129,8 +156,10 @@ export function buildSettingsLeadSummary(community: CommunitySettingsSnapshotInp
     `• Стоимость поста: ${s.postCost} заслуг\n` +
     `• Хэштег: #${s.hashtag}\n` +
     `• Приветственные заслуги: ${s.welcomeMerits}\n` +
-    `• Подсказка без хэштега: ${noHashtagHint}\n\n` +
-    `Нажмите кнопку ниже — бот задаст вопрос в личке.`
+    `• Подсказка без хэштега: ${noHashtagHint}\n` +
+    `• Панель голосования: ${votePanel}\n` +
+    `${routeLines}\n\n` +
+    `Нажмите кнопку — бот задаст вопрос в личке или переключит режим.`
   );
 }
 
@@ -161,7 +190,11 @@ export function isSettingsEditField(field: string): field is SettingsEditField {
 
 export function buildSettingsEditKeyboard(
   communityId: string,
-  reactionNoHashtagHintEnabled = true,
+  options: {
+    reactionNoHashtagHintEnabled?: boolean;
+    votePanelEnabled?: boolean;
+    commandRouting?: TelegramCommandRoutingSettings;
+  } = {},
 ): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>;
 } {
@@ -169,9 +202,20 @@ export function buildSettingsEditKeyboard(
     text: label,
     callback_data: `settings:edit:${field}:${communityId}`,
   });
-  const hintLabel = reactionNoHashtagHintEnabled
+  const hintLabel = options.reactionNoHashtagHintEnabled !== false
     ? 'Подсказка без хэштега: вкл'
     : 'Подсказка без хэштега: выкл';
+  const panelLabel = options.votePanelEnabled
+    ? 'Панель голосования: вкл'
+    : 'Панель голосования: выкл';
+  const routing = options.commandRouting;
+  const cmdRow = (cmd: TelegramRoutableCommand) => ({
+    text: formatTelegramCommandDeliveryLabel(
+      cmd,
+      resolveTelegramCommandDelivery(routing, cmd),
+    ),
+    callback_data: `settings:cmd_route:${cmd}:${communityId}`,
+  });
   return {
     inline_keyboard: [
       [row('name', 'Название'), row('quota', 'Квота')],
@@ -182,19 +226,28 @@ export function buildSettingsEditKeyboard(
           text: hintLabel,
           callback_data: `settings:toggle:reaction_no_hashtag:${communityId}`,
         },
+        {
+          text: panelLabel,
+          callback_data: `settings:toggle:vote_panel:${communityId}`,
+        },
       ],
+      [cmdRow('balance'), cmdRow('members')],
+      [cmdRow('help'), cmdRow('link')],
     ],
   };
 }
 
 function buildGroupWelcomeSteps(input: CommunityUsageRulesInput): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
+  const voteLine = input.votePanelEnabled
+    ? `2. Голосуйте кнопками под постом (+1, своя сумма, против) — счётчики показывают сумму заслуг\n`
+    : `2. Голосуйте за такие сообщения реакциями 👍 ❤️ 👎\n`;
   return (
     `1. Отправляйте сообщения с #${hashtag}, чтобы получать заслуги от других пользователей. ` +
     `Пример: «#${hashtag} Предлагаю собраться в субботу»\n` +
     `   Заслуги другому: ответьте на его сообщение и напишите #${hashtag} …, ` +
     `или «#${hashtag} для @username …»\n` +
-    `2. Голосуйте за такие сообщения реакциями 👍 ❤️ 👎\n` +
+    voteLine +
     `3. Проверяйте свой баланс и историю заслуг в нашем мини-приложении (ссылка ниже).\n` +
     `4. Подробный гайд: /guide — бот пришлёт инструкцию в личку.`
   );
@@ -204,7 +257,15 @@ function buildHashtagAndMiniAppIntro(input: CommunityUsageRulesInput): string {
   return buildGroupWelcomeSteps(input);
 }
 
-function buildReactionVotingRules(): string {
+function buildReactionVotingRules(votePanelEnabled?: boolean): string {
+  if (votePanelEnabled) {
+    return (
+      `Голосование кнопками под постом:\n` +
+      `• +1 / +3 / +5 — начислить заслуги (на кнопке +1 — сумма всех поддержек)\n` +
+      `• Своя сумма — ввести число\n` +
+      `• Против — списать заслуги с получателя`
+    );
+  }
   return (
     `Голосование реакциями:\n` +
     `• 👍 — поддержать быстро +1 заслуга автору\n` +
@@ -213,7 +274,10 @@ function buildReactionVotingRules(): string {
   );
 }
 
-function buildReplyVoteHint(): string {
+function buildReplyVoteHint(votePanelEnabled?: boolean): string {
+  if (votePanelEnabled) {
+    return '';
+  }
   return `Или просто ответьте на пост в таком формате: «+3 Отличная идея» или «-2 Не согласен».`;
 }
 
@@ -237,8 +301,8 @@ function buildWelcomeMeritsParagraph(welcomeMerits?: number): string {
 function buildCommunityUsageBody(input: CommunityUsageRulesInput): string {
   return (
     `${buildHashtagAndMiniAppIntro(input)}\n\n` +
-    `${buildReactionVotingRules()}\n\n` +
-    buildReplyVoteHint()
+    `${buildReactionVotingRules(input.votePanelEnabled)}\n\n` +
+    buildReplyVoteHint(input.votePanelEnabled)
   );
 }
 
@@ -301,6 +365,7 @@ export function buildTelegramHelpMessage(
     hashtags?: string[];
     botUsername?: string;
     platformIntegration?: boolean;
+    votePanelEnabled?: boolean;
   },
 ): string {
   const rulesBlock = `${buildCommunityUsageRules({
@@ -308,6 +373,7 @@ export function buildTelegramHelpMessage(
     hashtags: options?.hashtags,
     platformIntegration: options?.platformIntegration,
     botUsername: options?.botUsername,
+    votePanelEnabled: options?.votePanelEnabled,
   })}\n\n`;
 
   return (
@@ -444,6 +510,10 @@ export const TG_MSG = {
     enabled
       ? 'Подсказка без хэштега включена.'
       : 'Подсказка без хэштега выключена.',
+  settingsVotePanelToggled: (enabled: boolean) =>
+    enabled ? 'Панель голосования включена.' : 'Панель голосования выключена.',
+  settingsCommandRouteCycled: (label: string) => `Команда: ${label}`,
+  commandAnswerInDm: 'Ответ отправлен в личку с ботом.',
   miniAppLinkUnavailable: 'Ссылка на приложение временно недоступна. Попробуйте позже.',
   postSavedAck: 'Пост сохранён.',
 } as const;
