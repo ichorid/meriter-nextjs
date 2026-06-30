@@ -49,6 +49,8 @@ function MembersInner({ communityId }: { communityId: string }) {
   const members = [...(membersQuery.data?.data ?? [])].sort(
     (a, b) => (b.walletBalance ?? 0) - (a.walletBalance ?? 0),
   );
+  const totalWallet = members.reduce((sum, m) => sum + (m.walletBalance ?? 0), 0);
+  const poolDenominator = totalWallet > 0 ? totalWallet : 1;
   const total = membersQuery.data?.pagination?.total ?? 0;
   const selfId = meQuery.data?.id;
   const walletBalance = walletQuery.data?.balance ?? 0;
@@ -75,6 +77,8 @@ function MembersInner({ communityId }: { communityId: string }) {
         <ul className="space-y-3">
           {members.map((member) => {
             const isSelf = member.id === selfId;
+            const wallet = member.walletBalance ?? 0;
+            const walletPct = ((wallet / poolDenominator) * 100).toFixed(1);
             return (
               <li
                 key={member.id}
@@ -103,7 +107,10 @@ function MembersInner({ communityId }: { communityId: string }) {
                 <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-xs text-stitch-muted">Кошелёк</p>
-                    <p className="font-medium">{member.walletBalance ?? 0} заслуг</p>
+                    <p className="font-medium">
+                      {wallet} заслуг{' '}
+                      <span className="text-stitch-muted">({walletPct}%)</span>
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-stitch-muted">Ежедневные</p>
