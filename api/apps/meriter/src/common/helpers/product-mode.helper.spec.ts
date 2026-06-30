@@ -86,7 +86,8 @@ describe('buildTelegramHelpMessage', () => {
     });
     expect(text).toContain('мини-приложении (ссылка ниже)');
     expect(text).toContain('#заслуга');
-    expect(text).toContain('поддержать быстро +1 заслуга автору');
+    expect(text).toContain('собирать заслуги для себя');
+    expect(text).toContain('👎');
     expect(text).not.toContain('/login');
     expect(text).not.toContain('Публикация в чате');
     expect(text).not.toContain('https://t.me/meriter_bot?startapp');

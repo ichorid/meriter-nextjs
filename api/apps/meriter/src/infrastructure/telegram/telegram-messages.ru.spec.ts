@@ -28,11 +28,11 @@ describe('telegram group welcome copy', () => {
       botUsername: 'meriter_bot',
     });
     expect(text).toMatch(/^Привет!\n\nЯ – Меритер/);
-    expect(text).toContain('1. Публикуйте посты с #заслуга');
-    expect(text).toContain('\n\n2. Голосуйте за такие сообщения');
-    expect(text).toContain('\n\n3. Баланс и история');
+    expect(text).toContain('1. Публикуйте посты с #заслуга, чтобы собирать заслуги для себя');
+    expect(text).toContain('\n\n2. Голосуйте за чужие посты с #заслуга реакциями');
+    expect(text).toContain('\n\n3. Проверяйте баланс и историю');
     expect(text).not.toContain('Meriter подключён');
-    expect(text).not.toContain('   Заслуги другому');
+    expect(text).not.toContain('• Пример:');
   });
 
   it('group welcome uses custom hashtag from settings', () => {
@@ -41,7 +41,7 @@ describe('telegram group welcome copy', () => {
       hashtags: ['предложение'],
     });
     expect(text).toContain('#предложение');
-    expect(text).toContain('«#предложение Предлагаю собраться в субботу»');
+    expect(text).toContain('«#предложение для @username»');
   });
 
   it('group welcome adds daily merits paragraph when quota is enabled', () => {
@@ -51,7 +51,7 @@ describe('telegram group welcome copy', () => {
       dailyEmission: 5,
       welcomeMerits: 10,
     });
-    expect(text).toContain('Каждый день — 5 заслуг');
+    expect(text).toContain('Каждый день вы получаете 5 заслуг');
     expect(text).toContain('\n\nНовым участникам — 10 приветственных заслуг.');
   });
 
@@ -62,7 +62,7 @@ describe('telegram group welcome copy', () => {
       dailyEmission: 0,
       welcomeMerits: 100,
     });
-    expect(text).not.toContain('Каждый день —');
+    expect(text).not.toContain('Каждый день вы получаете');
     expect(text).toContain('\n\nНовым участникам — 100 приветственных заслуг.');
   });
 
@@ -73,7 +73,7 @@ describe('telegram group welcome copy', () => {
       dailyEmission: 0,
       welcomeMerits: 0,
     });
-    expect(text).not.toContain('Каждый день —');
+    expect(text).not.toContain('Каждый день вы получаете');
     expect(text).not.toContain('Новым участникам');
   });
 
@@ -89,21 +89,27 @@ describe('telegram group welcome copy', () => {
     expect(text).toContain('/balance — ваши заслуги');
     expect(text).toContain('/guide — подробный гайд');
     expect(text).toContain('/link — ссылка');
-    expect(text).toContain('1. Публикуйте посты с #заслуга');
-    expect(text).toContain('Голосование реакциями');
+    expect(text).toContain(
+      '1. Публикуйте посты с #заслуга, чтобы собирать заслуги для себя',
+    );
+    expect(text).toContain('2. Голосуйте за чужие посты с #заслуга реакциями');
+    expect(text).toContain('3. Проверяйте баланс и историю');
+    expect(text).toContain('4. Если нужен подробный гайд, отправьте команду /guide');
+    expect(text).not.toContain('Голосование реакциями');
+    expect(text).not.toContain('• Пример:');
     expect(text).not.toContain('Заслуги — внутренняя валюта');
   });
 
-  it('help describes panel voting when vote panel is enabled', () => {
+  it('help describes panel voting in step 2 when vote panel is enabled', () => {
     const text = buildTelegramHelpMessage('', {
       communityName: 'Test',
       hashtags: ['заслуга'],
       votePanelEnabled: true,
     });
-    expect(text).toContain('Голосование');
-    expect(text).toContain('• +1 / +3 / +5 — начислить заслуги');
-    expect(text).toContain('2. Голосуйте кнопками под постом');
-    expect(text).toContain('Сейчас заслуг');
+    expect(text).toContain(
+      '2. Голосуйте за чужие посты с #заслуга кнопками под постом (+1, своя сумма, против)',
+    );
+    expect(text).not.toContain('Голосование\n• +1');
     expect(text).not.toContain('Голосование реакциями');
     expect(text).not.toContain('счётчики показывают');
     expect(text).not.toContain('Или просто ответьте на пост');
@@ -115,8 +121,10 @@ describe('telegram group welcome copy', () => {
       hashtags: ['заслуга'],
       votePanelEnabled: true,
     });
-    expect(text).toContain('2. Голосуйте кнопками под постом (+1, своя сумма, против)');
-    expect(text).not.toContain('2. Голосуйте за такие сообщения реакциями');
+    expect(text).toContain(
+      '2. Голосуйте за чужие посты с #заслуга кнопками под постом (+1, своя сумма, против)',
+    );
+    expect(text).not.toContain('2. Голосуйте за чужие посты с #заслуга реакциями');
     expect(text).not.toContain('счётчики');
   });
 
@@ -152,13 +160,13 @@ describe('telegram group welcome copy', () => {
     expect(TG_MSG.reactionPostNotFound('заслуга')).not.toContain('сохранённым');
   });
 
-  it('group welcome mentions beneficiary post formats with bullets', () => {
+  it('group welcome mentions beneficiary post format in step 1', () => {
     const text = buildGroupWelcomeMessage({
       communityName: 'Test',
       hashtags: ['заслуга'],
     });
-    expect(text).toContain('• или «#заслуга для @username …» без reply');
-    expect(text).toContain('• Заслуги другому:');
+    expect(text).toContain('«#заслуга для @username»');
+    expect(text).toContain('ответьте на его сообщение');
   });
 
   it('voteSuccess includes voter name', () => {

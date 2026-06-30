@@ -245,26 +245,28 @@ function joinTelegramBlocks(blocks: string[]): string {
 function buildPostsStep(input: CommunityUsageRulesInput): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
   return (
-    `1. Публикуйте посты с #${hashtag}\n` +
-    `• Пример: «#${hashtag} Предлагаю собраться в субботу»\n` +
-    `• Заслуги другому: ответьте на сообщение и напишите #${hashtag} …\n` +
-    `• или «#${hashtag} для @username …» без reply`
+    `1. Публикуйте посты с #${hashtag}, чтобы собирать заслуги для себя. ` +
+    `Если вы хотите собирать заслуги для другого пользователя, просто ответьте на его сообщение ` +
+    `и добавьте в свой ответ #${hashtag} или напишите в своём сообщении «#${hashtag} для @username».`
   );
 }
 
 function buildVotingStep(input: CommunityUsageRulesInput): string {
+  const hashtag = primaryCommunityHashtag(input.hashtags);
   if (input.votePanelEnabled) {
-    return '2. Голосуйте кнопками под постом (+1, своя сумма, против)';
+    return (
+      `2. Голосуйте за чужие посты с #${hashtag} кнопками под постом (+1, своя сумма, против)`
+    );
   }
-  return '2. Голосуйте за такие сообщения реакциями 👍 ❤️ 👎';
+  return `2. Голосуйте за чужие посты с #${hashtag} реакциями 👍 ❤️ 👎`;
 }
 
 function buildMiniAppStep(): string {
-  return '3. Баланс и история — в мини-приложении (ссылка ниже)';
+  return '3. Проверяйте баланс и историю в мини-приложении (ссылка ниже)';
 }
 
 function buildGuideStep(): string {
-  return '4. Подробный гайд: /guide — бот пришлёт инструкцию в личку';
+  return '4. Если нужен подробный гайд, отправьте команду /guide — бот пришлёт инструкцию в личку';
 }
 
 function buildNumberedUsageSteps(input: CommunityUsageRulesInput): string {
@@ -314,7 +316,7 @@ function buildDailyMeritsParagraph(dailyEmission: number): string {
     return '';
   }
   return (
-    `\n\nКаждый день — ${dailyEmission} заслуг на голоса: они сгорают в полночь. ` +
+    `\n\nКаждый день вы получаете ${dailyEmission} заслуг на голоса: они сгорают в полночь. ` +
     `Сначала тратятся они, потом кошелёк — заслуги от других за ваши посты.`
   );
 }
@@ -324,6 +326,10 @@ function buildWelcomeMeritsParagraph(welcomeMerits?: number): string {
     return '';
   }
   return `\n\nНовым участникам — ${welcomeMerits} приветственных заслуг.`;
+}
+
+function buildHelpUsageIntro(input: CommunityUsageRulesInput): string {
+  return buildNumberedUsageSteps(input);
 }
 
 function buildCommunityUsageBody(input: CommunityUsageRulesInput): string {
@@ -397,7 +403,7 @@ export function buildTelegramHelpMessage(
     votePanelEnabled?: boolean;
   },
 ): string {
-  const rulesBlock = `${buildCommunityUsageRules({
+  const rulesBlock = `${buildHelpUsageIntro({
     communityName: options?.communityName ?? 'сообщество',
     hashtags: options?.hashtags,
     platformIntegration: options?.platformIntegration,
