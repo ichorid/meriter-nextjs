@@ -48,7 +48,7 @@ export const documentsRouter = router({
     .input(z.object({ id: z.string().min(1) }))
     .query(async ({ ctx, input }) => {
       const doc = await ctx.documentService.getById(input.id);
-      if (!doc) {
+      if (!doc || doc.deleted) {
         throw new TRPCError({
           code: 'NOT_FOUND',
           message: 'Document not found',
@@ -178,6 +178,15 @@ export const documentsRouter = router({
         blockId: z.string().min(1),
         blockType: BlockTypeSchema.optional(),
         order: z.number().int().min(0).optional(),
+        proposalsLocked: z.boolean().optional(),
+        lockedRanges: z
+          .array(
+            z.object({
+              rangeStart: z.number().int().min(0),
+              rangeEnd: z.number().int().min(0),
+            }),
+          )
+          .optional(),
       }).merge(StructureConcurrencyInput),
     )
     .mutation(async ({ ctx, input }) => {
@@ -189,6 +198,32 @@ export const documentsRouter = router({
           {
             blockType: input.blockType,
             order: input.order,
+            proposalsLocked: input.proposalsLocked,
+            lockedRanges: input.lockedRanges,
+            expectedUpdatedAt: input.expectedUpdatedAt,
+          },
+        );
+      } catch (err) {
+        mapNestToTrpc(err);
+      }
+    }),
+
+  reorderBlocks: protectedProcedure
+    .input(
+      z.object({
+        documentId: z.string().min(1),
+        sectionId: z.string().min(1),
+        blockIds: z.array(z.string().min(1)).min(1),
+      }).merge(StructureConcurrencyInput),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ctx.documentStructureService.reorderBlocks(
+          ctx.user.id,
+          input.documentId,
+          input.sectionId,
+          {
+            blockIds: input.blockIds,
             expectedUpdatedAt: input.expectedUpdatedAt,
           },
         );
@@ -245,6 +280,27 @@ export const documentsRouter = router({
         await ctx.documentVariantService.assertCanManageDocument(ctx.user.id, doc);
         const { id, ...fields } = input;
         return await ctx.documentService.updateMeta(id, fields);
+      } catch (err) {
+        mapNestToTrpc(err);
+      }
+    }),
+
+  syncStructureFromHtml: protectedProcedure
+    .input(
+      z
+        .object({
+          documentId: z.string().min(1),
+          html: z.string().max(200_000),
+        })
+        .merge(StructureConcurrencyInput),
+    )
+    .mutation(async ({ ctx, input }) => {
+      try {
+        return await ctx.documentHtmlSyncService.syncStructureFromHtml(ctx.user.id, {
+          documentId: input.documentId,
+          html: input.html,
+          expectedUpdatedAt: input.expectedUpdatedAt,
+        });
       } catch (err) {
         mapNestToTrpc(err);
       }

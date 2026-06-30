@@ -1,0 +1,54 @@
+{
+  "work_unit_id": "p1-pagination-schema-adoption",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/trpc/routers/wallets.router.ts",
+    "api/apps/meriter/src/trpc/routers/publications.router.ts",
+    "api/apps/meriter/src/trpc/routers/communities.router.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/trpc/routers/wallets.router.ts",
+      "summary": "Replaced inline pagination Zod fields in getTransactions and getCommunityMeritHistory with PaginationInputSchema.extend (cursor min(0) kept as procedure-specific field)."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/publications.router.ts",
+      "summary": "Replaced inline pagination in getBirzhaPostsBySource (pick limit/skip), getAll, and getDeleted with PaginationInputSchema.extend (cursor min(1) for infinite-query procedures)."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/communities.router.ts",
+      "summary": "Replaced inline pagination in getFutureVisions, getAll (switched from shared PaginationParamsSchema to PaginationInputSchema + PaginationHelper), getFeed, and getMembers with PaginationInputSchema imports."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/notifications.router.ts",
+      "summary": "No changes — already adopted PaginationInputSchema.extend in getAll."
+    },
+    {
+      "file": "api/apps/meriter/src/common/schemas/pagination.schema.ts",
+      "summary": "No changes — canonical schema already defines page, pageSize, limit, skip."
+    }
+  ],
+  "verification": {
+    "inline_pagination_zod_in_write_set_routers": 0,
+    "list_procedures_using_pagination_schema": [
+      "wallets.getTransactions",
+      "wallets.getCommunityMeritHistory",
+      "publications.getBirzhaPostsBySource",
+      "publications.getAll",
+      "publications.getDeleted",
+      "communities.getFutureVisions",
+      "communities.getAll",
+      "communities.getFeed",
+      "communities.getMembers",
+      "notifications.getAll"
+    ],
+    "p13_retirement_criterion": "met"
+  },
+  "success_criteria": {
+    "zero_inline_pagination_zod_duplicates_in_routers": true,
+    "all_list_procedures_import_pagination_schema": true,
+    "p13_retirement_criterion_met": true
+  },
+  "notes": "Procedure-specific cursor fields remain via PaginationInputSchema.extend (min(0) for wallet history, min(1) for infinite-query feeds). communities.getAll now uses PaginationHelper.parseOptions for consistent defaults."
+}

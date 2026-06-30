@@ -1,0 +1,29 @@
+{
+  "work_unit_id": "p0-2-eslint-zones-1-8",
+  "status": "DONE",
+  "attempt": 3,
+  "files_changed": [
+    "api/.eslintrc.js"
+  ],
+  "changes": [
+    {
+      "file": "api/.eslintrc.js",
+      "summary": "import/no-restricted-paths zones 1-8 at warn severity per TARGET §4.3: domain→trpc/api-v1 (1-2), application→trpc/api-v1/@nestjs/mongoose (3-5), domain→@meriter/shared-types allowlist with interim schemas.ts except (6), infrastructure→api-v1 except permission-gates.adapter.ts (7), domain→application forbidden (8). eslint-plugin-import plugin + typescript resolver settings. Zone 9 and P0-3 no-restricted-imports omitted (p0-4, p0-3 work units)."
+    }
+  ],
+  "verification": {
+    "pnpm_filter_api_lint": "exit 0 — 1 warning, 0 errors (import/no-restricted-paths only)",
+    "zone_count": 8,
+    "rule_severity": "warn",
+    "v01_warning": "api/apps/meriter/src/domain/services/document-variant.service.ts:33 — Zone 1 import/no-restricted-paths (domain→trpc, V-01)",
+    "api_restricted_paths_total": 1,
+    "target_spec_match": "zones 1-8 byte-match TARGET_ARCHITECTURE.md §4.3 copy-paste block (zone 9 excluded)",
+    "lint_channel_note": "Full-repo `pnpm lint` delta 888 vs empty baseline: 887 pre-existing @meriter/web no-explicit-any warnings + 1 intentional api Zone 1 warning; HEAD without eslintrc change yields 887 web-only. Same orchestrator false positive as p0-1-eslint-plugin-import."
+  },
+  "success_criteria": {
+    "zones_1_8_present": true,
+    "rules_severity_warn": true,
+    "api_lint_completes": true
+  },
+  "notes": "Attempt 3 re-verified uncommitted api/.eslintrc.js from attempts 0-2; no further write_set edits required. Depends on p0-1-eslint-plugin-import (eslint-plugin-import + resolver in api devDependencies)."
+}

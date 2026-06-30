@@ -6,11 +6,12 @@ import { Poll } from '../../domain/aggregates/poll/poll.entity';
 import type { PublicationSnapshot } from '../../common/interfaces/publication-document.interface';
 import type { PollSnapshot } from '../../domain/aggregates/poll/poll.entity';
 import type { FavoriteTargetType } from '../../domain/models/favorite/favorite.schema';
-import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/shared-types';
+import type { FeedItem } from '@meriter/shared-types';
+import { EntityMappers } from '../../adapters/mappers/entity-mappers';
 import {
-  mapInvestmentsForPublicationFeed,
-  type RawPublicationInvestment,
-} from '../../domain/services/feed-item-investments.mapper';
+  createMarkNotificationsReadUseCase,
+  createToggleFavoriteUseCase,
+} from '../../application/use-cases/feed/get-community-feed.use-case';
 
 const FavoriteTargetTypeSchema = z.enum(['publication', 'poll', 'project']);
 
@@ -23,7 +24,10 @@ export const favoritesRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await ctx.favoriteService.addFavorite(
+      const toggleFavorite = createToggleFavoriteUseCase({
+        favoriteService: ctx.favoriteService,
+      });
+      await toggleFavorite.add(
         ctx.user.id,
         input.targetType as FavoriteTargetType,
         input.targetId,
@@ -39,7 +43,10 @@ export const favoritesRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await ctx.favoriteService.removeFavorite(
+      const toggleFavorite = createToggleFavoriteUseCase({
+        favoriteService: ctx.favoriteService,
+      });
+      await toggleFavorite.remove(
         ctx.user.id,
         input.targetType as FavoriteTargetType,
         input.targetId,
@@ -81,7 +88,10 @@ export const favoritesRouter = router({
       }),
     )
     .mutation(async ({ ctx, input }) => {
-      await ctx.favoriteService.markAsViewed(
+      const markRead = createMarkNotificationsReadUseCase({
+        favoriteService: ctx.favoriteService,
+      });
+      await markRead.execute(
         ctx.user.id,
         input.targetType as FavoriteTargetType,
         input.targetId,
@@ -109,7 +119,6 @@ export const favoritesRouter = router({
         if (fav.targetType === 'poll') {
           pollIds.push(fav.targetId);
         } else {
-          // publication + project are stored in publications collection
           publicationIds.push(fav.targetId);
         }
       }
@@ -138,16 +147,20 @@ export const favoritesRouter = router({
       );
       const polls = pollDocs.map((doc) => Poll.fromSnapshot(doc as unknown as PollSnapshot));
 
-      // Collect IDs for enrichment
       const userIds = new Set<string>();
       const communityIds = new Set<string>();
+      const authoredCommunityIds = new Set<string>();
 
       for (const pub of publications) {
+        const s = pub.toSnapshot();
         userIds.add(pub.getAuthorId.getValue());
         if (pub.getBeneficiaryId) {
           userIds.add(pub.getBeneficiaryId.getValue());
         }
         communityIds.add(pub.getCommunityId.getValue());
+        if (s.authorKind === 'community' && s.authoredCommunityId) {
+          authoredCommunityIds.add(s.authoredCommunityId);
+        }
       }
 
       for (const poll of polls) {
@@ -161,147 +174,30 @@ export const favoritesRouter = router({
         ctx.communityEnrichmentService.batchFetchCommunities(Array.from(communityIds)),
       ]);
 
-      type EnrichedUser = {
-        displayName?: string;
-        firstName?: string;
-        username?: string;
-        avatarUrl?: string;
-      };
-      type EnrichedCommunity = { name?: string };
+      const logicalCommunitiesMap = new Map<
+        string,
+        { id: string; name?: string; avatarUrl?: string }
+      >();
+      await Promise.all(
+        Array.from(authoredCommunityIds).map(async (cid) => {
+          const c = await ctx.communityService.getCommunity(cid);
+          if (c) {
+            logicalCommunitiesMap.set(cid, {
+              id: cid,
+              name: (c as { name?: string }).name,
+              avatarUrl: (c as { avatarUrl?: string }).avatarUrl,
+            });
+          }
+        }),
+      );
 
-      const typedUsersMap = usersMap as Map<string, EnrichedUser>;
-      const typedCommunitiesMap = communitiesMap as Map<string, EnrichedCommunity>;
-
-      const publicationMap = new Map<string, PublicationFeedItem>();
-      for (const pub of publications) {
-        const snapshot = pub.toSnapshot();
-        const authorId = pub.getAuthorId.getValue();
-        const beneficiaryId = pub.getBeneficiaryId?.getValue();
-        const author = typedUsersMap.get(authorId);
-        const beneficiary = beneficiaryId ? typedUsersMap.get(beneficiaryId) : undefined;
-        const community = typedCommunitiesMap.get(snapshot.communityId);
-
-        const item: PublicationFeedItem = {
-          id: snapshot.id,
-          type: 'publication',
-          communityId: snapshot.communityId,
-          authorId,
-          beneficiaryId: beneficiaryId || undefined,
-          content: snapshot.content,
-          slug: snapshot.id,
-          title: snapshot.title || undefined,
-          description: snapshot.description || undefined,
-          postType: snapshot.postType || 'basic',
-          isProject: snapshot.isProject || false,
-          hashtags: snapshot.hashtags || [],
-          categories: snapshot.categories || [],
-          valueTags: snapshot.valueTags ?? [],
-          imageUrl: snapshot.imageUrl || undefined,
-          images: snapshot.images || undefined,
-          impactArea: snapshot.impactArea || undefined,
-          stage: snapshot.stage || undefined,
-          beneficiaries:
-            snapshot.beneficiaries && snapshot.beneficiaries.length > 0
-              ? snapshot.beneficiaries
-              : undefined,
-          methods:
-            snapshot.methods && snapshot.methods.length > 0 ? snapshot.methods : undefined,
-          helpNeeded:
-            snapshot.helpNeeded && snapshot.helpNeeded.length > 0
-              ? snapshot.helpNeeded
-              : undefined,
-          metrics: {
-            upvotes: snapshot.metrics.upvotes,
-            downvotes: snapshot.metrics.downvotes,
-            // Use stored score if available (includes tappalka bonuses), otherwise calculate
-            score: snapshot.metrics.score !== undefined 
-              ? snapshot.metrics.score 
-              : snapshot.metrics.upvotes - snapshot.metrics.downvotes,
-            commentCount: snapshot.metrics.commentCount,
-          },
-          meta: {
-            author: {
-              name: author?.displayName || author?.firstName || 'Unknown',
-              username: author?.username,
-              photoUrl: author?.avatarUrl,
-            },
-            ...(beneficiary && {
-              beneficiary: {
-                name: beneficiary.displayName || beneficiary.firstName || 'Unknown',
-                username: beneficiary.username,
-                photoUrl: beneficiary.avatarUrl,
-              },
-            }),
-            ...(community?.name && {
-              origin: { telegramChatName: community.name },
-            }),
-          },
-          deleted: snapshot.deleted ?? false,
-          deletedAt: snapshot.deletedAt || undefined,
-          createdAt: snapshot.createdAt.toISOString(),
-          updatedAt: snapshot.updatedAt.toISOString(),
-          investingEnabled: snapshot.investingEnabled ?? false,
-          investorSharePercent: snapshot.investorSharePercent,
-          investmentPool: snapshot.investmentPool ?? 0,
-          investmentPoolTotal: snapshot.investmentPoolTotal ?? 0,
-          investments: mapInvestmentsForPublicationFeed(
-            snapshot.investments as
-              | readonly RawPublicationInvestment[]
-              | undefined,
-          ),
-          stopLoss: snapshot.stopLoss ?? 0,
-          noAuthorWalletSpend: snapshot.noAuthorWalletSpend ?? false,
-          sourceEntityId: snapshot.sourceEntityId,
-          sourceEntityType: snapshot.sourceEntityType,
-        };
-
-        publicationMap.set(item.id, item);
-      }
-
-      const pollMap = new Map<string, PollFeedItem>();
-      for (const poll of polls) {
-        const snapshot = poll.toSnapshot();
-        const author = typedUsersMap.get(snapshot.authorId);
-        const community = typedCommunitiesMap.get(snapshot.communityId);
-
-        const item: PollFeedItem = {
-          id: snapshot.id,
-          type: 'poll',
-          communityId: snapshot.communityId,
-          authorId: snapshot.authorId,
-          question: snapshot.question,
-          description: snapshot.description,
-          slug: snapshot.id,
-          options: snapshot.options.map((opt) => ({
-            id: opt.id,
-            text: opt.text,
-            votes: opt.votes,
-            amount: opt.amount,
-            casterCount: opt.casterCount,
-          })),
-          expiresAt: snapshot.expiresAt.toISOString(),
-          isActive: snapshot.isActive,
-          metrics: {
-            totalCasts: snapshot.metrics.totalCasts,
-            casterCount: snapshot.metrics.casterCount,
-            totalAmount: snapshot.metrics.totalAmount,
-          },
-          meta: {
-            author: {
-              name: author?.displayName || author?.firstName || 'Unknown',
-              username: author?.username,
-              photoUrl: author?.avatarUrl,
-            },
-            ...(community?.name && {
-              origin: { telegramChatName: community.name },
-            }),
-          },
-          createdAt: snapshot.createdAt.toISOString(),
-          updatedAt: snapshot.updatedAt.toISOString(),
-        };
-
-        pollMap.set(item.id, item);
-      }
+      const { publicationMap, pollMap } = EntityMappers.buildFeedItemLookupMaps(
+        publications,
+        polls,
+        usersMap,
+        communitiesMap,
+        logicalCommunitiesMap,
+      );
 
       const data: Array<{
         favorite: {
@@ -363,5 +259,3 @@ export const favoritesRouter = router({
       };
     }),
 });
-
-

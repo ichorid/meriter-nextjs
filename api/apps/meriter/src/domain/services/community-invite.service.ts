@@ -2,9 +2,8 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Inject,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { randomBytes } from 'crypto';
 import { uid } from 'uid';
 import {
@@ -13,9 +12,9 @@ import {
   type VerifiedCommunityInvite,
 } from '../../common/helpers/community-invite-jwt';
 import {
-  CommunityInviteSchemaClass,
-  type CommunityInviteDocument,
-} from '../models/community-invite/community-invite.schema';
+  COMMUNITY_INVITE_PERSISTENCE_PORT,
+  type CommunityInvitePersistencePort,
+} from '../ports/community-invite.persistence.port';
 import { CommunityService } from './community.service';
 
 export const COMMUNITY_INVITE_DEFAULT_TTL_DAYS = 90;
@@ -37,8 +36,8 @@ export interface CommunityInvitePreview {
 @Injectable()
 export class CommunityInviteService {
   constructor(
-    @InjectModel(CommunityInviteSchemaClass.name)
-    private readonly communityInviteModel: Model<CommunityInviteDocument>,
+    @Inject(COMMUNITY_INVITE_PERSISTENCE_PORT)
+    private readonly communityInvitePersistence: CommunityInvitePersistencePort,
     private readonly communityService: CommunityService,
   ) {}
 
@@ -47,7 +46,7 @@ export class CommunityInviteService {
       Date.now() + COMMUNITY_INVITE_DEFAULT_TTL_DAYS * 24 * 60 * 60 * 1000,
     );
     const token = randomBytes(12).toString('base64url');
-    await this.communityInviteModel.create({
+    await this.communityInvitePersistence.create({
       id: uid(),
       token,
       communityId: params.communityId,
@@ -64,7 +63,7 @@ export class CommunityInviteService {
       return verifyCommunityInviteToken(token, jwtSecret);
     }
 
-    const doc = await this.communityInviteModel.findOne({ token }).lean();
+    const doc = await this.communityInvitePersistence.findByToken(token);
     if (!doc) {
       throw new Error('Invalid community invite');
     }

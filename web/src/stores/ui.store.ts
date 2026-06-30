@@ -1,7 +1,12 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 
-export type VotingTargetType = 'publication' | 'comment' | 'document-variant' | null;
+export type VotingTargetType =
+  | 'publication'
+  | 'comment'
+  | 'document-variant'
+  | 'document-block-official'
+  | null;
 export type WithdrawTargetType = 'publication' | 'comment' | 'vote' | 'publication-topup' | 'comment-topup' | null;
 
 interface VotingFormData {
@@ -36,6 +41,10 @@ interface UIState {
   votingCommunityId?: string | null;
   votingDocumentVariantIsOwn?: boolean;
   votingDocumentAllowDownvotes?: boolean;
+  /** Scope for targeted cache invalidation after a document vote */
+  votingDocumentContext?: { documentId: string; blockId?: string } | null;
+  /** Reopen mobile «Предложения» sheet after document vote popup closes */
+  returnToDocumentProposalsSheet?: boolean;
   activeVotingFormData: VotingFormData | null;
   // Withdraw popup state - non-persistent
   activeWithdrawTarget: string | null;
@@ -63,9 +72,12 @@ interface UIActions {
       communityId?: string;
       documentVariantIsOwn?: boolean;
       documentAllowDownvotes?: boolean;
+      documentContext?: { documentId: string; blockId?: string };
+      returnToDocumentProposalsSheet?: boolean;
     },
   ) => void;
   closeVotingPopup: () => void;
+  clearReturnToDocumentProposalsSheet: () => void;
   updateVotingFormData: (data: Partial<VotingFormData>) => void;
   // Withdraw popup actions
   openWithdrawPopup: (targetId: string, targetType: WithdrawTargetType, maxWithdrawAmount?: number, maxTopUpAmount?: number) => void;
@@ -87,6 +99,8 @@ const initialState: UIState = {
   votingCommunityId: null,
   votingDocumentVariantIsOwn: false,
   votingDocumentAllowDownvotes: true,
+  votingDocumentContext: null,
+  returnToDocumentProposalsSheet: false,
   activeVotingFormData: null,
   activeWithdrawTarget: null,
   withdrawTargetType: null,
@@ -117,6 +131,8 @@ export const useUIStore = create<UIState & UIActions>()(
             votingCommunityId: opts?.communityId ?? null,
             votingDocumentVariantIsOwn: opts?.documentVariantIsOwn === true,
             votingDocumentAllowDownvotes: opts?.documentAllowDownvotes !== false,
+            votingDocumentContext: opts?.documentContext ?? null,
+            returnToDocumentProposalsSheet: opts?.returnToDocumentProposalsSheet === true,
             activeVotingFormData: { comment: '', delta: 0, error: '', images: [] },
           }),
         closeVotingPopup: () =>
@@ -128,8 +144,11 @@ export const useUIStore = create<UIState & UIActions>()(
             votingCommunityId: null,
             votingDocumentVariantIsOwn: false,
             votingDocumentAllowDownvotes: true,
+            votingDocumentContext: null,
             activeVotingFormData: null,
           }),
+        clearReturnToDocumentProposalsSheet: () =>
+          set({ returnToDocumentProposalsSheet: false }),
         updateVotingFormData: (data) => set((state) => ({
           activeVotingFormData: state.activeVotingFormData
             ? { ...state.activeVotingFormData, ...data }

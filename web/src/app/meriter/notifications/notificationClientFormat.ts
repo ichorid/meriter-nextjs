@@ -64,6 +64,8 @@ export function getNotificationIcon(type: NotificationType): string {
     case 'event_invitation':
       return '📅';
     case 'document_variant_won':
+    case 'document_variant_proposed':
+    case 'document_variant_not_selected':
     case 'document_variant_applied':
     case 'document_block_admin_override':
       return '📄';
@@ -455,6 +457,17 @@ export function getNotificationTitle(
     return exited ? t('postExitedTappalkaTitle') : t('investmentPoolDepletedTitle');
   }
   if (notification.type === 'ob_vote_join_offer') return t('obVoteJoinOfferTitle');
+  if (notification.type === 'document_variant_proposed') {
+    return t('documentVariantProposedTitle');
+  }
+  if (notification.type === 'document_variant_not_selected') {
+    return t('documentVariantNotSelectedTitle');
+  }
+  if (notification.type === 'document_variant_won') return t('documentVariantWonTitle');
+  if (notification.type === 'document_variant_applied') return t('documentVariantAppliedTitle');
+  if (notification.type === 'document_block_admin_override') {
+    return t('documentBlockAdminOverrideTitle');
+  }
   if (notification.type === 'system') {
     const kind = resolveSystemNoticeKind(notification);
     if (kind === 'team_join_approved') return t('systemTeamJoinApprovedTitle');

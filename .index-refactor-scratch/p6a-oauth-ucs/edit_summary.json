@@ -1,0 +1,31 @@
+{
+  "work_unit_id": "p6a-oauth-ucs",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/auth/initiate-oauth.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/auth/complete-oauth-callback.use-case.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/auth/initiate-oauth.use-case.ts",
+      "summary": "New BC-12 InitiateOAuthUseCase centralizes Google and Yandex OAuth initiation: enabled/config checks, OAuth2 state with returnTo, and provider authorize URL construction. Exports OAuthDisabledError, OAuthNotConfiguredError, and createInitiateOAuthUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/auth/complete-oauth-callback.use-case.ts",
+      "summary": "New BC-12 CompleteOAuthCallbackUseCase handles Google/Yandex callbacks: validates authorization code, delegates to AuthProviderService.authenticateGoogle/authenticateYandex (preserved), establishes OAuth session via EstablishSessionUseCase, and builds intermediate web callback redirect URL. Exports createCompleteOAuthCallbackUseCase factory and buildLoginErrorRedirectUrl helper."
+    }
+  ],
+  "verification": {
+    "authenticateGoogle_delegated_from_use_case": true,
+    "authenticateYandex_delegated_from_use_case": true,
+    "establishOAuthSession_delegated_from_use_case": true,
+    "initiate_google_yandex_url_logic_extracted": true,
+    "tsc_errors_in_write_set": 0
+  },
+  "success_criteria": {
+    "oauth_init_and_callback_delegate": true,
+    "authenticateGoogle_Yandex_preserved": true
+  },
+  "notes": "AuthController wiring to these use cases is outside write_set (follow-up). Cookie debug logging and res.redirect remain transport-layer concerns in the controller. buildWebUrl moved into CompleteOAuthCallbackUseCase for callback redirect construction."
+}

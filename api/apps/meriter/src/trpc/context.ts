@@ -35,6 +35,7 @@ import { TappalkaService } from '../domain/services/tappalka.service';
 import { InvestmentService } from '../domain/services/investment.service';
 import { PostClosingService } from '../domain/services/post-closing.service';
 import { MeritResolverService } from '../domain/services/merit-resolver.service';
+import { WalletContextResolverService } from '../domain/services/wallet-context-resolver.service';
 import { TeamJoinRequestService } from '../domain/services/team-join-request.service';
 import { TeamInvitationService } from '../domain/services/team-invitation.service';
 import { PlatformSettingsService } from '../domain/services/platform-settings.service';
@@ -47,6 +48,8 @@ import { ProjectPayoutService } from '../domain/services/project-payout.service'
 import { PlatformWipeService } from '../domain/services/platform-wipe.service';
 import { PlatformDemoSeedService } from '../domain/services/platform-demo-seed.service';
 import { PlatformDemoEventsSeedService } from '../domain/services/platform-demo-events-seed.service';
+import { PlatformEntrepreneursDemoSeedService } from '../domain/services/platform-entrepreneurs-demo-seed.service';
+import { PlatformDemoPackImportService } from '../domain/services/platform-demo-pack-import.service';
 import { PlatformDatabaseDumpService } from '../domain/services/platform-database-dump.service';
 import { MeritTransferService } from '../domain/services/merit-transfer.service';
 import { EventService } from '../domain/services/event.service';
@@ -54,6 +57,11 @@ import { CommunityInviteService } from '../domain/services/community-invite.serv
 import { DocumentService } from '../domain/services/document.service';
 import { DocumentVariantService } from '../domain/services/document-variant.service';
 import { DocumentStructureService } from '../domain/services/document-structure.service';
+import { DocumentHtmlSyncService } from '../domain/services/document-html-sync.service';
+import { DocumentLiveUpdatesService } from '../domain/services/document-live-updates.service';
+import { PermissionRuleEngine } from '../domain/services/permission-rule-engine.service';
+import { resolveMeriterProductFromRequest } from '../domain/common/constants/product.constants';
+import { SeedCommunityWebDevUseCase } from '../application/use-cases/dev/seed-community-web-dev.use-case';
 
 export interface CreateContextOptions {
   req: any;
@@ -88,6 +96,7 @@ export interface CreateContextOptions {
   investmentService: InvestmentService;
   postClosingService: PostClosingService;
   meritResolverService: MeritResolverService;
+  walletContextResolverService: WalletContextResolverService;
   teamJoinRequestService: TeamJoinRequestService;
   teamInvitationService: TeamInvitationService;
   platformSettingsService: PlatformSettingsService;
@@ -100,6 +109,8 @@ export interface CreateContextOptions {
   platformWipeService: PlatformWipeService;
   platformDemoSeedService: PlatformDemoSeedService;
   platformDemoEventsSeedService: PlatformDemoEventsSeedService;
+  platformEntrepreneursDemoSeedService: PlatformEntrepreneursDemoSeedService;
+  platformDemoPackImportService: PlatformDemoPackImportService;
   platformDatabaseDumpService: PlatformDatabaseDumpService;
   meritTransferService: MeritTransferService;
   eventService: EventService;
@@ -107,10 +118,14 @@ export interface CreateContextOptions {
   documentService: DocumentService;
   documentVariantService: DocumentVariantService;
   documentStructureService: DocumentStructureService;
+  documentHtmlSyncService: DocumentHtmlSyncService;
+  documentLiveUpdates: DocumentLiveUpdatesService;
+  permissionRuleEngine: PermissionRuleEngine;
   connection: Connection;
   configService: ConfigService<AppConfig>;
   cookieManager: CookieManager;
   authenticationService: JwtVerificationService;
+  seedCommunityWebDevUseCase: SeedCommunityWebDevUseCase;
 }
 
 /**
@@ -153,6 +168,7 @@ export async function createContext(opts: CreateContextOptions) {
     investmentService,
     postClosingService,
     meritResolverService,
+    walletContextResolverService,
     teamJoinRequestService,
     teamInvitationService,
     platformSettingsService,
@@ -165,6 +181,8 @@ export async function createContext(opts: CreateContextOptions) {
     platformWipeService,
     platformDemoSeedService,
     platformDemoEventsSeedService,
+    platformEntrepreneursDemoSeedService,
+    platformDemoPackImportService,
     platformDatabaseDumpService,
     meritTransferService,
     eventService,
@@ -172,11 +190,15 @@ export async function createContext(opts: CreateContextOptions) {
     documentService,
     documentVariantService,
     documentStructureService,
+    documentHtmlSyncService,
+    documentLiveUpdates,
+    permissionRuleEngine,
     connection,
     configService,
     cookieManager,
     pollCastService,
     authenticationService,
+    seedCommunityWebDevUseCase,
   } = opts;
 
   const logger = new Logger('tRPC-Context');
@@ -237,6 +259,7 @@ export async function createContext(opts: CreateContextOptions) {
     req,
     res,
     user,
+    meriterProduct: resolveMeriterProductFromRequest(req),
     userService,
     communityService,
     userCommunityRoleService,
@@ -267,6 +290,7 @@ export async function createContext(opts: CreateContextOptions) {
     investmentService,
     postClosingService,
     meritResolverService,
+    walletContextResolverService,
     teamJoinRequestService,
     teamInvitationService,
     platformSettingsService,
@@ -279,6 +303,8 @@ export async function createContext(opts: CreateContextOptions) {
     platformWipeService,
     platformDemoSeedService,
     platformDemoEventsSeedService,
+    platformEntrepreneursDemoSeedService,
+    platformDemoPackImportService,
     platformDatabaseDumpService,
     meritTransferService,
     eventService,
@@ -286,9 +312,13 @@ export async function createContext(opts: CreateContextOptions) {
     documentService,
     documentVariantService,
     documentStructureService,
+    documentHtmlSyncService,
+    documentLiveUpdates,
+    permissionRuleEngine,
     connection,
     configService,
     cookieManager,
+    seedCommunityWebDevUseCase,
   };
 }
 

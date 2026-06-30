@@ -20,15 +20,18 @@ import {
 } from 'lucide-react';
 import { RichTextToolbarButton, RichTextToolbarDivider } from './RichTextToolbarButton';
 import { uploadFile, useUploadImage } from '@/hooks/api/useUploads';
+import { cn } from '@/lib/utils';
 import type { RichTextToolbarVariant } from './types';
 
 interface FormatToolbarProps {
   editor: Editor | null;
   variant: RichTextToolbarVariant;
   disabled?: boolean;
+  /** Inside a shared toolbar shell (second row below); drops own border/background. */
+  embedded?: boolean;
 }
 
-export function FormatToolbar({ editor, variant, disabled }: FormatToolbarProps) {
+export function FormatToolbar({ editor, variant, disabled, embedded = false }: FormatToolbarProps) {
   const t = useTranslations('profile');
   const uploadMutation = useUploadImage();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -70,7 +73,12 @@ export function FormatToolbar({ editor, variant, disabled }: FormatToolbarProps)
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-1 p-2 border-b border-base-300 bg-base-200">
+    <div
+      className={cn(
+        'flex flex-wrap items-center gap-1 p-2',
+        embedded ? 'pb-1' : 'border-b border-base-300 bg-base-200',
+      )}
+    >
       <RichTextToolbarButton
         onClick={() => editor.chain().focus().toggleBold().run()}
         disabled={disabled || !editor.can().chain().focus().toggleBold().run()}

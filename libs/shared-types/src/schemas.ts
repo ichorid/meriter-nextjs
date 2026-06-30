@@ -18,6 +18,45 @@ import {
   VALUE_TAG_MAX_LENGTH,
   VALUE_TAGS_MAX_PER_POST,
 } from "./value-rubricator";
+import {
+  PermissionRuleSchema,
+  ResourcePermissionsSchema,
+} from "./schemas/permissions";
+import {
+  EventOptionalDateFieldsSchema,
+  EventPublicationFieldsSchema,
+  addEventPublicationValidationIssues,
+  eventDatesRequiredWhenPostTypeEvent,
+  eventDatesRequiredWhenPostTypeEventRefineConfig,
+  eventEndDateOrderRefineCheck,
+  eventEndDateOrderRefineConfig,
+  eventEndDateOrderWhenPostTypeEvent,
+} from "./events";
+
+export {
+  EventOptionalDateFieldsSchema,
+  EventRequiredDateFieldsSchema,
+  EventPublicationFieldsSchema,
+  EventParticipantViewSchema,
+  eventEndDateOrderRefineCheck,
+  eventEndDateOrderRefineConfig,
+  eventDatesRequiredWhenPostTypeEvent,
+  eventDatesRequiredWhenPostTypeEventRefineConfig,
+  eventEndDateOrderWhenPostTypeEvent,
+  addEventPublicationValidationIssues,
+} from "./events";
+
+export {
+  PermissionRuleSchema,
+  PermissionRuleConditionsSchema,
+  ResourcePermissionsSchema,
+} from "./schemas/permissions";
+
+export type {
+  PermissionRule,
+  PermissionRuleConditions,
+  ResourcePermissions,
+} from "./schemas/permissions";
 
 export const ValueTagsArraySchema = z
   .array(z.string().trim().min(1).max(VALUE_TAG_MAX_LENGTH))
@@ -122,19 +161,19 @@ export type InvestmentEarningsHistoryEntry = z.infer<
   typeof InvestmentEarningsHistoryEntrySchema
 >;
 
-export const InvestmentSchema = z.object({
-  investorId: z.string(),
-  amount: z.number().int().min(0),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-  /** F-1: Accumulated total received by this investor from this post. */
-  totalEarnings: z.number().min(0).default(0),
-  /** F-1: Per-event history (withdrawal share, pool return, close). */
-  earningsHistory: z
-    .array(InvestmentEarningsHistoryEntrySchema)
-    .optional()
-    .default([]),
-});
+export const InvestmentSchema = TimestampsSchema.merge(
+  z.object({
+    investorId: z.string(),
+    amount: z.number().int().min(0),
+    /** F-1: Accumulated total received by this investor from this post. */
+    totalEarnings: z.number().min(0).default(0),
+    /** F-1: Per-event history (withdrawal share, pool return, close). */
+    earningsHistory: z
+      .array(InvestmentEarningsHistoryEntrySchema)
+      .optional()
+      .default([]),
+  }),
+);
 
 export const InvestmentContractSchema = z.object({
   investorSharePercent: z.number().int().min(1).max(99),
@@ -153,6 +192,8 @@ export const CommunitySettingsSchema = z.object({
   canPayPostFromQuota: z.boolean().default(false), // Whether posts can be paid from quota instead of wallet only
   allowWithdraw: z.boolean().default(true), // Whether users can withdraw merits from their own posts
   forwardRule: z.enum(["standard", "project"]).default("standard"), // Forward rule: 'standard' = forward without votes, keep original; 'project' = forward with votes, delete original
+  /** When true, parent community and all child projects share one personal wallet key and CommunityWallet. */
+  sharedWalletWithProjects: z.boolean().default(false),
   // Investment settings
   investingEnabled: z.boolean().default(false),
   investorShareMin: z.number().int().min(1).max(99).default(1),
@@ -242,38 +283,16 @@ export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 export const SourceEntityTypeSchema = z.enum(["project", "community"]);
 export type SourceEntityType = z.infer<typeof SourceEntityTypeSchema>;
 
-export const CommunityWalletSchema = z.object({
-  id: z.string(),
-  communityId: z.string(),
-  balance: z.number().int().min(0).default(0),
-  totalReceived: z.number().int().min(0).default(0),
-  totalDistributed: z.number().int().min(0).default(0),
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().datetime(),
-});
+export const CommunityWalletSchema = TimestampsSchema.merge(
+  z.object({
+    id: z.string(),
+    communityId: z.string(),
+    balance: z.number().int().min(0).default(0),
+    totalReceived: z.number().int().min(0).default(0),
+    totalDistributed: z.number().int().min(0).default(0),
+  }),
+);
 export type CommunityWallet = z.infer<typeof CommunityWalletSchema>;
-
-// Permission rule schema - granular role -> action -> allow/deny rules
-export const PermissionRuleConditionsSchema = z.object({
-  requiresTeamMembership: z.boolean().optional(),
-  onlyTeamLead: z.boolean().optional(),
-  canVoteForOwnPosts: z.boolean().optional(),
-  participantsCannotVoteForLead: z.boolean().optional(),
-  canEditWithVotes: z.boolean().optional(),
-  canEditWithComments: z.boolean().optional(),
-  canEditAfterMinutes: z.number().int().min(0).optional(),
-  canDeleteWithVotes: z.boolean().optional(),
-  canDeleteWithComments: z.boolean().optional(),
-  teamOnly: z.boolean().optional(),
-  isHidden: z.boolean().optional(),
-});
-
-export const PermissionRuleSchema = z.object({
-  role: z.enum(["superadmin", "lead", "participant"]),
-  action: z.string(), // ActionType enum value
-  allowed: z.boolean(),
-  conditions: PermissionRuleConditionsSchema.optional(),
-});
 
 export const PollOptionSchema = z.object({
   id: z.string(),
@@ -333,6 +352,7 @@ export const UserSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   communityTags: z.array(z.string()).default([]),
   communityMemberships: z.array(z.string()).default([]),
   authenticators: z.array(AuthenticatorSchema).default([]), // Available passkeys
+  linkedProviders: z.array(z.string()).optional(),
 });
 
 export const CommunitySchema = IdentifiableSchema.merge(
@@ -366,6 +386,8 @@ export const CommunitySchema = IdentifiableSchema.merge(
   // Granular permission rules - replaces postingRules, votingRules, visibilityRules, meritRules
   permissionRules: z.array(PermissionRuleSchema).optional(),
   settings: CommunitySettingsSchema,
+  votingSettings: CommunityVotingSettingsSchema.optional(),
+  meritSettings: CommunityMeritSettingsSchema.optional(),
   hashtags: z.array(z.string()).default([]),
   hashtagDescriptions: z.record(z.string(), z.string()).optional().default({}),
   isActive: z.boolean().default(true),
@@ -491,66 +513,17 @@ export const PublicationSchema = IdentifiableSchema.merge(
   ttlWarningNotified: z.boolean().optional().default(false),
   /** True after 24h-before-inactivity-close warning sent. */
   inactivityWarningNotified: z.boolean().optional().default(false),
-  eventStartDate: z.coerce.date().optional(),
-  eventEndDate: z.coerce.date().optional(),
-  eventTime: z.string().max(500).optional(),
-  eventLocation: z.string().max(2000).optional(),
-  eventAttendees: z.array(z.string()).optional().default([]),
-  eventParticipants: z
-    .array(
-      z.object({
-        userId: z.string(),
-        attendance: z.enum(["checked_in", "no_show"]).nullable().optional(),
-        attendanceUpdatedAt: z.coerce.date().optional(),
-        attendanceUpdatedByUserId: z.string().optional(),
-      }),
-    )
-    .optional()
-    .default([]),
+  /** Pinned to top of community feed (lead/superadmin only). */
+  isPinned: z.boolean().optional().default(false),
 })
-  .superRefine((data, ctx) => {
-    if (data.postType === "event") {
-      if (data.eventStartDate == null) {
-        ctx.addIssue({
-          code: "custom",
-          message: "eventStartDate is required when postType is event",
-          path: ["eventStartDate"],
-        });
-      }
-      if (data.eventEndDate == null) {
-        ctx.addIssue({
-          code: "custom",
-          message: "eventEndDate is required when postType is event",
-          path: ["eventEndDate"],
-        });
-      }
-      if (data.eventStartDate != null && data.eventEndDate != null && data.eventEndDate < data.eventStartDate) {
-        ctx.addIssue({
-          code: "custom",
-          message: "eventEndDate must be on or after eventStartDate",
-          path: ["eventEndDate"],
-        });
-      }
-    }
-  });
+  .merge(EventPublicationFieldsSchema)
+  .superRefine(addEventPublicationValidationIssues);
 
 export const CommentAuthorMetaSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
   username: z.string().optional(),
   photoUrl: z.string().url().optional(),
-});
-
-export const ResourcePermissionsSchema = z.object({
-  canVote: z.boolean(),
-  canEdit: z.boolean(),
-  canDelete: z.boolean(),
-  canComment: z.boolean(),
-  /** Birzha source post: manager can top up rating from the source CommunityWallet */
-  canTopUpFromSourceEntityWallet: z.boolean().optional(),
-  voteDisabledReason: z.string().optional(),
-  editDisabledReason: z.string().optional(),
-  deleteDisabledReason: z.string().optional(),
 });
 
 /** Top-up publication rating (personal wallet via vote path, or source CommunityWallet). */
@@ -579,20 +552,21 @@ export const CommentSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   permissions: ResourcePermissionsSchema.optional(),
 });
 
-export const VoteSchema = PolymorphicReferenceSchema.extend({
-  id: z.string(),
-  userId: z.string(),
-  amountQuota: z.number().int().min(0).default(0),
-  amountWallet: z.number().int().min(0).default(0),
-  direction: z.enum(["up", "down"]), // Explicit vote direction: upvote or downvote
-  communityId: z.string(),
-  comment: z.string().max(5000), // Required comment text attached to vote
-  createdAt: z.string().datetime(),
-  updatedAt: z.string().optional(), // Optional for votes
-}).refine((data) => data.amountQuota > 0 || data.amountWallet > 0, {
-  message:
-    "At least one of amountQuota or amountWallet must be greater than zero",
-});
+export const VoteSchema = PolymorphicReferenceSchema.merge(TimestampsSchema)
+  .extend({
+    id: z.string(),
+    userId: z.string(),
+    amountQuota: z.number().int().min(0).default(0),
+    amountWallet: z.number().int().min(0).default(0),
+    direction: z.enum(["up", "down"]), // Explicit vote direction: upvote or downvote
+    communityId: z.string(),
+    comment: z.string().max(5000), // Required comment text attached to vote
+    updatedAt: z.string().optional(), // Optional for votes
+  })
+  .refine((data) => data.amountQuota > 0 || data.amountWallet > 0, {
+    message:
+      "At least one of amountQuota or amountWallet must be greater than zero",
+  });
 
 export const PollSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   communityId: z.string(),
@@ -675,11 +649,10 @@ export const CreatePublicationDtoSchema = z.object({
   postCostFunding: z
     .enum(["source_community_wallet", "caller_global_wallet"])
     .optional(),
-  eventStartDate: z.coerce.date().optional(),
-  eventEndDate: z.coerce.date().optional(),
-  eventTime: z.string().max(500).optional(),
-  eventLocation: z.string().max(2000).optional(),
+  /** Pinned to top of community feed (lead/superadmin only). */
+  isPinned: z.boolean().optional().default(false),
 })
+  .merge(EventOptionalDateFieldsSchema)
   .refine(
     (data) => {
       // Require investorSharePercent when investingEnabled is true
@@ -716,34 +689,8 @@ export const CreatePublicationDtoSchema = z.object({
       message: "beneficiaries max 2, methods max 3, helpNeeded max 3",
     }
   )
-  .refine(
-    (data) => {
-      if (data.postType === "event") {
-        return data.eventStartDate != null && data.eventEndDate != null;
-      }
-      return true;
-    },
-    {
-      message: "eventStartDate and eventEndDate are required when postType is event",
-      path: ["eventStartDate"],
-    }
-  )
-  .refine(
-    (data) => {
-      if (
-        data.postType === "event" &&
-        data.eventStartDate != null &&
-        data.eventEndDate != null
-      ) {
-        return data.eventEndDate >= data.eventStartDate;
-      }
-      return true;
-    },
-    {
-      message: "eventEndDate must be on or after eventStartDate",
-      path: ["eventEndDate"],
-    }
-  );
+  .refine(eventDatesRequiredWhenPostTypeEvent, eventDatesRequiredWhenPostTypeEventRefineConfig)
+  .refine(eventEndDateOrderWhenPostTypeEvent, eventEndDateOrderRefineConfig);
 
 export const CreateCommentDtoSchema = z.object({
   targetType: z.enum(["publication", "comment"]),
@@ -870,6 +817,7 @@ export const UpdateCommunityDtoSchema = z.object({
     allowEditByOthers: z.boolean().optional(),
     canPayPostFromQuota: z.boolean().optional(),
     allowWithdraw: z.boolean().optional(),
+    sharedWalletWithProjects: z.boolean().optional(),
     // Investment settings
     investingEnabled: z.boolean().optional(),
     investorShareMin: z.number().int().min(1).max(99).optional(),
@@ -897,6 +845,10 @@ export const UpdateCommunityDtoSchema = z.object({
   futureVisionCover: z.string().url().optional(),
 }).passthrough();
 
+export {
+  UpdateTappalkaSettingsInputSchema,
+} from './tappalka';
+
 export const UpdatePublicationDtoSchema = z.object({
   content: z.string().min(1).max(10000).optional(),
   hashtags: z.array(z.string()).optional(),
@@ -920,24 +872,12 @@ export const UpdatePublicationDtoSchema = z.object({
   // Present only to reject with clear error (immutable)
   investingEnabled: z.boolean().optional(),
   investorSharePercent: z.number().int().min(1).max(99).optional(),
-  eventStartDate: z.coerce.date().optional(),
-  eventEndDate: z.coerce.date().optional(),
-  eventTime: z.string().max(500).optional(),
-  eventLocation: z.string().max(2000).optional(),
+  /** Pinned to top of community feed (lead/superadmin only). */
+  isPinned: z.boolean().optional(),
 })
+  .merge(EventOptionalDateFieldsSchema)
   .strict()
-  .refine(
-    (data) => {
-      if (data.eventStartDate != null && data.eventEndDate != null) {
-        return data.eventEndDate >= data.eventStartDate;
-      }
-      return true;
-    },
-    {
-      message: "eventEndDate must be on or after eventStartDate",
-      path: ["eventEndDate"],
-    },
-  ); // Strict mode prevents postType and isProject from being included
+  .refine(eventEndDateOrderRefineCheck, eventEndDateOrderRefineConfig); // Strict mode prevents postType and isProject from being included
 
 /** Strip HTML for required-field checks (ОБ / описание из WYSIWYG). */
 export function plainTextFromRichCommunityInput(s: string | undefined): string {
@@ -961,6 +901,7 @@ export const DocumentSeedBlockSchema = z.object({
   order: z.number().int().min(0),
   blockType: MeriterBlockTypeSchema,
   officialContent: z.string().max(50_000),
+  proposalsLocked: z.boolean().optional(),
 });
 
 export const DocumentSeedSectionSchema = z.object({
@@ -1052,7 +993,7 @@ export const WithdrawAmountDtoSchema = z.object({
 
 export const VoteWithCommentDtoSchema = z.object({
   targetType: z
-    .enum(["publication", "comment", "vote", "document-variant"])
+    .enum(["publication", "comment", "vote", "document-variant", "document-block-official"])
     .optional(),
   targetId: z.string().optional(),
   quotaAmount: z.number().int().min(0).optional(),
@@ -1256,6 +1197,7 @@ export const PublicationFeedItemSchema = IdentifiableSchema.merge(
   authorKind: z.enum(['user', 'community']).optional(),
   authoredCommunityId: z.string().optional(),
   publishedByUserId: z.string().optional(),
+  isPinned: z.boolean().optional().default(false),
 });
 
 export const PollFeedItemSchema = IdentifiableSchema.merge(
@@ -1296,11 +1238,6 @@ export type Transaction = z.infer<typeof TransactionSchema>;
 export type Investment = z.infer<typeof InvestmentSchema>;
 export type InvestmentContract = z.infer<typeof InvestmentContractSchema>;
 
-// Export rule types
-export type PermissionRule = z.infer<typeof PermissionRuleSchema>;
-export type PermissionRuleConditions = z.infer<typeof PermissionRuleConditionsSchema>;
-export type ResourcePermissions = z.infer<typeof ResourcePermissionsSchema>;
-
 export type CreatePublicationDto = z.infer<typeof CreatePublicationDtoSchema>;
 export type CreateCommentDto = z.infer<typeof CreateCommentDtoSchema>;
 export type UpdateCommentDto = z.infer<typeof UpdateCommentDtoSchema>;
@@ -1313,6 +1250,7 @@ export type CreatePollCastDto = z.infer<typeof CreatePollCastDtoSchema>;
 export type TransferDto = z.infer<typeof TransferDtoSchema>;
 export type WithdrawDto = z.infer<typeof WithdrawDtoSchema>;
 export type UpdateCommunityDto = z.infer<typeof UpdateCommunityDtoSchema>;
+export type { UpdateTappalkaSettingsInput } from './tappalka';
 export type CreateCommunityDto = z.infer<typeof CreateCommunityDtoSchema>;
 export type UpdatePublicationDto = z.infer<typeof UpdatePublicationDtoSchema>;
 export type VoteDirectionDto = z.infer<typeof VoteDirectionDtoSchema>;

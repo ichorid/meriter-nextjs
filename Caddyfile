@@ -6,6 +6,20 @@
 	admin localhost:2019
 }
 
+(meriter_security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
+		# Telegram Login Widget: script from telegram.org; OAuth iframe oauth.telegram.org
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://telegram.org https://api.telegram.org https://fonts.googleapis.com https://backend-ambered-tidepool-6732.fly.dev; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://telegram.org https://api.telegram.org https://oauth.telegram.org https://backend-ambered-tidepool-6732.fly.dev wss://backend-ambered-tidepool-6732.fly.dev; frame-src 'self' https://oauth.telegram.org;"
+		-Server
+	}
+}
+
 # Support both HTTP and HTTPS for localhost development
 {$DOMAIN} {
     # Enable access logs
@@ -14,33 +28,7 @@
         level INFO
     }
 
-    # Security headers - applied globally
-    header {
-        # HSTS - Enforce HTTPS connections (1 year)
-        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
-        
-        # Prevent MIME type sniffing
-        X-Content-Type-Options "nosniff"
-        
-        # Clickjacking protection
-        X-Frame-Options "DENY"
-        
-        # XSS protection (legacy but still useful)
-        X-XSS-Protection "1; mode=block"
-        
-        # Referrer policy
-        Referrer-Policy "strict-origin-when-cross-origin"
-        
-        # Permissions policy - restrict browser features
-        Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=(), usb=()"
-        
-        # Content Security Policy - adjust based on your app's needs
-        # Allow self, Telegram API, and common CDNs
-        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.telegram.org https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https: blob:; connect-src 'self' https://api.telegram.org; frame-src 'self' https://oauth.telegram.org;"
-        
-        # Remove server header for security
-        -Server
-    }
+    import meriter_security_headers
 
     # Rate limiting for API endpoints (stricter limits)
     # Note: Caddy v2 doesn't have built-in rate limiting - requires caddy-ratelimit plugin
@@ -101,3 +89,43 @@
     encode gzip
 }
 
+# Community-web (Telegram MVP) — isolated product on subdomain
+{$COMMUNITY_DOMAIN:community-dobro.meriter.pro} {
+    log {
+        output stdout
+        level INFO
+    }
+
+    import meriter_security_headers
+
+    handle /api* {
+        reverse_proxy api:8002 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+        encode gzip
+    }
+
+    handle /trpc* {
+        reverse_proxy api:8002 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+        encode gzip
+    }
+
+    handle {
+        reverse_proxy community-web:8003 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    encode gzip
+}

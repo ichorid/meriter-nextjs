@@ -1,3 +1,8 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import {
@@ -57,9 +62,21 @@ export const tappalkaRouter = router({
         );
         return result;
       } catch (error) {
-        if (error instanceof Error) {
+        if (error instanceof BadRequestException) {
           throw new TRPCError({
             code: 'BAD_REQUEST',
+            message: error.message,
+          });
+        }
+        if (error instanceof ForbiddenException) {
+          throw new TRPCError({
+            code: 'FORBIDDEN',
+            message: error.message,
+          });
+        }
+        if (error instanceof NotFoundException) {
+          throw new TRPCError({
+            code: 'NOT_FOUND',
             message: error.message,
           });
         }

@@ -1,17 +1,15 @@
-import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Inject, Injectable } from '@nestjs/common';
 import {
-  PublicationSchemaClass,
-  PublicationDocument,
-} from '../models/publication/publication.schema';
+  COMMUNITY_PERSISTENCE_PORT,
+  type CommunityPersistencePort,
+} from '../ports/community.persistence.port';
 import {
-  CommunitySchemaClass,
-  CommunityDocument,
-} from '../models/community/community.schema';
+  PUBLICATION_PERSISTENCE_PORT,
+  type PublicationPersistencePort,
+} from '../ports/publication.persistence.port';
 import { CommunityService } from './community.service';
 import { PlatformSettingsService } from './platform-settings.service';
-import { DECREE_809_TAGS } from '@meriter/shared-types';
+import { DECREE_809_TAGS } from '@meriter/shared-types/value-rubricator';
 
 export interface SuggestedValueTagRow {
   tag: string;
@@ -21,10 +19,10 @@ export interface SuggestedValueTagRow {
 @Injectable()
 export class ValueTagsSuggestionService {
   constructor(
-    @InjectModel(PublicationSchemaClass.name)
-    private readonly publicationModel: Model<PublicationDocument>,
-    @InjectModel(CommunitySchemaClass.name)
-    private readonly communityModel: Model<CommunityDocument>,
+    @Inject(PUBLICATION_PERSISTENCE_PORT)
+    private readonly publicationPersistence: PublicationPersistencePort,
+    @Inject(COMMUNITY_PERSISTENCE_PORT)
+    private readonly communityPersistence: CommunityPersistencePort,
     private readonly communityService: CommunityService,
     private readonly platformSettingsService: PlatformSettingsService,
   ) {}
@@ -77,63 +75,52 @@ export class ValueTagsSuggestionService {
     );
 
     if (hubIds.length > 0) {
-      const pubs = await this.publicationModel
-        .find({
+      const pubs = await this.publicationPersistence.findByQuery({
+        query: {
           communityId: { $in: hubIds },
           deleted: { $ne: true },
           valueTags: { $exists: true, $ne: [] },
-        })
-        .select('id valueTags')
-        .lean()
-        .exec();
+        },
+        select: { id: 1, valueTags: 1 },
+      });
       for (const p of pubs) {
-        const pid = (p as { id: string }).id;
-        const vtags = (p as { valueTags?: string[] }).valueTags ?? [];
+        const vtags = p.valueTags ?? [];
         for (const v of vtags) {
-          addEntityTag(`pub:${pid}`, v);
+          addEntityTag(`pub:${p.id}`, v);
         }
       }
     }
 
     const fv = await this.communityService.getCommunityByTypeTag('future-vision');
     if (fv) {
-      const obPosts = await this.publicationModel
-        .find({
+      const obPosts = await this.publicationPersistence.findByQuery({
+        query: {
           communityId: fv.id,
           sourceEntityId: { $exists: true, $nin: [null, ''] },
-        })
-        .select('sourceEntityId')
-        .lean()
-        .exec();
+        },
+        select: { sourceEntityId: 1 },
+      });
       const sourceIds = [
         ...new Set(
           obPosts
-            .map((d) => (d as { sourceEntityId?: string }).sourceEntityId)
+            .map((d) => d.sourceEntityId)
             .filter((id): id is string => !!id),
         ),
       ];
       if (sourceIds.length > 0) {
-        const comms = await this.communityModel
-          .find({ id: { $in: sourceIds } })
-          .select('id futureVisionTags')
-          .lean()
-          .exec();
+        const comms = await this.communityPersistence.findByIds(sourceIds);
         for (const c of comms) {
-          const cid = (c as { id: string }).id;
-          const ftags = (c as { futureVisionTags?: string[] }).futureVisionTags ?? [];
+          const ftags = c.futureVisionTags ?? [];
           for (const v of ftags) {
-            addEntityTag(`comm:${cid}`, v);
+            addEntityTag(`comm:${c.id}`, v);
           }
         }
       }
     }
 
-    return [...tagData.entries()]
-      .filter(([, v]) => v.entityIds.size >= t)
-      .map(([, v]) => ({
-        tag: v.canonical,
-        count: v.entityIds.size,
-      }))
+    return [...tagData.values()]
+      .filter((row) => row.entityIds.size >= t)
+      .map((row) => ({ tag: row.canonical, count: row.entityIds.size }))
       .sort((a, b) => b.count - a.count || a.tag.localeCompare(b.tag));
   }
 }

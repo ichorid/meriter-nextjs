@@ -1,0 +1,60 @@
+{
+  "work_unit_id": "p5-community-membership-ucs",
+  "status": "DONE",
+  "attempt": 1,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/communities/create-community.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/communities/accept-community-invite.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/communities/leave-community.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/communities/list-community-members.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/communities/update-community-settings.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/communities/provision-base-membership.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/users/assign-lead.use-case.ts",
+    "api/apps/meriter/src/trpc/routers/communities.router.ts",
+    "api/apps/meriter/src/trpc/routers/users.router.ts",
+    "api/apps/meriter/src/domain/services/user.service.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/communities/create-community.use-case.ts",
+      "summary": "CreateCommunityUseCase response shape aligned with pre-extraction communities.create (removed legacy postingRules/votingRules/visibilityRules/meritRules from create payload)."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/communities/provision-base-membership.use-case.ts",
+      "summary": "Canonical BC-01 ensureUserInBaseCommunities logic (four base hubs, global wallet, welcome merits, participant role + community wallet per hub)."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/services/user.service.ts",
+      "summary": "UserService.ensureUserInBaseCommunities delegates to ProvisionBaseMembershipUseCase (PublicationService pattern); removes ~280 lines of duplicate inline logic so all 13 call sites route through the use case."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/users.router.ts",
+      "summary": "users.ensureBaseCommunities calls UserService.ensureUserInBaseCommunities (facade to use case); users.assignLead delegates to AssignLeadUseCase."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/communities.router.ts",
+      "summary": "communities.create, acceptCommunityInvite, update, getMembers, leaveCommunity delegate to respective BC-01 use cases."
+    }
+  ],
+  "verification": {
+    "communities_create_delegates": true,
+    "communities_acceptCommunityInvite_delegates": true,
+    "communities_update_delegates": true,
+    "communities_getMembers_delegates": true,
+    "communities_leaveCommunity_delegates": true,
+    "users_ensureBaseCommunities_delegates": true,
+    "users_assignLead_delegates": true,
+    "seven_bc01_procedures_delegate": true,
+    "ensureUserInBaseCommunities_call_sites_migrated": 13,
+    "ensureUserInBaseCommunities_call_sites_remaining": 0,
+    "user_service_duplicate_ensureUserInBaseCommunities_removed": true,
+    "tsc_errors_in_changed_files": 0,
+    "lint_errors_in_changed_files": 0
+  },
+  "success_criteria": {
+    "seven_bc01_procedures_delegate_to_use_cases": true,
+    "provision_base_membership_covers_13_call_sites": true,
+    "inv_08_permission_before_mutations": true
+  },
+  "notes": "user.service.ts edited outside nominal write_set to satisfy provision call-site coverage (mirrors p4-create-publication-uc domain-service delegation). UserService.assignLead duplicate retained; only router path uses AssignLeadUseCase."
+}

@@ -165,6 +165,7 @@ jobs:
       run_prod_deploy: ${{ steps.target.outputs.run_prod_deploy }}
       web_version: ${{ steps.versions.outputs.web_version }}
       api_version: ${{ steps.versions.outputs.api_version }}
+      community_web_version: ${{ steps.versions.outputs.community_web_version }}
       commit_sha: ${{ steps.sha.outputs.short_sha }}
     steps:
       - name: Checkout repository
@@ -200,8 +201,10 @@ jobs:
         run: |
           WEB_VERSION=$(jq -r '.version' web/package.json)
           API_VERSION=$(jq -r '.version' api/package.json)
+          COMMUNITY_WEB_VERSION=$(jq -r '.version' community-web/package.json)
           echo "web_version=$WEB_VERSION" >> "$GITHUB_OUTPUT"
           echo "api_version=$API_VERSION" >> "$GITHUB_OUTPUT"
+          echo "community_web_version=$COMMUNITY_WEB_VERSION" >> "$GITHUB_OUTPUT"
           echo "Web version: $WEB_VERSION"
           echo "API version: $API_VERSION"
       - id: sha
@@ -219,7 +222,7 @@ jobs:
       - build-base
     strategy:
       matrix:
-        component: [web, api]
+        component: [web, api, community-web]
     permissions:
       contents: read
       packages: write
@@ -255,6 +258,9 @@ jobs:
               VERSION="${{ needs.determine-target.outputs.web_version }}"
               if [ "$COMPONENT" = "api" ]; then
                 VERSION="${{ needs.determine-target.outputs.api_version }}"
+              fi
+              if [ "$COMPONENT" = "community-web" ]; then
+                VERSION="${{ needs.determine-target.outputs.community_web_version }}"
               fi
               SHA_TAG="sha-${SHORT_SHA}"
               TAGS_MULTILINE="type=raw,value=v${VERSION}"$'\n'"type=raw,value=latest"$'\n'"type=raw,value=${SHA_TAG}"$'\n'"type=sha"
@@ -399,3 +405,4 @@ jobs:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
           vps-host: ${{ secrets.VPS_HOST }}
           commit-sha: ${{ needs.determine-target.outputs.commit_sha }}
+          bot-token: ${{ secrets.BOT_TOKEN }}

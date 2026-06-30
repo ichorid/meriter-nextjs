@@ -148,4 +148,32 @@ describe('NotificationService.buildRedirectUrl', () => {
       ),
     ).toBe('/meriter/projects/p-9');
   });
+
+  it('document notifications use document page redirect', () => {
+    const metadata = { communityId: 'c-doc', documentId: 'doc-42', blockId: 'blk-1' };
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'document_variant_proposed',
+          metadata,
+        }),
+      ),
+    ).toBe('/meriter/communities/c-doc/documents/doc-42#block-blk-1');
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'document_variant_not_selected',
+          metadata: { communityId: 'c-doc', documentId: 'doc-42' },
+        }),
+      ),
+    ).toBe('/meriter/communities/c-doc/documents/doc-42');
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'document_variant_won',
+          metadata,
+        }),
+      ),
+    ).toBe('/meriter/communities/c-doc/documents/doc-42#block-blk-1');
+  });
 });

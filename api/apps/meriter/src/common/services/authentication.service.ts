@@ -5,6 +5,12 @@ import { AppConfig } from '../../config/configuration';
 import { UserService } from '../../domain/services/user.service';
 import { AuthenticatedUser } from '../interfaces/authenticated-user.interface';
 import { JwtPayload } from '../helpers/jwt';
+import {
+  COMMUNITY_SESSION_COOKIE,
+  FULL_SESSION_COOKIE,
+  resolveMeriterProductFromRequest,
+  type MeriterProduct,
+} from '../../domain/common/constants/product.constants';
 
 export interface AuthenticateFromRequestOptions {
   req: any;
@@ -70,11 +76,12 @@ export class JwtVerificationService {
       }
     }
 
-    // Priority 3: Fall back to JWT cookie authentication
-    const jwt = req.cookies?.jwt;
+    // Priority 3: Fall back to JWT cookie authentication (product-isolated cookies)
+    const product = resolveMeriterProductFromRequest(req);
+    const jwt = this.resolveSessionToken(req, product);
     if (!jwt) {
       this.logger.warn(
-        `[AUTH-DEBUG] No JWT cookie found. req.cookies exists: ${!!req.cookies}, cookie keys: ${req.cookies ? Object.keys(req.cookies).join(', ') : 'none'}, cookie header: ${req.headers?.cookie ? 'present' : 'missing'}`
+        `[AUTH-DEBUG] No session cookie for product=${product}. cookie keys: ${req.cookies ? Object.keys(req.cookies).join(', ') : 'none'}`,
       );
       return {
         user: null,
@@ -84,10 +91,22 @@ export class JwtVerificationService {
     }
 
     this.logger.debug(
-      `[AUTH-DEBUG] JWT cookie found, proceeding to verify: length=${jwt.length}`
+      `[AUTH-DEBUG] Session cookie found (product=${product}), proceeding to verify: length=${jwt.length}`,
     );
 
     return this.authenticateFromJwt(jwt);
+  }
+
+  private resolveSessionToken(req: any, product: MeriterProduct): string | undefined {
+    const fullJwt = req.cookies?.[FULL_SESSION_COOKIE] as string | undefined;
+    const communityJwt = req.cookies?.[COMMUNITY_SESSION_COOKIE] as
+      | string
+      | undefined;
+
+    if (product === 'community') {
+      return communityJwt;
+    }
+    return fullJwt;
   }
 
   /**

@@ -1,0 +1,32 @@
+{
+  "work_unit_id": "p4-merit-transfer-uc",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/merit-transfer/create-merit-transfer.use-case.ts",
+    "api/apps/meriter/src/domain/services/merit-transfer.service.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/merit-transfer/create-merit-transfer.use-case.ts",
+      "summary": "Added CreateMeritTransferUseCase (BC-15 / P-10) with execute() containing membership validation, wallet debit/credit via WalletService.addTransaction (inv-06 wallet-only, no quota), event-linked transfer checks, and MongoDB transaction persistence. Exposes createCreateMeritTransferUseCase factory for router/service wiring."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/services/merit-transfer.service.ts",
+      "summary": "MeritTransferService.create delegates to CreateMeritTransferUseCase. Consolidated duplicated pagination in normalizeListPagination + listTransfers shared by getByCommunityContext and getByUser. Removed create-specific private helpers (now in use case)."
+    }
+  ],
+  "verification": {
+    "create_delegates_to_use_case": true,
+    "shared_pagination_helper_in_service": true,
+    "p10_create_logic_extracted_from_service": true,
+    "inv_06_wallet_only_transfer_preserved": true
+  },
+  "success_criteria": {
+    "meritTransfer_create_delegates_to_use_case": true,
+    "shared_pagination_helper_in_service": true,
+    "p10_retirement_met": true,
+    "inv_06_wallet_only_transfer": true
+  },
+  "notes": "getByCommunity/getByUser remain in service with shared listTransfers helper (read paths not extracted in this work unit). Router still calls MeritTransferService.create which forwards to the use case; direct router→use-case wiring deferred to p4-forward-use-cases."
+}

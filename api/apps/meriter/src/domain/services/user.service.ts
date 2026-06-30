@@ -8,23 +8,27 @@ import {
   forwardRef,
   OnModuleInit,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { UserSchemaClass, UserDocument } from '../models/user/user.schema';
 import type { User } from '../models/user/user.schema';
-import {
-  CommunitySchemaClass,
-  CommunityDocument,
-  type Community,
-} from '../models/community/community.schema';
-import { MongoArrayUpdateHelper } from '../common/helpers/mongo-array-update.helper';
+import type { Community } from '../models/community/community.schema';
 import { uid } from 'uid';
 import { CommunityService } from './community.service';
 import { WalletService } from './wallet.service';
+import { WalletContextResolverService } from './wallet-context-resolver.service';
 import { UserCommunityRoleService } from './user-community-role.service';
-import { PlatformSettingsService } from './platform-settings.service';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
+import {
+  PROVISION_BASE_MEMBERSHIP_PORT,
+  type ProvisionBaseMembershipPort,
+} from '../ports/provision-base-membership.port';
+import {
+  USER_PERSISTENCE_PORT,
+  type UserPersistencePort,
+} from '../ports/user.persistence.port';
+import {
+  USER_AUTH_IDENTITY_PERSISTENCE_PORT,
+  type UserAuthIdentityPersistencePort,
+} from '../ports/user-auth-identity.persistence.port';
 
 export interface CreateUserDto {
   authProvider: string;
@@ -47,24 +51,28 @@ export class UserService implements OnModuleInit {
   private readonly logger = new Logger(UserService.name);
 
   constructor(
-    @InjectModel(UserSchemaClass.name) private userModel: Model<UserDocument>,
-    @InjectModel(CommunitySchemaClass.name)
-    private communityModel: Model<CommunityDocument>,
+    @Inject(USER_PERSISTENCE_PORT)
+    private readonly userPersistence: UserPersistencePort,
+    @Inject(USER_AUTH_IDENTITY_PERSISTENCE_PORT)
+    private readonly authIdentityPersistence: UserAuthIdentityPersistencePort,
     @Inject(forwardRef(() => CommunityService))
     private communityService: CommunityService,
     @Inject(forwardRef(() => WalletService))
     private walletService: WalletService,
     @Inject(forwardRef(() => UserCommunityRoleService))
     private userCommunityRoleService: UserCommunityRoleService,
-    private platformSettingsService: PlatformSettingsService,
-  ) { }
+    @Inject(PROVISION_BASE_MEMBERSHIP_PORT)
+    private readonly provisionBaseMembershipUseCase: ProvisionBaseMembershipPort,
+    @Inject(forwardRef(() => WalletContextResolverService))
+    private readonly walletContextResolverService: WalletContextResolverService,
+  ) {}
 
   async onModuleInit() {
     try {
       // Drop legacy index on telegramId if it exists
-      if (await this.userModel.collection.indexExists('telegramId_1')) {
+      if (await this.userPersistence.indexExists('telegramId_1')) {
         this.logger.log('Dropping legacy index: telegramId_1');
-        await this.userModel.collection.dropIndex('telegramId_1');
+        await this.userPersistence.dropIndex('telegramId_1');
         this.logger.log('Legacy index dropped successfully');
       }
     } catch (error: unknown) {
@@ -77,18 +85,56 @@ export class UserService implements OnModuleInit {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Failed to drop legacy index: ${errorMessage}`);
     }
+
+    await this.migrateLegacyAuthIdentities();
+  }
+
+  private async migrateLegacyAuthIdentities(): Promise<void> {
+    try {
+      const identityCount = await this.authIdentityPersistence.countAll();
+      if (identityCount > 0) {
+        return;
+      }
+
+      this.logger.log('Migrating legacy user authProvider/authId into user_auth_identities');
+      const batchSize = 500;
+      let skip = 0;
+      let inserted = 0;
+
+      for (;;) {
+        const users = await this.userPersistence.findAll(batchSize, skip);
+        if (users.length === 0) {
+          break;
+        }
+
+        const rows = users
+          .filter((u) => u.authProvider && u.authId)
+          .map((u) => ({
+            userId: u.id,
+            provider: u.authProvider,
+            authId: u.authId,
+          }));
+
+        inserted += await this.authIdentityPersistence.bulkInsertFromLegacyUsers(rows);
+        skip += users.length;
+        if (users.length < batchSize) {
+          break;
+        }
+      }
+
+      this.logger.log(`Legacy auth identity migration complete (${inserted} inserted)`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Legacy auth identity migration skipped/failed: ${errorMessage}`);
+    }
   }
 
   async getUser(userId: string): Promise<User | null> {
-    // Search by internal id field
-    const doc = await this.userModel.findOne({ id: userId }).lean();
-    return doc;
+    return (await this.userPersistence.findById(userId)) as User | null;
   }
 
   async getUserById(id: string): Promise<User | null> {
-    // Search by internal id field
-    const doc = await this.userModel.findOne({ id }).lean();
-    return doc;
+    return (await this.userPersistence.findById(id)) as User | null;
   }
 
   /**
@@ -103,11 +149,7 @@ export class UserService implements OnModuleInit {
     if (unique.length === 0) {
       return result;
     }
-    const docs = await this.userModel
-      .find({ id: { $in: unique } })
-      .select({ id: 1, displayName: 1, avatarUrl: 1 })
-      .lean()
-      .exec();
+    const docs = await this.userPersistence.findForEnrichment(unique);
     for (const d of docs) {
       result.set(d.id, {
         id: d.id,
@@ -127,11 +169,7 @@ export class UserService implements OnModuleInit {
     if (unique.length === 0) {
       return result;
     }
-    const docs = await this.userModel
-      .find({ id: { $in: unique } })
-      .select({ id: 1, displayName: 1 })
-      .lean()
-      .exec();
+    const docs = await this.userPersistence.findForDisplayNames(unique);
     for (const d of docs) {
       const name = (d.displayName ?? '').trim();
       result.set(d.id, name.length > 0 ? name : d.id);
@@ -148,41 +186,70 @@ export class UserService implements OnModuleInit {
     authProvider: string,
     authId: string,
   ): Promise<User | null> {
-    // Search by authProvider and authId
-    const doc = await this.userModel.findOne({ authProvider, authId }).lean();
-    return doc;
+    const identity = await this.authIdentityPersistence.findByProviderAuth(
+      authProvider,
+      authId,
+    );
+    if (identity) {
+      const userByIdentity = (await this.userPersistence.findById(identity.userId)) as User | null;
+      if (userByIdentity) {
+        return userByIdentity;
+      }
+    }
+    return (await this.userPersistence.findByAuth(authProvider, authId)) as User | null;
+  }
+
+  async getLinkedProviders(userId: string): Promise<string[]> {
+    return this.authIdentityPersistence.findProvidersByUserId(userId);
+  }
+
+  async linkIdentity(
+    userId: string,
+    provider: string,
+    authId: string,
+  ): Promise<void> {
+    await this.authIdentityPersistence.linkIdentity(userId, provider, authId);
+  }
+
+  async findOrCreateByIdentity(
+    provider: string,
+    authId: string,
+    profile: {
+      username?: string;
+      firstName?: string;
+      lastName?: string;
+      displayName?: string;
+    },
+  ): Promise<User> {
+    return this.createOrUpdateUser({
+      authProvider: provider,
+      authId,
+      username: profile.username,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      displayName: profile.displayName,
+    });
   }
 
   async getUserByToken(token: string): Promise<User | null> {
-    const doc = await this.userModel.findOne({ token }).lean();
-    return doc;
+    return (await this.userPersistence.findByToken(token)) as User | null;
   }
 
   async getUserByCredentialId(credentialId: string): Promise<User | null> {
-    const doc = await this.userModel.findOne({ 'authenticators.credentialID': credentialId }).lean();
-    return doc;
+    return (await this.userPersistence.findByCredentialId(credentialId)) as User | null;
   }
 
   async getUserByUsername(username: string): Promise<User | null> {
-    const doc = await this.userModel.findOne({ username }).lean();
-    return doc;
+    return (await this.userPersistence.findByUsername(username)) as User | null;
   }
 
 
 
   async createOrUpdateUser(dto: CreateUserDto, token?: string): Promise<User> {
-    // Check if user exists
-    let user = await this.userModel
-      .findOne({
-        authProvider: dto.authProvider,
-        authId: dto.authId,
-      })
-      .lean();
+    let user = await this.getUserByAuthId(dto.authProvider, dto.authId);
 
     if (user) {
-      // Update existing user
-      // Note: $set preserves fields not in updateData (e.g., communityTags, communityMemberships)
-      const updateData: any = {
+      const updateData: Record<string, unknown> = {
         username: dto.username,
         firstName: dto.firstName,
         lastName: dto.lastName,
@@ -201,7 +268,6 @@ export class UserService implements OnModuleInit {
         updateData.token = token;
       }
 
-      // Update profile fields if provided (using dot notation for nested fields)
       if (
         dto.bio !== undefined ||
         dto.location !== undefined ||
@@ -217,17 +283,8 @@ export class UserService implements OnModuleInit {
           updateData['profile.isVerified'] = dto.isVerified;
       }
 
-      await this.userModel.updateOne(
-        { authProvider: dto.authProvider, authId: dto.authId },
-        { $set: updateData },
-      );
-      // Re-fetch user to get updated data including preserved communityTags and communityMemberships
-      user = await this.userModel
-        .findOne({
-          authProvider: dto.authProvider,
-          authId: dto.authId,
-        })
-        .lean();
+      await this.userPersistence.updateById(user.id, updateData);
+      user = await this.userPersistence.findById(user.id);
     } else {
       // Create new user
       const newUser: any = {
@@ -261,8 +318,8 @@ export class UserService implements OnModuleInit {
         newUser.globalRole = 'superadmin';
       }
 
-      await this.userModel.create([newUser]);
-      user = await this.userModel.findOne({ id: newUser.id }).lean();
+      await this.userPersistence.create(newUser);
+      user = await this.userPersistence.findById(newUser.id);
 
       this.logger.log(`Created user found in DB: ${user ? 'yes' : 'no'}`);
       if (!user) {
@@ -275,7 +332,9 @@ export class UserService implements OnModuleInit {
       throw new Error(`User not found after createOrUpdateUser`);
     }
 
-    return user;
+    await this.authIdentityPersistence.linkIdentity(user.id, dto.authProvider, dto.authId);
+
+    return user as User;
   }
 
   /**
@@ -287,311 +346,31 @@ export class UserService implements OnModuleInit {
    * 3. Creates wallet for user in community
    */
   async ensureUserInBaseCommunities(userId: string): Promise<void> {
-    this.logger.log(`Ensuring user ${userId} is in base communities`);
-
-    // Get base communities by typeTag
-    const futureVision = await this.communityModel
-      .findOne({ typeTag: 'future-vision' })
-      .lean();
-    const marathonOfGood = await this.communityModel
-      .findOne({ typeTag: 'marathon-of-good' })
-      .lean();
-    const teamProjects = await this.communityModel
-      .findOne({ typeTag: 'team-projects' })
-      .lean();
-    const support = await this.communityModel
-      .findOne({ typeTag: 'support' })
-      .lean();
-
-    // Log warnings for missing communities but continue processing available ones
-    if (!futureVision) {
-      this.logger.warn('Future Vision community not found');
-    }
-    if (!marathonOfGood) {
-      this.logger.warn('Marathon of Good community not found');
-    }
-    if (!teamProjects) {
-      this.logger.warn('Team Projects community not found');
-    }
-    if (!support) {
-      this.logger.warn('Support community not found');
-    }
-
-    // Check if user is already a member
-    const user = await this.userModel.findOne({ id: userId }).lean();
-    if (!user) {
-      this.logger.error(`User ${userId} not found`);
-      return;
-    }
-
-    const memberships = user.communityMemberships || [];
-    const needsToJoinFV = futureVision && !memberships.includes(futureVision.id);
-    const needsToJoinMG = marathonOfGood && !memberships.includes(marathonOfGood.id);
-    const needsToJoinTP = teamProjects && !memberships.includes(teamProjects.id);
-    const needsToJoinSupport = support && !memberships.includes(support.id);
-
-    // G-12: Ensure global wallet exists for user (used by priority communities)
-    const defaultCurrency = { singular: 'merit', plural: 'merits', genitive: 'merits' };
-    await this.walletService.createOrGetWallet(userId, GLOBAL_COMMUNITY_ID, defaultCurrency);
-
-    // G-10: Credit platform-configured welcome merits to global wallet on first registration
-    const isNewToBaseCommunities =
-      needsToJoinFV || needsToJoinMG || needsToJoinTP || needsToJoinSupport;
-    if (isNewToBaseCommunities) {
-      try {
-        const welcomeMerits = await this.platformSettingsService.getWelcomeMeritsGlobal();
-        if (welcomeMerits > 0) {
-          await this.walletService.creditWelcomeMeritsIfNeeded(userId, welcomeMerits);
-        }
-      } catch (err) {
-        this.logger.warn(
-          `Failed to credit welcome merits to user ${userId}: ${err instanceof Error ? err.message : 'Unknown'}`,
-        );
-      }
-    }
-
-    // Add user to Future Vision if needed
-    if (needsToJoinFV && futureVision) {
-      this.logger.log(`Adding user ${userId} to Future Vision`);
-      try {
-        // 1. Check if user has any role in this community
-        const existingRole = await this.userCommunityRoleService.getRole(
-          userId,
-          futureVision.id,
-        );
-
-        // 2. Add user to community's members list
-        await this.communityService.addMember(futureVision.id, userId);
-        // 3. Add community to user's memberships
-        await this.addCommunityMembership(userId, futureVision.id);
-
-        // 4. Assign participant role if user has no role (joining without invite)
-        if (!existingRole) {
-          await this.userCommunityRoleService.setRole(
-            userId,
-            futureVision.id,
-            'participant',
-            true, // skipSync to prevent recursion
-          );
-          this.logger.log(
-            `Assigned participant role to user ${userId} in Future Vision (no invite)`,
-          );
-        }
-
-        // 5. Create wallet for user in community
-        const currency = futureVision.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-        await this.walletService.createOrGetWallet(
-          userId,
-          futureVision.id,
-          currency,
-          {
-            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
-              futureVision as Community,
-            ),
-          },
-        );
-        this.logger.log(`User ${userId} successfully added to Future Vision`);
-      } catch (error) {
-        this.logger.error(
-          `Failed to add user ${userId} to Future Vision: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
-    }
-
-    // Add user to Marathon of Good if needed
-    if (needsToJoinMG && marathonOfGood) {
-      this.logger.log(`Adding user ${userId} to Marathon of Good`);
-      try {
-        // 1. Check if user has any role in this community
-        const existingRole = await this.userCommunityRoleService.getRole(
-          userId,
-          marathonOfGood.id,
-        );
-
-        // 2. Add user to community's members list
-        await this.communityService.addMember(marathonOfGood.id, userId);
-        // 3. Add community to user's memberships
-        await this.addCommunityMembership(userId, marathonOfGood.id);
-
-        // 4. Assign participant role if user has no role (joining without invite)
-        if (!existingRole) {
-          await this.userCommunityRoleService.setRole(
-            userId,
-            marathonOfGood.id,
-            'participant',
-            true, // skipSync to prevent recursion
-          );
-          this.logger.log(
-            `Assigned participant role to user ${userId} in Marathon of Good (no invite)`,
-          );
-        }
-
-        // 5. Create wallet for user in community
-        const currency = marathonOfGood.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-        await this.walletService.createOrGetWallet(
-          userId,
-          marathonOfGood.id,
-          currency,
-          {
-            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
-              marathonOfGood as Community,
-            ),
-          },
-        );
-        this.logger.log(
-          `User ${userId} successfully added to Marathon of Good`,
-        );
-      } catch (error) {
-        this.logger.error(
-          `Failed to add user ${userId} to Marathon of Good: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
-    }
-
-    // Add user to Team Projects if needed
-    if (needsToJoinTP && teamProjects) {
-      this.logger.log(`Adding user ${userId} to Team Projects`);
-      try {
-        // 1. Check if user has any role in this community
-        const existingRole = await this.userCommunityRoleService.getRole(
-          userId,
-          teamProjects.id,
-        );
-
-        // 2. Add user to community's members list
-        await this.communityService.addMember(teamProjects.id, userId);
-        // 3. Add community to user's memberships
-        await this.addCommunityMembership(userId, teamProjects.id);
-
-        // 4. Assign participant role if user has no role (joining without invite)
-        // Everyone gets participant role by default
-        if (!existingRole) {
-          await this.userCommunityRoleService.setRole(
-            userId,
-            teamProjects.id,
-            'participant',
-            true, // skipSync to prevent recursion
-          );
-          this.logger.log(
-            `Assigned participant role to user ${userId} in Team Projects (no invite)`,
-          );
-        }
-
-        // 5. Create wallet for user in community
-        const currency = teamProjects.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-        await this.walletService.createOrGetWallet(
-          userId,
-          teamProjects.id,
-          currency,
-          {
-            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
-              teamProjects as Community,
-            ),
-          },
-        );
-        this.logger.log(
-          `User ${userId} successfully added to Team Projects`,
-        );
-      } catch (error) {
-        this.logger.error(
-          `Failed to add user ${userId} to Team Projects: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
-    }
-
-    // Add user to Support if needed
-    if (needsToJoinSupport && support) {
-      this.logger.log(`Adding user ${userId} to Support`);
-      try {
-        // 1. Check if user has any role in this community
-        const existingRole = await this.userCommunityRoleService.getRole(
-          userId,
-          support.id,
-        );
-
-        // 2. Add user to community's members list
-        await this.communityService.addMember(support.id, userId);
-        // 3. Add community to user's memberships
-        await this.addCommunityMembership(userId, support.id);
-
-        // 4. Assign participant role if user has no role (joining without invite)
-        if (!existingRole) {
-          await this.userCommunityRoleService.setRole(
-            userId,
-            support.id,
-            'participant',
-            true, // skipSync to prevent recursion
-          );
-          this.logger.log(
-            `Assigned participant role to user ${userId} in Support (no invite)`,
-          );
-        }
-
-        // 5. Create wallet for user in community
-        const currency = support.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-        await this.walletService.createOrGetWallet(
-          userId,
-          support.id,
-          currency,
-          {
-            startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
-              support as Community,
-            ),
-          },
-        );
-        this.logger.log(`User ${userId} successfully added to Support`);
-      } catch (error) {
-        this.logger.error(
-          `Failed to add user ${userId} to Support: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-      }
-    }
-
-    if (!needsToJoinFV && !needsToJoinMG && !needsToJoinTP && !needsToJoinSupport) {
-      this.logger.log(`User ${userId} already in base communities`);
-    }
+    return this.provisionBaseMembershipUseCase.execute(userId);
   }
 
   async addCommunityMembership(
     userId: string,
     communityId: string,
   ): Promise<User> {
-    return MongoArrayUpdateHelper.addToArray<User>(
-      this.userModel,
-      { id: userId },
-      'communityMemberships',
-      communityId,
-      'User',
-    );
+    await this.userPersistence.addCommunityMembership(userId, communityId);
+    const updated = await this.userPersistence.findById(userId);
+    if (!updated) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+    return updated as User;
   }
 
   async removeCommunityMembership(
     userId: string,
     communityId: string,
   ): Promise<User> {
-    return MongoArrayUpdateHelper.removeFromArray<User>(
-      this.userModel,
-      { id: userId },
-      'communityMemberships',
-      communityId,
-      'User',
-    );
+    await this.userPersistence.removeCommunityMembership(userId, communityId);
+    const updated = await this.userPersistence.findById(userId);
+    if (!updated) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+    return updated as User;
   }
 
   /**
@@ -599,8 +378,7 @@ export class UserService implements OnModuleInit {
    * __global__ is a wallet-only id and must never be returned as a community.
    */
   async getUserCommunities(userId: string): Promise<string[]> {
-    const user = await this.userModel.findOne({ id: userId }).lean();
-    const memberships = user?.communityMemberships || [];
+    const memberships = await this.userPersistence.getCommunityMemberships(userId);
     return memberships.filter((id) => id !== GLOBAL_COMMUNITY_ID);
   }
 
@@ -653,9 +431,14 @@ export class UserService implements OnModuleInit {
       plural: 'merits',
       genitive: 'merits',
     };
+    const walletCommunityId =
+      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'voting',
+      );
     await this.walletService.createOrGetWallet(
       targetUserId,
-      communityId,
+      walletCommunityId,
       currency,
       {
         startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(community),
@@ -726,9 +509,14 @@ export class UserService implements OnModuleInit {
       plural: 'merits',
       genitive: 'merits',
     };
+    const walletCommunityId =
+      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'voting',
+      );
     await this.walletService.createOrGetWallet(
       targetUserId,
-      communityId,
+      walletCommunityId,
       currency,
       {
         startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(community),
@@ -808,22 +596,11 @@ export class UserService implements OnModuleInit {
     userId: string,
     communityId: string,
   ): Promise<boolean> {
-    const user = await this.userModel
-      .findOne({
-        id: userId,
-        communityMemberships: communityId,
-      })
-      .lean();
-    return user !== null;
+    return this.userPersistence.isMemberOfCommunity(userId, communityId);
   }
 
   async getAllUsers(limit: number = 50, skip: number = 0): Promise<User[]> {
-    return this.userModel
-      .find({})
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean();
+    return (await this.userPersistence.findAll(limit, skip)) as User[];
   }
 
   async getUsersByCommunity(
@@ -831,12 +608,11 @@ export class UserService implements OnModuleInit {
     limit: number = 50,
     skip: number = 0,
   ): Promise<User[]> {
-    return this.userModel
-      .find({ communityMemberships: communityId })
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean();
+    return (await this.userPersistence.findByCommunity(
+      communityId,
+      limit,
+      skip,
+    )) as User[];
   }
 
   async updateProfile(
@@ -852,7 +628,7 @@ export class UserService implements OnModuleInit {
       educationalInstitution?: string;
     },
   ): Promise<User> {
-    const user = await this.userModel.findOne({ id: userId });
+    const user = await this.userPersistence.findById(userId);
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
@@ -889,59 +665,46 @@ export class UserService implements OnModuleInit {
       updateData['profile.educationalInstitution'] = profileData.educationalInstitution;
     }
 
-    await this.userModel.updateOne({ id: userId }, { $set: updateData });
+    await this.userPersistence.updateById(userId, updateData);
 
     // Re-fetch user to get updated data
-    const updatedUser = await this.userModel.findOne({ id: userId }).lean();
+    const updatedUser = await this.userPersistence.findById(userId);
     if (!updatedUser) {
       throw new NotFoundException(
         `User with id ${userId} not found after update`,
       );
     }
-    return updatedUser;
+    return updatedUser as User;
   }
 
   async updateUser(userId: string, updateData: Partial<User>): Promise<User> {
-    await this.userModel.updateOne({ id: userId }, { $set: updateData });
-    const user = await this.userModel.findOne({ id: userId }).lean();
+    await this.userPersistence.updateById(userId, updateData as Record<string, unknown>);
+    const user = await this.userPersistence.findById(userId);
     if (!user) throw new NotFoundException('User not found');
-    return user;
+    return user as User;
   }
 
   async searchUsers(query: string, limit: number = 20): Promise<User[]> {
-    const regex = new RegExp(query, 'i');
-    return this.userModel
-      .find({
-        $or: [
-          { username: regex },
-          { displayName: regex },
-          { firstName: regex },
-          { lastName: regex },
-          { 'profile.contacts.email': regex },
-        ],
-      })
-      .limit(limit)
-      .lean();
+    return (await this.userPersistence.search(query, limit)) as User[];
   }
 
   async updateGlobalRole(
     userId: string,
     role: 'superadmin' | 'user',
   ): Promise<User> {
-    const user = await this.userModel.findOne({ id: userId });
+    const user = await this.userPersistence.findById(userId);
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
 
-    if (role === GLOBAL_ROLE_SUPERADMIN) {
-      user.globalRole = GLOBAL_ROLE_SUPERADMIN;
-    } else {
-      user.globalRole = undefined;
+    const updated = await this.userPersistence.setGlobalRole(
+      userId,
+      role === GLOBAL_ROLE_SUPERADMIN ? GLOBAL_ROLE_SUPERADMIN : undefined,
+      new Date(),
+    );
+    if (!updated) {
+      throw new NotFoundException(`User with id ${userId} not found`);
     }
-
-    user.updatedAt = new Date();
-    await user.save();
-
-    return user.toObject();
+    return updated as User;
   }
 }

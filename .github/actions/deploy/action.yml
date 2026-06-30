@@ -12,9 +12,12 @@ inputs:
     description: 'Short commit SHA for image tag (stage/prod release builds)'
     required: false
   use-dev-image-tags:
-    description: 'Set true for dev branch deploys (web-dev-latest / api-dev-latest)'
+    description: 'Set true for dev branch deploys (web-dev-latest / api-dev-latest / community-web-dev-latest)'
     required: false
     default: 'false'
+  bot-token:
+    description: 'Optional BOT_TOKEN for prod profile merge (GitHub prod environment secret)'
+    required: false
 
 runs:
   using: 'composite'
@@ -47,9 +50,12 @@ runs:
         set -euo pipefail
         TARGET="deploy@${VPS_HOST}:/opt/meriter/"
         scp docker-compose.yml deploy.sh Caddyfile "$TARGET"
-        ssh "deploy@${VPS_HOST}" "mkdir -p /opt/meriter/scripts/docker"
+        ssh "deploy@${VPS_HOST}" "mkdir -p /opt/meriter/scripts/docker /opt/meriter/scripts/vps/profiles"
         scp scripts/docker/mongo-docker-entry.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/docker/mongo-docker-entry.sh"
-        ssh "deploy@${VPS_HOST}" "chmod +x /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh"
+        scp scripts/vps/apply-telegram-profile.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/apply-telegram-profile.sh"
+        scp scripts/vps/profiles/dev.env "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/profiles/dev.env"
+        scp scripts/vps/profiles/prod.env "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/profiles/prod.env"
+        ssh "deploy@${VPS_HOST}" "chmod +x /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh /opt/meriter/scripts/vps/apply-telegram-profile.sh"
         ssh "deploy@${VPS_HOST}" "rm -rf /opt/meriter/mongodb-init"
         scp -r mongodb-init "deploy@${VPS_HOST}:/opt/meriter/"
     - name: Run remote deploy script
@@ -58,11 +64,13 @@ runs:
         VPS_HOST: ${{ inputs.vps-host }}
         COMMIT_SHA: ${{ inputs.commit-sha }}
         USE_DEV_IMAGE_TAGS: ${{ inputs.use-dev-image-tags }}
+        BOT_TOKEN: ${{ inputs.bot-token }}
       run: |
         ssh "deploy@$VPS_HOST" <<EOF
           cd /opt/meriter
           export COMMIT_SHA="$COMMIT_SHA"
           export USE_DEV_IMAGE_TAGS="$USE_DEV_IMAGE_TAGS"
+          export BOT_TOKEN="$BOT_TOKEN"
           ./deploy.sh
         EOF
 

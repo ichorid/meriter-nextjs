@@ -18,6 +18,7 @@ import { LoadingState } from "@/components/atoms/LoadingState";
 import { getErrorMessage } from "@/lib/api/errors";
 import { safeMeriterReturnPath } from "@/lib/utils/safe-return-to";
 import { isFakeDataMode, isTestAuthMode } from "@/config";
+import { EMAIL_ONLY_LOGIN, isTelegramLoginEnabled } from "@/lib/constants/login-methods";
 import { mockOAuthAuth } from "@/lib/utils/mock-auth";
 import {
     OAUTH_PROVIDERS,
@@ -41,9 +42,11 @@ import { resolveApiErrorToastMessage } from "@/lib/i18n/api-error-toast";
 import { useToastStore } from "@/shared/stores/toast.store";
 import { PasskeySection } from "./PasskeySection";
 import { OAuthButton } from "./OAuthButton";
+import { TelegramLoginWidget } from "./TelegramLoginWidget";
 import { SmsAuthDialog } from "./SmsAuthDialog";
 import { CallCheckAuthDialog } from "./CallCheckAuthDialog";
-import { EmailAuthDialog } from "./EmailAuthDialog";
+import { EmailAuthDialog, type EmailLinkSentInfo } from "./EmailAuthDialog";
+import { CheckEmailCard } from "./CheckEmailCard";
 
 interface LoginFormProps {
     className?: string;
@@ -52,6 +55,7 @@ interface LoginFormProps {
     smsEnabled?: boolean;
     phoneEnabled?: boolean;
     emailEnabled?: boolean;
+    botUsername?: string | null;
     /** When true (in-app/captive browser), show only SMS and Email and a banner to open in system browser */
     captiveBrowser?: boolean;
 }
@@ -63,6 +67,7 @@ export function LoginForm({
     smsEnabled = false,
     phoneEnabled = false,
     emailEnabled = false,
+    botUsername = null,
     captiveBrowser = false,
 }: LoginFormProps) {
     const searchParams = useSearchParams();
@@ -71,17 +76,31 @@ export function LoginForm({
     const fakeDataMode = isFakeDataMode();
     const testAuthMode = isTestAuthMode();
 
+    // Production UI: email + optional Telegram from runtime config.
+    const resolvedProviders = testAuthMode
+        ? enabledProviders
+        : enabledProviders ?? EMAIL_ONLY_LOGIN.enabledProviders;
+    const resolvedAuthn = testAuthMode ? authnEnabled : EMAIL_ONLY_LOGIN.authnEnabled;
+    const resolvedSms = testAuthMode ? smsEnabled : EMAIL_ONLY_LOGIN.smsEnabled;
+    const resolvedPhone = testAuthMode ? phoneEnabled : EMAIL_ONLY_LOGIN.phoneEnabled;
+    const resolvedEmail = emailEnabled;
+
     const { authenticateFakeUser, authenticateFakeSuperadmin, isLoading, authError, setAuthError } =
         useAuth();
     const addToast = useToastStore((state) => state.addToast);
 
     // Local loading state for OAuth authentication
     const [isOAuthLoading, setIsOAuthLoading] = useState(false);
+    const [telegramWidgetFailed, setTelegramWidgetFailed] = useState(false);
 
     // State for auth dialogs
     const [smsDialogOpen, setSmsDialogOpen] = useState(false);
     const [callDialogOpen, setCallDialogOpen] = useState(false);
     const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+
+    // When set, the sign-in link email was sent and the "check your email"
+    // screen replaces the login card until the user clicks the link or goes back.
+    const [emailLinkSent, setEmailLinkSent] = useState<EmailLinkSentInfo | null>(null);
 
     // Get return URL from URL
     const returnTo = searchParams?.get("returnTo");
@@ -95,21 +114,29 @@ export function LoginForm({
     };
 
     // Filter providers if enabledProviders is passed
-    const displayedProviders = enabledProviders
-        ? OAUTH_PROVIDERS.filter((p) => enabledProviders.includes(p.id))
+    const displayedProviders = resolvedProviders
+        ? OAUTH_PROVIDERS.filter((p) => resolvedProviders.includes(p.id))
         : OAUTH_PROVIDERS;
 
+    const oauthTelegramEnabled = displayedProviders.some((p) => p.id === "telegram");
+    const hasTelegramLogin =
+        !testAuthMode &&
+        !captiveBrowser &&
+        isTelegramLoginEnabled({ telegram: oauthTelegramEnabled }, botUsername);
+
     const hasPrimaryAuthColumn =
-        displayedProviders.length > 0 ||
-        smsEnabled ||
-        phoneEnabled ||
-        emailEnabled;
+        displayedProviders.filter((p) => p.id !== 'telegram').length > 0 ||
+        hasTelegramLogin ||
+        resolvedSms ||
+        resolvedPhone ||
+        resolvedEmail;
     const showNoAuthProvidersWarning =
-        displayedProviders.length === 0 &&
-        !authnEnabled &&
-        !smsEnabled &&
-        !phoneEnabled &&
-        !emailEnabled;
+        displayedProviders.filter((p) => p.id !== 'telegram').length === 0 &&
+        !hasTelegramLogin &&
+        !resolvedAuthn &&
+        !resolvedSms &&
+        !resolvedPhone &&
+        !resolvedEmail;
 
     // Show auth error toast when error changes
     useEffect(() => {
@@ -117,6 +144,14 @@ export function LoginForm({
             addToast(resolveApiErrorToastMessage(authError), "error");
         }
     }, [authError, addToast]);
+
+    // Magic link redeem failure redirects here with ?error=link_expired
+    const urlError = searchParams?.get("error");
+    useEffect(() => {
+        if (urlError === "link_expired") {
+            addToast(t("linkExpired"), "error");
+        }
+    }, [urlError, addToast, t]);
 
     // Helper function to construct redirect URL
     const buildRedirectUrl = (): string => {
@@ -197,7 +232,17 @@ export function LoginForm({
                 </div>
             </div>
 
-            {/* Login Card */}
+            {/* "Check your email" screen after the sign-in link was sent */}
+            {emailLinkSent ? (
+                <CheckEmailCard
+                    email={emailLinkSent.email}
+                    canResendAt={emailLinkSent.canResendAt}
+                    onBack={() => setEmailLinkSent(null)}
+                    onLoggedIn={() => {
+                        window.location.href = buildRedirectUrl();
+                    }}
+                />
+            ) : (
             <Card>
                 <CardHeader>
                     <CardTitle>{t("title")}</CardTitle>
@@ -277,7 +322,7 @@ export function LoginForm({
                                     <>
                                         {/* Captive (in-app) browser: only SMS and Email (tg-hint overlay handles instructions) */}
                                         <div className="space-y-2">
-                                            {smsEnabled && (
+                                            {resolvedSms && (
                                                 <Button
                                                     variant="outline"
                                                     className="w-full justify-center"
@@ -288,7 +333,7 @@ export function LoginForm({
                                                     {t("signInWithSms")}
                                                 </Button>
                                             )}
-                                            {emailEnabled && (
+                                            {resolvedEmail && (
                                                 <Button
                                                     variant="outline"
                                                     className="w-full justify-center"
@@ -299,7 +344,7 @@ export function LoginForm({
                                                     {t("signInWithEmail")}
                                                 </Button>
                                             )}
-                                            {(!smsEnabled && !emailEnabled) && (
+                                            {(!resolvedSms && !resolvedEmail) && (
                                                 <p className="text-sm text-muted-foreground text-center">
                                                     {t("noAuthenticationProviders")}
                                                 </p>
@@ -311,7 +356,9 @@ export function LoginForm({
                                     {/* OAuth + phone/email (phone/email independent of OAuth) */}
                                     {hasPrimaryAuthColumn && (
                                         <div className="space-y-2">
-                                            {displayedProviders.map((provider) => (
+                                            {displayedProviders
+                                                .filter((provider) => provider.id !== 'telegram')
+                                                .map((provider) => (
                                                 <OAuthButton
                                                     key={provider.id}
                                                     provider={provider}
@@ -323,7 +370,36 @@ export function LoginForm({
                                                 />
                                             ))}
 
-                                            {smsEnabled && (
+                                            {hasTelegramLogin && botUsername && !telegramWidgetFailed && (
+                                                <TelegramLoginWidget
+                                                    botUsername={botUsername}
+                                                    disabled={isLoading || isOAuthLoading}
+                                                    onLoadFailed={() => setTelegramWidgetFailed(true)}
+                                                    onSuccess={(result) => {
+                                                        let redirectUrl = buildRedirectUrl();
+                                                        if (result.isNewUser) {
+                                                            redirectUrl = '/meriter/welcome/link-account';
+                                                            const safe = safeMeriterReturnPath(returnTo);
+                                                            if (safe) {
+                                                                redirectUrl += `?returnTo=${encodeURIComponent(safe)}`;
+                                                            }
+                                                        }
+                                                        window.location.href = redirectUrl;
+                                                    }}
+                                                    onError={(msg) => {
+                                                        setAuthError(msg);
+                                                        addToast(resolveApiErrorToastMessage(msg), "error");
+                                                    }}
+                                                />
+                                            )}
+
+                                            {hasTelegramLogin && telegramWidgetFailed && (
+                                                <p className="text-center text-sm text-muted-foreground">
+                                                    {t("telegramWidgetUnavailable")}
+                                                </p>
+                                            )}
+
+                                            {resolvedSms && (
                                                 <Button
                                                     variant="outline"
                                                     className="w-full justify-center"
@@ -335,7 +411,7 @@ export function LoginForm({
                                                 </Button>
                                             )}
 
-                                            {phoneEnabled && (
+                                            {resolvedPhone && (
                                                 <Button
                                                     variant="outline"
                                                     className="w-full justify-center"
@@ -347,7 +423,7 @@ export function LoginForm({
                                                 </Button>
                                             )}
 
-                                            {emailEnabled && (
+                                            {resolvedEmail && (
                                                 <Button
                                                     variant="outline"
                                                     className="w-full justify-center"
@@ -362,7 +438,7 @@ export function LoginForm({
                                     )}
 
                                     {/* Separator between primary methods and Passkey */}
-                                    {hasPrimaryAuthColumn && authnEnabled && (
+                                    {hasPrimaryAuthColumn && resolvedAuthn && (
                                         <div className="relative">
                                             <div className="absolute inset-0 flex items-center">
                                                 <Separator />
@@ -376,7 +452,7 @@ export function LoginForm({
                                     )}
 
                                     {/* Passkey Authentication */}
-                                    {authnEnabled && (
+                                    {resolvedAuthn && (
                                         <PasskeySection
                                             isLoading={isLoading || isOAuthLoading}
                                             onSuccess={(result) => {
@@ -455,9 +531,10 @@ export function LoginForm({
                     </p>
                 </CardFooter>
             </Card>
+            )}
 
             {/* SMS Authentication Dialog - always available in test mode */}
-            {(smsEnabled || testAuthMode) && (
+            {(resolvedSms || testAuthMode) && (
                 <SmsAuthDialog
                     open={smsDialogOpen}
                     onOpenChange={setSmsDialogOpen}
@@ -479,7 +556,7 @@ export function LoginForm({
             )}
 
             {/* Phone/Call Authentication Dialog - always available in test mode */}
-            {(phoneEnabled || testAuthMode) && (
+            {(resolvedPhone || testAuthMode) && (
                 <CallCheckAuthDialog
                     open={callDialogOpen}
                     onOpenChange={setCallDialogOpen}
@@ -496,10 +573,11 @@ export function LoginForm({
             )}
 
             {/* Email Authentication Dialog - always available in test mode */}
-            {(emailEnabled || testAuthMode) && (
+            {(resolvedEmail || testAuthMode) && (
                 <EmailAuthDialog
                     open={emailDialogOpen}
                     onOpenChange={setEmailDialogOpen}
+                    onLinkSent={(info) => setEmailLinkSent(info)}
                     onSuccess={(result) => {
                         let redirectUrl = buildRedirectUrl();
                         if (result?.isNewUser) redirectUrl = welcomeUrlForNewUser();

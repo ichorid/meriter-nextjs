@@ -21,6 +21,11 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { canUseWalletForVoting } from './voting-utils';
 import { isPublicationEntitySourced } from '@/lib/publication-source';
+import type { VotingTargetType } from '@/stores/ui.store';
+
+function isDocumentVoteTarget(type: VotingTargetType): type is 'document-variant' | 'document-block-official' {
+  return type === 'document-variant' || type === 'document-block-official';
+}
 
 interface VotingPopupProps {
   communityId?: string;
@@ -44,6 +49,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     votingCommunityId,
     votingDocumentVariantIsOwn,
     votingDocumentAllowDownvotes,
+    votingDocumentContext,
     activeVotingFormData,
     closeVotingPopup,
     updateVotingFormData,
@@ -56,7 +62,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   );
 
   const voteContextCommunityId = useMemo(() => {
-    if (votingTargetType === 'document-variant' && votingCommunityId) {
+    if (isDocumentVoteTarget(votingTargetType) && votingCommunityId) {
       return votingCommunityId;
     }
     if (votingTargetType === 'publication' && publication?.communityId) {
@@ -77,7 +83,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   
   // Personal author or beneficiary: wallet-only / own-post helpers (entity-sourced posts are not "own personal post")
   const isOwnPost = useMemo(() => {
-    if (votingTargetType === 'document-variant') {
+    if (isDocumentVoteTarget(votingTargetType)) {
       return votingDocumentVariantIsOwn === true;
     }
     if (!user?.id || !publication || votingTargetType !== 'publication') return false;
@@ -193,7 +199,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
   // maxMinus should use wallet balance for negative votes (downvotes use wallet only)
   // When walletBalance is 0, maxMinus should be 0 to prevent negative slider positions
   const calculatedMaxMinus = useMemo(() => {
-    if (votingTargetType === 'document-variant' && !votingDocumentAllowDownvotes) {
+    if (isDocumentVoteTarget(votingTargetType) && !votingDocumentAllowDownvotes) {
       return 0;
     }
     if (community?.votingSettings?.allowNegativeVoting === false) {
@@ -278,7 +284,7 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
 
     const delta = formData.delta;
 
-    if (votingTargetType === 'document-variant') {
+    if (isDocumentVoteTarget(votingTargetType)) {
       if (!formData.comment?.trim()) {
         updateVotingFormData({ error: t('reasonRequired') });
         return;
@@ -324,7 +330,10 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
       quotaAmount = 0;
       walletAmount = 0;
     } else if (isUpvote) {
-      if (effectiveVotingMode === 'wallet-only') {
+      const forceWalletOnlySubmit =
+        effectiveVotingMode === 'wallet-only' ||
+        (isDocumentVoteTarget(votingTargetType) && isOwnPost);
+      if (forceWalletOnlySubmit) {
         if (!canUseWallet) {
           updateVotingFormData({ error: t('downvoteRequiresBalance') });
           return;
@@ -378,6 +387,8 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     // Close popup immediately to prevent flash of updated progress bars
     // The optimistic updates will happen in onMutate, but the popup will already be closed
     const targetId = activeVotingTarget;
+    // Captured before handleClose() resets the store.
+    const docCtx = votingDocumentContext;
     const commentText = formData.comment.trim();
     const imagesToSubmit = enableCommentImageUploads && formData.images && formData.images.length > 0 ? formData.images : undefined;
     
@@ -398,17 +409,43 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           },
           communityId: targetCommunityId,
         });
-      } else if (votingTargetType === 'document-variant') {
+      } else if (isDocumentVoteTarget(votingTargetType)) {
         await voteOnDocumentVariantMutation.mutateAsync({
-          targetType: 'document-variant',
+          targetType: votingTargetType,
           targetId,
           quotaAmount,
           walletAmount,
           direction: isUpvote ? 'up' : 'down',
           comment: commentText,
         });
-        await utils.documentVariants.listByBlock.invalidate();
-        await utils.documents.getById.invalidate();
+        // Scoped invalidation when document context is known; global fallback otherwise.
+        await Promise.all(
+          docCtx
+            ? [
+                docCtx.blockId
+                  ? utils.documentVariants.listByBlock.invalidate({
+                      documentId: docCtx.documentId,
+                      blockId: docCtx.blockId,
+                    })
+                  : utils.documentVariants.listByBlock.invalidate(),
+                docCtx.blockId
+                  ? utils.documentVariants.getBlockVotingPanel.invalidate({
+                      documentId: docCtx.documentId,
+                      blockId: docCtx.blockId,
+                    })
+                  : utils.documentVariants.getBlockVotingPanel.invalidate(),
+                utils.documentVariants.listByDocument.invalidate({
+                  documentId: docCtx.documentId,
+                }),
+                utils.documents.getById.invalidate({ id: docCtx.documentId }),
+              ]
+            : [
+                utils.documentVariants.listByBlock.invalidate(),
+                utils.documentVariants.getBlockVotingPanel.invalidate(),
+                utils.documentVariants.listByDocument.invalidate(),
+                utils.documents.getById.invalidate(),
+              ],
+        );
       } else {
         await voteOnVoteMutation.mutateAsync({
           voteId: targetId,
@@ -449,6 +486,20 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
     return null;
   }
 
+  const documentVoteTarget = isDocumentVoteTarget(votingTargetType)
+    ? votingTargetType === 'document-block-official'
+      ? 'official'
+      : 'variant'
+    : undefined;
+
+  const votingPanelTitle = documentVoteTarget === 'official'
+    ? t('documentOfficialVoteTitle')
+    : documentVoteTarget === 'variant'
+      ? votingDocumentVariantIsOwn
+        ? t('documentVariantOwnVoteTitle')
+        : t('documentVariantVoteTitle')
+      : undefined;
+
   return (
     <BottomPortal>
       <IntlPortalWrapper>
@@ -459,6 +510,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
         />
         <div className="relative z-10">
           <VotingPanel
+          title={votingPanelTitle}
+          documentVoteTarget={documentVoteTarget}
+          documentAllowDownvotes={votingDocumentAllowDownvotes ?? true}
           onClose={handleClose}
           amount={formData.delta}
           setAmount={handleAmountChange}
@@ -476,14 +530,14 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
           images={enableCommentImageUploads ? (formData.images || []) : []}
           onImagesChange={enableCommentImageUploads ? handleImagesChange : undefined}
           commentMode={
-            votingTargetType === 'document-variant'
+            isDocumentVoteTarget(votingTargetType)
               ? 'weightedOnly'
               : ticketFreeCommentOnlyUi
                 ? 'neutralOnly'
                 : effectiveCommentMode
           }
           hideQuota={
-            votingTargetType === 'document-variant'
+            isDocumentVoteTarget(votingTargetType)
               ? isOwnPost || community?.typeTag === 'future-vision'
               : ticketFreeCommentOnlyUi ||
                 (effectiveCommentMode === 'neutralOnly' && !ticketWeightedAppreciation)

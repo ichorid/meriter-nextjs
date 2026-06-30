@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { DocumentStructureService } from '../src/domain/services/document-structure.service';
 import type { DocumentService } from '../src/domain/services/document.service';
 import type { DocumentVariantService } from '../src/domain/services/document-variant.service';
+import type { DocumentLiveUpdatesService } from '../src/domain/services/document-live-updates.service';
 
 describe('DocumentStructureService', () => {
   let service: DocumentStructureService;
@@ -14,7 +15,8 @@ describe('DocumentStructureService', () => {
   let documentVariantService: jest.Mocked<
     Pick<DocumentVariantService, 'assertCanEditDocumentStructure'>
   >;
-  let variantModel: { updateMany: jest.Mock };
+  let documentPersistence: { withdrawOpenVariantsOnBlock: jest.Mock };
+  let documentLiveUpdates: { publish: jest.Mock };
 
   const actorUserId = 'user-1';
   const documentId = 'doc-1';
@@ -57,14 +59,18 @@ describe('DocumentStructureService', () => {
     documentVariantService = {
       assertCanEditDocumentStructure: jest.fn().mockResolvedValue(undefined),
     };
-    variantModel = {
-      updateMany: jest.fn().mockResolvedValue({ modifiedCount: 0 }),
+    documentPersistence = {
+      withdrawOpenVariantsOnBlock: jest.fn().mockResolvedValue(undefined),
+    };
+    documentLiveUpdates = {
+      publish: jest.fn(),
     };
 
     service = new DocumentStructureService(
       documentService as unknown as DocumentService,
       documentVariantService as unknown as DocumentVariantService,
-      variantModel as never,
+      documentLiveUpdates as unknown as DocumentLiveUpdatesService,
+      documentPersistence as never,
     );
   });
 
@@ -116,15 +122,9 @@ describe('DocumentStructureService', () => {
       confirmLossOfOfficial: true,
     });
 
-    expect(variantModel.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        documentId,
-        blockId: 'b1',
-        status: 'open',
-      }),
-      expect.objectContaining({
-        $set: expect.objectContaining({ status: 'withdrawn' }),
-      }),
+    expect(documentPersistence.withdrawOpenVariantsOnBlock).toHaveBeenCalledWith(
+      documentId,
+      'b1',
     );
     expect(documentService.updateSections).toHaveBeenCalled();
   });
@@ -135,6 +135,58 @@ describe('DocumentStructureService', () => {
     await expect(
       service.removeSection(actorUserId, documentId, 's1', {
         confirmLossOfOfficial: true,
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('updates proposalsLocked on block', async () => {
+    mockDoc(baseDoc.sections);
+
+    await service.updateBlock(actorUserId, documentId, 'b1', {
+      proposalsLocked: true,
+    });
+
+    expect(documentService.updateSections).toHaveBeenCalledWith(
+      documentId,
+      expect.arrayContaining([
+        expect.objectContaining({
+          blocks: expect.arrayContaining([
+            expect.objectContaining({ id: 'b1', proposalsLocked: true }),
+          ]),
+        }),
+      ]),
+      expect.anything(),
+    );
+  });
+
+  it('reorders blocks within a section', async () => {
+    mockDoc(baseDoc.sections);
+
+    await service.reorderBlocks(actorUserId, documentId, 's1', {
+      blockIds: ['b2', 'b1'],
+    });
+
+    expect(documentService.updateSections).toHaveBeenCalledWith(
+      documentId,
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 's1',
+          blocks: [
+            expect.objectContaining({ id: 'b2', order: 0 }),
+            expect.objectContaining({ id: 'b1', order: 1 }),
+          ],
+        }),
+      ]),
+      expect.anything(),
+    );
+  });
+
+  it('rejects reorder when blockIds do not match section', async () => {
+    mockDoc(baseDoc.sections);
+
+    await expect(
+      service.reorderBlocks(actorUserId, documentId, 's1', {
+        blockIds: ['b1'],
       }),
     ).rejects.toThrow(BadRequestException);
   });

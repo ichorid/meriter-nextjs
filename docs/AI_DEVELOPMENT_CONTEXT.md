@@ -1,7 +1,7 @@
 # AI Development Context — Meriter Project
 
 > Этот документ — контекст для AI-ассистента (Claude) при работе над проектом.
-> Обновлён: Январь 2026
+> Обновлён: Май 2026
 
 ---
 
@@ -18,12 +18,19 @@
 ### Структура репозитория
 ```
 meriter-nextjs/
-├── api/                    # Backend (NestJS) — @meriter/api
+├── api/apps/meriter/src/   # Backend Nest app
+│   ├── domain/             # services, aggregates, ports, events
+│   ├── application/use-cases/
+│   ├── infrastructure/     # persistence, auth, uploads, cron
+│   ├── adapters/           # mappers, presenters, enrichment
+│   └── trpc/               # primary tRPC routers (thinning → use cases)
 ├── web/                    # Frontend (Next.js) — @meriter/web
 ├── libs/shared-types/      # Shared Zod schemas
-├── .cursor/rules/          # AI правила для Cursor
+├── .cursor/rules/          # AI правила (architecture.mdc = live CA rules)
 └── docs/                   # Документация
 ```
+
+**Документы:** live architecture = `.cursor/rules/architecture.mdc`; historical blueprint = `.index/architecture/TARGET_ARCHITECTURE.md` (changelog only).
 
 ---
 
@@ -57,8 +64,9 @@ meriter-nextjs/
 | Файл | Тип | Назначение |
 |------|-----|------------|
 | `index.mdc` | Always | Master context — обзор проекта, структура, ключевые концепции |
-| `business-logic.mdc` | Pattern | Бизнес-логика Merit системы, голосование, permissions |
-| `architecture.mdc` | Pattern | Структура кода, куда что добавлять |
+| `business-index.mdc` | Always (routing) | Маршрутизация к `business-*.mdc` (merits, communities, content, …) |
+| `architecture.mdc` | Pattern | Структура кода, CA-слои, ESLint zones (полная спека) |
+| `ARCHITECTURE.md` (корень) | Human | Краткая карта репо → ссылка на `architecture.mdc` |
 | `frontend.mdc` | Pattern | React/Next.js паттерны, компоненты, хуки |
 | `backend.mdc` | Pattern | NestJS/tRPC паттерны, сервисы, роутеры |
 | `local-dev-win.mdc` | Manual | Команды для Windows |
@@ -196,7 +204,7 @@ codegraph search "запрос"          # semantic search
 | `docs/CURSOR-WORKFLOW.md` | Как работать с Cursor |
 | `docs/templates/PRD-TEMPLATE.md` | Шаблон для новых фич |
 | `docs/LOCAL_SETUP.md` | Детальная инструкция по запуску |
-| `ARCHITECTURE.md` | Архитектура (для человека) |
+| `ARCHITECTURE.md` | Краткая карта репо (люди + быстрый вход); полная CA-спека — `.cursor/rules/architecture.mdc` |
 | `BUSINESS_LOGIC_DOCUMENTATION.md` | Полная бизнес-логика |
 | `DEVELOPMENT.md` | Руководство разработчика |
 

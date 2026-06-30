@@ -107,7 +107,7 @@ async function checkMenuButton(botToken) {
     }
 }
 
-async function setMenuButton(botToken, appUrl, path = '/miniapplogin') {
+async function setMenuButton(botToken, appUrl, path = '/tg') {
     const menuButtonUrl = `${appUrl}${path}`;
     
     console.log('🔧 Setting menu button...');
@@ -117,7 +117,7 @@ async function setMenuButton(botToken, appUrl, path = '/miniapplogin') {
     const postData = JSON.stringify({
         menu_button: {
             type: 'web_app',
-            text: 'Open App',
+            text: 'Meriter',
             web_app: {
                 url: menuButtonUrl
             }
@@ -137,9 +137,9 @@ async function setMenuButton(botToken, appUrl, path = '/miniapplogin') {
         await checkMenuButton(botToken);
         
         console.log('\n📝 Notes:');
-        console.log('  - Users can now open your app from the bot menu');
-        console.log('  - Menu button will appear in direct messages with the bot');
-        console.log('  - URL must be accessible and valid Web App URL');
+        console.log('  - Users can open Mini App from bot menu (private chat)');
+        console.log('  - For group attachment menu: BotFather → /setattach → same URL');
+        console.log('  - URL must be HTTPS and listed in BotFather /setdomain');
         
     } catch (error) {
         console.error('❌ Error setting menu button:', error.message);
@@ -195,10 +195,13 @@ async function main() {
     }
     
     const botToken = process.env.BOT_TOKEN;
+    const communityWebBase = process.env.COMMUNITY_WEB_BASE_URL?.replace(/\/$/, '');
     const domain = process.env.DOMAIN;
-    const appUrl = domain
-        ? (domain === 'localhost' ? 'http://localhost' : `https://${domain}`)
-        : undefined;
+    const appUrl = communityWebBase
+        ? communityWebBase
+        : domain
+          ? (domain === 'localhost' ? 'http://localhost' : `https://${domain}`)
+          : undefined;
 
     if (!botToken) {
         console.error('❌ ERROR: BOT_TOKEN environment variable must be set');
@@ -233,7 +236,16 @@ async function main() {
             process.exit(1);
         }
 
-        const path = pathArg || '/miniapplogin';
+        const mainDomain = domain ? `https://${domain}`.replace(/\/$/, '') : '';
+        if (communityWebBase && mainDomain && communityWebBase === mainDomain) {
+            console.warn('');
+            console.warn('⚠️  WARNING: COMMUNITY_WEB_BASE_URL equals main DOMAIN.');
+            console.warn('   Mini App may show browser login instead of WebApp-only flow.');
+            console.warn('   Use a dedicated community host (e.g. https://community-dev.meriter.pro).');
+            console.warn('');
+        }
+
+        const path = pathArg || '/tg';
         await setMenuButton(botToken, appUrl, path);
     } else if (command === 'remove') {
         await removeMenuButton(botToken);

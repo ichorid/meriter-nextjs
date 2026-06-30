@@ -1,11 +1,9 @@
 'use client';
 
-import { LayoutTemplate, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/shadcn/badge';
 import { Button } from '@/components/ui/shadcn/button';
-import { useDocumentStructure } from '@/features/documents/context/DocumentStructureContext';
-import { cn } from '@/lib/utils';
 
 export interface DocumentCanvasHeaderProps {
   title: string;
@@ -16,6 +14,7 @@ export interface DocumentCanvasHeaderProps {
   updatedAt?: string | Date | null;
   canManageDocument: boolean;
   onOpenSettings: () => void;
+  showSettings?: boolean;
 }
 
 export function DocumentCanvasHeader({
@@ -27,11 +26,9 @@ export function DocumentCanvasHeader({
   updatedAt,
   canManageDocument,
   onOpenSettings,
+  showSettings = true,
 }: DocumentCanvasHeaderProps) {
   const t = useTranslations('pages.documents');
-  const tCanvas = useTranslations('pages.documents.canvas');
-  const structure = useDocumentStructure();
-
   const typeLabel =
     docType === 'imageOfFuture'
       ? t('typeImageOfFuture')
@@ -43,36 +40,17 @@ export function DocumentCanvasHeader({
     <header className="space-y-2 border-b border-base-300/50 pb-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h1 className="text-xl font-extrabold tracking-tight text-base-content">{title}</h1>
-        {canManageDocument ? (
-          <div className="flex flex-wrap items-center gap-1">
-            {structure ? (
-              <Button
-                type="button"
-                variant={structure.structureMode ? 'secondary' : 'ghost'}
-                size="sm"
-                className={cn(
-                  'h-8 gap-1 rounded-lg text-xs',
-                  structure.structureMode && 'ring-1 ring-primary/40',
-                )}
-                onClick={() => structure.toggleStructureMode()}
-              >
-                <LayoutTemplate size={14} />
-                {structure.structureMode
-                  ? tCanvas('structureModeOn')
-                  : tCanvas('structureMode')}
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1 rounded-lg text-xs text-base-content/70"
-              onClick={onOpenSettings}
-            >
-              <Settings size={14} />
-              {t('settings.open')}
-            </Button>
-          </div>
+        {canManageDocument && showSettings ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-8 gap-1 rounded-lg text-xs text-base-content/70"
+            onClick={onOpenSettings}
+          >
+            <Settings size={14} />
+            {t('settings.open')}
+          </Button>
         ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/60">
@@ -84,9 +62,6 @@ export function DocumentCanvasHeader({
         <span>{t('metaVariantCost', { cost: variantCost })}</span>
         {updatedAt ? (
           <span>{t('metaUpdated', { date: new Date(updatedAt).toLocaleString() })}</span>
-        ) : null}
-        {structure?.structureMode ? (
-          <span className="text-primary/80">{tCanvas('structureModeHint')}</span>
         ) : null}
       </div>
     </header>

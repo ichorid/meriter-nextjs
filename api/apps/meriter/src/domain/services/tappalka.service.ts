@@ -1,27 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import { randomUUID } from 'crypto';
-import {
-  PublicationSchemaClass,
-  PublicationDocument,
-} from '../models/publication/publication.schema';
-import {
-  CommunitySchemaClass,
-  CommunityDocument,
-  type Community,
-  type CommunityTappalkaSettings,
-} from '../models/community/community.schema';
-import {
-  TappalkaProgressSchemaClass,
-  TappalkaProgressDocument,
-} from '../models/tappalka/tappalka-progress.schema';
-import {
-  TappalkaSessionSchemaClass,
-  TappalkaSessionDocument,
-} from '../models/tappalka/tappalka-session.schema';
+import type { Community } from '../models/community/community.schema';
+import type { CommunityTappalkaSettings } from '../models/community/community.schema';
+import type { PublicationSnapshot } from '../../common/interfaces/publication-document.interface';
 import { MeritService } from './merit.service';
-import { MeritResolverService } from './merit-resolver.service';
+import { WalletContextResolverService } from './wallet-context-resolver.service';
 import { WalletService } from './wallet.service';
 import { NotificationService } from './notification.service';
 import { CommunityWalletService } from './community-wallet.service';
@@ -30,11 +13,29 @@ import type {
   TappalkaPost,
   TappalkaProgress,
   TappalkaChoiceResult,
-} from '@meriter/shared-types';
+} from '@meriter/shared-types/tappalka';
 import {
   stripHtmlToPlainText,
   truncatePlainText,
 } from '../../common/helpers/html-plain-text';
+import {
+  TAPPALKA_PERSISTENCE_PORT,
+  type TappalkaPersistencePort,
+  type TappalkaSessionRecord,
+} from '../ports/tappalka.persistence.port';
+import {
+  COMMUNITY_PERSISTENCE_PORT,
+  type CommunityPersistencePort,
+  type CommunitySnapshot,
+} from '../ports/community.persistence.port';
+import {
+  PUBLICATION_PERSISTENCE_PORT,
+  type PublicationPersistencePort,
+} from '../ports/publication.persistence.port';
+
+function asCommunity(snapshot: CommunitySnapshot): Community {
+  return snapshot as unknown as Community;
+}
 
 /**
  * TappalkaService
@@ -54,16 +55,14 @@ export class TappalkaService {
   private static readonly SESSION_TTL_MS = 10 * 60 * 1000;
 
   constructor(
-    @InjectModel(PublicationSchemaClass.name)
-    private publicationModel: Model<PublicationDocument>,
-    @InjectModel(CommunitySchemaClass.name)
-    private communityModel: Model<CommunityDocument>,
-    @InjectModel(TappalkaProgressSchemaClass.name)
-    private tappalkaProgressModel: Model<TappalkaProgressDocument>,
-    @InjectModel(TappalkaSessionSchemaClass.name)
-    private tappalkaSessionModel: Model<TappalkaSessionDocument>,
+    @Inject(PUBLICATION_PERSISTENCE_PORT)
+    private readonly publicationPersistence: PublicationPersistencePort,
+    @Inject(COMMUNITY_PERSISTENCE_PORT)
+    private readonly communityPersistence: CommunityPersistencePort,
+    @Inject(TAPPALKA_PERSISTENCE_PORT)
+    private readonly tappalkaPersistence: TappalkaPersistencePort,
     private meritService: MeritService,
-    private meritResolverService: MeritResolverService,
+    private walletContextResolverService: WalletContextResolverService,
     private walletService: WalletService,
     private communityWalletService: CommunityWalletService,
     private notificationService: NotificationService,
@@ -82,21 +81,15 @@ export class TappalkaService {
   async getEligiblePosts(
     communityId: string,
     excludeUserId: string,
-  ): Promise<PublicationDocument[]> {
-    // Get community and check tappalka settings
-    const community = await this.communityModel
-      .findOne({ id: communityId })
-      .lean()
-      .exec();
+  ): Promise<PublicationSnapshot[]> {
+    const community = await this.communityPersistence.findById(communityId);
 
     if (!community) {
       this.logger.warn(`Community not found: ${communityId}`);
       return [];
     }
 
-    const tappalkaSettings = this.getEffectiveTappalkaSettings(
-      community as unknown as Community,
-    );
+    const tappalkaSettings = this.getEffectiveTappalkaSettings(asCommunity(community));
 
     if (!tappalkaSettings.enabled) {
       this.logger.debug(`Tappalka is not enabled for community: ${communityId}`);
@@ -166,14 +159,13 @@ export class TappalkaService {
       ];
     }
 
-    // Execute query
-    const posts = await this.publicationModel.find(query).lean().exec();
+    const posts = await this.publicationPersistence.findByQuery({ query });
 
     this.logger.debug(
       `Found ${posts.length} eligible posts for tappalka in community ${communityId}`,
     );
 
-    return posts as unknown as PublicationDocument[];
+    return posts;
   }
 
   /**
@@ -236,7 +228,7 @@ export class TappalkaService {
     const now = new Date();
     const expiresAt = new Date(now.getTime() + TappalkaService.SESSION_TTL_MS);
 
-    await this.tappalkaSessionModel.create({
+    await this.tappalkaPersistence.createSession({
       id: sessionId,
       userId,
       communityId,
@@ -260,7 +252,7 @@ export class TappalkaService {
   }
 
   private assertChoiceMatchesSession(
-    session: Pick<TappalkaSessionDocument, 'postAId' | 'postBId'>,
+    session: Pick<TappalkaSessionRecord, 'postAId' | 'postBId'>,
     winnerPostId: string,
     loserPostId: string,
   ): void {
@@ -277,20 +269,9 @@ export class TappalkaService {
   private async claimComparisonSession(
     sessionId: string,
     userId: string,
-  ): Promise<TappalkaSessionDocument | null> {
+  ): Promise<TappalkaSessionRecord | null> {
     const now = new Date();
-    return this.tappalkaSessionModel
-      .findOneAndUpdate(
-        {
-          id: sessionId,
-          userId,
-          status: 'pending',
-          expiresAt: { $gt: now },
-        },
-        { $set: { status: 'processing', updatedAt: now } },
-        { new: true },
-      )
-      .exec();
+    return this.tappalkaPersistence.claimPendingSession(sessionId, userId, now);
   }
 
   private async finalizeComparisonSession(
@@ -298,29 +279,22 @@ export class TappalkaService {
     result: TappalkaChoiceResult,
   ): Promise<void> {
     const now = new Date();
-    await this.tappalkaSessionModel
-      .updateOne(
-        { id: sessionId, status: 'processing' },
-        {
-          $set: {
-            status: 'consumed',
-            consumedAt: now,
-            storedResult: result,
-            updatedAt: now,
-          },
-        },
-      )
-      .exec();
+    await this.tappalkaPersistence.consumeSession(
+      sessionId,
+      result,
+      now,
+      now,
+    );
   }
 
   private async getReplayedChoiceResult(
     sessionId: string,
     userId: string,
   ): Promise<TappalkaChoiceResult | null> {
-    const session = await this.tappalkaSessionModel
-      .findOne({ id: sessionId, userId, status: 'consumed' })
-      .lean()
-      .exec();
+    const session = await this.tappalkaPersistence.findConsumedSession(
+      sessionId,
+      userId,
+    );
     if (!session?.storedResult) {
       return null;
     }
@@ -332,22 +306,19 @@ export class TappalkaService {
   /**
    * Plain text for mining cards: project/community fields when linked, else publication description.
    */
-  private async buildSummaryPlainText(post: PublicationDocument): Promise<string> {
+  private async buildSummaryPlainText(post: PublicationSnapshot): Promise<string> {
     let raw = '';
 
     if (post.sourceEntityType === 'project' && post.sourceEntityId) {
-      const proj = await this.communityModel
-        .findOne({ id: post.sourceEntityId, isProject: true })
-        .lean()
-        .exec();
-      if (proj) {
+      const proj = await this.communityPersistence.findById(post.sourceEntityId);
+      if (proj?.isProject) {
         const parts = [proj.description, proj.futureVisionText].filter(
           (p): p is string => typeof p === 'string' && p.trim().length > 0,
         );
         raw = parts.join('\n\n');
       }
     } else if (post.sourceEntityType === 'community' && post.sourceEntityId) {
-      const comm = await this.communityModel.findOne({ id: post.sourceEntityId }).lean().exec();
+      const comm = await this.communityPersistence.findById(post.sourceEntityId);
       if (comm) {
         const parts = [comm.description, comm.futureVisionText].filter(
           (p): p is string => typeof p === 'string' && p.trim().length > 0,
@@ -369,7 +340,7 @@ export class TappalkaService {
    * Map PublicationDocument to TappalkaPost
    */
   private async mapPostToTappalkaPost(
-    post: PublicationDocument,
+    post: PublicationSnapshot,
   ): Promise<TappalkaPost> {
     const summaryPlainText = await this.buildSummaryPlainText(post);
 
@@ -451,13 +422,10 @@ export class TappalkaService {
   }
 
   private async releaseProcessingSession(sessionId: string): Promise<void> {
-    const now = new Date();
-    await this.tappalkaSessionModel
-      .updateOne(
-        { id: sessionId, status: 'processing' },
-        { $set: { status: 'pending', updatedAt: now } },
-      )
-      .exec();
+    await this.tappalkaPersistence.releaseProcessingSession(
+      sessionId,
+      new Date(),
+    );
   }
 
   private async executeSubmitChoice(
@@ -468,18 +436,13 @@ export class TappalkaService {
     loserPostId: string,
   ): Promise<TappalkaChoiceResult> {
     // Get community and tappalka settings
-    const community = await this.communityModel
-      .findOne({ id: communityId })
-      .lean()
-      .exec();
+    const community = await this.communityPersistence.findById(communityId);
 
     if (!community) {
       throw new Error(`Community not found: ${communityId}`);
     }
 
-    const tappalkaSettings = this.getEffectiveTappalkaSettings(
-      community as unknown as Community,
-    );
+    const tappalkaSettings = this.getEffectiveTappalkaSettings(asCommunity(community));
 
     if (!tappalkaSettings.enabled) {
       throw new Error('Mining is not enabled for this community');
@@ -490,8 +453,8 @@ export class TappalkaService {
 
     // Validate posts still exist and are eligible
     const [winner, loser] = await Promise.all([
-      this.publicationModel.findOne({ id: winnerPostId }).lean().exec(),
-      this.publicationModel.findOne({ id: loserPostId }).lean().exec(),
+      this.publicationPersistence.findById(winnerPostId),
+      this.publicationPersistence.findById(loserPostId),
     ]);
 
     if (!winner || !loser) {
@@ -509,18 +472,15 @@ export class TappalkaService {
     }
 
     // 1. Deduct showCost from both posts
-    await this.deductShowCost(winner as unknown as PublicationDocument, showCost);
-    await this.deductShowCost(loser as unknown as PublicationDocument, showCost);
+    await this.deductShowCost(winner, showCost);
+    await this.deductShowCost(loser, showCost);
 
     // 2. Award winReward to winner (EMISSION, not transfer - add to rating). D-8: track lastEarnedAt.
     const now = new Date();
-    await this.publicationModel.updateOne(
-      { id: winnerPostId },
-      {
-        $inc: { 'metrics.score': winReward, lifetimeCredits: winReward },
-        $set: { lastEarnedAt: now },
-      },
-    );
+    await this.publicationPersistence.patchById(winnerPostId, {
+      inc: { 'metrics.score': winReward, lifetimeCredits: winReward },
+      set: { lastEarnedAt: now },
+    });
 
     this.logger.debug(
       `Awarded ${winReward} merits to winner post ${winnerPostId}`,
@@ -532,7 +492,7 @@ export class TappalkaService {
       communityId,
       comparisonsRequired,
       userReward,
-      community as unknown as Community,
+      asCommunity(community),
     );
 
     // 4. Get next pair for seamless UX
@@ -571,7 +531,7 @@ export class TappalkaService {
    * C-5: Priority per business-investing.mdc — investmentPool → rating (down to stopLoss) → author.wallet (unless noAuthorWalletSpend).
    */
   private async deductShowCost(
-    post: PublicationDocument,
+    post: PublicationSnapshot,
     cost: number,
   ): Promise<void> {
     const currentPool = post.investmentPool ?? 0;
@@ -584,25 +544,24 @@ export class TappalkaService {
     // 1. Try investment pool first (atomic: conditional update to prevent negative)
     if (remainingCost > 0 && currentPool > 0) {
       const fromPool = Math.min(currentPool, remainingCost);
-      const result = await this.publicationModel.findOneAndUpdate(
+      const result = await this.publicationPersistence.findAndPatchOne(
         { id: post.id, investmentPool: { $gte: fromPool } },
-        { $inc: { investmentPool: -fromPool } },
-        { new: true }
-      ).lean().exec();
+        { inc: { investmentPool: -fromPool } },
+      );
       if (result) {
         remainingCost -= fromPool;
         this.logger.debug(
           `Deducted ${fromPool} from post ${post.id} investment pool`,
         );
       } else {
-        const fresh = await this.publicationModel.findOne({ id: post.id }).lean().exec();
+        const fresh = await this.publicationPersistence.findById(post.id);
         const actualPool = fresh?.investmentPool ?? 0;
         const actualDeduct = Math.min(actualPool, remainingCost);
         if (actualDeduct > 0) {
-          const retryResult = await this.publicationModel.findOneAndUpdate(
+          const retryResult = await this.publicationPersistence.findAndPatchOne(
             { id: post.id, investmentPool: { $gte: actualDeduct } },
-            { $inc: { investmentPool: -actualDeduct } },
-          ).exec();
+            { inc: { investmentPool: -actualDeduct } },
+          );
           if (retryResult) {
             remainingCost -= actualDeduct;
             this.logger.debug(
@@ -633,10 +592,9 @@ export class TappalkaService {
     const availableFromRating = Math.max(0, currentRating - stopLoss);
     if (availableFromRating > 0 && remainingCost > 0) {
       const fromRating = Math.min(remainingCost, availableFromRating);
-      await this.publicationModel.updateOne(
-        { id: post.id },
-        { $inc: { 'metrics.score': -fromRating } },
-      );
+      await this.publicationPersistence.patchById(post.id, {
+        inc: { 'metrics.score': -fromRating },
+      });
       remainingCost -= fromRating;
       this.logger.debug(
         `Deducted ${fromRating} from post ${post.id} rating (stopLoss=${stopLoss})`,
@@ -648,8 +606,12 @@ export class TappalkaService {
     const sourceEntityId = post.sourceEntityId as string | undefined;
     if (remainingCost > 0 && sourceEntityId) {
       try {
+        const communityWalletId =
+          await this.walletContextResolverService.resolveCommunityWalletCommunityId(
+            sourceEntityId,
+          );
         await this.communityWalletService.deductBalance(
-          sourceEntityId,
+          communityWalletId,
           remainingCost,
           'tappalka_show_cost',
         );
@@ -700,22 +662,20 @@ export class TappalkaService {
       return;
     }
 
-    const community = await this.communityModel
-      .findOne({ id: post.communityId })
-      .lean()
-      .exec();
+    const communityDoc = await this.communityPersistence.findById(post.communityId);
 
-    if (!community) {
+    if (!communityDoc) {
       throw new Error(`Community not found: ${post.communityId}`);
     }
 
-    const currency = (community as unknown as Community).settings
-      .currencyNames;
+    const community = asCommunity(communityDoc);
+    const currency = community.settings.currencyNames;
 
-    const walletCommunityId = this.meritResolverService.getWalletCommunityId(
-      community as unknown as Community,
-      'tappalka_reward',
-    );
+    const walletCommunityId =
+      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+        community,
+        'tappalka_reward',
+      );
 
     if (remainingCost > 0) {
       await this.walletService.addTransaction(
@@ -747,14 +707,11 @@ export class TappalkaService {
     community: Community,
   ): Promise<{ newCount: number; rewardEarned: boolean }> {
     // Get or create progress record
-    let progress = await this.tappalkaProgressModel
-      .findOne({ userId, communityId })
-      .lean()
-      .exec();
+    let progress = await this.tappalkaPersistence.findProgress(userId, communityId);
 
     if (!progress) {
       // Create new progress record
-      const newProgress = await this.tappalkaProgressModel.create({
+      progress = await this.tappalkaPersistence.createProgress({
         id: randomUUID(),
         userId,
         communityId,
@@ -765,7 +722,6 @@ export class TappalkaService {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      progress = newProgress.toObject() as NonNullable<typeof progress>;
     } else {
       // Increment comparison count
       const currentCount = progress.comparisonCount || 0;
@@ -775,23 +731,21 @@ export class TappalkaService {
       // Update progress
       if (rewardEarned) {
         // Reset count to 0 and increment totalRewardsEarned
-        await this.tappalkaProgressModel.updateOne(
-          { userId, communityId },
-          {
-            $set: {
-              comparisonCount: 0,
-              totalRewardsEarned: (progress.totalRewardsEarned || 0) + 1,
-              updatedAt: new Date(),
-            },
-            $inc: {
-              totalComparisons: 1,
-            },
+        await this.tappalkaPersistence.updateProgress(userId, communityId, {
+          set: {
+            comparisonCount: 0,
+            totalRewardsEarned: (progress.totalRewardsEarned || 0) + 1,
+            updatedAt: new Date(),
           },
-        );
+          inc: {
+            totalComparisons: 1,
+          },
+        });
 
         // Award userReward to user's wallet
         const currency = community.settings.currencyNames;
-        const targetCommunityId = this.meritResolverService.getWalletCommunityId(
+        const targetCommunityId =
+          await this.walletContextResolverService.resolvePersonalWalletCommunityId(
           community,
           'tappalka_reward',
         );
@@ -812,18 +766,15 @@ export class TappalkaService {
         );
       } else {
         // Just increment count
-        await this.tappalkaProgressModel.updateOne(
-          { userId, communityId },
-          {
-            $inc: {
-              comparisonCount: 1,
-              totalComparisons: 1,
-            },
-            $set: {
-              updatedAt: new Date(),
-            },
+        await this.tappalkaPersistence.updateProgress(userId, communityId, {
+          inc: {
+            comparisonCount: 1,
+            totalComparisons: 1,
           },
-        );
+          set: {
+            updatedAt: new Date(),
+          },
+        });
       }
 
       return {
@@ -836,22 +787,20 @@ export class TappalkaService {
     const rewardEarned = 1 >= comparisonsRequired;
     if (rewardEarned) {
       // Award reward and reset count
-      await this.tappalkaProgressModel.updateOne(
-        { userId, communityId },
-        {
-          $set: {
-            comparisonCount: 0,
-            totalRewardsEarned: 1,
-            updatedAt: new Date(),
-          },
+      await this.tappalkaPersistence.updateProgress(userId, communityId, {
+        set: {
+          comparisonCount: 0,
+          totalRewardsEarned: 1,
+          updatedAt: new Date(),
         },
-      );
+      });
 
       const currency = community.settings.currencyNames;
-      const targetCommunityId = this.meritResolverService.getWalletCommunityId(
-        community,
-        'tappalka_reward',
-      );
+      const targetCommunityId =
+        await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+          community,
+          'tappalka_reward',
+        );
       await this.walletService.addTransaction(
         userId,
         targetCommunityId,
@@ -886,28 +835,20 @@ export class TappalkaService {
     userId: string,
   ): Promise<TappalkaProgress> {
     // Get community and tappalka settings
-    const community = await this.communityModel
-      .findOne({ id: communityId })
-      .lean()
-      .exec();
+    const community = await this.communityPersistence.findById(communityId);
 
     if (!community) {
       throw new Error(`Community not found: ${communityId}`);
     }
 
-    const tappalkaSettings = this.getEffectiveTappalkaSettings(
-      community as unknown as Community,
-    );
+    const tappalkaSettings = this.getEffectiveTappalkaSettings(asCommunity(community));
 
     // Get or create progress record
-    let progress = await this.tappalkaProgressModel
-      .findOne({ userId, communityId })
-      .lean()
-      .exec();
+    let progress = await this.tappalkaPersistence.findProgress(userId, communityId);
 
     if (!progress) {
       // Create new progress record with defaults
-      const newProgress = await this.tappalkaProgressModel.create({
+      progress = await this.tappalkaPersistence.createProgress({
         id: randomUUID(),
         userId,
         communityId,
@@ -918,14 +859,14 @@ export class TappalkaService {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      progress = newProgress.toObject() as NonNullable<typeof progress>;
     }
 
-    // Get user's wallet balance (global for priority communities)
-    const walletCommunityId = this.meritResolverService.getWalletCommunityId(
-      community as unknown as Community,
-      'tappalka_reward',
-    );
+    // Get user's wallet balance (resolved per community / shared-wallet rules)
+    const walletCommunityId =
+      await this.walletContextResolverService.resolvePersonalWalletCommunityId(
+        asCommunity(community),
+        'tappalka_reward',
+      );
     const wallet = await this.walletService.getWallet(userId, walletCommunityId);
     const meritBalance = wallet?.getBalance() ?? 0;
 
@@ -947,14 +888,11 @@ export class TappalkaService {
     userId: string,
   ): Promise<void> {
     // Get or create progress record
-    const progress = await this.tappalkaProgressModel
-      .findOne({ userId, communityId })
-      .lean()
-      .exec();
+    const progress = await this.tappalkaPersistence.findProgress(userId, communityId);
 
     if (!progress) {
       // Create new progress record with onboardingSeen = true
-      await this.tappalkaProgressModel.create({
+      await this.tappalkaPersistence.createProgress({
         id: randomUUID(),
         userId,
         communityId,
@@ -967,15 +905,12 @@ export class TappalkaService {
       });
     } else {
       // Update existing progress record
-      await this.tappalkaProgressModel.updateOne(
-        { userId, communityId },
-        {
-          $set: {
-            onboardingSeen: true,
-            updatedAt: new Date(),
-          },
+      await this.tappalkaPersistence.updateProgress(userId, communityId, {
+        set: {
+          onboardingSeen: true,
+          updatedAt: new Date(),
         },
-      );
+      });
     }
 
     this.logger.debug(

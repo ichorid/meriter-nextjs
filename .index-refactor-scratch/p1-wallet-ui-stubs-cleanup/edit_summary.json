@@ -1,0 +1,32 @@
+{
+  "work_unit_id": "p1-wallet-ui-stubs-cleanup",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "web/src/hooks/api/useWallet.ts"
+  ],
+  "changes": [
+    {
+      "file": "web/src/hooks/api/useWallet.ts",
+      "summary": "Removed useWithdraw and useTransfer mutation stubs that called trpc.wallets.withdraw / trpc.wallets.transfer (permanent NOT_IMPLEMENTED). Added module comment documenting canonical UI paths: publications.withdraw (useWithdrawFromPublication in useVotes.ts) and meritTransfer.* (MeritTransferDialog / use-merit-transfers.ts)."
+    },
+    {
+      "file": "web/src/components/organisms/Publication/PostSettingsReadOnly.tsx",
+      "summary": "No edit — file already removed upstream (a9583ced chore(web): remove unused components). Static import graph confirmed it never imported useWallet or wallet withdraw/transfer stubs."
+    }
+  ],
+  "verification": {
+    "web_ui_callers_wallets_withdraw": 0,
+    "web_ui_callers_wallets_transfer": 0,
+    "useWithdraw_export_removed": true,
+    "useTransfer_export_removed": true,
+    "canonical_paths_documented_in_useWallet": true,
+    "linter_errors_in_write_set": 0
+  },
+  "success_criteria": {
+    "no_ui_callers_of_wallets_withdraw_or_transfer": true,
+    "canonical_paths_documented_publications_withdraw_meritTransfer": true,
+    "wallets_ui_stubs_retirement_met": true
+  },
+  "notes": "PostSettingsReadOnly was in write_set from phase-0 static analysis but had no wallet stub edges and was deleted before this unit; PostPageClient uses PostInvestingSettingsReadOnly instead."
+}

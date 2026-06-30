@@ -1,0 +1,37 @@
+{
+  "work_unit_id": "p4-forward-use-cases",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/publications/forward-publication.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/publications/accept-forward-publication.use-case.ts",
+    "api/apps/meriter/src/trpc/routers/publications.router.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/publications/forward-publication.use-case.ts",
+      "summary": "Added ForwardPublicationUseCase (BC-03) with proposeForward() and rejectForward(): validation, inv-01 forward_proposal global wallet debit, updateForwardProposal/clearForwardProposal, and lead notifications. Exposes createForwardPublicationUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/publications/accept-forward-publication.use-case.ts",
+      "summary": "Added AcceptForwardPublicationUseCase (BC-03) with execute(): lead/superadmin forward or accept pending proposal, create target publication copy, inv-03 vote merit transfer and soft-delete original only when forwardRule=project, otherwise markAsForwarded (standard). Exposes createAcceptForwardPublicationUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/publications.router.ts",
+      "summary": "publications.proposeForward, publications.forward, and publications.rejectForward delegate to use cases; removed inline forward orchestration (~300 lines)."
+    }
+  ],
+  "verification": {
+    "propose_forward_delegates_to_use_case": true,
+    "forward_accepts_delegates_to_use_case": true,
+    "reject_forward_delegates_to_use_case": true,
+    "inv_01_forward_proposal_global_wallet_debit": true,
+    "inv_03_merit_transfer_only_when_forward_rule_project": true,
+    "tsc_changed_files": "no errors filtered for changed paths"
+  },
+  "success_criteria": {
+    "forward_propose_reject_accept_delegate_to_use_cases": true,
+    "inv_03_forward_merits_only_when_forward_rule_project": true
+  },
+  "notes": "AcceptForwardPublicationUseCase preserves existing behavior: standard mode keeps original and sets forwardStatus=forwarded; project mode retargets votes, recalculates score/lifetimeCredits, and soft-deletes the source publication."
+}

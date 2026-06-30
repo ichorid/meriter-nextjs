@@ -63,6 +63,8 @@ while [ "$i" -lt 60 ]; do
   state=$(run_mongosh "$MODE" --quiet --eval '(() => { try { return rs.status().members[0].stateStr; } catch (e) { return ""; } })()' 2>/dev/null | tail -n 1 | tr -d '\r')
   if [ "$state" = "PRIMARY" ]; then
     echo "mongodb-rs-init: done (PRIMARY)"
+    echo "mongodb-rs-init: ensuring application user..."
+    run_mongosh "$MODE" --quiet --file /scripts/ensure-app-user.js
     exit 0
   fi
   i=$((i + 1))

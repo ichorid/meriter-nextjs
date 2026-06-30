@@ -6,29 +6,28 @@ import {
   NotFoundException,
   forwardRef,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, type ClientSession } from 'mongoose';
+import type { DocumentPersistenceSession } from '../ports/document.persistence.port';
 import { randomUUID } from 'crypto';
 import { uid } from 'uid';
 import { GLOBAL_COMMUNITY_ID } from '../common/constants/global.constant';
 import { shouldBootstrapImageOfFutureDocument } from '../common/constants/collaborative-documents.constants';
 import { parseFutureVisionMirrorToInitialSections } from '../common/parse-future-vision-mirror';
-import {
-  CommunitySchemaClass,
-  CommunityDocument,
-} from '../models/community/community.schema';
 import type { CommunitySettings } from '../models/community/community.schema';
 import {
   MeriterDocumentSchemaClass,
-  MeriterDocumentDocument,
   MeriterDocApplyMode,
   MeriterDocType,
   OfficialContentReason,
 } from '../models/meriter-document/meriter-document.schema';
+import { DocumentBlockVariantSchemaClass } from '../models/document-block-variant/document-block-variant.schema';
 import {
-  DocumentBlockVariantSchemaClass,
-  DocumentBlockVariantDocument,
-} from '../models/document-block-variant/document-block-variant.schema';
+  COMMUNITY_PERSISTENCE_PORT,
+  type CommunityPersistencePort,
+} from '../ports/community.persistence.port';
+import {
+  DOCUMENT_PERSISTENCE_PORT,
+  type DocumentPersistencePort,
+} from '../ports/document.persistence.port';
 import { PublicationService } from './publication.service';
 
 type MirrorField = 'futureVisionText' | 'description';
@@ -61,12 +60,10 @@ export class DocumentService {
   private readonly logger = new Logger(DocumentService.name);
 
   constructor(
-    @InjectModel(MeriterDocumentSchemaClass.name)
-    private readonly documentModel: Model<MeriterDocumentDocument>,
-    @InjectModel(CommunitySchemaClass.name)
-    private readonly communityModel: Model<CommunityDocument>,
-    @InjectModel(DocumentBlockVariantSchemaClass.name)
-    private readonly variantModel: Model<DocumentBlockVariantDocument>,
+    @Inject(DOCUMENT_PERSISTENCE_PORT)
+    private readonly documentPersistence: DocumentPersistencePort,
+    @Inject(COMMUNITY_PERSISTENCE_PORT)
+    private readonly communityPersistence: CommunityPersistencePort,
     @Inject(forwardRef(() => PublicationService))
     private readonly publicationService: PublicationService,
   ) {}
@@ -122,11 +119,11 @@ export class DocumentService {
     if (!communityId || communityId === GLOBAL_COMMUNITY_ID) {
       return;
     }
-    const community = await this.communityModel.findOne({ id: communityId }).lean();
+    const community = await this.communityPersistence.findById(communityId);
     if (!community) {
       return;
     }
-    const c = community as Record<string, unknown>;
+    const c = community as unknown as Record<string, unknown>;
     const typeTag = c.typeTag as string | undefined;
     if (typeTag === 'global') {
       return;
@@ -208,6 +205,7 @@ export class DocumentService {
           order: number;
           blockType: string;
           officialContent: string;
+          proposalsLocked?: boolean;
         }>;
       }>;
     },
@@ -230,22 +228,20 @@ export class DocumentService {
         order: sec.order,
         blocks: [...sec.blocks]
           .sort((a, b) => a.order - b.order)
-          .map((block) => ({
-            id: randomUUID(),
-            order: block.order,
-            blockType: block.blockType,
-            officialContent: block.officialContent,
-            officialContentSetAt: now,
-            officialContentSetBy: createdByUserId,
-            officialContentReason: 'initial' as const,
-            editHistory: [],
-          })),
+            .map((block) => ({
+              id: randomUUID(),
+              order: block.order,
+              blockType: block.blockType,
+              officialContent: block.officialContent,
+              proposalsLocked: block.proposalsLocked === true,
+              officialContentSetAt: now,
+              officialContentSetBy: createdByUserId,
+              officialContentReason: 'initial' as const,
+              editHistory: [],
+            })),
       }));
 
-    await this.documentModel.updateOne(
-      { id: doc.id },
-      { $set: { sections, updatedAt: now } },
-    );
+    await this.documentPersistence.saveDocumentSections(doc.id, sections);
     await this.mirrorOfficialTextToCommunityIfApplicable(doc.id);
   }
 
@@ -263,10 +259,12 @@ export class DocumentService {
           order: number;
           blockType: string;
           officialContent: string;
+          proposalsLocked?: boolean;
         }>;
       }>;
     };
     description?: string;
+    skipImageOfFuture?: boolean;
   }): Promise<{ documentsCreated: number }> {
     let documentsCreated = 0;
     if (
@@ -277,7 +275,7 @@ export class DocumentService {
     }
 
     try {
-      if (shouldBootstrapImageOfFutureDocument(params.typeTag)) {
+      if (shouldBootstrapImageOfFutureDocument(params.typeTag) && !params.skipImageOfFuture) {
         if (
           await this.ensureOfficialDocument({
             communityId: params.communityId,
@@ -332,20 +330,15 @@ export class DocumentService {
     }>;
     mirrorField: MirrorField;
   }): Promise<boolean> {
-    const existing = await this.documentModel
-      .findOne({
-        communityId: args.communityId,
-        type: args.type,
-        deleted: false,
-      })
-      .lean();
+    const existing = await this.documentPersistence.findOfficialByType(
+      args.communityId,
+      args.type,
+    );
     if (existing) {
       return false;
     }
 
-    const community = await this.communityModel
-      .findOne({ id: args.communityId })
-      .lean();
+    const community = await this.communityPersistence.findById(args.communityId);
     const settings = (community?.settings ?? {}) as CommunitySettings;
     const postCost = settings.postCost ?? 1;
     const variantCostOverride = settings.documentVariantCost;
@@ -368,6 +361,7 @@ export class DocumentService {
           order: number;
           blockType: string;
           officialContent: string;
+          proposalsLocked?: boolean;
         }>;
       }>,
     ) =>
@@ -384,6 +378,7 @@ export class DocumentService {
               order: block.order,
               blockType: block.blockType,
               officialContent: block.officialContent,
+              proposalsLocked: block.proposalsLocked === true,
               officialContentSetAt: now,
               officialContentSetBy: args.createdBy,
               officialContentReason: 'initial' as const,
@@ -439,7 +434,7 @@ export class DocumentService {
       deleted: false,
     };
 
-    await this.documentModel.create(docPayload);
+    await this.documentPersistence.insertDocument(docPayload);
 
     const plain = this.concatOfficialPlainText(
       docPayload.sections.map((sec) => ({
@@ -451,10 +446,9 @@ export class DocumentService {
         })),
       })),
     );
-    await this.communityModel.updateOne(
-      { id: args.communityId },
-      { $set: { [args.mirrorField]: plain, updatedAt: new Date() } },
-    );
+    await this.communityPersistence.updateCommunity(args.communityId, {
+      set: { [args.mirrorField]: plain, updatedAt: new Date() },
+    });
     await this.mirrorOfficialTextToCommunityIfApplicable(documentId);
     return true;
   }
@@ -462,16 +456,7 @@ export class DocumentService {
   async listActiveByCommunity(
     communityId: string,
   ): Promise<MeriterDocumentSchemaClass[]> {
-    const docs = (await this.documentModel
-      .find({
-        communityId,
-        deleted: false,
-        /** Legacy rows may omit `status`; treat as active unless archived */
-        $nor: [{ status: 'archived' }],
-      })
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec()) as MeriterDocumentSchemaClass[];
+    const docs = await this.documentPersistence.findActiveByCommunity(communityId);
     const typeOrder: Record<string, number> = {
       imageOfFuture: 0,
       description: 1,
@@ -482,16 +467,13 @@ export class DocumentService {
         (typeOrder[a.type] ?? 99) - (typeOrder[b.type] ?? 99) ||
         (new Date(b.createdAt as Date).getTime() ?? 0) -
           (new Date(a.createdAt as Date).getTime() ?? 0),
-    );
+    ) as MeriterDocumentSchemaClass[];
   }
 
   async getById(
     documentId: string,
   ): Promise<MeriterDocumentSchemaClass | null> {
-    const doc = await this.documentModel
-      .findOne({ id: documentId, deleted: false })
-      .lean()
-      .exec();
+    const doc = await this.documentPersistence.findDocumentById(documentId);
     return doc as MeriterDocumentSchemaClass | null;
   }
 
@@ -499,18 +481,32 @@ export class DocumentService {
     communityId: string,
     type: MeriterDocType,
   ): Promise<MeriterDocumentSchemaClass | null> {
-    const doc = await this.documentModel
-      .findOne({ communityId, type, deleted: false })
-      .lean()
-      .exec();
+    const doc = await this.documentPersistence.findOfficialByType(communityId, type);
     return doc as MeriterDocumentSchemaClass | null;
   }
 
+  /** Batch load official documents for feed/list UIs (e.g. future visions). */
+  async getOfficialByCommunities(
+    communityIds: string[],
+    type: MeriterDocType,
+  ): Promise<Map<string, Pick<MeriterDocumentSchemaClass, 'id' | 'sections'>>> {
+    const summaries = await this.documentPersistence.findOfficialByCommunities(
+      communityIds,
+      type,
+    );
+    return new Map(
+      [...summaries.entries()].map(([communityId, summary]) => [
+        communityId,
+        {
+          id: summary.id,
+          sections: summary.sections as MeriterDocumentSchemaClass['sections'],
+        },
+      ]),
+    );
+  }
+
   async getVariantById(variantId: string): Promise<DocumentBlockVariantSchemaClass | null> {
-    const v = await this.variantModel
-      .findOne({ id: variantId, deleted: false })
-      .lean()
-      .exec();
+    const v = await this.documentPersistence.findVariantById(variantId);
     return v as DocumentBlockVariantSchemaClass | null;
   }
 
@@ -520,24 +516,51 @@ export class DocumentService {
   async applyRatingDelta(
     variantId: string,
     delta: number,
-    session?: ClientSession,
+    session?: DocumentPersistenceSession,
   ): Promise<void> {
-    if (!delta) {
-      return;
-    }
-    await this.variantModel.updateOne(
-      { id: variantId },
-      { $inc: { rating: delta }, $set: { updatedAt: new Date() } },
-      session ? { session } : undefined,
+    await this.documentPersistence.applyVariantRatingDelta(
+      variantId,
+      delta,
+      session,
     );
+  }
+
+  async applyOfficialBlockRatingDelta(
+    documentId: string,
+    blockId: string,
+    delta: number,
+    session?: DocumentPersistenceSession,
+  ): Promise<void> {
+    await this.documentPersistence.applyOfficialBlockRatingDelta(
+      documentId,
+      blockId,
+      delta,
+      session,
+    );
+  }
+
+  getBlockOfficialRating(doc: MeriterDocumentSchemaClass, blockId: string): number {
+    const block = this.findBlock(doc, blockId) as { officialRating?: number } | null;
+    return block?.officialRating ?? 0;
   }
 
   findBlock(
     doc: MeriterDocumentSchemaClass,
     blockId: string,
-  ): { currentWaveStartedAt?: Date } | null {
+  ): {
+    currentWaveStartedAt?: Date;
+    proposalsLocked?: boolean;
+    officialRating?: number;
+    officialContent?: string;
+  } | null {
     const sections = doc.sections as Array<{
-      blocks?: Array<{ id: string; currentWaveStartedAt?: Date }>;
+      blocks?: Array<{
+        id: string;
+        currentWaveStartedAt?: Date;
+        proposalsLocked?: boolean;
+        officialRating?: number;
+        officialContent?: string;
+      }>;
     }>;
     for (const sec of sections ?? []) {
       for (const b of sec.blocks ?? []) {
@@ -623,11 +646,15 @@ export class DocumentService {
       return doc;
     }
 
-    const result = await this.documentModel.updateOne(
-      { id: documentId, deleted: false },
-      { $set },
-    );
-    if (result.matchedCount === 0) {
+    const matched = await this.documentPersistence.updateDocumentMeta(documentId, {
+      title: $set.title as string | undefined,
+      mode: $set.mode as MeriterDocApplyMode | undefined,
+      votingDurationHours: $set.votingDurationHours as number | undefined,
+      variantCost: $set.variantCost as number | undefined,
+      allowDownvotes: $set.allowDownvotes as boolean | undefined,
+      updatedAt: $set.updatedAt as Date,
+    });
+    if (!matched) {
       throw new NotFoundException('Document not found');
     }
 
@@ -644,18 +671,7 @@ export class DocumentService {
     sections: unknown[],
     options?: { expectedUpdatedAt?: Date },
   ): Promise<{ ok: true } | { ok: false; reason: 'not_found' | 'conflict' }> {
-    const filter: Record<string, unknown> = { id: documentId, deleted: false };
-    if (options?.expectedUpdatedAt) {
-      filter.updatedAt = options.expectedUpdatedAt;
-    }
-    const result = await this.documentModel.updateOne(filter, {
-      $set: { sections, updatedAt: new Date() },
-    });
-    if (result.matchedCount > 0) {
-      return { ok: true };
-    }
-    const exists = await this.documentModel.exists({ id: documentId, deleted: false });
-    return { ok: false, reason: exists ? 'conflict' : 'not_found' };
+    return this.documentPersistence.updateDocumentSections(documentId, sections, options);
   }
 
   /**
@@ -666,21 +682,18 @@ export class DocumentService {
     blockId: string,
     mutate: (block: Record<string, unknown>) => void,
   ): Promise<boolean> {
-    const mdoc = await this.documentModel.findOne({ id: documentId, deleted: false });
-    if (!mdoc) {
+    const doc = await this.getById(documentId);
+    if (!doc) {
       return false;
     }
-    const sections = mdoc.sections as Array<{
+    const sections = JSON.parse(JSON.stringify(doc.sections ?? [])) as Array<{
       blocks?: Array<Record<string, unknown>>;
     }>;
     for (const sec of sections ?? []) {
       for (const b of sec.blocks ?? []) {
         if (b.id === blockId) {
           mutate(b);
-          mdoc.markModified('sections');
-          mdoc.set('updatedAt', new Date());
-          await mdoc.save();
-          return true;
+          return this.documentPersistence.saveDocumentSections(documentId, sections);
         }
       }
     }
@@ -707,16 +720,12 @@ export class DocumentService {
       })),
     );
     const field = doc.type === 'imageOfFuture' ? 'futureVisionText' : 'description';
-    await this.communityModel.updateOne(
-      { id: doc.communityId },
-      { $set: { [field]: plain, updatedAt: new Date() } },
-    );
+    await this.communityPersistence.updateCommunity(doc.communityId, {
+      set: { [field]: plain, updatedAt: new Date() },
+    });
 
     if (field === 'futureVisionText') {
-      const futureVisionHub = await this.communityModel
-        .findOne({ typeTag: 'future-vision' })
-        .lean()
-        .exec();
+      const futureVisionHub = await this.communityPersistence.findByTypeTag('future-vision');
       if (futureVisionHub?.id) {
         try {
           const updated = await this.publicationService.updateFutureVisionPostContent(
@@ -756,11 +765,7 @@ export class DocumentService {
     if (docCreatedBy) {
       return docCreatedBy;
     }
-    const community = await this.communityModel
-      .findOne({ id: communityId })
-      .select({ founderUserId: 1 })
-      .lean()
-      .exec();
+    const community = await this.communityPersistence.findById(communityId);
     if (community?.founderUserId) {
       return community.founderUserId;
     }

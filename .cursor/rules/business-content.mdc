@@ -47,6 +47,15 @@ Main content type on the platform. All other types inherit from base post.
 | metrics | Object including `score` (current merit total on post), `upvotes`, `downvotes`, `commentCount` |
 | lifetimeCredits | Total merits ever credited to this post (votes, author top-up, tappalka wins); never decreased; used for closing summary |
 | status, closedAt, closeReason | Lifecycle: active/closed, close time, reason (`manual`, `ttl`, `inactive`, `negative_rating`) |
+| isPinned | When `true`, post is pinned to the top of **`communities.getFeed`** for its `communityId`; UI badge «Закреплён». Default `false`. |
+
+### Pinned posts (community feed)
+
+- **Who can pin:** lead or superadmin of the post's `communityId` only — on **create** (`CreatePublicationDto.isPinned`) or **edit** (`UpdatePublicationDto.isPinned`). Non-admins cannot set or clear pin (server rejects).
+- **Feed scope:** **`communities.getFeed`** only (community/project hub). Profile, favorites, Birzha source lists, tappalka — unchanged sort.
+- **Order:** All pinned publications first; then polls + unpinned publications. Within the pinned group and within the rest group, order follows the active feed sort (`recent` → `createdAt` desc, `score` → `metrics.score` desc).
+- **Pagination:** Pinned items appear on **page 1** only; later pages are unpinned + polls with skip adjusted for pinned count.
+- **Filters:** Pinned posts respect the same search/taxonomy filters as the rest of the feed.
 
 **Publishing as a community (actor):** create input may include **`actingAsCommunityId`** (only on `publications.create`). Backend checks lead role, then stores **`sourceEntityId` / `sourceEntityType: 'community'`** on the publication. The field `actingAsCommunityId` is not stored on the document. Optional **`postCostFunding`** controls whether **`postCost`** is paid from that community’s **CommunityWallet** or from the caller’s global wallet when applicable. Canonical community-actor + wallet rules: @business-communities.mdc.
 

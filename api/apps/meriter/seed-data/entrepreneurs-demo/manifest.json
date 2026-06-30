@@ -1,0 +1,17 @@
+{
+  "packId": "entrepreneurs",
+  "version": 1,
+  "communityId": "demo_ent_community",
+  "demoPersonaAuthIds": [
+    "demo_ent:kravtsov_a",
+    "demo_ent:volkova_ir",
+    "demo_ent:nekrasov_d",
+    "demo_ent:orlova_n",
+    "demo_ent:mamonov_s",
+    "demo_ent:zhukova_e",
+    "demo_ent:sitnikov_p",
+    "demo_ent:kisel_m",
+    "demo_ent:lednev_a",
+    "demo_ent:safonova_o"
+  ]
+}

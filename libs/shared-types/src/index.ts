@@ -1,5 +1,10 @@
 // Shared domain types for Meriter API and Frontend
 // This is the single source of truth for all domain models
+//
+// Phase 1 Option B subpaths (package.json exports):
+//   @meriter/shared-types/schemas/permissions
+//   @meriter/shared-types/schemas/notifications
+// Entry modules: libs/shared-types/src/schemas/permissions.ts, .../notifications.ts
 
 // Export base schemas explicitly to avoid TypeScript memory issues with wildcard exports
 export {
@@ -262,3 +267,18 @@ export interface TransferRequest {
   amount: number;
   description?: string;
 }
+
+export {
+  DocumentLiveEventSchema,
+  DocumentLiveEventTypeSchema,
+  DocumentLiveHeartbeatSchema,
+  DocumentLiveSsePayloadSchema,
+  DOCUMENT_LIVE_POLL_INTERVAL_MS,
+  DOCUMENT_LIVE_SSE_HEARTBEAT_MS,
+} from './document-live-events';
+export type {
+  DocumentLiveEvent,
+  DocumentLiveEventType,
+  DocumentLiveHeartbeat,
+  DocumentLiveSsePayload,
+} from './document-live-events';

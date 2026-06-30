@@ -1,0 +1,39 @@
+{
+  "work_unit_id": "p2-application-bootstrap",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/_bootstrap.ts",
+    "api/apps/meriter/src/application/application.module.ts",
+    "api/apps/meriter/src/application/index.ts",
+    "api/apps/meriter/src/application/use-cases/index.ts",
+    "api/apps/meriter/src/meriter.module.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/",
+      "summary": "Created Phase 2 application layer directory tree with use-cases/ stub; added ApplicationModule composition root importing DomainModule and spreading applicationUseCaseProviders from _bootstrap.ts."
+    },
+    {
+      "file": "api/apps/meriter/src/application/_bootstrap.ts",
+      "summary": "Composition-root registry exporting applicationUseCaseProviders array for future phase-3+ use case class registration (empty scaffold with documented extension point)."
+    },
+    {
+      "file": "api/apps/meriter/src/meriter.module.ts",
+      "summary": "Imported and registered ApplicationModule in composition root after DomainModule and before AdaptersModule (dep-inward: domain → application → adapters)."
+    }
+  ],
+  "verification": {
+    "application_directory_exists": true,
+    "use_cases_subdirectory_exists": true,
+    "bootstrap_exports_use_case_providers": true,
+    "application_module_spreads_bootstrap_providers": true,
+    "meriter_module_imports_application_module": true
+  },
+  "success_criteria": {
+    "application_directory_exists_on_disk": true,
+    "_bootstrap_registers_use_case_providers": true,
+    "dep_inward_rubric_partial_progress": true
+  },
+  "notes": "applicationUseCaseProviders is intentionally empty; phase-3 work units (p3-get-remaining-quota-uc, p3-create-vote-uc, etc.) append injectable use case classes to _bootstrap.ts. AdaptersModule unchanged; future adapter wiring may import ApplicationModule when use cases are consumed from adapters/trpc."
+}

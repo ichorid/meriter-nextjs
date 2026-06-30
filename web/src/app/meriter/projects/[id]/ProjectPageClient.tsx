@@ -27,10 +27,11 @@ import { cn } from '@/lib/utils';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { CommunityHubFeedTabBar } from '@/features/communities/components/CommunityHubFeedTabBar';
 import {
-  CommunityHubFeedTabBar,
+  resolveCommunityHubFeedTab,
   type CommunityHubFeedTab,
-} from '@/features/communities/components/CommunityHubFeedTabBar';
+} from '@/features/communities/lib/community-hub-feed-tab';
 import { EventsContextPage } from '@/features/events/pages/EventsContextPage';
 import { ProjectBirzhaPostsPageClient } from '@/app/meriter/projects/[id]/birzha-posts/ProjectBirzhaPostsPageClient';
 
@@ -79,38 +80,13 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
     user && (meInProjectMembers?.role === 'lead' || user.globalRole === 'superadmin'),
   );
 
-  const projectHubFeedTab = useMemo(() => {
-    const v = searchParams?.get('feedTab');
-    if (v === 'events' || v === 'birzha') return v;
-    return 'posts' as const;
-  }, [searchParams]);
-
-  const documentsMode =
-    (data?.project?.settings as { documentsMode?: string } | undefined)?.documentsMode ??
-    'visionOrDescriptionOnly';
-
-  const descriptionDocQuery = trpc.documents.getOfficialByType.useQuery(
-    { communityId: projectId, type: 'description' },
-    { enabled: Boolean(user?.id && data?.project && documentsMode !== 'off') },
+  const projectHubFeedTab = useMemo(
+    () => resolveCommunityHubFeedTab(searchParams?.get('feedTab'), PROJECT_HUB_FEED_TABS),
+    [searchParams],
   );
 
-  const isProjectMemberForDocs = useMemo(() => {
-    if (!user?.id || !data?.project) return false;
-    const p = data.project;
-    return Boolean(
-      p.members?.includes(user.id) ||
-        meInProjectMembers?.role === 'lead' ||
-        meInProjectMembers?.role === 'participant',
-    );
-  }, [user?.id, data?.project, meInProjectMembers?.role]);
-
-  const descriptionDocumentHref =
-    user?.id &&
-    documentsMode !== 'off' &&
-    (isProjectMemberForDocs || user.globalRole === 'superadmin') &&
-    descriptionDocQuery.data?.id
-      ? routes.communityDocument(projectId, descriptionDocQuery.data.id)
-      : undefined;
+  /** MVP: collaborative UI is OB-only; project description doc link hidden. */
+  const descriptionDocumentHref = undefined;
 
   if (isLoading || !data) {
     return (

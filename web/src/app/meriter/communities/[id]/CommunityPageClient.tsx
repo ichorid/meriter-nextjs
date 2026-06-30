@@ -16,7 +16,9 @@ import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/share
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
 import { communityMayHaveOfficialObDocument } from '@/features/documents/lib/community-ob-document';
-import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight, Calendar, FileText } from 'lucide-react';
+import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight, Calendar } from 'lucide-react';
+import { CommunityDocumentsHubTile } from '@/components/organisms/Community/CommunityDocumentsHubTile';
+import { communityShowsDocumentsHub } from '@/features/documents/lib/mvp-document-settings';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
     IMPACT_AREAS,
@@ -85,6 +87,7 @@ import { canUserCreateEvents, type EventCreationMode } from '@/features/events/l
 import { useBirzhaCommunityId } from '@/hooks/useBirzhaCommunityId';
 import { BirzhaTappalkaModal } from '@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal';
 import { isHubPostsFeedPublication } from '@/features/communities/lib/hub-posts-feed-filter';
+import { resolveCommunityHubFeedTab } from '@/features/communities/lib/community-hub-feed-tab';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -415,11 +418,16 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     const showHubFeedTabChrome = communityHubVisibleFeedTabs.length > 1;
 
-    const communityHubFeedTab = useMemo(() => {
-        const v = searchParams?.get('feedTab');
-        if (v === 'projects' || v === 'events' || v === 'birzha') return v;
-        return 'posts' as const;
-    }, [searchParams]);
+    const communityHubFeedTab = useMemo(
+        () => resolveCommunityHubFeedTab(searchParams?.get('feedTab'), communityHubVisibleFeedTabs),
+        [searchParams, communityHubVisibleFeedTabs],
+    );
+
+    useEffect(() => {
+        setShowSearchModal(false);
+        setBOpenFilters(false);
+        document.body.style.overflow = '';
+    }, [communityHubFeedTab]);
 
     // Find the future-vision community ID when on marathon-of-good
     // This must be calculated before useCommunityFeed that uses it
@@ -679,9 +687,14 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const documentsMode =
         (comms?.settings as { documentsMode?: string } | undefined)?.documentsMode ??
         'visionOrDescriptionOnly';
+
     const documentCreators =
         (comms?.settings as { documentCreators?: 'admins' | 'members' } | undefined)
-            ?.documentCreators ?? 'admins';
+            ?.documentCreators ?? 'members';
+
+    const showDocumentsHubTile = Boolean(
+        user?.id && isCommunityMember && communityShowsDocumentsHub(documentsMode),
+    );
 
     const obOfficialDocQuery = trpc.documents.getOfficialByType.useQuery(
         { communityId: chatId, type: 'imageOfFuture' },
@@ -689,7 +702,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             enabled: Boolean(
                 comms &&
                     user?.id &&
-                    documentsMode !== 'off' &&
                     communityMayHaveOfficialObDocument(comms.typeTag),
             ),
         },
@@ -699,7 +711,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     const canEditFutureVisionDocument =
         Boolean(user?.id) &&
-        documentsMode !== 'off' &&
         (user?.globalRole === 'superadmin' ||
             userRoleInCommunity === 'lead' ||
             (isCommunityMember &&
@@ -707,15 +718,16 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 userRoleInCommunity === 'participant'));
 
     const canOpenObCollaborativeDocument = Boolean(
-        user?.id &&
-            documentsMode !== 'off' &&
-            isCommunityMember &&
-            obDocForHero?.id,
+        user?.id && isCommunityMember && obDocForHero?.id,
     );
 
-    const futureVisionCollaborativeDocumentHref = canOpenObCollaborativeDocument
+    const obDocumentHref = canOpenObCollaborativeDocument
         ? routes.communityDocument(chatId, obDocForHero!.id)
         : undefined;
+
+    // Link is shown whenever the member can open the document — not only when
+    // open proposal threads exist (members should reach the document to propose).
+    const futureVisionCollaborativeDocumentHref = obDocumentHref;
 
     /** Hub CTAs: create post / project / event / Birzha publish — participants or leads only, plus superadmin. */
     const canUseCommunityHubWriteActions = Boolean(
@@ -826,6 +838,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
             {comms && (
                 <div className="mb-6">
                     <CommunityHeroCard
+                        defaultFutureVisionSectionOpen={false}
                         community={{
                             ...comms,
                             id: comms.id || chatId,
@@ -837,7 +850,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         obDocumentLoading={obOfficialDocQuery.isLoading}
                         obDocumentFetched={obOfficialDocQuery.isFetched}
                         canEditFutureVisionDocument={canEditFutureVisionDocument}
-                        documentsMode={documentsMode}
                         avatarRowEndSlot={
                             user &&
                             isCommunityMember &&
@@ -884,6 +896,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             }
                             readOnly={false}
                             isCommunityMember={Boolean(user && isCommunityMember)}
+                            documentsMode={documentsMode}
+                            showDocumentsHub={showDocumentsHubTile}
                         />
                     </div>
                 </div>
@@ -959,21 +973,9 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                     <ChevronRight size={14} />
                                 </span>
                             </Link>
-                            <Link
-                                href={routes.communityDocuments(chatId)}
-                                className="flex items-center justify-between gap-3 rounded-xl border border-base-300 bg-base-200/60 p-4 transition-colors hover:bg-base-300/60"
-                            >
-                                <div className="flex min-w-0 items-center gap-3">
-                                    <FileText className="h-5 w-5 shrink-0 text-base-content/70" aria-hidden />
-                                    <span className="truncate font-medium text-base-content">
-                                        {tCommunities('communityDocuments')}
-                                    </span>
-                                </div>
-                                <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-primary">
-                                    {tCommunities('all')}
-                                    <ChevronRight size={14} />
-                                </span>
-                            </Link>
+                            {showDocumentsHubTile ? (
+                                <CommunityDocumentsHubTile communityId={chatId} />
+                            ) : null}
                         </>
                     ) : null}
                     {!showHubFeedTabChrome && user && isCommunityMember ? (

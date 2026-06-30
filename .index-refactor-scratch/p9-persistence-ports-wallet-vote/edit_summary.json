@@ -1,0 +1,73 @@
+{
+  "work_unit_id": "p9-persistence-ports-wallet-vote",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/domain/ports/wallet.persistence.port.ts",
+    "api/apps/meriter/src/domain/ports/vote.persistence.port.ts",
+    "api/apps/meriter/src/infrastructure/persistence/mappers/wallet.mapper.ts",
+    "api/apps/meriter/src/infrastructure/persistence/mappers/vote.mapper.ts",
+    "api/apps/meriter/src/infrastructure/persistence/wallet.persistence.adapter.ts",
+    "api/apps/meriter/src/infrastructure/persistence/vote.persistence.adapter.ts",
+    "api/apps/meriter/src/infrastructure/persistence/persistence.module.ts",
+    "api/apps/meriter/src/infrastructure/persistence/index.ts"
+  ],
+  "files_outside_write_set": [
+    "api/apps/meriter/src/domain/services/wallet.service.ts",
+    "api/apps/meriter/src/domain/services/vote.service.ts",
+    "api/apps/meriter/src/domain.module.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/domain/ports/wallet.persistence.port.ts",
+      "summary": "Added WALLET_PERSISTENCE_PORT token, WalletPersistencePort interface, and domain transaction/session types for BC-02 wallet + ledger persistence."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/ports/vote.persistence.port.ts",
+      "summary": "Added VOTE_PERSISTENCE_PORT token, VotePersistencePort interface, and VoteRecord/CreateVoteInput domain types for BC-04 vote persistence."
+    },
+    {
+      "file": "api/apps/meriter/src/infrastructure/persistence/mappers/wallet.mapper.ts",
+      "summary": "Mongoose wallet/transaction document ↔ WalletSnapshot and WalletTransactionRecord mappers (sole wallet mapper location)."
+    },
+    {
+      "file": "api/apps/meriter/src/infrastructure/persistence/mappers/vote.mapper.ts",
+      "summary": "Mongoose vote document ↔ VoteRecord mapper (sole vote mapper location)."
+    },
+    {
+      "file": "api/apps/meriter/src/infrastructure/persistence/wallet.persistence.adapter.ts",
+      "summary": "WalletPersistenceAdapter implements WalletPersistencePort; owns all Mongoose wallet/transaction queries, aggregations, and merit-history dashboard logic moved from WalletService."
+    },
+    {
+      "file": "api/apps/meriter/src/infrastructure/persistence/vote.persistence.adapter.ts",
+      "summary": "VotePersistenceAdapter implements VotePersistencePort; owns all Mongoose vote CRUD/query/aggregation operations moved from VoteService."
+    },
+    {
+      "file": "api/apps/meriter/src/infrastructure/persistence/persistence.module.ts",
+      "summary": "Nest PersistenceModule registers Mongoose feature schemas and binds wallet/vote persistence port providers."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/services/wallet.service.ts",
+      "summary": "Removed @InjectModel/@InjectConnection; injects WALLET_PERSISTENCE_PORT and delegates all persistence to the port."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/services/vote.service.ts",
+      "summary": "Removed @InjectModel/@InjectConnection; injects VOTE_PERSISTENCE_PORT and delegates all persistence to the port."
+    },
+    {
+      "file": "api/apps/meriter/src/domain.module.ts",
+      "summary": "Imports PersistenceModule so WALLET_PERSISTENCE_PORT and VOTE_PERSISTENCE_PORT resolve for WalletService and VoteService."
+    }
+  ],
+  "verification": {
+    "wallet_service_uses_inject_model": false,
+    "vote_service_uses_inject_model": false,
+    "mongoose_mappers_only_in_infrastructure_persistence": true,
+    "tsc": "no errors in changed files (project tsconfig has pre-existing TS5101 baseUrl deprecation)"
+  },
+  "success_criteria": {
+    "Wallet_and_Vote_services_use_ports": true,
+    "Mongoose_mappers_in_infrastructure_persistence_only": true
+  },
+  "notes": "Service and domain.module wiring updated outside nominal write_set to satisfy success criteria (same pattern as p6-invest-tappalka-ucs router delegation)."
+}

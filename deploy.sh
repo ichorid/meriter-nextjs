@@ -3,6 +3,16 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
+# Serialize deploys (CI + manual) so concurrent `docker compose up` does not fail rs-init / recreate.
+DEPLOY_LOCK_FILE="${DEPLOY_LOCK_FILE:-$(dirname "$0")/.deploy.lock}"
+exec 9>"$DEPLOY_LOCK_FILE"
+echo "[deploy] Waiting for deploy lock..."
+if ! flock -w "${DEPLOY_LOCK_WAIT_SEC:-600}" 9; then
+  echo "[deploy] ERROR: timed out waiting for deploy lock (${DEPLOY_LOCK_WAIT_SEC:-600}s)"
+  exit 1
+fi
+echo "[deploy] Deploy lock acquired"
+
 # Prints why Mongo / rs-init failed (health log, container logs, one mongosh probe). No secrets.
 deploy_mongo_diagnostics() {
   echo "[deploy] ========== diagnostics: mongo / api =========="
@@ -27,31 +37,71 @@ deploy_mongo_diagnostics() {
   echo "[deploy] ========== end diagnostics =========="
 }
 
-# Dev CI publishes web-dev-latest / api-dev-latest (and full-sha tags). Use those on dev VPS.
+# Dev CI publishes web-dev-latest / api-dev-latest / community-web-dev-latest (and full-sha tags). Use those on dev VPS.
 if [ "${USE_DEV_IMAGE_TAGS:-}" = "true" ]; then
   export VERSION_WEB="web-dev-latest"
   export VERSION_API="api-dev-latest"
-  echo "[deploy] Using dev rolling image tags: ${VERSION_WEB}, ${VERSION_API}"
+  export VERSION_COMMUNITY_WEB="community-web-dev-latest"
+  echo "[deploy] Using dev rolling image tags: ${VERSION_WEB}, ${VERSION_API}, ${VERSION_COMMUNITY_WEB}"
 # Stage/prod: pin to short SHA tags (see build-and-push release job)
 elif [ -n "${COMMIT_SHA:-}" ]; then
   export VERSION_WEB="sha-${COMMIT_SHA}"
   export VERSION_API="sha-${COMMIT_SHA}"
-  echo "[deploy] Using SHA-based image tags: ${VERSION_WEB}"
+  export VERSION_COMMUNITY_WEB="sha-${COMMIT_SHA}"
+  echo "[deploy] Using SHA-based image tags: ${VERSION_WEB}, ${VERSION_API}, ${VERSION_COMMUNITY_WEB}"
 else
   echo "[deploy] No COMMIT_SHA / USE_DEV_IMAGE_TAGS; using compose defaults (often :latest)"
+fi
+
+TELEGRAM_PROFILE=""
+if [ "${USE_DEV_IMAGE_TAGS:-}" = "true" ]; then
+  TELEGRAM_PROFILE="dev"
+elif [ -n "${COMMIT_SHA:-}" ]; then
+  TELEGRAM_PROFILE="prod"
+fi
+if [ -n "$TELEGRAM_PROFILE" ] && [ -f scripts/vps/apply-telegram-profile.sh ]; then
+  echo "[deploy] Applying Telegram env profile: ${TELEGRAM_PROFILE}"
+  bash scripts/vps/apply-telegram-profile.sh "$TELEGRAM_PROFILE"
 fi
 
 echo "[deploy] Pulling images..."
 docker compose pull
 
 echo "[deploy] Recreating containers..."
-if ! docker compose up -d; then
-  echo "[deploy] docker compose up -d failed"
+compose_up_ok=false
+for attempt in 1 2 3; do
+  if docker compose up -d; then
+    compose_up_ok=true
+    break
+  fi
+  echo "[deploy] docker compose up -d failed (attempt ${attempt}/3)"
+  if [ "$attempt" -lt 3 ]; then
+    sleep 15
+  fi
+done
+if [ "$compose_up_ok" != "true" ]; then
+  echo "[deploy] docker compose up -d failed after retries"
   deploy_mongo_diagnostics
   exit 1
 fi
 
+echo "[deploy] Reloading Caddy (CSP / routing from Caddyfile)..."
+if docker compose ps --status running caddy 2>/dev/null | grep -q caddy; then
+  docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile 2>/dev/null \
+    || docker compose restart caddy
+else
+  echo "[deploy] Caddy not running; skip reload"
+fi
+
 echo "[deploy] Cleaning old images..."
 docker image prune -f
+
+if [ -f .env ] && grep -qE '^TELEGRAM_BOT_ENABLED=true' .env; then
+  echo "[deploy] Registering Telegram webhook..."
+  docker compose run --rm bot-webhook-init || echo "[deploy] WARNING: bot-webhook-init failed (check BOT_TOKEN, BOT_USERNAME, DOMAIN)"
+  echo "[deploy] Setting Telegram Mini App menu button (/tg)..."
+  docker compose run --rm --no-deps api node scripts/setup-bot-menu.js set /tg \
+    || echo "[deploy] WARNING: setup-bot-menu failed (check BOT_TOKEN, DOMAIN)"
+fi
 
 echo "[deploy] Done."

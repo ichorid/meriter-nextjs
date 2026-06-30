@@ -1,19 +1,20 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import { randomUUID } from 'crypto';
 import {
   MeriterDocumentSchemaClass,
 } from '../models/meriter-document/meriter-document.schema';
 import {
-  DocumentBlockVariantSchemaClass,
-  DocumentBlockVariantDocument,
-} from '../models/document-block-variant/document-block-variant.schema';
+  DOCUMENT_PERSISTENCE_PORT,
+  type DocumentPersistencePort,
+} from '../ports/document.persistence.port';
+import { splitSectionBlockForLockedRanges } from '../common/document-block-structure.util';
+import { DocumentLiveUpdatesService } from './document-live-updates.service';
 import { DocumentService } from './document.service';
 import { DocumentVariantService } from './document-variant.service';
 
@@ -42,6 +43,8 @@ interface BlockEmbedded {
   officialContentVariantId?: string;
   currentWaveStartedAt?: Date;
   editHistory?: unknown[];
+  proposalsLocked?: boolean;
+  lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
 }
 
 type StructureWriteInput = {
@@ -53,8 +56,9 @@ export class DocumentStructureService {
   constructor(
     private readonly documentService: DocumentService,
     private readonly documentVariantService: DocumentVariantService,
-    @InjectModel(DocumentBlockVariantSchemaClass.name)
-    private readonly variantModel: Model<DocumentBlockVariantDocument>,
+    private readonly documentLiveUpdates: DocumentLiveUpdatesService,
+    @Inject(DOCUMENT_PERSISTENCE_PORT)
+    private readonly documentPersistence: DocumentPersistencePort,
   ) {}
 
   async addSection(
@@ -149,7 +153,12 @@ export class DocumentStructureService {
     actorUserId: string,
     documentId: string,
     blockId: string,
-    input: { blockType?: MeriterBlockType; order?: number } & StructureWriteInput,
+    input: {
+      blockType?: MeriterBlockType;
+      order?: number;
+      proposalsLocked?: boolean;
+      lockedRanges?: Array<{ rangeStart: number; rangeEnd: number }>;
+    } & StructureWriteInput,
   ): Promise<MeriterDocumentSchemaClass> {
     const doc = await this.requireManageableDocument(actorUserId, documentId);
     const sections = this.cloneSections(doc);
@@ -163,6 +172,61 @@ export class DocumentStructureService {
     if (input.order !== undefined) {
       located.block.order = input.order;
     }
+    if (input.proposalsLocked !== undefined) {
+      located.block.proposalsLocked = input.proposalsLocked;
+    }
+    const locksChanged = input.lockedRanges !== undefined;
+    if (locksChanged) {
+      located.block.lockedRanges = input.lockedRanges;
+      const splitRows = splitSectionBlockForLockedRanges(
+        located.section.blocks as Parameters<typeof splitSectionBlockForLockedRanges>[0],
+        blockId,
+      );
+      if (splitRows.length !== located.section.blocks.length) {
+        located.section.blocks = splitRows as BlockEmbedded[];
+      }
+    }
+    const updated = await this.persistSections(documentId, sections, doc, input.expectedUpdatedAt);
+    if (locksChanged || input.proposalsLocked !== undefined) {
+      this.documentLiveUpdates.publish({
+        type: 'block.locks_changed',
+        documentId,
+        documentUpdatedAt: updated.updatedAt,
+        blockId,
+        actorUserId,
+      });
+    }
+    return updated;
+  }
+
+  async reorderBlocks(
+    actorUserId: string,
+    documentId: string,
+    sectionId: string,
+    input: { blockIds: string[] } & StructureWriteInput,
+  ): Promise<MeriterDocumentSchemaClass> {
+    const doc = await this.requireManageableDocument(actorUserId, documentId);
+    const sections = this.cloneSections(doc);
+    const sec = sections.find((s) => s.id === sectionId);
+    if (!sec) {
+      throw new NotFoundException('Section not found');
+    }
+    const existingIds = sec.blocks.map((b) => b.id).sort();
+    const inputIds = [...input.blockIds].sort();
+    if (
+      existingIds.length !== inputIds.length ||
+      !existingIds.every((id, index) => id === inputIds[index])
+    ) {
+      throw new BadRequestException('blockIds must match section blocks exactly');
+    }
+    const byId = new Map(sec.blocks.map((b) => [b.id, b]));
+    sec.blocks = input.blockIds.map((id, order) => {
+      const block = byId.get(id);
+      if (!block) {
+        throw new NotFoundException('Block not found');
+      }
+      return { ...block, order };
+    });
     return this.persistSections(documentId, sections, doc, input.expectedUpdatedAt);
   }
 
@@ -221,6 +285,7 @@ export class DocumentStructureService {
         officialContentVariantId: b.officialContentVariantId,
         currentWaveStartedAt: b.currentWaveStartedAt,
         editHistory: Array.isArray(b.editHistory) ? [...b.editHistory] : [],
+        proposalsLocked: b.proposalsLocked === true,
       })),
     }));
   }
@@ -254,15 +319,7 @@ export class DocumentStructureService {
     documentId: string,
     blockId: string,
   ): Promise<void> {
-    await this.variantModel.updateMany(
-      {
-        documentId,
-        blockId,
-        status: 'open',
-        deleted: false,
-      },
-      { $set: { status: 'withdrawn', updatedAt: new Date() } },
-    );
+    await this.documentPersistence.withdrawOpenVariantsOnBlock(documentId, blockId);
   }
 
   private async persistSections(

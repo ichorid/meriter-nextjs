@@ -9,6 +9,104 @@ alwaysApply: false
 
 # Meriter Architecture
 
+**Repo entry (short map):** [`ARCHITECTURE.md`](../../ARCHITECTURE.md) at monorepo root. **This file** is the full agent rule for structure and boundaries.
+
+**Blueprint:** `.index/architecture/TARGET_ARCHITECTURE.md` (Round 36) · metadata: `target_architecture.yaml` · intrinsic complexity: `NECESSARY_COMPLEXITY.md` (30 concepts, **19** bounded contexts).
+
+**Status (2026-05, `total_refac`):** Clean Architecture **layers and ESLint zones 1–9 are landed** (`error`/`warn` in [`api/.eslintrc.js`](api/.eslintrc.js)). Orchestration lives in **`application/use-cases/`** (~60). Mongoose IO in **`infrastructure/persistence/`** via **`domain/ports/`**; auth/upload gateways in **`infrastructure/auth/`**, **`infrastructure/uploads/`**. **Zone 8** uses [`orchestration-wiring.module.ts`](api/apps/meriter/src/orchestration-wiring.module.ts). **Still thinning:** legacy **`trpc/routers`** (fat handlers) → use cases + presenters. **Authoritative rules:** this file; **historical blueprint only:** `.index/architecture/TARGET_ARCHITECTURE.md` Round changelog (not live grep anchors).
+
+### Agent truth table
+
+| Check | Command / signal |
+|-------|------------------|
+| Zone 4 clean | `pnpm --filter @meriter/api exec eslint "apps/meriter/src/application/**/*.ts"` |
+| Router thinness | `publications.router.ts` / `communities.router.ts` LOC down; mutations call use cases |
+| Domain imports | `rg 'from .*trpc/' api/apps/meriter/src/domain` → empty |
+| Impact | `codegraph fn-impact <Symbol> -T` before editing hubs |
+
+## Clean Architecture layers (backend)
+
+| Layer | Path | Responsibility |
+|-------|------|----------------|
+| **Domain** | `domain/services`, `domain/aggregates`, `domain/events`, **`domain/ports/`** | Business rules; **no** tRPC/api-v1 imports; services depend on **persistence ports**, not `@InjectModel` (except Tier-3 migration scripts — see Remaining debt) |
+| **Application** | **`application/use-cases/`**, `application.module.ts` | Orchestration, transaction boundaries; **no** `@nestjs/mongoose`, **no** `trpc/*` imports |
+| **Adapters** | **`adapters/`** (mappers, presenters, enrichment, resolvers, rest, trpc scaffold), legacy **`trpc/`**, **`api-v1/`** | Thin transport: validate → use case / domain service → map → `ResourcePermissions` |
+| **Infrastructure** | **`infrastructure/persistence/`**, **`infrastructure/auth/`**, **`infrastructure/cron/`**, **`infrastructure/telegram/`**, `domain/models/*` (schemas only) | Mongoose adapters implement ports; OAuth/cookie/cron at edge |
+| **Composition root** | `meriter.module.ts`, `domain.module.ts`, `main.ts` | Nest DI only |
+| **Cross-cutting** | `common/filters`, `common/interceptors`, `common/schemas` | HTTP envelopes, Sentry, pagination Zod — not domain |
+
+**Monorepo rings (dependency direction inward):** `web` → `libs/shared-types` + tRPC type bridge; `adapters` → `application` → `domain` + `ports`; `infrastructure` implements `ports`; no `web` → `api/apps/meriter/src/**` runtime imports.
+
+### Web layers
+
+| Layer | Path | Role |
+|-------|------|------|
+| Routes | `app/meriter/**`, `app/a/[token]/` | Thin `*Client.tsx` shells; no business invariants |
+| Features | `features/*/` (`features/notifications/` **landed**; `features/favorites/` not yet) | Domain-scoped UI, hooks; consume tRPC + shared-types |
+| Design system | `components/atoms|molecules|ui/` | Obsidian Nocturne; «Заслуги» copy |
+| Organisms | `components/organisms/` | Shared chrome; notification list may still live here during feature migration |
+| Client infra | `lib/trpc/`, `lib/api/`, `contexts/AuthContext.tsx` | Session, query invalidation, routing |
+
+## Dependency rules
+
+### Allowed
+
+| From | To | Notes |
+|------|-----|-------|
+| `web` | `libs/shared-types`, tRPC `AppRouter` type bridge | No backend runtime in frontend |
+| `application/use-cases` | `domain/services`, `domain/ports`, `domain/aggregates` | No `@InjectModel`, no `@nestjs/mongoose` |
+| `adapters/trpc|rest` | `application`, `adapters/mappers|presenters` | Thin controllers |
+| `infrastructure/*` | implements `domain/ports` | Mongoose in `infrastructure/persistence/` only |
+| `domain/*` | `libs/shared-types` allowlist + **`libs/shared-types/src/schemas/**`** subpaths | Zone 6 in ESLint; P0-3 blocks forbidden barrel exports |
+| `PermissionRuleEngine` | `PermissionGatesPort` (same class via `useExisting`) | **Never** import `permissions-helper` from domain |
+
+### Forbidden
+
+- `domain/services` → `trpc/*`, `api-v1/*`, `adapters/*`
+- `domain/services` → `application/use-cases` (orchestration is inverted via `domain/ports/*` tokens, wired in [`orchestration-wiring.module.ts`](api/apps/meriter/src/orchestration-wiring.module.ts))
+- `application/use-cases` → `trpc/*`, `api-v1/*`, `@nestjs/mongoose`
+- `infrastructure/**` (except adapter) → `api-v1/**`
+- `features/A` → `features/B` internals (public `index.ts` only)
+
+### Remaining debt (honest inventory)
+
+| ID | Location | Status |
+|----|----------|--------|
+| V-09 | `tg-bots.service.ts` — direct `@InjectModel` | Tier-3 residual; tagged `// V-12-residual` |
+| V-12 (partial) | Migration scripts: `decree809-tag-migration`, `collaborative-documents-migration` | Tier-3 residual |
+| — | `wallets.withdraw` / `wallets.transfer` | Permanent `NOT_IMPLEMENTED` |
+| — | `features/favorites/` | Not on disk |
+| — | Dual transport | Primary `trpc/`; `adapters/trpc/` scaffold; legacy `api-v1/` for auth/config |
+| — | Fat `trpc/routers` (e.g. `publications`, `communities`) | Thin via use cases + presenters (ongoing) |
+
+**Retired waivers (do not re-introduce):** V-01, V-02, V-03/V-04 (`CreateVoteUseCase`), V-05, V-07 (`GetRuntimeConfigUseCase`), V-08, V-10, V-11.
+
+## ESLint boundary enforcement (**landed**)
+
+[`api/.eslintrc.js`](api/.eslintrc.js): `import/no-restricted-paths` zones **1–9** at **`error`**; P0-3 `@typescript-eslint/no-restricted-imports` at **`warn`**.
+
+- Zones 1–2: domain → trpc/api-v1 forbidden
+- Zones 3–5: application → trpc/api-v1/`@nestjs/mongoose` forbidden
+- Zone 6: domain → `@meriter/shared-types` except allowlist + `./libs/shared-types/src/schemas/**`
+- Zone 7: infrastructure → api-v1 forbidden (V-11 adapter retired)
+- Zone 8: domain → application forbidden
+- Zone 9: trpc/routers cross-import forbidden (**no** interim pairs — V-03/V-04 cleared)
+
+## Migration phases (landed summary)
+
+| Phase | Focus | Status |
+|-------|-------|--------|
+| **0** | ESLint zones 1–9, P0-3 | **Done** |
+| **1** | `ResourcePermissions` unification, schema subpaths | **Mostly done** |
+| **2** | `adapters/`, `CookieManager`, `application.module` | **Done** |
+| **3** | Use-case extraction (`CreateVoteUseCase`, quota, permissions port) | **Done** (vote UC landed) |
+| **5–7** | OD-3 matrix, `features/notifications`, enrichment | **Partial** |
+| **6a** | `EstablishSessionUseCase`, `GetRuntimeConfigUseCase` | **Done** |
+| **8–10** | REST adapter, telegram, scripts, e2e | **Done** (branch history) |
+| **9** | Persistence ports (27 ports + adapters) | **Done** except Tier-3 scripts |
+
+Full phase inventory: TARGET §9 · **19** bounded contexts (BC-01..BC-19): TARGET §3 · yaml `bounded_contexts`.
+
 ## Monorepo Structure
 ```
 meriter-nextjs/
@@ -26,22 +124,29 @@ Notes:
 ## Backend Structure (api/)
 ```
 api/apps/meriter/src/
-├── domain/                       # 🔵 Domain layer (business logic)
-│   ├── models/[entity]/          # Mongoose schemas and documents
-│   ├── services/                 # Business services and domain modules (publication, vote, wallet, quota reset, post-closing cron, tappalka, ...)
-│   │   └── factors/              # Factor-based decision helpers (currency/role/social constraints)
-│   ├── aggregates/               # Domain aggregates/entities
+├── domain/                       # Domain layer
+│   ├── models/[entity]/          # Mongoose schemas (schemas only; IO in infrastructure)
+│   ├── services/                 # Business services (+ factors/)
+│   ├── ports/                    # Persistence + PermissionGatesPort interfaces
+│   ├── aggregates/               # Domain entities
 │   ├── events/                   # Domain events + event bus
-│   ├── value-objects/            # Strongly-typed identifiers/value objects
-│   └── common/
-│       ├── helpers/              # Domain helpers
-│       └── constants/            # Domain constants (bootstrap, platform, Birzha, hub defaults, ...)
-├── domain.module.ts              # Shared NestJS module wiring domain providers/models
-├── trpc/                         # 🟢 tRPC layer (API)
-│   ├── middleware/               # tRPC middleware (e.g. permission checks)
-│   └── routers/
-│       └── [entity].router.ts    # tRPC procedures (aggregation in trpc/router.ts)
-├── api-v1/                       # 🟡 REST layer (auth, uploads, config/bootstrap, and related api-v1/common helpers/services/mappers/utils/interfaces)
+│   └── value-objects/
+├── application/                  # Application layer
+│   ├── use-cases/[domain]/       # Orchestration (~60 use cases)
+│   ├── application.module.ts
+│   └── _bootstrap.ts             # Optional Nest registration (factories used from routers today)
+├── adapters/                     # Adapter layer (partial; trpc/ still primary mount)
+│   ├── mappers/, presenters/, enrichment/, resolvers/, rest/, trpc/
+│   └── adapters.module.ts
+├── infrastructure/               # Infrastructure layer
+│   ├── persistence/              # Port adapters + mappers
+│   ├── auth/                     # CookieManager, session
+│   ├── cron/
+│   └── telegram/
+├── trpc/                         # Primary tRPC mount (thin routers)
+│   ├── routers/[entity].router.ts
+│   └── context.ts
+├── api-v1/                       # REST (auth, config, legacy uploads)
 ├── common/                       # Shared backend utilities (helpers, services, interfaces, decorators, interceptors, filters, pipes, exceptions, validation, database)
 │   └── schemas/                  # Backend-only Zod schemas (small set; e.g. `pagination.schema.ts`)
 ├── config/                       # NestJS runtime configuration (e.g. `configuration.ts`)
@@ -70,12 +175,16 @@ Notes:
 - Migration and maintenance scripts also live under `api/scripts/` (outside `api/apps/meriter/src/`); some are wired from `api/package.json` scripts.
 
 ### Adding New Backend Feature
-1. Add/update schema in `domain/models/[entity]/`; for cross-cutting models, a top-level schema file under `domain/models/` is also used in this codebase
-2. Implement business logic in `domain/services/`
-3. Register providers/models in `domain.module.ts` (shared domain wiring)
-4. Expose use-case via tRPC router in `trpc/routers/[entity].router.ts` and aggregate in `trpc/router.ts`
-5. If REST exposure is required, add controller/service under `api-v1/` and reuse `api-v1/common` helpers/services when applicable
-6. Add/update shared contracts in `libs/shared-types/src/` when shape is cross-package
+
+1. Add/update schema in `domain/models/[entity]/`
+2. Add **`domain/ports/[entity].persistence.port.ts`** + **`infrastructure/persistence/[entity].persistence.adapter.ts`** if new persistence entity
+3. Implement business rules in `domain/services/`; **orchestration** in **`application/use-cases/[domain]/[action].use-case.ts`**
+4. Register port in `infrastructure/persistence/persistence.module.ts` and providers in `domain.module.ts`
+5. Expose via **thin** tRPC router: validate → `createXUseCase(ctx).execute(...)` → map response
+6. **Never** import logic from other routers (Zone 9)
+7. REST only for auth/bootstrap/config narrow paths; no new REST business endpoints
+8. Attach `ResourcePermissions` via `PermissionRuleEngine` + presenter
+9. Shared contracts in `libs/shared-types/src/` when cross-package
 
 ## Frontend Structure (web/)
 ```
@@ -113,10 +222,12 @@ Notes:
 - `web/tsconfig.json` excludes `**/__tests__/**` and `**/*.test.*` / `**/*.spec.*` from compilation; test files may still live under those paths.
 
 ### Adding New Frontend Feature
-1. Place UI in `components/`, `features/*/components`, or `shared/components` depending on scope
-2. Create hooks in `hooks/` for app-level logic or `shared/hooks/` for reusable cross-feature logic
-3. Create store in `stores/*.store.ts` or `shared/stores/*.store.ts` if needed
-4. Add page in `app/[route]/page.tsx`
+1. Prefer **`features/[domain]/`** for domain-scoped UI (hooks, forms, types); export public API via `index.ts` only — no cross-feature internal imports
+2. Keep `app/meriter/**/page.tsx` as thin shells delegating to `*Client.tsx` or feature modules
+3. Shared primitives in `components/atoms|molecules|ui/`; cross-feature chrome in `components/organisms/`
+4. Server data via tRPC + TanStack Query; types from `@meriter/shared-types` — never import `api/apps/meriter/src/**`
+5. Merit display: use `web/src/lib/utils/currency.ts`; must match backend one-decimal rounding (inv-26)
+6. Product copy: «Заслуги» only; Obsidian Nocturne tokens — @design-system.mdc
 
 ## Shared Types (libs/shared-types/)
 ```
@@ -140,18 +251,19 @@ libs/shared-types/src/
 
 ### Service Layer (Backend)
 ```typescript
-// domain/services/[entity].service.ts
+// domain/services/[entity].service.ts — new code uses persistence ports, not @InjectModel
 @Injectable()
 export class EntityService {
   constructor(
-    @InjectModel(Entity.name) private model: Model<Entity>,
+    @Inject(ENTITY_PERSISTENCE_PORT) private readonly persistence: EntityPersistencePort,
     private otherService: OtherService,
   ) {}
 
   async create(dto: CreateEntityDto): Promise<Entity> {
-    // Business logic here
+    // business rules + persistence port
   }
 }
+// Tier-3 exception: migration scripts / tg-bots may still use @InjectModel (tagged V-12-residual)
 ```
 
 ### tRPC Router (Backend)
@@ -204,10 +316,34 @@ export function FeatureCard({ data, onAction }: FeatureCardProps) {
 └─────────────┘         └─────────────┘
 ```
 
+## Canonical enrichment path (API responses)
+
+1. Load domain entities → 2. Batch fetch users/communities (`UserEnrichmentService`) → 3. `EntityMappers.map*ToApi` → 4. Router post-processing (transitional Mongo-only fields) → 5. `PermissionRuleEngine` allow/deny (via `PermissionGatesPort` Phase 3+) → 6. `permissions.presenter` → `ResourcePermissions` + i18n keys only → 7. Return shared-types DTO.
+
+## CA gap remediation status (2026-05)
+
+- **Zone 4:** application layer ESLint-clean (no `api-v1` imports); auth/upload ports in infrastructure.
+- **Publications adapter:** `trpc/routers/publications.router.ts` is a thin re-export; procedures in `adapters/trpc/handlers/publications-procedures.handler.ts`; withdrawal orchestration in `application/use-cases/publications/publication-withdrawal.orchestrator.ts`.
+- **Community split (partial):** `CommunityMembershipService`, `CommunityEffectiveSettingsService` extracted; `CommunityService` façade still large — continue incremental extraction.
+- **Notifications (partial):** ticket flows use `TicketAssigned` / `TicketApply` / `TicketRejected` events + `NotificationHandlersService`; other domain services still inline `createNotification` until migrated.
+- **CI:** `apps/meriter/test/architecture-boundaries.spec.ts` enforces Zone 4 on `src/application/**`.
+
+## OD-3 permissions split (pending product sign-off)
+
+- **Invariant enforcer:** `PermissionRuleEngine` owns all allow/deny gates (Phase 5 migration from `permissions-helper`)
+- **Presenter only:** `permissions.presenter` assembles booleans + i18n disabled-reason keys (`voteDisabled.*`, etc.)
+- **Phase 3 interim:** engine stub methods delegate to `PermissionGatesPort`; adapter is sole `permissions-helper` importer
+- **Sign-off gate:** `.index/architecture/od3-matrix-signed.yaml` must be product-signed before Phase 5 permissions merge
+
 ## Common Mistakes
 
 ❌ Importing backend runtime code from `api/` in `web/`
 ✅ Type-only import bridge: `api/apps/meriter/src/trpc/types.ts` re-exports `AppRouter` from `./router`. The web tRPC client imports it from there via a relative path (`web/src/lib/trpc/client.ts`).
-❌ Duplicating types instead of using shared-types
-⚠️ Prefer keeping new business logic in services; current codebase still contains substantial logic in some routers (legacy/transition areas)
-❌ Putting reusable shared components only in `app/` (prefer `components/`, `features/*/components`, or `shared/components`)
+❌ Duplicating types instead of using shared-types (especially `ResourcePermissions` — use `libs/shared-types` only)
+❌ Domain service importing `trpc/helpers` or `api-v1/*`
+❌ Cross-router imports (Zone 9) — use a shared use case instead
+❌ `PermissionRuleEngine` importing `permissions-helper` — use `PermissionGatesPort`
+❌ Inline `notificationService.createNotification` in domain services — domain event → `NotificationHandlersService`
+❌ Adding orchestration god-methods in routers — extract to `application/use-cases/`
+❌ `@InjectModel` in new domain services — add a persistence port + adapter
+❌ Putting reusable shared components only in `app/` (prefer `features/`, `components/`, or `shared/components`)

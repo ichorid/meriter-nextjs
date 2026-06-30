@@ -12,6 +12,44 @@ const ReferenceEmbeddedSchema = new MongooseRawSchema(
   { _id: false },
 );
 
+const VariantInsertBlockEmbeddedSchema = new MongooseRawSchema(
+  {
+    blockType: { type: String, required: true },
+    officialContent: { type: String, required: true },
+  },
+  { _id: false },
+);
+
+const VariantOpEmbeddedSchema = new MongooseRawSchema(
+  {
+    op: {
+      type: String,
+      enum: ['replace_range', 'delete_block', 'insert_after'],
+      required: true,
+    },
+    blockId: { type: String, required: false },
+    rangeStart: { type: Number, required: false },
+    rangeEnd: { type: Number, required: false },
+    proposedText: { type: String, required: false },
+    insertAfterBlockId: { type: String, required: false },
+    blocks: { type: [VariantInsertBlockEmbeddedSchema], default: undefined },
+  },
+  { _id: false },
+);
+
+const VariantPatchEmbeddedSchema = new MongooseRawSchema(
+  {
+    blockId: { type: String, required: true },
+    rangeStart: { type: Number, required: true },
+    rangeEnd: { type: Number, required: true },
+    proposedText: { type: String, default: '' },
+    previewContent: { type: String, required: true },
+    insertAfterBlockId: { type: String, required: false },
+    insertBlocks: { type: [VariantInsertBlockEmbeddedSchema], default: undefined },
+  },
+  { _id: false },
+);
+
 /**
  * Предложенный вариант текста блока документа.
  * Коллекция `document_block_variants` — см. business-approved-tz.md §4.4
@@ -27,8 +65,58 @@ export class DocumentBlockVariantSchemaClass {
   @Prop({ required: true })
   blockId!: string;
 
+  /** Groups overlapping proposals into one voting wave (v3). */
+  @Prop()
+  votingThreadId?: string;
+
+  /**
+   * `block` — single-block variant (legacy fields mirror one patch).
+   * `patches` — multi-block edit; only `patches[]` stores per-block data.
+   */
+  @Prop({ enum: ['block', 'patches'], default: 'block' })
+  proposalScope!: 'block' | 'patches';
+
+  /** Canonical v3 operations (derived from patches at propose time). */
+  @Prop({ type: [VariantOpEmbeddedSchema] })
+  ops?: Array<{
+    op: 'replace_range' | 'delete_block' | 'insert_after';
+    blockId?: string;
+    rangeStart?: number;
+    rangeEnd?: number;
+    proposedText?: string;
+    insertAfterBlockId?: string;
+    blocks?: Array<{ blockType: string; officialContent: string }>;
+  }>;
+
+  @Prop({ type: [VariantPatchEmbeddedSchema], default: [] })
+  patches!: Array<{
+    blockId: string;
+    rangeStart: number;
+    rangeEnd: number;
+    proposedText: string;
+    previewContent: string;
+    insertAfterBlockId?: string;
+    insertBlocks?: Array<{ blockType: string; officialContent: string }>;
+  }>;
+
   @Prop({ required: true })
   content!: string;
+
+  /** Sub-block range start (UTF-16 plain text index in official block). */
+  @Prop()
+  rangeStart?: number;
+
+  /** Sub-block range end (exclusive). */
+  @Prop()
+  rangeEnd?: number;
+
+  /** Proposed replacement for the range (sanitized HTML). */
+  @Prop()
+  proposedText?: string;
+
+  /** Hash of official plain text at propose time (stale apply warning). */
+  @Prop()
+  officialTextHashAtPropose?: string;
 
   @Prop({ type: [ReferenceEmbeddedSchema], default: [] })
   references!: unknown[];
@@ -38,6 +126,10 @@ export class DocumentBlockVariantSchemaClass {
 
   @Prop({ required: true })
   proposedAt!: Date;
+
+  /** Optional rationale from proposer (shown in proposal rail). */
+  @Prop({ maxlength: 500 })
+  proposerComment?: string;
 
   @Prop({
     enum: ['open', 'closed-winner', 'closed-not-winner', 'applied', 'withdrawn'],
@@ -84,3 +176,4 @@ export type DocumentBlockVariantDocument = DocumentBlockVariantSchemaClass &
 DocumentBlockVariantSchema.index({ documentId: 1, blockId: 1, status: 1 });
 DocumentBlockVariantSchema.index({ documentId: 1, blockId: 1, rating: -1 });
 DocumentBlockVariantSchema.index({ proposedAt: 1 });
+DocumentBlockVariantSchema.index({ documentId: 1, votingThreadId: 1, status: 1 });
