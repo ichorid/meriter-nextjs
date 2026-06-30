@@ -308,65 +308,33 @@ npx jest apps/meriter/src/infrastructure/telegram/telegram-hashtag-publication.s
 
 ---
 
-## 12. Dev и prod: два бота, два VPS
+## 12. Пилот на dev VPS (@meriter_bot)
 
-| | **Dev** | **Prod** |
-|---|---------|----------|
+**Текущая стратегия (2026-06):** один живой стенд — **dev VPS**, git-ветка **`dev`**, пользователи работают с **`@meriter_bot`**. Каноническая MongoDB — на dev VPS. Prod (`main`) не используется для пилота.
+
+Пошаговый чеклист оператора: **[15-dev-pilot-meriter-bot-ru.md](./15-dev-pilot-meriter-bot-ru.md)**.
+
+| | **Пилот (dev VPS)** | **Prod (позже)** |
+|---|---------------------|------------------|
 | Ветка / CI | `dev` → `deploy-dev` | `main` → `deploy-prod` |
-| Бот | `@meriter_dev1_bot` | `@meriter_bot` |
+| Бот | `@meriter_bot` | `@meriter_bot` |
 | `DOMAIN` | `dev.meriter.pro` | `meriter.pro` |
 | Community-web | `community-dev.meriter.pro` | `community-dobro.meriter.pro` |
-| Webhook | `https://dev.meriter.pro/api/telegram/hooks/meriter_dev1_bot` | `https://meriter.pro/api/telegram/hooks/meriter_bot` |
+| Webhook | `https://dev.meriter.pro/api/telegram/hooks/meriter_bot` | `https://meriter.pro/api/telegram/hooks/meriter_bot` |
 
-**Workflow:** разрабатываем на **dev** → merge в **`main`** → prod.
-
-При деплое `./deploy.sh` применяет `scripts/vps/profiles/{dev|prod}.env`. `BOT_TOKEN` prod обновляется из GitHub secret **`BOT_TOKEN`** (environment **prod**), если задан.
+При деплое `./deploy.sh` применяет `scripts/vps/profiles/{dev|prod}.env`. **`BOT_TOKEN`** обновляется из GitHub secret **`BOT_TOKEN`** (environment **dev** или **prod**), если задан.
 
 Шаблоны: `.env.development.telegram.example`, `.env.production.telegram.example`.
 
-### 12.1. Dev (@meriter_dev1_bot)
+### 12.1. Пилот (dev VPS)
 
-1. Push в **`dev`** — CI деплоит dev VPS.
-2. Профиль выставляет `BOT_USERNAME=meriter_dev1_bot` и dev-домены, перерегистрирует webhook.
-3. BotFather dev-бота: `/setdomain` → **`community-dev.meriter.pro`**.
+1. Secret **`BOT_TOKEN`** (@meriter_bot) в GitHub → Environment **dev**.
+2. Push в **`dev`** — CI деплоит dev VPS, профиль `dev.env`, webhook, menu `/tg`.
+3. BotFather: `/setdomain` → **`community-dev.meriter.pro`**.
+4. Бэкап: `bash /opt/meriter/scripts/vps/mongodb-backup.sh` перед первыми реальными пользователями.
 
-### 12.2. Prod (@meriter_bot)
+### 12.2. Prod (отложено)
 
-**Prod-хосты:** `meriter.pro`, `community-dobro.meriter.pro`.
-
-Добавьте **`BOT_TOKEN`** (токен @meriter_bot) в GitHub → Environments → **prod** → Secrets.
-
-#### DNS
-
-| Запись | Назначение |
-|--------|------------|
-| `meriter.pro` | A/AAAA → prod VPS |
-| `community-dobro.meriter.pro` | A/AAAA → prod VPS |
-
-#### BotFather (@meriter_bot)
-
-1. **Group Privacy: Off**, **Allow Groups: On**
-2. `/setdomain` → **`community-dobro.meriter.pro`**
-3. Mini App: `https://community-dobro.meriter.pro/tg`
-4. Dev-бот `@meriter_dev1_bot` — только dev VPS, **не отключать** для dev-групп
-
-#### Prod `.env` (профиль `scripts/vps/profiles/prod.env`)
-
-```env
-DOMAIN=meriter.pro
-COMMUNITY_DOMAIN=community-dobro.meriter.pro
-COMMUNITY_WEB_BASE_URL=https://community-dobro.meriter.pro
-MERITER_PRODUCT_MODE=telegram_mvp
-TELEGRAM_BOT_ENABLED=true
-OAUTH_TELEGRAM_ENABLED=true
-BOT_USERNAME=meriter_bot
-BOT_TOKEN=<GitHub prod secret или только на VPS>
-```
-
-#### Prod deploy
-
-1. Merge `dev` → `main`
-2. CI: prod-профиль + webhook + menu button
-3. Smoke: онбординг → `#идея` → `/balance`
+Cutover на `meriter.pro` — только после **`mongodump`** с dev VPS и узкого merge/cherry-pick bot-кода в **`main`**. См. § «Будущий переезд» в [15-dev-pilot-meriter-bot-ru.md](./15-dev-pilot-meriter-bot-ru.md).
 
 **Не пушить секреты в git.**
