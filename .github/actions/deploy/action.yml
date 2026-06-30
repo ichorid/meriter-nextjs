@@ -34,8 +34,16 @@ runs:
       env:
         VPS_HOST: ${{ inputs.vps-host }}
       run: |
+        set -euo pipefail
         mkdir -p ~/.ssh
-        ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+        if ! ssh-keyscan -T 15 -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null; then
+          echo "::error::Cannot reach SSH on ${VPS_HOST}:22 (host down, wrong VPS_HOST secret, or firewall)"
+          exit 1
+        fi
+        if ! ssh -o BatchMode=yes -o ConnectTimeout=15 "deploy@${VPS_HOST}" "echo deploy-ssh-ok"; then
+          echo "::error::SSH auth failed for deploy@${VPS_HOST} (check VPS_SSH_KEY and authorized_keys)"
+          exit 1
+        fi
     # Stack definition on the VPS must match the repo (compose, init scripts, Caddy).
     # Image pull alone does not update docker-compose.yml or mongodb-init/.
     # Use scp (not rsync): ubuntu-latest runners may not ship rsync.

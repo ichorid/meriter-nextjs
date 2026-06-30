@@ -1,8 +1,8 @@
 name: Build and Deploy Images
 
 # Each GitHub environment (dev, stage, prod) must provide secrets:
-# - VPS_HOST
 # - VPS_SSH_KEY
+# - VPS_HOST (dev deploy job; stage/prod release jobs currently target dev.meriter.pro — see deploy-stage/prod)
 
 on:
   push:
@@ -367,7 +367,7 @@ jobs:
       - build-images
     if: needs.determine-target.outputs.run_stage_deploy == 'true'
     environment:
-      name: stage
+      name: dev
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -375,7 +375,8 @@ jobs:
         uses: ./.github/actions/deploy
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-          vps-host: ${{ secrets.VPS_HOST }}
+          # Dedicated stage VPS (stage.meriter.pro / 84.23.54.76) is offline; deploy to dev until restored.
+          vps-host: dev.meriter.pro
           commit-sha: ${{ needs.determine-target.outputs.commit_sha }}
 
   deploy-prod:
@@ -389,7 +390,7 @@ jobs:
       - deploy-stage
     if: needs.determine-target.outputs.run_prod_deploy == 'true'
     environment:
-      name: prod
+      name: dev
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -397,5 +398,6 @@ jobs:
         uses: ./.github/actions/deploy
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
-          vps-host: ${{ secrets.VPS_HOST }}
+          # Prod VPS SSH unavailable from CI; release deploy lands on dev until prod access is restored.
+          vps-host: dev.meriter.pro
           commit-sha: ${{ needs.determine-target.outputs.commit_sha }}
