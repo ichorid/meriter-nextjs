@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 cd "$(dirname "$0")"
+
+# Strip CRLF from shell scripts (Windows checkouts / manual uploads) before strict mode.
+for _f in "$0" scripts/vps/*.sh scripts/docker/*.sh; do
+  if [ -f "$_f" ] && grep -q $'\r' "$_f" 2>/dev/null; then
+    sed -i 's/\r$//' "$_f"
+  fi
+done
+
+set -euo pipefail
 
 # Serialize deploys (CI + manual) so concurrent `docker compose up` does not fail rs-init / recreate.
 DEPLOY_LOCK_FILE="${DEPLOY_LOCK_FILE:-$(dirname "$0")/.deploy.lock}"

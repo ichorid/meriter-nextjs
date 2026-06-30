@@ -67,11 +67,6 @@ runs:
         USE_DEV_IMAGE_TAGS: ${{ inputs.use-dev-image-tags }}
         BOT_TOKEN: ${{ inputs.bot-token }}
       run: |
-        ssh "deploy@$VPS_HOST" <<EOF
-          cd /opt/meriter
-          export COMMIT_SHA="$COMMIT_SHA"
-          export USE_DEV_IMAGE_TAGS="$USE_DEV_IMAGE_TAGS"
-          export BOT_TOKEN="$BOT_TOKEN"
-          ./deploy.sh
-        EOF
+        set -euo pipefail
+        ssh "deploy@${VPS_HOST}" "cd /opt/meriter && export COMMIT_SHA='${COMMIT_SHA}' USE_DEV_IMAGE_TAGS='${USE_DEV_IMAGE_TAGS}' BOT_TOKEN='${BOT_TOKEN}' && bash deploy.sh"
 
