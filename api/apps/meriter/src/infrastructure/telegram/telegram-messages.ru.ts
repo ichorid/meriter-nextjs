@@ -484,7 +484,7 @@ export const TG_MSG = {
   voteAmountGroupPromptDown:
     'Насколько заслуг списать с автора?\n\nВыберите сумму кнопкой или ответьте числом на это сообщение.',
   balanceSelf: (name: string, wallet: number, quota: number, quotaMax: number, pct: number) =>
-    `Ваши заслуги в «${name}»\n\n` +
+    `Ваши заслуги в «${name}»:\n\n` +
     `Кошелёк — накопленные заслуги: ${wallet}\n` +
     `Ежедневные заслуги на сегодня: ${quota} из ${quotaMax}\n` +
     `Доля в общем фонде сообщества: ${pct.toFixed(1)}%`,

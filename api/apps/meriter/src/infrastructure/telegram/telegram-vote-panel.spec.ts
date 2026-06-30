@@ -18,7 +18,7 @@ describe('telegram-vote-panel', () => {
     );
     expect(text).toContain('Пётр');
     expect(text).toContain('номинация от Иван');
-    expect(text).toContain('Сейчас заслуг: 3');
+    expect(text).toContain('\n\nСейчас заслуг: 3');
   });
 
   it('keyboard uses plain labels without merit counters', () => {

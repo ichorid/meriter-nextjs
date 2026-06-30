@@ -8,6 +8,7 @@ import {
   getCommunityIdForDocumentVoteTarget,
   isDocumentVoteTargetType,
 } from './document-vote.helper';
+import { isPublicationEntitySourced } from '../../../domain/common/helpers/publication-source.helper';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { DocumentService } from '../../../domain/services/document.service';
 import type { PublicationService } from '../../../domain/services/publication.service';
@@ -119,6 +120,23 @@ export function getPublicationEffectiveBeneficiaryId(publicationDoc: {
     return null;
   }
   return publicationDoc.beneficiaryId ?? publicationDoc.authorId;
+}
+
+/** Author adding merits to own post rating (not a nomination for someone else). */
+export function isPublicationAuthorMeritTopup(
+  publicationDoc: {
+    authorId?: string;
+    beneficiaryId?: string | null;
+  } | null | undefined,
+  userId: string,
+): boolean {
+  if (!publicationDoc?.authorId || publicationDoc.authorId !== userId) {
+    return false;
+  }
+  if (isPublicationEntitySourced(publicationDoc)) {
+    return false;
+  }
+  return getPublicationEffectiveBeneficiaryId(publicationDoc) === userId;
 }
 
 /** Telegram MVP: up/down votes mirror to author wallet immediately (no post withdraw). */

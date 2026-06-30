@@ -1,5 +1,6 @@
 import {
   getPublicationEffectiveBeneficiaryId,
+  isPublicationAuthorMeritTopup,
   shouldUseTelegramInstantWalletMirror,
 } from './create-vote.helpers';
 import {
@@ -51,6 +52,27 @@ describe('create-vote.helpers (Telegram MVP)', () => {
     it('returns null without author', () => {
       expect(getPublicationEffectiveBeneficiaryId(null)).toBeNull();
       expect(getPublicationEffectiveBeneficiaryId({ beneficiaryId: 'u2' })).toBeNull();
+    });
+  });
+
+  describe('isPublicationAuthorMeritTopup', () => {
+    it('is top-up when author votes on own post', () => {
+      expect(isPublicationAuthorMeritTopup({ authorId: 'u1' }, 'u1')).toBe(true);
+      expect(
+        isPublicationAuthorMeritTopup({ authorId: 'u1', beneficiaryId: 'u1' }, 'u1'),
+      ).toBe(true);
+    });
+
+    it('is not top-up when author nominates another user', () => {
+      expect(
+        isPublicationAuthorMeritTopup({ authorId: 'u1', beneficiaryId: 'u2' }, 'u1'),
+      ).toBe(false);
+    });
+
+    it('is not top-up for non-authors', () => {
+      expect(
+        isPublicationAuthorMeritTopup({ authorId: 'u1', beneficiaryId: 'u2' }, 'u2'),
+      ).toBe(false);
     });
   });
 

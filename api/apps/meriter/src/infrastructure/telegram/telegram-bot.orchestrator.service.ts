@@ -450,7 +450,12 @@ export class TelegramBotOrchestratorService {
       const numericReply = text.trim().match(/^(\d+(?:[.,]\d+)?)$/);
       if (amountPending && numericReply) {
         const amount = parseFloat(numericReply[1].replace(',', '.'));
-        await this.confirmVoteAmount(tgUserId, amountPending.id, amount);
+        await this.confirmVoteAmount(tgUserId, amountPending.id, amount, {
+          ephemeralUserReply: {
+            chatId,
+            messageId: message.message_id as number,
+          },
+        });
         return;
       }
     }
@@ -1924,6 +1929,7 @@ export class TelegramBotOrchestratorService {
     tgUserId: string,
     pendingId: string,
     amount: number,
+    options?: { ephemeralUserReply?: { chatId: string; messageId: number } },
   ): Promise<void> {
     const pending = await this.pendingModel.findOne({ id: pendingId, telegramUserId: tgUserId }).lean();
     if (!pending) {
@@ -1937,6 +1943,12 @@ export class TelegramBotOrchestratorService {
       reactedMessageId?: number;
     };
     await this.pendingModel.deleteOne({ id: pendingId }).exec();
+    if (options?.ephemeralUserReply) {
+      this.scheduleEphemeralUserMessage(
+        options.ephemeralUserReply.chatId,
+        options.ephemeralUserReply.messageId,
+      );
+    }
     const groupFeedback =
       payload.groupChatId && payload.reactedMessageId != null
         ? {

@@ -29,6 +29,7 @@ import {
   getWalletBalance,
   shouldUseProjectInstantAppreciation,
   getPublicationEffectiveBeneficiaryId,
+  isPublicationAuthorMeritTopup,
   shouldUseTelegramInstantWalletMirror,
   ticketHasWorkAccepted,
 } from './create-vote.helpers';
@@ -197,11 +198,7 @@ export class CreateVoteUseCase {
       // this bypasses commentMode — it is not a vote/comment, just a transfer.
       let isAuthorTopup = false;
       if (input.targetType === 'publication' && requestedTotalAmount > 0) {
-        if (
-          publicationDoc &&
-          publicationDoc.authorId === userId &&
-          !isPublicationEntitySourced(publicationDoc)
-        ) {
+        if (publicationDoc && isPublicationAuthorMeritTopup(publicationDoc, userId)) {
           isAuthorTopup = true;
         }
         if (

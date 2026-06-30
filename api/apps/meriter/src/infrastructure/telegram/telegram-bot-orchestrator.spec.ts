@@ -1144,4 +1144,61 @@ describe('TelegramBotOrchestrator (integration)', () => {
     expect((pending?.payload as { voterId?: string }).voterId).toBe(userId);
     expect((pending?.payload as { promptMessageId?: number }).promptMessageId).toBe(1400);
   });
+
+  it('numeric reply to vote amount prompt is scheduled for deletion', async () => {
+    const { publicationId, userId, messageId } = await seedPublicationWithAnchor(130, {
+      otherAuthor: true,
+    });
+    const promptMessageId = 1400;
+    const userReplyMessageId = 1401;
+    const now = new Date();
+    await pendingModel.create({
+      id: uid(),
+      telegramUserId: tgUserId,
+      action: 'confirm_vote_amount',
+      payload: {
+        voterId: userId,
+        publicationId,
+        direction: 'up',
+        groupChatId: tgChatId,
+        reactedMessageId: messageId,
+        promptMessageId,
+      },
+      expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const scheduleDeleteSpy = jest.spyOn(tgBotsService, 'tgScheduleDeleteMessage');
+    const executeMock = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+    jest.spyOn(tgBotsService, 'tgReplyMessage').mockResolvedValue(2001);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 46,
+      message: {
+        message_id: userReplyMessageId,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        text: '10',
+        reply_to_message: {
+          message_id: promptMessageId,
+          from: { id: 1, is_bot: true, first_name: 'Meriter' },
+        },
+      },
+    } as TelegramTypes.Update);
+
+    expect(scheduleDeleteSpy).toHaveBeenCalledWith(tgChatId, userReplyMessageId);
+    expect(executeMock).toHaveBeenCalled();
+  });
 });

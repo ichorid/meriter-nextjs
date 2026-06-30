@@ -21,15 +21,15 @@ export function buildVotePanelMessageText(
   recipient: VotePanelRecipient,
   metrics: VotePanelMetrics,
 ): string {
-  const netLine = `Сейчас заслуг: ${netMerits(metrics)}`;
+  const netLine = `\n\nСейчас заслуг: ${netMerits(metrics)}`;
   if (recipient.isNomination && recipient.nominatorDisplayName) {
     return (
       `Начислить заслуги: ${recipient.displayName}\n` +
-      `(номинация от ${recipient.nominatorDisplayName})\n` +
+      `(номинация от ${recipient.nominatorDisplayName})` +
       netLine
     );
   }
-  return `Поддержите пост — заслуги: ${recipient.displayName}\n${netLine}`;
+  return `Поддержите пост — заслуги: ${recipient.displayName}${netLine}`;
 }
 
 export function buildVotePanelKeyboard(publicationId: string): {
