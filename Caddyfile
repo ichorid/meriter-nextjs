@@ -90,7 +90,7 @@
 }
 
 # Community-web (Telegram MVP) — isolated product on subdomain
-{$COMMUNITY_DOMAIN:community-meriter.pro} {
+{$COMMUNITY_DOMAIN:community-dobro.meriter.pro} {
     log {
         output stdout
         level INFO

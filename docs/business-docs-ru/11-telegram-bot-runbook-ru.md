@@ -310,7 +310,7 @@ npx jest apps/meriter/src/infrastructure/telegram/telegram-hashtag-publication.s
 
 ## 12. Production deploy (@meriter_bot)
 
-**Prod-хосты:** `meriter.pro` (API + webhook), `community-meriter.pro` (community-web, Login Widget, Mini App).
+**Prod-хосты:** `meriter.pro` (API + webhook), `community-dobro.meriter.pro` (community-web, Login Widget, Mini App).
 
 CI выкатывает prod при push в **`main`** (`deploy-prod` в `.github/workflows/build-and-push.yml`). Перед merge убедитесь, что на prod VPS в `/opt/meriter/.env` заданы переменные ниже (секреты **не** в git).
 
@@ -319,21 +319,21 @@ CI выкатывает prod при push в **`main`** (`deploy-prod` в `.githu
 | Запись | Назначение |
 |--------|------------|
 | `meriter.pro` | A/AAAA → prod VPS (Caddy → API; опционально full web) |
-| `community-meriter.pro` | A/AAAA → тот же VPS (Caddy → community-web) |
+| `community-dobro.meriter.pro` | A/AAAA → тот же VPS (Caddy → community-web) |
 
 ### 12.2. BotFather (@meriter_bot)
 
 1. **Group Privacy: Off**, **Allow Groups: On**
-2. `/setdomain` → **`community-meriter.pro`** (Login Widget)
-3. Mini App / Menu Button URL: `https://community-meriter.pro/tg` (выставляется при деплое: `setup-bot-menu.js set /tg`)
+2. `/setdomain` → **`community-dobro.meriter.pro`** (Login Widget)
+3. Mini App / Menu Button URL: `https://community-dobro.meriter.pro/tg` (выставляется при деплое: `setup-bot-menu.js set /tg`)
 4. Старый dev-бот `@meriter_dev1_bot`: снять webhook (`node scripts/setup-webhook.js delete` с его токеном) или не использовать группы
 
 ### 12.3. `.env` на prod VPS (`/opt/meriter/.env`)
 
 ```env
 DOMAIN=meriter.pro
-COMMUNITY_DOMAIN=community-meriter.pro
-COMMUNITY_WEB_BASE_URL=https://community-meriter.pro
+COMMUNITY_DOMAIN=community-dobro.meriter.pro
+COMMUNITY_WEB_BASE_URL=https://community-dobro.meriter.pro
 
 MERITER_PRODUCT_MODE=telegram_mvp
 TELEGRAM_BOT_ENABLED=true

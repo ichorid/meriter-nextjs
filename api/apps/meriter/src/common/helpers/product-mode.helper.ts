@@ -19,7 +19,7 @@ export function getCommunityWebBaseUrl(
   if (appUrl) {
     return appUrl.replace(/\/$/, '');
   }
-  return 'https://community-meriter.pro';
+  return 'https://community-dobro.meriter.pro';
 }
 
 /** Same origin as main web → /meriter/…; dedicated community-web host → /c/…/feed */

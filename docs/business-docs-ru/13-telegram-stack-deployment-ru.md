@@ -83,7 +83,7 @@ flowchart TB
 
 - Cookie `meriter_community_session` ≠ cookie `jwt` основного приложения
 - tRPC: `/trpc/community` + whitelist (нет Birzha, tappalka, invest, platformDev)
-- Домен: `community-meriter.pro` ≠ `meriter.pro/meriter/*`
+- Домен: `community-dobro.meriter.pro` ≠ `meriter.pro/meriter/*`
 
 ---
 
@@ -157,9 +157,9 @@ MERITER_PRODUCT_MODE=telegram_mvp
 TELEGRAM_BOT_ENABLED=false          # webhook не обрабатывается
 BOT_TOKEN=...                       # всё равно нужен для Login Widget
 BOT_USERNAME=meriter_bot
-COMMUNITY_WEB_BASE_URL=https://community-meriter.pro
+COMMUNITY_WEB_BASE_URL=https://community-dobro.meriter.pro
 DOMAIN=meriter.pro
-COMMUNITY_DOMAIN=community-meriter.pro
+COMMUNITY_DOMAIN=community-dobro.meriter.pro
 JWT_SECRET=...
 MONGO_URL=...
 ```
@@ -188,7 +188,7 @@ docker compose run --rm bot-webhook-init
 
 1. **Домены и DNS**
    - `meriter.pro` → A/AAAA на сервер (webhook бота + опционально full web)
-   - `community-meriter.pro` → тот же сервер (community-web)
+   - `community-dobro.meriter.pro` → тот же сервер (community-web)
 
 2. **Telegram BotFather**
    - Создать бота, получить `BOT_TOKEN`
@@ -196,7 +196,7 @@ docker compose run --rm bot-webhook-init
    - **Allow Groups: On**
    - **Mini App:** Menu Button URL `https://{COMMUNITY_DOMAIN}/tg` (скрипт `setup-bot-menu.js set`)
    - **`COMMUNITY_WEB_BASE_URL` должен отличаться от основного `DOMAIN`** — иначе Mini App может предлагать вход через браузер
-   - `/setdomain` → **`community-meriter.pro`** (Login Widget; не основной `meriter.pro`)
+   - `/setdomain` → **`community-dobro.meriter.pro`** (Login Widget; не основной `meriter.pro`)
      - Menu Button: выставляется при деплое (`setup-bot-menu.js set /tg`); проверить в `/mybots` → Bot Settings → Menu Button
    - Пользовательская инструкция: [14-telegram-bot-user-guide-ru.md](./14-telegram-bot-user-guide-ru.md) §10
 
@@ -208,7 +208,7 @@ docker compose run --rm bot-webhook-init
 ```env
 # === Общее ===
 DOMAIN=meriter.pro
-COMMUNITY_DOMAIN=community-meriter.pro
+COMMUNITY_DOMAIN=community-dobro.meriter.pro
 JWT_SECRET=<openssl rand -base64 32>
 MONGO_ADMIN_PASSWORD=<strong>
 MONGO_APP_PASSWORD=<strong>
@@ -219,7 +219,7 @@ TELEGRAM_BOT_ENABLED=true
 OAUTH_TELEGRAM_ENABLED=true
 BOT_TOKEN=<from BotFather — только на VPS>
 BOT_USERNAME=meriter_bot
-COMMUNITY_WEB_BASE_URL=https://community-meriter.pro
+COMMUNITY_WEB_BASE_URL=https://community-dobro.meriter.pro
 
 # === Версии образов (опционально) ===
 VERSION_API=0.59.0
@@ -348,7 +348,7 @@ Login Widget требует HTTPS на **community-web** домене. Tunnel н
 
 ### 7.2. Первый вход на community-web
 
-1. Откройте `https://community-meriter.pro/login`
+1. Откройте `https://community-dobro.meriter.pro/login`
 2. Войдите через **Telegram Login Widget** (тот же бот, что в группе).
 3. Редirect на `/c/{communityId}/feed`.
 4. Лид видит вкладки: Лента, Проекты, Документы, События, Заслуги, **Модерация** (если включена), Настройки.
