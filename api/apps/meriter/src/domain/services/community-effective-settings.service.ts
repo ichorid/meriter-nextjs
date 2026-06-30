@@ -260,6 +260,14 @@ export class CommunityEffectiveSettingsService {
     if (!community?.id || community.id === GLOBAL_COMMUNITY_ID) {
       return 0;
     }
+    const explicit = community.meritSettings?.startingMerits;
+    if (explicit !== undefined && explicit !== null) {
+      const n = Number(explicit);
+      if (!Number.isFinite(n) || n <= 0) {
+        return 0;
+      }
+      return Math.floor(n);
+    }
     const effective = this.getEffectiveMeritSettings(community);
     const raw = effective.startingMerits ?? effective.dailyQuota ?? 0;
     const n = Number(raw);

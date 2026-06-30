@@ -345,6 +345,7 @@ export class TelegramBotOrchestratorService {
         });
         return;
       }
+      await this.provisionLinkedTelegramCommunities(tgUserId, from);
       await this.sendBotEphemeral(tgUserId, await this.helpMessage());
       this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
       return;
@@ -1422,27 +1423,51 @@ export class TelegramBotOrchestratorService {
     );
   }
 
+  private async provisionLinkedTelegramCommunities(
+    tgUserId: string,
+    profile: { first_name?: string; last_name?: string; username?: string },
+  ): Promise<void> {
+    const ensured = await this.ensureTelegramUser(tgUserId, profile);
+    const user = await this.userService.getUserById(ensured.id);
+    const membershipIds = user?.communityMemberships ?? [];
+    if (membershipIds.length === 0) {
+      return;
+    }
+    const communities = await this.communityModel
+      .find({
+        id: { $in: membershipIds },
+        telegramChatId: { $exists: true, $nin: [null, ''] },
+        $or: [{ telegramFrozenAt: { $exists: false } }, { telegramFrozenAt: null }],
+      })
+      .lean();
+    for (const doc of communities) {
+      await this.provisionMember(doc as Community, tgUserId, profile);
+    }
+  }
+
   private async provisionMember(
     community: Community,
     tgUserId: string,
     profile: { first_name?: string; last_name?: string; username?: string },
   ) {
+    const freshCommunity =
+      (await this.communityService.getCommunity(community.id)) ?? community;
     const user = await this.ensureTelegramUser(tgUserId, profile);
-    const role = await this.rolePersistence.findAnyRole(user.id, community.id);
+    const role = await this.rolePersistence.findAnyRole(user.id, freshCommunity.id);
     if (!role) {
-      await this.communityService.addMember(community.id, user.id);
-      await this.userCommunityRoleService.setRole(user.id, community.id, 'participant', true);
+      await this.communityService.addMember(freshCommunity.id, user.id);
+      await this.userCommunityRoleService.setRole(user.id, freshCommunity.id, 'participant', true);
     } else if (role.membershipStatus === 'frozen') {
-      await this.rolePersistence.setMembershipStatus(user.id, community.id, 'active', new Date());
+      await this.rolePersistence.setMembershipStatus(user.id, freshCommunity.id, 'active', new Date());
     }
-    await this.userService.addCommunityMembership(user.id, community.id);
-    const currency = community.settings?.currencyNames ?? {
+    await this.userService.addCommunityMembership(user.id, freshCommunity.id);
+    const currency = freshCommunity.settings?.currencyNames ?? {
       singular: 'заслуга',
       plural: 'заслуги',
       genitive: 'заслуг',
     };
-    await this.walletService.createOrGetWallet(user.id, community.id, currency, {
-      startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(community),
+    await this.walletService.createOrGetWallet(user.id, freshCommunity.id, currency, {
+      startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(freshCommunity),
     });
     return user;
   }

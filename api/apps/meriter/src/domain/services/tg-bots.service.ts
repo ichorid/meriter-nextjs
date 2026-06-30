@@ -19,7 +19,7 @@ import {
 import * as TelegramTypes from "@common/extapis/telegram/telegram.types";
 import Axios from "axios";
 import { UserSchemaClass, UserDocument } from "../models/user/user.schema";
-import { CommunitySchemaClass, CommunityDocument, type Community } from "../models/community/community.schema";
+import { CommunitySchemaClass, CommunityDocument } from "../models/community/community.schema";
 import { UserCommunityRoleService } from "./user-community-role.service";
 import { PublicationService } from "./publication.service";
 import { CommunityService } from "./community.service";
@@ -392,8 +392,8 @@ export class TgBotsService {
         return { id: user!.id, displayName: user!.displayName, username: user!.username };
       },
       ensureCommunityMember: async (userId) => {
-        const communityDoc = await this.communityModel.findOne({ id: communityId }).lean();
-        if (!communityDoc) {
+        const community = await this.communityService.getCommunity(communityId);
+        if (!community) {
           return;
         }
         const role = await this.userCommunityRoleService.getRole(userId, communityId);
@@ -402,15 +402,13 @@ export class TgBotsService {
           await this.userCommunityRoleService.setRole(userId, communityId, 'participant', true);
         }
         await this.userService.addCommunityMembership(userId, communityId);
-        const currency = communityDoc.settings?.currencyNames ?? {
+        const currency = community.settings?.currencyNames ?? {
           singular: 'заслуга',
           plural: 'заслуги',
           genitive: 'заслуг',
         };
         await this.walletService.createOrGetWallet(userId, communityId, currency, {
-          startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(
-            communityDoc as Community,
-          ),
+          startingMeritsIfNewWallet: this.communityService.startingMeritsOnJoin(community),
         });
       },
     });
