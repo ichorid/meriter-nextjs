@@ -1370,6 +1370,24 @@ export class CommunityService {
         : undefined,
     }));
 
+    const currency = community.settings?.currencyNames ?? {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    const startingMerits = this.startingMeritsOnJoin(community as Community);
+    await Promise.all(
+      mappedMembers.map(async (member) => {
+        const wallet = await this.walletService.createOrGetWallet(
+          member.id,
+          communityId,
+          currency,
+          { startingMeritsIfNewWallet: startingMerits },
+        );
+        member.walletBalance = wallet.getBalance();
+      }),
+    );
+
     return { members: mappedMembers, total };
   }
 

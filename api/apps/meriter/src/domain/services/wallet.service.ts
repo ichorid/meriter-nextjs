@@ -75,7 +75,6 @@ export class WalletService {
     options?: { startingMeritsIfNewWallet?: number },
   ): Promise<Wallet> {
     let wallet = await this.getWallet(userId, communityId);
-    const wasNew = !wallet;
 
     if (!wallet) {
       wallet = Wallet.create(
@@ -88,7 +87,6 @@ export class WalletService {
     }
 
     const start =
-      wasNew &&
       communityId !== GLOBAL_COMMUNITY_ID &&
       typeof options?.startingMeritsIfNewWallet === 'number'
         ? options.startingMeritsIfNewWallet

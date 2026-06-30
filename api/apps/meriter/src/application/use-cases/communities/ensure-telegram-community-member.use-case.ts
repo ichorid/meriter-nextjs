@@ -39,13 +39,11 @@ export class EnsureTelegramCommunityMemberUseCase {
     }
 
     const role = await this.deps.userCommunityRoleService.getRole(userId, communityId);
-    if (role?.membershipStatus === 'active') {
-      return;
+    if (role?.membershipStatus !== 'active') {
+      await this.deps.communityService.addMember(communityId, userId);
+      await this.deps.userCommunityRoleService.setRole(userId, communityId, 'participant', true);
+      await this.deps.userService.addCommunityMembership(userId, communityId);
     }
-
-    await this.deps.communityService.addMember(communityId, userId);
-    await this.deps.userCommunityRoleService.setRole(userId, communityId, 'participant', true);
-    await this.deps.userService.addCommunityMembership(userId, communityId);
 
     const currency = community.settings?.currencyNames ?? {
       singular: 'заслуга',

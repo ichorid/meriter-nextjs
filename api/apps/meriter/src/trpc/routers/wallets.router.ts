@@ -351,20 +351,14 @@ export const walletsRouter = router({
 
       // Create wallets for non-priority communities
       const walletPromises = nonPriorityCommunities.map(async (community) => {
-        let wallet = await ctx.walletService.getWallet(actualUserId, community.id);
-
-        if (!wallet) {
-          wallet = await ctx.walletService.createOrGetWallet(
-            actualUserId,
-            community.id,
-            community.settings?.currencyNames || DEFAULT_CURRENCY,
-            {
-              startingMeritsIfNewWallet: ctx.communityService.startingMeritsOnJoin(community),
-            },
-          );
-        }
-
-        return wallet;
+        return ctx.walletService.createOrGetWallet(
+          actualUserId,
+          community.id,
+          community.settings?.currencyNames || DEFAULT_CURRENCY,
+          {
+            startingMeritsIfNewWallet: ctx.communityService.startingMeritsOnJoin(community),
+          },
+        );
       });
 
       const nonPriorityWallets = await Promise.all(walletPromises);

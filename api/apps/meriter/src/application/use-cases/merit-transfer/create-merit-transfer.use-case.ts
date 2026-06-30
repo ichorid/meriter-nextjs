@@ -183,6 +183,16 @@ export class CreateMeritTransferUseCase implements CreateMeritTransferPort {
 
     const sourceCurrency = await this.currencyForWalletCommunityId(sourceWalletId);
     const targetCurrency = await this.currencyForWalletCommunityId(targetWalletId);
+    const targetCommunity = await this.communityService.getCommunity(targetWalletId);
+    const receiverStartingMerits = targetCommunity
+      ? this.communityService.startingMeritsOnJoin(targetCommunity)
+      : 0;
+    await this.walletService.createOrGetWallet(
+      input.receiverId,
+      targetWalletId,
+      targetCurrency,
+      { startingMeritsIfNewWallet: receiverStartingMerits },
+    );
 
     const id = uid();
     const created = await this.meritTransferPersistence.runInTransaction(
