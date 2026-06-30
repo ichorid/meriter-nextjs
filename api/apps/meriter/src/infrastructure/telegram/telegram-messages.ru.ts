@@ -45,8 +45,8 @@ const ONBOARDING_STEP_BODIES: Partial<Record<TelegramBotPendingActionType, strin
   onboarding_quota_amount:
     'Сколько ежедневных заслуг в день? Напишите число, например: 5',
   onboarding_hashtag:
-    'Какой хэштег для постов из чата? Напишите без #, например: идея\n\n' +
-    'Участники будут писать #идея в сообщениях, чтобы опубликовать пост.',
+    'Какой хэштег для постов из чата? Напишите без #, например: заслуга\n\n' +
+    'Участники будут писать #заслуга в сообщениях, чтобы опубликовать пост.',
   onboarding_post_cost:
     'Сколько заслуг стоит публикация поста? Напишите число.\n\n0 — публикация бесплатная.',
   onboarding_moderation:
@@ -57,7 +57,8 @@ const ONBOARDING_STEP_BODIES: Partial<Record<TelegramBotPendingActionType, strin
     'Сколько приветственных заслуг дать новому участнику?\n\n0 — не начислять. Напишите число.',
   onboarding_vote_panel:
     'Показывать под постами кнопки начисления заслуг со счётчиками?\n\n' +
-    'Если да — участники голосуют кнопками (+1, своя сумма, против). Реакции 👍❤️👎 для голосования не используются.',
+    'Если да — участники голосуют кнопками (+1, своя сумма, против).\n' +
+    'Если нет — реакциями 👍❤️👎',
   onboarding_command_delivery:
     'Куда отвечать на /balance, /members, /help и /link?\n\n' +
     '1 — в группу, сообщение исчезает через минуту (по умолчанию)\n' +
@@ -77,8 +78,8 @@ export function getOnboardingPrompt(
 }
 
 export function primaryCommunityHashtag(hashtags?: string[]): string {
-  const tag = (hashtags?.[0] ?? 'идея').replace(/^#/, '').trim();
-  return tag || 'идея';
+  const tag = (hashtags?.[0] ?? 'заслуга').replace(/^#/, '').trim();
+  return tag || 'заслуга';
 }
 
 export type CommunitySettingsSnapshotInput = {
@@ -119,7 +120,7 @@ const SETTINGS_EDIT_PROMPTS: Partial<Record<TelegramBotPendingActionType, string
   settings_edit_post_cost:
     'Сколько заслуг стоит публикация поста? Напишите число.\n\n0 — публикация бесплатная.',
   settings_edit_hashtag:
-    'Какой хэштег для постов из чата? Напишите без #, например: идея',
+    'Какой хэштег для постов из чата? Напишите без #, например: заслуга',
   settings_edit_welcome_merits:
     'Сколько приветственных заслуг дать новому участнику?\n\n0 — не начислять. Напишите число.',
 };
@@ -237,48 +238,75 @@ export function buildSettingsEditKeyboard(
   };
 }
 
-function buildGroupWelcomeSteps(input: CommunityUsageRulesInput): string {
+function joinTelegramBlocks(blocks: string[]): string {
+  return blocks.filter((block) => block.trim().length > 0).join('\n\n');
+}
+
+function buildPostsStep(input: CommunityUsageRulesInput): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
-  const voteLine = input.votePanelEnabled
-    ? `2. Голосуйте кнопками под постом (+1, своя сумма, против) — счётчики показывают сумму заслуг\n`
-    : `2. Голосуйте за такие сообщения реакциями 👍 ❤️ 👎\n`;
   return (
-    `1. Отправляйте сообщения с #${hashtag}, чтобы получать заслуги от других пользователей. ` +
-    `Пример: «#${hashtag} Предлагаю собраться в субботу»\n` +
-    `   Заслуги другому: ответьте на его сообщение и напишите #${hashtag} …, ` +
-    `или «#${hashtag} для @username …»\n` +
-    voteLine +
-    `3. Проверяйте свой баланс и историю заслуг в нашем мини-приложении (ссылка ниже).\n` +
-    `4. Подробный гайд: /guide — бот пришлёт инструкцию в личку.`
+    `1. Публикуйте посты с #${hashtag}\n` +
+    `• Пример: «#${hashtag} Предлагаю собраться в субботу»\n` +
+    `• Заслуги другому: ответьте на сообщение и напишите #${hashtag} …\n` +
+    `• или «#${hashtag} для @username …» без reply`
   );
 }
 
+function buildVotingStep(input: CommunityUsageRulesInput): string {
+  if (input.votePanelEnabled) {
+    return '2. Голосуйте кнопками под постом (+1, своя сумма, против)';
+  }
+  return '2. Голосуйте за такие сообщения реакциями 👍 ❤️ 👎';
+}
+
+function buildMiniAppStep(): string {
+  return '3. Баланс и история — в мини-приложении (ссылка ниже)';
+}
+
+function buildGuideStep(): string {
+  return '4. Подробный гайд: /guide — бот пришлёт инструкцию в личку';
+}
+
+function buildNumberedUsageSteps(input: CommunityUsageRulesInput): string {
+  return joinTelegramBlocks([
+    buildPostsStep(input),
+    buildVotingStep(input),
+    buildMiniAppStep(),
+    buildGuideStep(),
+  ]);
+}
+
+function buildGroupWelcomeSteps(input: CommunityUsageRulesInput): string {
+  return buildNumberedUsageSteps(input);
+}
+
 function buildHashtagAndMiniAppIntro(input: CommunityUsageRulesInput): string {
-  return buildGroupWelcomeSteps(input);
+  return buildNumberedUsageSteps(input);
 }
 
 function buildReactionVotingRules(votePanelEnabled?: boolean): string {
   if (votePanelEnabled) {
-    return (
-      `Голосование кнопками под постом:\n` +
-      `• +1 / +3 / +5 — начислить заслуги (на кнопке +1 — сумма всех поддержек)\n` +
-      `• Своя сумма — ввести число\n` +
-      `• Против — списать заслуги с получателя`
-    );
+    return joinTelegramBlocks([
+      'Голосование',
+      '• +1 / +3 / +5 — начислить заслуги\n' +
+        '• Своя сумма — введите число ответом на подсказку бота\n' +
+        '• Против — списать заслуги с получателя\n' +
+        '• Текущая сумма заслуг — строка «Сейчас заслуг: …» под постом',
+    ]);
   }
-  return (
-    `Голосование реакциями:\n` +
-    `• 👍 — поддержать быстро +1 заслуга автору\n` +
-    `• ❤️ — поддержать сильнее (выберите сумму кнопкой)\n` +
-    `• 👎 — не согласен (списание с вашего кошелька, выберите сумму)`
-  );
+  return joinTelegramBlocks([
+    'Голосование реакциями',
+    '• 👍 — поддержать быстро +1 заслуга автору\n' +
+      '• ❤️ — поддержать сильнее (выберите сумму кнопкой)\n' +
+      '• 👎 — не согласен (списание с вашего кошелька, выберите сумму)',
+  ]);
 }
 
 function buildReplyVoteHint(votePanelEnabled?: boolean): string {
   if (votePanelEnabled) {
     return '';
   }
-  return `Или просто ответьте на пост в таком формате: «+3 Отличная идея» или «-2 Не согласен».`;
+  return `Или просто ответьте на пост в таком формате: «+3 Отличная работа» или «-2 Не согласен».`;
 }
 
 function buildDailyMeritsParagraph(dailyEmission: number): string {
@@ -299,11 +327,12 @@ function buildWelcomeMeritsParagraph(welcomeMerits?: number): string {
 }
 
 function buildCommunityUsageBody(input: CommunityUsageRulesInput): string {
-  return (
-    `${buildHashtagAndMiniAppIntro(input)}\n\n` +
-    `${buildReactionVotingRules(input.votePanelEnabled)}\n\n` +
-    buildReplyVoteHint(input.votePanelEnabled)
-  );
+  const blocks = [
+    buildHashtagAndMiniAppIntro(input),
+    buildReactionVotingRules(input.votePanelEnabled),
+    buildReplyVoteHint(input.votePanelEnabled),
+  ];
+  return joinTelegramBlocks(blocks);
 }
 
 export function buildCommunityUsageRules(input: CommunityUsageRulesInput): string {
@@ -546,6 +575,35 @@ export function buildTelegramVoterDisplayName(input: {
   if (fromName) return fromName;
   if (input.username?.trim()) return `@${input.username.replace(/^@/, '')}`;
   return 'участник';
+}
+
+/** Group vote-amount prompt (ForceReply): leading @mention + numeric input. */
+export function buildVoteAmountGroupNumericMentionMessage(
+  tgUserId: number,
+  displayName: string,
+  direction: 'up' | 'down',
+): { text: string; entities: TelegramTextMentionEntity[] } {
+  const name = displayName.trim() || 'участник';
+  const suffix =
+    direction === 'down'
+      ? ', введите сумму заслуг для списания ответом на это сообщение.'
+      : ', введите сумму заслуг ответом на это сообщение.';
+  const firstName = name.startsWith('@') ? name.slice(1) : name.split(/\s+/)[0] || name;
+  return {
+    text: `${name}${suffix}`,
+    entities: [
+      {
+        type: 'text_mention',
+        offset: 0,
+        length: name.length,
+        user: {
+          id: tgUserId,
+          is_bot: false,
+          first_name: firstName,
+        },
+      },
+    ],
+  };
 }
 
 /** Group vote-amount prompt: leading @mention + reply under reacted message. */

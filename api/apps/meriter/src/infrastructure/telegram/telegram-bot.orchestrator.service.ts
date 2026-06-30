@@ -59,6 +59,7 @@ import {
   primaryCommunityHashtag,
   buildTelegramVoterDisplayName,
   buildVoteAmountGroupMentionMessage,
+  buildVoteAmountGroupNumericMentionMessage,
   type SettingsEditField,
   mapTelegramUserFacingError,
   voteAmountButtonLabels,
@@ -93,6 +94,7 @@ import {
   buildVotePanelKeyboard,
   parseVotePanelCallback,
 } from './telegram-vote-panel';
+import { resolvePublicationVoteBlockReason } from './telegram-publication-vote-block';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -353,8 +355,7 @@ export class TelegramBotOrchestratorService {
       return;
     }
     if (trimmed === '/guide' || trimmed === '/гайд') {
-      await this.sendGuideToUser(tgUserId);
-      this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
+      await this.handleDirectBotCommand(tgUserId, from, 'guide', '', triggerMessageId);
       return;
     }
 
@@ -654,7 +655,7 @@ export class TelegramBotOrchestratorService {
       }
       case 'guide':
       case 'гайд': {
-        const sent = await this.sendGuideToUser(tgUserId);
+        const sent = await this.sendGuideToUser(tgUserId, community);
         if (!sent && replyInGroup && message?.message_id) {
           const botUsername =
             this.configService.get('bot')?.username?.replace(/^@/, '') ?? 'meriterbot';
@@ -1057,7 +1058,7 @@ export class TelegramBotOrchestratorService {
         return true;
       }
       case 'onboarding_hashtag':
-        payload.hashtag = text.trim().replace(/^#/, '').slice(0, 32) || 'идея';
+        payload.hashtag = text.trim().replace(/^#/, '').slice(0, 32) || 'заслуга';
         await this.advanceOnboarding(tgUserId, 'onboarding_post_cost', payload);
         return true;
       case 'onboarding_post_cost': {
@@ -1140,7 +1141,7 @@ export class TelegramBotOrchestratorService {
         return true;
       }
       case 'settings_edit_hashtag': {
-        const hashtag = text.trim().replace(/^#/, '').slice(0, 32) || 'идея';
+        const hashtag = text.trim().replace(/^#/, '').slice(0, 32) || 'заслуга';
         await this.applySettingsUpdate(tgUserId, String(payload.communityId), {
           hashtags: [hashtag],
         });
@@ -1231,7 +1232,7 @@ export class TelegramBotOrchestratorService {
     });
 
     await this.communityService.updateCommunity(community.id, {
-      hashtags: [payload.hashtag ?? 'идея'],
+      hashtags: [payload.hashtag ?? 'заслуга'],
       meritSettings: {
         quotaEnabled: payload.quotaEnabled ?? false,
         dailyQuota: payload.dailyEmission ?? 0,
@@ -1278,6 +1279,7 @@ export class TelegramBotOrchestratorService {
       dailyEmission: payload.quotaEnabled ? (payload.dailyEmission ?? 0) : 0,
       welcomeMerits: payload.welcomeMerits ?? 0,
       votePanelEnabled: payload.votePanelEnabled === true,
+      hashtags: [payload.hashtag ?? 'заслуга'],
     });
     await this.tgBots.tgSend({
       tgChatId: tgUserId,
@@ -1370,7 +1372,10 @@ export class TelegramBotOrchestratorService {
   private buildCommunityUsageInput(
     community: Community,
     platformIntegration?: boolean,
-    overrides?: Pick<CommunityUsageRulesInput, 'dailyEmission' | 'welcomeMerits' | 'votePanelEnabled'>,
+    overrides?: Pick<
+      CommunityUsageRulesInput,
+      'dailyEmission' | 'welcomeMerits' | 'votePanelEnabled' | 'hashtags'
+    >,
   ): CommunityUsageRulesInput {
     const integrated =
       platformIntegration ?? community.settings?.telegramPlatformIntegration === true;
@@ -1385,7 +1390,7 @@ export class TelegramBotOrchestratorService {
       overrides?.welcomeMerits ?? this.communityService.startingMeritsOnJoin(community);
     return {
       communityName: community.name,
-      hashtags: community.hashtags,
+      hashtags: overrides?.hashtags ?? community.hashtags,
       platformIntegration: integrated,
       botUsername,
       dailyEmission: dailyEmission > 0 ? dailyEmission : 0,
@@ -1586,10 +1591,16 @@ export class TelegramBotOrchestratorService {
     });
   }
 
-  private async sendGuideToUser(tgUserId: string): Promise<boolean> {
+  private async sendGuideToUser(
+    tgUserId: string,
+    community?: { hashtags?: string[]; settings?: { telegramVotePanelEnabled?: boolean } },
+  ): Promise<boolean> {
     return this.tgBots.tgSend({
       tgChatId: tgUserId,
-      text: buildTelegramGuideMessage(),
+      text: buildTelegramGuideMessage({
+        hashtags: community?.hashtags,
+        votePanelEnabled: community?.settings?.telegramVotePanelEnabled === true,
+      }),
       parseMode: 'HTML',
     });
   }
@@ -1732,14 +1743,8 @@ export class TelegramBotOrchestratorService {
       return null;
     }
     const authorId = publication.getAuthorId.getValue();
-    if (authorId === voterId) {
-      return 'author';
-    }
     const beneficiaryId = publication.getBeneficiaryId?.getValue();
-    if (beneficiaryId && beneficiaryId === voterId) {
-      return 'beneficiary';
-    }
-    return null;
+    return resolvePublicationVoteBlockReason(authorId, beneficiaryId, voterId);
   }
 
   private async resolveVoteRecipientLabels(
@@ -1776,6 +1781,7 @@ export class TelegramBotOrchestratorService {
       voterFirstName?: string;
       voterLastName?: string;
       voterUsername?: string;
+      numericPrompt?: boolean;
     },
   ): Promise<void> {
     const pendingId = uid();
@@ -1829,15 +1835,35 @@ export class TelegramBotOrchestratorService {
       updatedAt: new Date(),
     });
 
-    const promptMessageId = await this.sendVoteAmountGroupPromptWithKeyboard(
-      context.groupChatId,
-      context.replyToMessageId,
-      pendingId,
-      Number.parseInt(tgUserId, 10),
-      displayName,
-      direction,
-    );
+    const promptMessageId = context.numericPrompt
+      ? await this.sendVoteAmountGroupNumericPrompt(
+          context.groupChatId,
+          context.replyToMessageId,
+          pendingId,
+          Number.parseInt(tgUserId, 10),
+          displayName,
+          direction,
+        )
+      : await this.sendVoteAmountGroupPromptWithKeyboard(
+          context.groupChatId,
+          context.replyToMessageId,
+          pendingId,
+          Number.parseInt(tgUserId, 10),
+          displayName,
+          direction,
+        );
     if (promptMessageId != null) {
+      await this.pendingModel
+        .updateOne(
+          { id: pendingId },
+          {
+            $set: {
+              'payload.promptMessageId': promptMessageId,
+              updatedAt: new Date(),
+            },
+          },
+        )
+        .exec();
       return;
     }
 
@@ -2193,6 +2219,58 @@ export class TelegramBotOrchestratorService {
     });
   }
 
+  private async sendVoteAmountGroupNumericPrompt(
+    chatId: string,
+    replyToMessageId: number,
+    _pendingId: string,
+    tgUserId: number,
+    displayName: string,
+    direction: 'up' | 'down',
+  ): Promise<number | null> {
+    const { text, entities } = buildVoteAmountGroupNumericMentionMessage(
+      tgUserId,
+      displayName,
+      direction,
+    );
+    const token = this.configService.get('bot')?.token;
+    if (!token || this.configService.get('noAxios')) {
+      return this.tgBots.tgReplyEphemeral({
+        chat_id: chatId,
+        reply_to_message_id: replyToMessageId,
+        text,
+      });
+    }
+    try {
+      const Axios = (await import('axios')).default;
+      const apiUrl = this.configService.get('telegram')?.apiUrl ?? 'https://api.telegram.org';
+      const res = await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
+        chat_id: chatId,
+        reply_to_message_id: replyToMessageId,
+        text,
+        entities,
+        reply_markup: {
+          force_reply: true,
+          selective: true,
+          input_field_placeholder: 'Сумма заслуг',
+        },
+      });
+      const messageId = res.data?.result?.message_id;
+      if (typeof messageId === 'number') {
+        setTimeout(() => {
+          void this.tgBots.tgDeleteMessage(chatId, messageId);
+        }, TG_BOT_EPHEMERAL_TTL_SEC * 1000);
+        return messageId;
+      }
+    } catch {
+      /* fallback below */
+    }
+    return this.tgBots.tgReplyEphemeral({
+      chat_id: chatId,
+      reply_to_message_id: replyToMessageId,
+      text,
+    });
+  }
+
   private async sendCallbackPrompt(
     tgUserId: string,
     text: string,
@@ -2482,9 +2560,9 @@ export class TelegramBotOrchestratorService {
 
     const panelMessageId = await this.tgBots.tgSendMessage({
       chat_id: chatId,
-      text: buildVotePanelMessageText(recipient),
+      text: buildVotePanelMessageText(recipient, metrics),
       reply_to_message_id: hashtagMessageId,
-      reply_markup: buildVotePanelKeyboard(publicationId, metrics),
+      reply_markup: buildVotePanelKeyboard(publicationId),
     });
     if (panelMessageId == null) {
       return;
@@ -2609,6 +2687,7 @@ export class TelegramBotOrchestratorService {
         voterFirstName: from.first_name,
         voterLastName: from.last_name,
         voterUsername: from.username,
+        numericPrompt: true,
       });
       return;
     }
@@ -2668,10 +2747,13 @@ export class TelegramBotOrchestratorService {
         downMerits: publication.getMetrics.downvotes,
       };
 
-      await this.tgBots.tgEditMessageReplyMarkup({
+      const recipient = await this.resolveVotePanelRecipient(publicationId);
+
+      await this.tgBots.tgEditMessageText({
         chat_id: panelAnchor.telegramChatId,
         message_id: panelAnchor.telegramMessageId,
-        reply_markup: buildVotePanelKeyboard(publicationId, metrics),
+        text: buildVotePanelMessageText(recipient, metrics),
+        reply_markup: buildVotePanelKeyboard(publicationId),
       });
     } catch (error) {
       if (

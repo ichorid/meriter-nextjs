@@ -281,7 +281,7 @@ export async function resolveTelegramPublicationBeneficiary(
           beneficiary: null,
           cleanedText,
           error:
-            '⚠️ Ответьте на сообщение участника группы или укажите получателя: «#идея для @username …»',
+            '⚠️ Ответьте на сообщение участника группы или укажите получателя: «#заслуга для @username …»',
         };
       }
       const resolved = await resolveInlineBeneficiary(deps, inline);

@@ -9,28 +9,28 @@ import {
 describe('telegram-beneficiary', () => {
   describe('stripInlineBeneficiaryMarkers', () => {
     it('removes legacy /ben: and для @user', () => {
-      expect(stripInlineBeneficiaryMarkers('#идея /ben:@ivan помог')).toBe('#идея помог');
-      expect(stripInlineBeneficiaryMarkers('#идея для @ivan: помог')).toBe('#идея помог');
+      expect(stripInlineBeneficiaryMarkers('#заслуга /ben:@ivan помог')).toBe('#заслуга помог');
+      expect(stripInlineBeneficiaryMarkers('#заслуга для @ivan: помог')).toBe('#заслуга помог');
     });
   });
 
   describe('parseInlineBeneficiaryFromMessage', () => {
     it('parses legacy /ben:@username', () => {
-      expect(parseInlineBeneficiaryFromMessage('#идея /ben:@ivan текст')).toEqual({
+      expect(parseInlineBeneficiaryFromMessage('#заслуга /ben:@ivan текст')).toEqual({
         kind: 'username',
         username: 'ivan',
       });
     });
 
     it('parses для @username', () => {
-      expect(parseInlineBeneficiaryFromMessage('#идея для @petrov помог')).toEqual({
+      expect(parseInlineBeneficiaryFromMessage('#заслуга для @petrov помог')).toEqual({
         kind: 'username',
         username: 'petrov',
       });
     });
 
     it('parses text_mention after для', () => {
-      const text = '#идея для Иван помог';
+      const text = '#заслуга для Иван помог';
       const entities = [
         { type: 'text_mention', offset: 8, length: 4, user: { id: 42, first_name: 'Иван' } },
       ];
@@ -47,7 +47,7 @@ describe('telegram-beneficiary', () => {
     const baseDeps = {
       authorTelegramId: '100',
       tgChatId: '-1001',
-      messageText: '#идея помог на субботнике',
+      messageText: '#заслуга помог на субботнике',
       isChatMember: jest.fn().mockResolvedValue(true),
       findUserByTelegramId: jest.fn(),
       findUserByUsername: jest.fn(),
@@ -59,7 +59,7 @@ describe('telegram-beneficiary', () => {
     it('reply path wins over inline', async () => {
       const result = await resolveTelegramPublicationBeneficiary({
         ...baseDeps,
-        messageText: '#идея для @other текст',
+        messageText: '#заслуга для @other текст',
         replyToFrom: { id: 200, first_name: 'Пётр' },
       });
       expect(result.error).toBeUndefined();
@@ -82,7 +82,7 @@ describe('telegram-beneficiary', () => {
     it('inline для @user when no reply', async () => {
       const result = await resolveTelegramPublicationBeneficiary({
         ...baseDeps,
-        messageText: '#идея для @ivan помог',
+        messageText: '#заслуга для @ivan помог',
         findUserByUsername: jest.fn().mockResolvedValue({
           id: 'u-ivan',
           telegramId: '300',
@@ -91,13 +91,13 @@ describe('telegram-beneficiary', () => {
         }),
       });
       expect(result.beneficiary?.telegramId).toBe('300');
-      expect(result.cleanedText).toBe('#идея помог');
+      expect(result.cleanedText).toBe('#заслуга помог');
     });
 
     it('returns MVP error when username not found', async () => {
       const result = await resolveTelegramPublicationBeneficiary({
         ...baseDeps,
-        messageText: '#идея для @ghost текст',
+        messageText: '#заслуга для @ghost текст',
         findUserByUsername: jest.fn().mockResolvedValue(null),
         resolveUsernameViaTelegramApi: jest.fn().mockResolvedValue(null),
       });

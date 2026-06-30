@@ -146,7 +146,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
         dailyEmission: 5,
         postCost: 0,
       },
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
       hashtagDescriptions: {},
       isActive: true,
       createdAt: now,
@@ -208,9 +208,9 @@ describe('TelegramBotOrchestrator (integration)', () => {
       id: publicationId,
       authorId,
       communityId,
-      content: '#идея Test post',
+      content: '#заслуга Test post',
       type: 'text',
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
       postType: 'basic',
       createdAt: now,
       updatedAt: now,
@@ -525,7 +525,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
         name: 'Chat Only',
         platformIntegration: false,
         quotaEnabled: false,
-        hashtag: 'идея',
+        hashtag: 'заслуга',
       },
       expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
       createdAt: now,
@@ -638,7 +638,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
 
     expect(ephemeralSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ text: TG_MSG.reactionPostNotFound('идея') }),
+      expect.objectContaining({ text: TG_MSG.reactionPostNotFound('заслуга') }),
     );
   });
 
@@ -953,5 +953,195 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
     expect(executeMock).not.toHaveBeenCalled();
     expect(await pendingModel.findOne({ id: pendingId }).exec()).not.toBeNull();
+  });
+
+  it('finish onboarding group welcome uses hashtag from payload not stale community', async () => {
+    const now = new Date();
+    await pendingModel.create({
+      id: uid(),
+      telegramUserId: tgUserId,
+      action: 'onboarding_command_delivery',
+      payload: {
+        telegramChatId: tgChatId,
+        name: 'Test Community',
+        platformIntegration: false,
+        quotaEnabled: false,
+        hashtag: 'предложение',
+        postCost: 0,
+        welcomeMerits: 0,
+        votePanelEnabled: true,
+      },
+      expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    jest.spyOn(tgBotsService, 'tgSendMessage').mockResolvedValue(100);
+    jest.spyOn(tgBotsService, 'tgPinChatMessage').mockResolvedValue(true);
+
+    await webhookController.handleWebhook(botUsername, dmMessage('1', 50, 8));
+
+    const groupWelcomeCall = tgSendSpy.mock.calls.find(
+      ([args]) => args.tgChatId === tgChatId && String(args.text).includes('Публикуйте посты'),
+    );
+    expect(groupWelcomeCall?.[0].text).toContain('#предложение');
+    expect(groupWelcomeCall?.[0].text).not.toContain('#идея');
+  });
+
+  async function seedNominationPublication(options: {
+    authorIsVoter?: boolean;
+    beneficiaryIsVoter?: boolean;
+    messageId?: number;
+  }) {
+    const { communityId, userId } = await seedLinkedCommunity();
+    const now = new Date();
+    const publicationId = uid();
+    const voterId = userId;
+    let authorId = uid();
+    let beneficiaryId = uid();
+
+    if (options.authorIsVoter) {
+      authorId = voterId;
+      beneficiaryId = uid();
+    } else if (options.beneficiaryIsVoter) {
+      beneficiaryId = voterId;
+    }
+
+    for (const extraUserId of [authorId, beneficiaryId].filter((id) => id !== voterId)) {
+      await userModel.create({
+        id: extraUserId,
+        authProvider: 'telegram',
+        authId: uid(),
+        displayName: `User ${extraUserId.slice(0, 4)}`,
+        communityMemberships: [communityId],
+        communityTags: [],
+        profile: {},
+        createdAt: now,
+        updatedAt: now,
+      });
+      await userCommunityRoleModel.create({
+        id: uid(),
+        userId: extraUserId,
+        communityId,
+        role: 'participant',
+        createdAt: now,
+        updatedAt: now,
+      });
+    }
+
+    const messageId = options.messageId ?? 120;
+
+    await publicationModel.create({
+      id: publicationId,
+      authorId,
+      beneficiaryId,
+      communityId,
+      content: '#заслуга Nomination post',
+      type: 'text',
+      hashtags: ['заслуга'],
+      postType: 'basic',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await anchorModel.create({
+      id: uid(),
+      communityId,
+      telegramChatId: tgChatId,
+      telegramMessageId: messageId,
+      publicationId,
+      anchorType: 'hashtag',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { communityId, userId: voterId, publicationId, messageId, authorId, beneficiaryId };
+  }
+
+  it('message_reaction 👍 on nomination allows author to vote', async () => {
+    const { messageId } = await seedNominationPublication({ authorIsVoter: true });
+    const executeMock = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+    jest.spyOn(tgBotsService, 'tgReplyMessage').mockResolvedValue(2001);
+
+    await webhookController.handleWebhook(
+      botUsername,
+      messageReactionUpdate('👍', messageId, 43),
+    );
+
+    expect(executeMock).toHaveBeenCalled();
+  });
+
+  it('message_reaction 👍 on nomination blocks beneficiary', async () => {
+    const { messageId } = await seedNominationPublication({ beneficiaryIsVoter: true });
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+    const executeMock = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+
+    await webhookController.handleWebhook(
+      botUsername,
+      messageReactionUpdate('👍', messageId, 44),
+    );
+
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ text: TG_MSG.cannotVoteAsBeneficiary }),
+    );
+    expect(executeMock).not.toHaveBeenCalled();
+  });
+
+  it('vote panel custom amount creates pending with numeric prompt path', async () => {
+    const { communityId, publicationId, userId } = await seedPublicationWithAnchor(130, {
+      otherAuthor: true,
+    });
+    await communityModel.updateOne(
+      { id: communityId },
+      { $set: { 'settings.telegramVotePanelEnabled': true } },
+    );
+    const panelMessageId = 131;
+    await anchorModel.create({
+      id: uid(),
+      communityId,
+      telegramChatId: tgChatId,
+      telegramMessageId: panelMessageId,
+      publicationId,
+      anchorType: 'vote_panel',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1400);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 45,
+      callback_query: {
+        id: 'cb-vp-custom',
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG', last_name: 'User' },
+        message: {
+          message_id: panelMessageId,
+          chat: { id: Number(tgChatId), type: 'supergroup' },
+        },
+        chat_instance: '1',
+        data: `vp:${publicationId}:up:custom`,
+      },
+    } as TelegramTypes.Update);
+
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        text: expect.stringContaining('введите сумму заслуг ответом'),
+      }),
+    );
+    const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
+    expect(pending?.action).toBe('confirm_vote_amount');
+    expect((pending?.payload as { voterId?: string }).voterId).toBe(userId);
+    expect((pending?.payload as { promptMessageId?: number }).promptMessageId).toBe(1400);
   });
 });

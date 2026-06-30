@@ -11,34 +11,40 @@ export type VotePanelRecipient = {
   nominatorDisplayName?: string;
 };
 
-export function buildVotePanelMessageText(recipient: VotePanelRecipient): string {
+export function netMerits(metrics: VotePanelMetrics): number {
+  const up = Math.max(0, Math.round(metrics.upMerits));
+  const down = Math.max(0, Math.round(metrics.downMerits));
+  return up - down;
+}
+
+export function buildVotePanelMessageText(
+  recipient: VotePanelRecipient,
+  metrics: VotePanelMetrics,
+): string {
+  const netLine = `Сейчас заслуг: ${netMerits(metrics)}`;
   if (recipient.isNomination && recipient.nominatorDisplayName) {
     return (
       `Начислить заслуги: ${recipient.displayName}\n` +
-      `(номинация от ${recipient.nominatorDisplayName})`
+      `(номинация от ${recipient.nominatorDisplayName})\n` +
+      netLine
     );
   }
-  return `Поддержите пост — заслуги: ${recipient.displayName}`;
+  return `Поддержите пост — заслуги: ${recipient.displayName}\n${netLine}`;
 }
 
-export function buildVotePanelKeyboard(
-  publicationId: string,
-  metrics: VotePanelMetrics,
-): {
+export function buildVotePanelKeyboard(publicationId: string): {
   inline_keyboard: Array<Array<{ text: string; callback_data: string }>>;
 } {
-  const up = Math.max(0, Math.round(metrics.upMerits));
-  const down = Math.max(0, Math.round(metrics.downMerits));
   return {
     inline_keyboard: [
       [
-        { text: `+1 — ${up}`, callback_data: `vp:${publicationId}:up:1` },
+        { text: '+1', callback_data: `vp:${publicationId}:up:1` },
         { text: '+3', callback_data: `vp:${publicationId}:up:3` },
         { text: '+5', callback_data: `vp:${publicationId}:up:5` },
       ],
       [
         { text: 'Своя сумма', callback_data: `vp:${publicationId}:up:custom` },
-        { text: `Против — ${down}`, callback_data: `vp:${publicationId}:down:1` },
+        { text: 'Против', callback_data: `vp:${publicationId}:down:1` },
       ],
     ],
   };

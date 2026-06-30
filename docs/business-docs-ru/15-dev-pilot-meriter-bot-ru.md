@@ -70,7 +70,7 @@ docker compose run --rm --no-deps api node scripts/setup-webhook.js check
 
 1. Добавить `@meriter_bot` в тестовую группу (админ).
 2. Пройти онбординг в личке.
-3. `#идея тест` → пост + anchor.
+3. `#заслуга тест` → пост + anchor.
 4. `/баланс` → ephemeral ответ с балансом.
 5. Открыть Mini App из меню бота → `community-dev.meriter.pro`.
 

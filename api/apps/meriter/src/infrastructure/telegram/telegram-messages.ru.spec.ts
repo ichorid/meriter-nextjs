@@ -4,7 +4,9 @@ import {
   buildTelegramMiniAppStartLink,
   buildSettingsLeadSummary,
   buildVoteAmountGroupMentionMessage,
+  buildVoteAmountGroupNumericMentionMessage,
   communitySettingsSnapshot,
+  getOnboardingPrompt,
   TG_MSG,
 } from './telegram-messages.ru';
 
@@ -18,18 +20,19 @@ describe('telegram group welcome copy', () => {
     );
   });
 
-  it('group welcome introduces Meriter with configured hashtag', () => {
+  it('group welcome introduces Meriter with configured hashtag and spacing', () => {
     const text = buildGroupWelcomeMessage({
       communityName: 'Test',
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
       platformIntegration: true,
       botUsername: 'meriter_bot',
     });
     expect(text).toMatch(/^Привет!\n\nЯ – Меритер/);
-    expect(text).toContain('1. Отправляйте сообщения с #идея');
-    expect(text).toContain('2. Голосуйте за такие сообщения');
-    expect(text).toContain('3. Проверяйте свой баланс');
+    expect(text).toContain('1. Публикуйте посты с #заслуга');
+    expect(text).toContain('\n\n2. Голосуйте за такие сообщения');
+    expect(text).toContain('\n\n3. Баланс и история');
     expect(text).not.toContain('Meriter подключён');
+    expect(text).not.toContain('   Заслуги другому');
   });
 
   it('group welcome uses custom hashtag from settings', () => {
@@ -44,7 +47,7 @@ describe('telegram group welcome copy', () => {
   it('group welcome adds daily merits paragraph when quota is enabled', () => {
     const text = buildGroupWelcomeMessage({
       communityName: 'Test',
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
       dailyEmission: 5,
       welcomeMerits: 10,
     });
@@ -55,7 +58,7 @@ describe('telegram group welcome copy', () => {
   it('group welcome shows welcome merits when daily quota is zero', () => {
     const text = buildGroupWelcomeMessage({
       communityName: 'Test',
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
       dailyEmission: 0,
       welcomeMerits: 100,
     });
@@ -66,7 +69,7 @@ describe('telegram group welcome copy', () => {
   it('group welcome omits daily merits paragraph when quota is zero', () => {
     const text = buildGroupWelcomeMessage({
       communityName: 'Test',
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
       dailyEmission: 0,
       welcomeMerits: 0,
     });
@@ -81,25 +84,52 @@ describe('telegram group welcome copy', () => {
   it('help lists commands after usage rules', () => {
     const text = buildTelegramHelpMessage('', {
       communityName: 'Test',
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
     });
     expect(text).toContain('/balance — ваши заслуги');
     expect(text).toContain('/guide — подробный гайд');
     expect(text).toContain('/link — ссылка');
-    expect(text).toContain('1. Отправляйте сообщения с #идея');
+    expect(text).toContain('1. Публикуйте посты с #заслуга');
+    expect(text).toContain('Голосование реакциями');
     expect(text).not.toContain('Заслуги — внутренняя валюта');
+  });
+
+  it('help describes panel voting when vote panel is enabled', () => {
+    const text = buildTelegramHelpMessage('', {
+      communityName: 'Test',
+      hashtags: ['заслуга'],
+      votePanelEnabled: true,
+    });
+    expect(text).toContain('Голосование');
+    expect(text).toContain('• +1 / +3 / +5 — начислить заслуги');
+    expect(text).toContain('2. Голосуйте кнопками под постом');
+    expect(text).toContain('Сейчас заслуг');
+    expect(text).not.toContain('Голосование реакциями');
+    expect(text).not.toContain('счётчики показывают');
+    expect(text).not.toContain('Или просто ответьте на пост');
+  });
+
+  it('group welcome uses panel step when vote panel is enabled', () => {
+    const text = buildGroupWelcomeMessage({
+      communityName: 'Test',
+      hashtags: ['заслуга'],
+      votePanelEnabled: true,
+    });
+    expect(text).toContain('2. Голосуйте кнопками под постом (+1, своя сумма, против)');
+    expect(text).not.toContain('2. Голосуйте за такие сообщения реакциями');
+    expect(text).not.toContain('счётчики');
   });
 
   it('settings summary lists editable fields without post ack toggle', () => {
     const text = buildSettingsLeadSummary({
       name: 'Клуб',
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
       settings: { dailyEmission: 5, postCost: 1 },
       meritSettings: { startingMerits: 10 },
     });
     expect(text).toContain('«Клуб»');
     expect(text).toContain('5 заслуг в день');
-    expect(text).toContain('#идея');
+    expect(text).toContain('#заслуга');
     expect(text).toContain('Подсказка без хэштега');
     expect(text).toContain('Панель голосования');
     expect(text).toContain('/balance:');
@@ -109,7 +139,7 @@ describe('telegram group welcome copy', () => {
   it('settingsUpdated reflects snapshot', () => {
     const snapshot = communitySettingsSnapshot({
       name: 'Клуб',
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
       settings: { dailyEmission: 0, postCost: 2 },
       meritSettings: { startingMerits: 0 },
     });
@@ -118,17 +148,17 @@ describe('telegram group welcome copy', () => {
   });
 
   it('reactionPostNotFound uses community hashtag', () => {
-    expect(TG_MSG.reactionPostNotFound('идея')).toContain('#идея');
-    expect(TG_MSG.reactionPostNotFound('идея')).not.toContain('сохранённым');
+    expect(TG_MSG.reactionPostNotFound('заслуга')).toContain('#заслуга');
+    expect(TG_MSG.reactionPostNotFound('заслуга')).not.toContain('сохранённым');
   });
 
-  it('group welcome mentions beneficiary post formats', () => {
+  it('group welcome mentions beneficiary post formats with bullets', () => {
     const text = buildGroupWelcomeMessage({
       communityName: 'Test',
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
     });
-    expect(text).toContain('для @username');
-    expect(text).toContain('ответьте на его сообщение');
+    expect(text).toContain('• или «#заслуга для @username …» без reply');
+    expect(text).toContain('• Заслуги другому:');
   });
 
   it('voteSuccess includes voter name', () => {
@@ -144,5 +174,16 @@ describe('telegram group welcome copy', () => {
     expect(text.startsWith('TG User,')).toBe(true);
     expect(entities[0]?.type).toBe('text_mention');
     expect(entities[0]?.user.id).toBe(900002);
+  });
+
+  it('vote amount numeric prompt asks for reply number', () => {
+    const { text } = buildVoteAmountGroupNumericMentionMessage(900002, 'TG User', 'up');
+    expect(text).toContain('введите сумму заслуг ответом на это сообщение');
+  });
+
+  it('onboarding vote panel step mentions both modes', () => {
+    const text = getOnboardingPrompt('onboarding_vote_panel', {});
+    expect(text).toContain('Если да — участники голосуют кнопками');
+    expect(text).toContain('Если нет — реакциями 👍❤️👎');
   });
 });

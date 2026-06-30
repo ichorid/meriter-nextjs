@@ -81,11 +81,11 @@ describe('buildTelegramHelpMessage', () => {
     const text = buildTelegramHelpMessage('', {
       botUsername: 'meriter_bot',
       communityName: 'Test',
-      hashtags: ['идея'],
+      hashtags: ['заслуга'],
       platformIntegration: true,
     });
     expect(text).toContain('мини-приложении (ссылка ниже)');
-    expect(text).toContain('#идея');
+    expect(text).toContain('#заслуга');
     expect(text).toContain('поддержать быстро +1 заслуга автору');
     expect(text).not.toContain('/login');
     expect(text).not.toContain('Публикация в чате');

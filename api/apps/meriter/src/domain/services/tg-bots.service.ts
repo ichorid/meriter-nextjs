@@ -769,6 +769,44 @@ export class TgBotsService {
     }
   }
 
+  async tgEditMessageText({
+    chat_id,
+    message_id,
+    text,
+    reply_markup,
+  }: {
+    chat_id: string | number;
+    message_id: number;
+    text: string;
+    reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+  }): Promise<boolean> {
+    if (!this.featureFlagsService.isTelegramBotEnabled()) {
+      return false;
+    }
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) {
+      return true;
+    }
+    const botToken = (this.configService.get as (key: string) => string | undefined)('bot.token');
+    if (!botToken) {
+      return false;
+    }
+    try {
+      const params: Record<string, unknown> = { chat_id, message_id, text };
+      if (reply_markup) {
+        params.reply_markup = JSON.stringify(reply_markup);
+      }
+      await Axios.get(BOT_URL + '/editMessageText', { params });
+      return true;
+    } catch (e) {
+      this.logger.debug(
+        'tgEditMessageText failed',
+        (e as { response?: { data?: unknown } })?.response?.data,
+      );
+      return false;
+    }
+  }
+
   async tgDeleteMessage(chat_id: string | number, message_id: number): Promise<void> {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       return;

@@ -366,10 +366,12 @@ export class CreateVoteUseCase {
           canUseQuota &&
           input.targetType === 'publication' &&
           publicationDoc &&
-          publicationDoc.authorId === userId &&
           !isPublicationEntitySourced(publicationDoc)
         ) {
-          canUseQuota = false;
+          const effectiveBeneficiary = getPublicationEffectiveBeneficiaryId(publicationDoc);
+          if (publicationDoc.authorId === userId && effectiveBeneficiary === userId) {
+            canUseQuota = false;
+          }
         }
 
         let remainingQuota = 0;
