@@ -45,7 +45,7 @@ echo "[deploy] Pulling images..."
 docker compose pull
 
 echo "[deploy] Recreating containers..."
-if ! docker compose up -d --remove-orphans; then
+if ! docker compose up -d; then
   echo "[deploy] docker compose up -d failed"
   deploy_mongo_diagnostics
   exit 1
