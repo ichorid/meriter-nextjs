@@ -783,9 +783,11 @@ describe('TelegramBotOrchestrator (integration)', () => {
     expect(ephemeralSpy).not.toHaveBeenCalled();
   });
 
-  it('group /settings for lead shows editable summary without post ack', async () => {
+  it('group /settings for lead sends settings to DM and replies ephemerally in group', async () => {
     await seedLeadCommunity();
+    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
     const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+    const scheduleDeleteSpy = jest.spyOn(tgBotsService, 'tgScheduleDeleteMessage');
 
     await webhookController.handleWebhook(botUsername, {
       update_id: 16,
@@ -803,11 +805,22 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    expect(ephemeralSpy).toHaveBeenCalled();
-    const sentText = String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '');
-    expect(sentText).toContain('Ежедневная квота');
-    expect(sentText).toContain('Подсказка без хэштега');
-    expect(sentText).not.toContain('Пост сохранён');
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tgChatId: tgUserId,
+      }),
+    );
+    const dmText = String(sendSpy.mock.calls.at(-1)?.[0]?.text ?? '');
+    expect(dmText).toContain('Ежедневная квота');
+    expect(dmText).toContain('Подсказка без хэштега');
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chat_id: tgChatId,
+        reply_to_message_id: 57,
+      }),
+    );
+    expect(String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '')).toContain('личку');
+    expect(scheduleDeleteSpy).toHaveBeenCalledWith(tgChatId, 57);
   });
 
   it('lead can toggle reaction no-hashtag hint from settings keyboard', async () => {
@@ -1471,7 +1484,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
     expect(forceReplySpy).toHaveBeenCalledWith(
       tgChatId,
-      TG_MSG.voteAmountInvalidRetry,
+      expect.stringContaining(TG_MSG.voteAmountInvalidRetry),
       userReplyMessageId,
     );
     const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();

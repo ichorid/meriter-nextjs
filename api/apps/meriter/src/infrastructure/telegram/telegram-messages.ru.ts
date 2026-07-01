@@ -421,6 +421,7 @@ export function buildTelegramBotOpenKeyboard(
 export const TG_BOT_OPEN_BUTTON_LABELS = {
   guide: 'Получить гайд в личку',
   vote: 'Открыть бота',
+  settings: 'Открыть настройки в личку',
 } as const;
 
 function formatTelegramBotHandle(botUsername: string): string {
@@ -429,13 +430,19 @@ function formatTelegramBotHandle(botUsername: string): string {
 
 export function formatTelegramBotOpenHint(
   botUsername: string,
-  purpose: 'guide' | 'vote',
+  purpose: 'guide' | 'vote' | 'settings',
 ): string {
   const handle = formatTelegramBotHandle(botUsername);
   if (purpose === 'guide') {
     return (
       `Не удалось отправить гайд в личку — вы ещё не запускали бота.\n\n` +
       `Откройте бота (кликните @${handle} или кнопку ниже) — гайд придёт в личку.`
+    );
+  }
+  if (purpose === 'settings') {
+    return (
+      `Не удалось отправить настройки в личку — вы ещё не запускали бота.\n\n` +
+      `Откройте бота (кликните @${handle} или кнопку ниже), затем снова /settings в группе.`
     );
   }
   return (
@@ -597,7 +604,7 @@ export const TG_MSG = {
   multipleLinkedCommunities:
     'У вас несколько сообществ Meriter. Используйте команды в той группе, где хотите действовать.',
   settingsLeadOnly: 'Настройки бота доступны только лиду сообщества.',
-  settingsUseGroup: 'Настройки бота: напишите /settings в группе (только лид).',
+  settingsDmFailed: (botUsername: string) => formatTelegramBotOpenHint(botUsername, 'settings'),
   settingsUpdated: (snapshot: ReturnType<typeof communitySettingsSnapshot>) => {
     const quotaLine =
       snapshot.dailyEmission > 0
@@ -660,20 +667,41 @@ export function buildTelegramVoterDisplayName(input: {
   return 'участник';
 }
 
+export function formatVoteAmountBalanceHint(
+  wallet: number,
+  quota: number,
+  direction: 'up' | 'down',
+): string {
+  if (direction === 'down') {
+    return (
+      `\n\nВсего у вас сейчас ${wallet} заслуг на кошельке — списать можно не больше ${wallet}.`
+    );
+  }
+  const max = wallet + quota;
+  return (
+    `\n\nВсего у вас сейчас ${wallet} заслуг на кошельке и ${quota} ежедневных заслуг, ` +
+    `сумма может быть не больше ${max}.`
+  );
+}
+
 /** Group vote-amount prompt (ForceReply): leading @mention + numeric input. */
 export function buildVoteAmountGroupNumericMentionMessage(
   tgUserId: number,
   displayName: string,
   direction: 'up' | 'down',
+  balance?: { wallet: number; quota: number },
 ): { text: string; entities: TelegramTextMentionEntity[] } {
   const name = displayName.trim() || 'участник';
   const suffix =
     direction === 'down'
       ? ', введите сумму заслуг для списания ответом на это сообщение.'
       : ', введите сумму заслуг ответом на это сообщение.';
+  const hint = balance
+    ? formatVoteAmountBalanceHint(balance.wallet, balance.quota, direction)
+    : '';
   const firstName = name.startsWith('@') ? name.slice(1) : name.split(/\s+/)[0] || name;
   return {
-    text: `${name}${suffix}`,
+    text: `${name}${suffix}${hint}`,
     entities: [
       {
         type: 'text_mention',
@@ -694,15 +722,19 @@ export function buildVoteAmountGroupMentionMessage(
   tgUserId: number,
   displayName: string,
   direction: 'up' | 'down',
+  balance?: { wallet: number; quota: number },
 ): { text: string; entities: TelegramTextMentionEntity[] } {
   const name = displayName.trim() || 'участник';
   const suffix =
     direction === 'down'
       ? ', сколько заслуг списать с автора?\n\nВыберите сумму кнопкой или ответьте числом.'
       : ', сколько заслуг начислить автору?\n\nВыберите сумму кнопкой или ответьте числом.';
+  const hint = balance
+    ? formatVoteAmountBalanceHint(balance.wallet, balance.quota, direction)
+    : '';
   const firstName = name.startsWith('@') ? name.slice(1) : name.split(/\s+/)[0] || name;
   return {
-    text: `${name}${suffix}`,
+    text: `${name}${suffix}${hint}`,
     entities: [
       {
         type: 'text_mention',

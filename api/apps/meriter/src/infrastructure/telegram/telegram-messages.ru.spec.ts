@@ -8,6 +8,7 @@ import {
   buildVoteAmountGroupMentionMessage,
   buildVoteAmountGroupNumericMentionMessage,
   communitySettingsSnapshot,
+  formatVoteAmountBalanceHint,
   getOnboardingPrompt,
   TG_BOT_OPEN_BUTTON_LABELS,
   TG_MSG,
@@ -210,8 +211,18 @@ describe('telegram group welcome copy', () => {
   });
 
   it('vote amount numeric prompt asks for reply number', () => {
-    const { text } = buildVoteAmountGroupNumericMentionMessage(900002, 'TG User', 'up');
+    const { text } = buildVoteAmountGroupNumericMentionMessage(900002, 'TG User', 'up', {
+      wallet: 12,
+      quota: 3,
+    });
     expect(text).toContain('введите сумму заслуг ответом на это сообщение');
+    expect(text).toContain('12 заслуг на кошельке и 3 ежедневных');
+    expect(text).toContain('не больше 15');
+  });
+
+  it('vote amount balance hint for down uses wallet only', () => {
+    expect(formatVoteAmountBalanceHint(10, 5, 'down')).toContain('не больше 10');
+    expect(formatVoteAmountBalanceHint(10, 5, 'down')).not.toContain('ежедневных');
   });
 
   it('onboarding vote panel step mentions both modes', () => {
