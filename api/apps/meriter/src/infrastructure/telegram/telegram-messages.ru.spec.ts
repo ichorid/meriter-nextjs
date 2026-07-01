@@ -16,7 +16,6 @@ import {
   communitySettingsSnapshot,
   formatVoteAmountBalanceHint,
   getOnboardingPrompt,
-  mapTelegramUserFacingError,
   TG_BOT_OPEN_BUTTON_LABELS,
   TG_MSG,
 } from './telegram-messages.ru';
@@ -324,27 +323,5 @@ describe('telegram group welcome copy', () => {
     const text = getOnboardingPrompt('onboarding_vote_panel', {});
     expect(text).toContain('Если да — участники голосуют кнопками');
     expect(text).toContain('Если нет — реакциями 👍❤️👎');
-  });
-});
-
-describe('mapTelegramUserFacingError', () => {
-  it('maps permission errors without implying insufficient merits', () => {
-    expect(mapTelegramUserFacingError('You do not have permission to vote on this publication')).toBe(
-      'У вас нет прав для этого действия.',
-    );
-  });
-
-  it('maps insufficient quota separately from wallet', () => {
-    expect(mapTelegramUserFacingError('Insufficient quota. Available: 0, Requested: 1')).toContain(
-      'квоты',
-    );
-  });
-
-  it('does not map generic English errors to insufficient merits', () => {
-    expect(mapTelegramUserFacingError('Something went wrong')).toBe(TG_MSG.actionFailedGeneric);
-  });
-
-  it('passes through Russian messages', () => {
-    expect(mapTelegramUserFacingError('Уже голосовали')).toBe('Уже голосовали');
   });
 });

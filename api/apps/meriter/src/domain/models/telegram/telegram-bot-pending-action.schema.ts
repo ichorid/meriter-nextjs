@@ -22,8 +22,7 @@ export type TelegramBotPendingActionType =
   | 'settings_edit_quota'
   | 'settings_edit_post_cost'
   | 'settings_edit_hashtag'
-  | 'settings_edit_welcome_merits'
-  | 'dm_command';
+  | 'settings_edit_welcome_merits';
 
 @Schema({ collection: 'telegram_bot_pending_actions', timestamps: true })
 export class TelegramBotPendingActionSchemaClass {

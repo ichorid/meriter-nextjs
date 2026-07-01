@@ -1,5 +1,4 @@
 import { Body, Controller, HttpCode, Logger, Param, Post } from '@nestjs/common';
-import * as Sentry from '@sentry/node';
 import * as TelegramTypes from '@common/extapis/telegram/telegram.types';
 import { TgBotsService } from '../../domain/services/tg-bots.service';
 import { TelegramBotOrchestratorService } from './telegram-bot.orchestrator.service';
@@ -27,21 +26,7 @@ export class TelegramWebhookController {
       botUsername,
       updateId: body.update_id,
     });
-    try {
-      await this.telegramBotOrchestrator.handleUpdate(body);
-    } catch (err) {
-      this.logger.error('telegram.webhook.error', {
-        botUsername,
-        updateId: body.update_id,
-        err,
-      });
-      if (process.env.SENTRY_DSN) {
-        Sentry.captureException(err, {
-          tags: { platform: 'backend', component: 'telegram-webhook' },
-          extra: { updateId: body.update_id, botUsername },
-        });
-      }
-    }
+    await this.telegramBotOrchestrator.handleUpdate(body);
     return { ok: true };
   }
 }

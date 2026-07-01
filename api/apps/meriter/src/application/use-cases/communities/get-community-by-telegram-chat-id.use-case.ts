@@ -2,7 +2,6 @@ import { Logger } from '@nestjs/common';
 import type { Model } from 'mongoose';
 import type { CommunityDocument } from '../../../domain/models/community/community.schema';
 import { createTelegramCommunityChatResolver } from '../../../infrastructure/telegram/telegram-community-chat.resolver';
-import { isTelegramCommunityFrozen } from '../../../infrastructure/telegram/telegram-community-frozen.util';
 
 export type GetCommunityByTelegramChatIdResult = {
   communityId: string;
@@ -35,7 +34,7 @@ export class GetCommunityByTelegramChatIdUseCase {
       communityId: doc.id,
       name: doc.name,
       telegramChatId: String(doc.telegramChatId),
-      isFrozen: isTelegramCommunityFrozen(doc),
+      isFrozen: Boolean(doc.telegramFrozenAt),
     };
   }
 }

@@ -10,31 +10,18 @@ export function TgFrozenBanner() {
     { telegramChatId: telegramChatId ?? '' },
     { enabled: Boolean(telegramChatId), refetchOnWindowFocus: true },
   );
-  const configQuery = trpc.config.getConfig.useQuery();
 
   if (!frozenQuery.data?.isFrozen) {
     return null;
   }
-
-  const botUsername = configQuery.data?.botUsername?.replace(/^@/, '');
 
   return (
     <div
       className="mb-4 rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-stitch-text"
       role="alert"
     >
-      <p>
-        Доступ приостановлен — бот удалён из Telegram-группы. Вернитесь в группу и попросите
-        администратора добавить бота снова.
-      </p>
-      {botUsername && (
-        <a
-          href={`https://t.me/${botUsername}`}
-          className="mt-3 inline-flex rounded-lg bg-primary px-3 py-2 text-xs font-semibold text-white hover:bg-primary/90"
-        >
-          Открыть бота в Telegram
-        </a>
-      )}
+      Доступ приостановлен — вы вышли из Telegram-группы. Вернитесь в группу, чтобы снова
+      пользоваться заслугами.
     </div>
   );
 }

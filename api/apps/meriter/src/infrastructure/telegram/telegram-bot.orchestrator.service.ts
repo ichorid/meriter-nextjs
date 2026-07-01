@@ -77,8 +77,6 @@ import {
   type SettingsEditField,
   mapTelegramUserFacingError,
   voteAmountButtonLabels,
-  buildDmCommunityPickerKeyboard,
-  telegramDmCommandLabel,
   type CommunityUsageRulesInput,
 } from './telegram-messages.ru';
 import { buildTelegramGuideMessage } from './telegram-guide.ru';
@@ -117,11 +115,6 @@ import {
 } from './telegram-vote-amount-parse';
 import { telegramChatIdLookupVariants, expandTelegramChatIds, telegramGroupSendNotificationParams, buildTelegramSupergroupChatLink } from './telegram-chat-id.util';
 import { TelegramCommunityChatResolver } from './telegram-community-chat.resolver';
-import {
-  isTelegramCommunityFrozen,
-  mongoActiveTelegramCommunityFilter,
-  mongoFrozenTelegramCommunityFilter,
-} from './telegram-community-frozen.util';
 import { describeTelegramUpdateMeta } from './telegram-update-log.util';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -183,8 +176,6 @@ export class TelegramBotOrchestratorService {
     string,
     ReturnType<typeof setTimeout>
   >();
-  private readonly anonymousReactionHintAt = new Map<string, number>();
-  private static readonly ANON_REACTION_HINT_DEBOUNCE_MS = 5 * 60 * 1000;
 
   constructor(
     private readonly configService: ConfigService<AppConfig>,
@@ -288,7 +279,7 @@ export class TelegramBotOrchestratorService {
       (newStatus === 'member' || newStatus === 'administrator')
     ) {
       const existing = await this.findCommunityByChatId(chatId);
-      if (existing && isTelegramCommunityFrozen(existing)) {
+      if (existing?.telegramFrozenAt) {
         await this.communityModel.updateOne(
           { id: existing.id },
           { $unset: { telegramFrozenAt: '' }, $set: { updatedAt: new Date() } },
@@ -344,7 +335,7 @@ export class TelegramBotOrchestratorService {
     };
     const chatId = String(chat.id);
     const community = await this.findCommunityByChatId(chatId);
-    if (!community || isTelegramCommunityFrozen(community)) {
+    if (!community || community.telegramFrozenAt) {
       return;
     }
 
@@ -461,7 +452,7 @@ export class TelegramBotOrchestratorService {
       for (const member of newMembers) {
         if (member?.id && !member.is_bot) {
           await this.tgBots.recordTelegramChatMember(chatId, member, 'new_chat_members');
-          if (community && !isTelegramCommunityFrozen(community)) {
+          if (community && !community.telegramFrozenAt) {
             await this.provisionMember(
               community,
               String(member.id),
@@ -656,7 +647,7 @@ export class TelegramBotOrchestratorService {
       }
       return;
     }
-    if (isTelegramCommunityFrozen(community)) {
+    if (community.telegramFrozenAt) {
       if (isBotCommand) {
         await this.tgBots.tgReplyEphemeral({
           reply_to_message_id: message.message_id as number,
@@ -824,25 +815,8 @@ export class TelegramBotOrchestratorService {
     const user = await this.ensureTelegramUser(tgUserId, from);
     const linkedCount = await this.countLinkedTelegramCommunities(user.id);
     if (linkedCount > 1 && !this.configService.get('app')?.defaultTelegramCommunityId?.trim()) {
-      const communities = await this.listLinkedTelegramCommunitiesForUser(user.id);
-      if (communities.length > 1) {
-        await this.pendingModel.deleteMany({ telegramUserId: tgUserId, action: 'dm_command' });
-        await this.pendingModel.create({
-          id: uid(),
-          telegramUserId: tgUserId,
-          action: 'dm_command',
-          payload: { cmd, args },
-          expiresAt: new Date(Date.now() + 15 * 60 * 1000),
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
-        await this.tgBots.tgSend({
-          tgChatId: tgUserId,
-          text: TG_MSG.dmPickCommunity(telegramDmCommandLabel(cmd)),
-          reply_markup: buildDmCommunityPickerKeyboard(communities),
-        });
-        return;
-      }
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.multipleLinkedCommunities });
+      return;
     }
 
     const resolved = await this.resolveTelegramCommunityForUser(user.id);
@@ -851,55 +825,33 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
-    await this.runDirectBotCommandForCommunity(
-      {
-        communityId: resolved.communityId,
-        userId: user.id,
-        tgUserId,
-        from,
-        cmd,
-        args,
-        triggerMessageId,
-      },
-    );
-  }
-
-  private async runDirectBotCommandForCommunity(input: {
-    communityId: string;
-    userId: string;
-    tgUserId: string;
-    from: { first_name?: string; last_name?: string; username?: string };
-    cmd: string;
-    args: string;
-    triggerMessageId?: number;
-  }): Promise<void> {
-    const community = await this.communityService.getCommunity(input.communityId);
+    const community = await this.communityService.getCommunity(resolved.communityId);
     if (!community) {
-      await this.tgBots.tgSend({ tgChatId: input.tgUserId, text: TG_MSG.noLinkedCommunity });
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.noLinkedCommunity });
       return;
     }
-    if (isTelegramCommunityFrozen(community)) {
-      await this.tgBots.tgSend({ tgChatId: input.tgUserId, text: TG_MSG.communityFrozen });
+    if (community.telegramFrozenAt) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.communityFrozen });
       return;
     }
 
-    await this.provisionMember(community, input.tgUserId, input.from);
-    if (await this.isMemberFrozen(input.userId, community.id)) {
-      await this.tgBots.tgSend({ tgChatId: input.tgUserId, text: TG_MSG.frozenMember });
+    await this.provisionMember(community, tgUserId, from);
+    if (await this.isMemberFrozen(user.id, community.id)) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.frozenMember });
       return;
     }
 
     await this.executeBotCommand(
       {
         community,
-        userId: input.userId,
-        tgUserId: input.tgUserId,
-        replyChatId: input.tgUserId,
-        triggerMessageId: input.triggerMessageId,
+        userId: user.id,
+        tgUserId,
+        replyChatId: tgUserId,
+        triggerMessageId,
         replyInGroup: false,
       },
-      input.cmd,
-      input.args,
+      cmd,
+      args,
     );
   }
 
@@ -1092,17 +1044,15 @@ export class TelegramBotOrchestratorService {
   }
 
   private async countLinkedTelegramCommunities(userId: string): Promise<number> {
-    const list = await this.listLinkedTelegramCommunitiesForUser(userId);
-    return list.length;
-  }
-
-  private async listLinkedTelegramCommunitiesForUser(userId: string) {
-    const useCase = new ResolveTelegramCommunityUseCase({
-      userCommunityRoleService: this.userCommunityRoleService,
-      communityModel: this.communityModel,
-      configService: this.configService,
+    const user = await this.userService.getUserById(userId);
+    if (!user?.communityMemberships?.length) {
+      return 0;
+    }
+    return this.communityModel.countDocuments({
+      id: { $in: user.communityMemberships },
+      telegramChatId: { $exists: true, $nin: [null, ''] },
+      $or: [{ telegramFrozenAt: { $exists: false } }, { telegramFrozenAt: null }],
     });
-    return useCase.listForUser(userId);
   }
 
   private async handleMessageReaction(event: TelegramTypes.MessageReactionUpdated): Promise<void> {
@@ -1137,7 +1087,7 @@ export class TelegramBotOrchestratorService {
     );
 
     const community = await this.findCommunityByChatId(chatId);
-    if (!community || isTelegramCommunityFrozen(community)) {
+    if (!community || community.telegramFrozenAt) {
       this.logger.warn('message_reaction: community missing or frozen', { chatId, messageId });
       return;
     }
@@ -1239,41 +1189,14 @@ export class TelegramBotOrchestratorService {
     }
   }
 
-  /** Anonymous reaction counts — cannot attribute a vote to a user; ephemeral hint (debounced). */
+  /** Anonymous reaction counts — cannot attribute a vote to a user; log for ops. */
   private async handleMessageReactionCount(
     event: { chat?: { id?: number }; message_id?: number; reactions?: unknown[] },
   ): Promise<void> {
-    const chatId = event.chat?.id != null ? String(event.chat.id) : undefined;
-    const messageId = event.message_id;
+    const chatId = event.chat?.id != null ? String(event.chat.id) : '?';
     this.logger.warn(
-      `message_reaction_count chat=${chatId ?? '?'} message=${messageId ?? '?'} — anonymous counts cannot create merit votes; ensure bot is group admin and users use non-anonymous reactions`,
+      `message_reaction_count chat=${chatId} message=${event.message_id ?? '?'} — anonymous counts cannot create merit votes; ensure bot is group admin and users use non-anonymous reactions`,
     );
-
-    if (!chatId || messageId == null) {
-      return;
-    }
-
-    const hintKey = `${chatId}:${messageId}`;
-    const now = Date.now();
-    const lastHintAt = this.anonymousReactionHintAt.get(hintKey) ?? 0;
-    if (now - lastHintAt < TelegramBotOrchestratorService.ANON_REACTION_HINT_DEBOUNCE_MS) {
-      return;
-    }
-
-    const community = await this.findCommunityByChatId(chatId);
-    if (!community || isTelegramCommunityFrozen(community)) {
-      return;
-    }
-    if (community.settings?.telegramVotePanelEnabled === true) {
-      return;
-    }
-
-    this.anonymousReactionHintAt.set(hintKey, now);
-    await this.tgBots.tgReplyEphemeral({
-      chat_id: chatId,
-      reply_to_message_id: messageId,
-      text: TG_MSG.anonymousReactionsDisabled,
-    });
   }
 
   private async handleCallbackQuery(query: Record<string, unknown>): Promise<void> {
@@ -1298,16 +1221,6 @@ export class TelegramBotOrchestratorService {
 
     const tgUserId = String(from.id);
     const parts = data.split(':');
-    if (parts[0] === 'dm' && parts[1] === 'pick' && parts[2]) {
-      await this.handleDmCommunityPick(
-        tgUserId,
-        from,
-        parts[2],
-        id,
-        (message as { message_id?: number } | undefined)?.message_id,
-      );
-      return;
-    }
     if (
       parts[0] === 'settings' &&
       parts[1] === 'toggle' &&
@@ -1926,7 +1839,7 @@ export class TelegramBotOrchestratorService {
       .find({
         id: { $in: membershipIds },
         telegramChatId: { $exists: true, $nin: [null, ''] },
-        ...mongoActiveTelegramCommunityFilter(),
+        $or: [{ telegramFrozenAt: { $exists: false } }, { telegramFrozenAt: null }],
       })
       .lean();
     for (const doc of communities) {
@@ -2164,7 +2077,7 @@ export class TelegramBotOrchestratorService {
 
     const candidates = await this.communityModel
       .find({
-        ...mongoFrozenTelegramCommunityFilter(),
+        telegramFrozenAt: { $exists: true, $ne: null },
         telegramChatId: { $exists: true, $nin: [null, ''] },
         $or: [
           { telegramChatId: { $in: chatVariants } },
@@ -2248,7 +2161,7 @@ export class TelegramBotOrchestratorService {
       .find({
         id: { $in: leadCommunityIds },
         telegramChatId: { $exists: true, $nin: [null, ''] },
-        ...mongoFrozenTelegramCommunityFilter(),
+        telegramFrozenAt: { $exists: true, $ne: null },
       })
       .lean();
 
@@ -2283,30 +2196,15 @@ export class TelegramBotOrchestratorService {
     }
 
     const community = await this.communityService.getCommunity(trimmedCommunityId);
-    if (!community?.telegramChatId || !isTelegramCommunityFrozen(community)) {
+    if (!community?.telegramChatId || !community.telegramFrozenAt) {
       await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.relinkCommunityNotAllowed });
       return;
     }
 
     const user = await this.ensureTelegramUser(tgUserId, from);
     const role = await this.userCommunityRoleService.getRole(user.id, trimmedCommunityId);
-    if (!role) {
+    if (role?.role !== 'lead') {
       await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.relinkCommunityNotAllowed });
-      return;
-    }
-
-    if (role.role !== 'lead') {
-      if (!isTelegramCommunityFrozen(community)) {
-        await this.tgBots.tgSend({
-          tgChatId: tgUserId,
-          text: TG_MSG.relinkCommunityAlreadyActive(community.name ?? 'сообщество'),
-        });
-        return;
-      }
-      await this.tgBots.tgSend({
-        tgChatId: tgUserId,
-        text: TG_MSG.relinkCommunityMemberNeedLead(community.name ?? 'сообщество'),
-      });
       return;
     }
 
@@ -2318,9 +2216,14 @@ export class TelegramBotOrchestratorService {
       })
       .sort({ createdAt: -1 })
       .lean();
-    const targetChatId =
-      (pending?.payload as OnboardingPayload | undefined)?.telegramChatId?.trim() ||
-      String(community.telegramChatId);
+    const targetChatId = (pending?.payload as OnboardingPayload | undefined)?.telegramChatId?.trim();
+    if (!targetChatId) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: TG_MSG.relinkCommunityNeedGroup(community.name ?? 'сообщество'),
+      });
+      return;
+    }
 
     const chatMember = await this.tgBots.tgFetchChatMember(targetChatId, tgUserId);
     if (
@@ -2342,45 +2245,6 @@ export class TelegramBotOrchestratorService {
     await this.tgBots.tgSend({
       tgChatId: tgUserId,
       text: TG_MSG.relinkCommunitySuccess(community.name ?? 'сообщество'),
-    });
-  }
-
-  private async handleDmCommunityPick(
-    tgUserId: string,
-    from: { first_name?: string; last_name?: string; username?: string },
-    communityId: string,
-    callbackQueryId: string,
-    triggerMessageId?: number,
-  ): Promise<void> {
-    const pending = await this.pendingModel
-      .findOne({
-        telegramUserId: tgUserId,
-        action: 'dm_command',
-        expiresAt: { $gt: new Date() },
-      })
-      .sort({ createdAt: -1 })
-      .lean();
-
-    if (!pending) {
-      await this.answerCallback(callbackQueryId, 'Команда устарела — отправьте её снова.');
-      return;
-    }
-
-    const payload = pending.payload as { cmd?: string; args?: string };
-    const cmd = payload.cmd ?? '';
-    const args = payload.args ?? '';
-    await this.pendingModel.deleteOne({ id: pending.id });
-    await this.answerCallback(callbackQueryId, 'Выбрано');
-
-    const user = await this.ensureTelegramUser(tgUserId, from);
-    await this.runDirectBotCommandForCommunity({
-      communityId,
-      userId: user.id,
-      tgUserId,
-      from,
-      cmd,
-      args,
-      triggerMessageId,
     });
   }
 
@@ -2488,7 +2352,7 @@ export class TelegramBotOrchestratorService {
     triggerMessageId?: number,
   ): Promise<void> {
     const community = await this.communityService.getCommunity(communityId);
-    if (!community?.telegramChatId || isTelegramCommunityFrozen(community)) {
+    if (!community?.telegramChatId || community.telegramFrozenAt) {
       await this.tgBots.tgSend({
         tgChatId: tgUserId,
         text: TG_MSG.memberJoinDeepLinkCommunityNotFound,
@@ -2598,7 +2462,7 @@ export class TelegramBotOrchestratorService {
       .findOne({
         id: { $in: user.communityMemberships },
         telegramChatId: { $exists: true, $nin: [null, ''] },
-        ...mongoActiveTelegramCommunityFilter(),
+        $or: [{ telegramFrozenAt: { $exists: false } }, { telegramFrozenAt: null }],
       })
       .lean();
     return doc ? (doc as Community) : null;
@@ -4041,7 +3905,7 @@ export class TelegramBotOrchestratorService {
     const community = await this.communityService.getCommunity(
       publication.getCommunityId.getValue(),
     );
-    if (!community?.telegramChatId || isTelegramCommunityFrozen(community)) {
+    if (!community?.telegramChatId || community.telegramFrozenAt) {
       return;
     }
 
