@@ -1,5 +1,7 @@
 import {
   buildGroupWelcomeMessage,
+  buildTelegramBotOpenKeyboard,
+  buildTelegramBotStartLink,
   buildTelegramHelpMessage,
   buildTelegramMiniAppStartLink,
   buildSettingsLeadSummary,
@@ -7,6 +9,7 @@ import {
   buildVoteAmountGroupNumericMentionMessage,
   communitySettingsSnapshot,
   getOnboardingPrompt,
+  TG_BOT_OPEN_BUTTON_LABELS,
   TG_MSG,
 } from './telegram-messages.ru';
 
@@ -18,6 +21,27 @@ describe('telegram group welcome copy', () => {
     expect(buildTelegramMiniAppStartLink('@meriter_bot', 'comm-123')).toBe(
       't.me/meriter_bot?startapp=comm-123',
     );
+  });
+
+  it('buildTelegramBotStartLink builds https deep link with start payload', () => {
+    expect(buildTelegramBotStartLink('meriter_bot', 'guide')).toBe(
+      'https://t.me/meriter_bot?start=guide',
+    );
+    const keyboard = buildTelegramBotOpenKeyboard(
+      'meriter_bot',
+      'guide',
+      TG_BOT_OPEN_BUTTON_LABELS.guide,
+    );
+    expect(keyboard.inline_keyboard[0][0]).toEqual({
+      text: TG_BOT_OPEN_BUTTON_LABELS.guide,
+      url: 'https://t.me/meriter_bot?start=guide',
+    });
+  });
+
+  it('guideDmFailed mentions @handle and open-bot button flow', () => {
+    expect(TG_MSG.guideDmFailed('meriter_bot')).toContain('@meriter_bot');
+    expect(TG_MSG.guideDmFailed('meriter_bot')).toContain('кнопку ниже');
+    expect(TG_MSG.voteAmountDmFailed('meriter_bot')).toContain('повторите реакцию');
   });
 
   it('group welcome introduces Meriter with configured hashtag and spacing', () => {

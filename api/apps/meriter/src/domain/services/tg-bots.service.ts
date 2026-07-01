@@ -36,6 +36,7 @@ import {
   type TelegramMessageEntity,
   type TelegramReplyFrom,
 } from '../../infrastructure/telegram/telegram-beneficiary';
+import type { TelegramInlineReplyMarkup } from '../../infrastructure/telegram/telegram-messages.ru';
 import { UpdateEventItem } from './user-updates.service';
 import { FeatureFlagsService } from '../../common/services/feature-flags.service';
 import {
@@ -753,7 +754,7 @@ export class TgBotsService {
     text: string;
     parseMode?: 'MarkdownV2' | 'HTML';
     reply_to_message_id?: number;
-    reply_markup?: { inline_keyboard: Array<Array<{ text: string; callback_data: string }>> };
+    reply_markup?: TelegramInlineReplyMarkup;
   }): Promise<number | null> {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       return null;
@@ -972,16 +973,19 @@ export class TgBotsService {
     reply_to_message_id,
     text,
     deleteAfterSec,
+    reply_markup,
   }: {
     chat_id: string | number;
     text: string;
     reply_to_message_id?: number;
     deleteAfterSec?: number;
+    reply_markup?: TelegramInlineReplyMarkup;
   }): Promise<number | null> {
     const messageId = await this.tgSendMessage({
       chat_id,
       text,
       reply_to_message_id,
+      reply_markup,
     });
     if (messageId == null) {
       return null;
@@ -1124,45 +1128,24 @@ export class TgBotsService {
     tgChatId,
     text,
     parseMode,
+    reply_markup,
   }: {
     tgChatId: string | number;
     text: string;
     parseMode?: 'MarkdownV2' | 'HTML';
+    reply_markup?: TelegramInlineReplyMarkup;
   }): Promise<boolean> {
     if (!this.featureFlagsService.isTelegramBotEnabled()) {
       this.logger.debug('Telegram bot is disabled; skipping tgSend');
       return false;
     }
-    const nodeEnv = this.configService.get('NODE_ENV', 'development');
-    if (String(tgChatId).length < 4 && nodeEnv !== 'test') {
-      return false;
-    }
-    const botToken = (this.configService.get as any)('bot.token') as string | undefined;
-    if (!botToken) {
-      this.logger.warn('BOT_TOKEN is empty; Telegram send skipped');
-      return false;
-    }
-    this.logger.log(`Sending Telegram message`);
-    const params: Record<string, unknown> = { chat_id: tgChatId, text };
-    if (parseMode) {
-      params.parse_mode = parseMode;
-    }
-    try {
-      const noAxios = this.configService.get('noAxios');
-      if (!noAxios) {
-        await Axios.get(BOT_URL + '/sendMessage', { params });
-      }
-      return true;
-    } catch (e) {
-      const anyErr: any = e;
-      const description = anyErr?.response?.data?.description;
-      if (description) {
-        this.logger.error(`Telegram send failed: ${description}`);
-      } else {
-        this.logger.error(anyErr);
-      }
-      return false;
-    }
+    const messageId = await this.tgSendMessage({
+      chat_id: tgChatId,
+      text,
+      parseMode,
+      reply_markup,
+    });
+    return messageId != null;
   }
 
   //BOT ADDED TO GROUP

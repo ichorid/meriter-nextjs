@@ -372,6 +372,64 @@ export function buildTelegramMiniAppStartLink(
   return `t.me/${clean}?startapp`;
 }
 
+export type TelegramInlineKeyboardButton =
+  | { text: string; callback_data: string }
+  | { text: string; url: string };
+
+export type TelegramInlineReplyMarkup = {
+  inline_keyboard: TelegramInlineKeyboardButton[][];
+};
+
+/** Deep link to open bot DM with optional /start payload (e.g. guide, vote). */
+export function buildTelegramBotStartLink(
+  botUsername: string,
+  startPayload?: string,
+): string {
+  const clean = botUsername.replace(/^@/, '').trim();
+  if (startPayload?.trim()) {
+    return `https://t.me/${clean}?start=${encodeURIComponent(startPayload.trim())}`;
+  }
+  return `https://t.me/${clean}`;
+}
+
+export function buildTelegramBotOpenKeyboard(
+  botUsername: string,
+  startPayload: string,
+  buttonLabel: string,
+): TelegramInlineReplyMarkup {
+  return {
+    inline_keyboard: [
+      [{ text: buttonLabel, url: buildTelegramBotStartLink(botUsername, startPayload) }],
+    ],
+  };
+}
+
+export const TG_BOT_OPEN_BUTTON_LABELS = {
+  guide: 'Получить гайд в личку',
+  vote: 'Открыть бота',
+} as const;
+
+function formatTelegramBotHandle(botUsername: string): string {
+  return botUsername.replace(/^@/, '').trim();
+}
+
+export function formatTelegramBotOpenHint(
+  botUsername: string,
+  purpose: 'guide' | 'vote',
+): string {
+  const handle = formatTelegramBotHandle(botUsername);
+  if (purpose === 'guide') {
+    return (
+      `Не удалось отправить гайд в личку — вы ещё не запускали бота.\n\n` +
+      `Откройте бота (кликните @${handle} или кнопку ниже) — гайд придёт в личку.`
+    );
+  }
+  return (
+    `Не удалось написать вам в личку — вы ещё не запускали бота.\n\n` +
+    `Откройте бота (кликните @${handle} или кнопку ниже), затем повторите реакцию в группе.`
+  );
+}
+
 export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): string {
   const dailyEmission = input.dailyEmission ?? 0;
   return (
@@ -501,18 +559,12 @@ export const TG_MSG = {
     'Чтобы открыть интерфейс Meriter, проверить свой баланс и заслуги других участников, кликните по ссылке ниже.\n\n' +
     'Полный гайд по Meriter: /guide (бот пришлёт в личку).',
   enterAmount: 'Напишите число — сколько заслуг начислить автору:',
-  voteAmountDmFailed: (botUsername: string) =>
-    `Не удалось написать вам в личку.\n\n` +
-    `1) Откройте @${botUsername}\n` +
-    `2) Нажмите Start / Запустить\n` +
-    `3) Повторите реакцию в группе`,
+  voteAmountDmFailed: (botUsername: string) => formatTelegramBotOpenHint(botUsername, 'vote'),
+  voteStartAfterOpen:
+    'Бот запущен. Вернитесь в группу и повторите реакцию ❤️ или 👎 под постом.',
   cancelled: 'Отменено.',
   unknownCommand: 'Не понял команду. Напишите /help или /guide — там все подсказки.',
-  guideDmFailed: (botUsername: string) =>
-    `Не удалось отправить гайд в личку.\n\n` +
-    `1) Откройте @${botUsername}\n` +
-    `2) Нажмите Start / Запустить\n` +
-    `3) Напишите /guide снова`,
+  guideDmFailed: (botUsername: string) => formatTelegramBotOpenHint(botUsername, 'guide'),
   noLinkedCommunity:
     'Сообщество ещё не настроено.\n\n' +
     '1) Добавьте бота в группу\n' +

@@ -47,6 +47,9 @@ import {
   TG_VOTE_DEFAULT_COMMENT,
   buildGroupWelcomeMessage,
   buildTelegramMiniAppStartLink,
+  buildTelegramBotOpenKeyboard,
+  TG_BOT_OPEN_BUTTON_LABELS,
+  type TelegramInlineReplyMarkup,
   buildOnboardingDoneMessage,
   buildTelegramHelpMessage,
   getOnboardingPrompt,
@@ -101,6 +104,7 @@ const PENDING_TTL_MS = 15 * 60 * 1000;
 const FUTURE_VISION_MAX_LENGTH = 10000;
 const BOT_CMD_REGEX =
   /^\/(баланс|balance|участники|members|help|справка|settings|настройки|guide|гайд|linkandpin|link)(?:@\w+)?(?:\s+(.*))?$/i;
+const GROUP_START_CMD_REGEX = /^\/start(?:@\w+)?(?:\s|$)/i;
 
 type BotCommandContext = {
   community: Community;
@@ -346,6 +350,15 @@ export class TelegramBotOrchestratorService {
         return;
       }
       await this.provisionLinkedTelegramCommunities(tgUserId, from);
+      if (referal === 'guide') {
+        await this.handleDirectBotCommand(tgUserId, from, 'guide', '', triggerMessageId);
+        return;
+      }
+      if (referal === 'vote') {
+        await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.voteStartAfterOpen });
+        this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
+        return;
+      }
       await this.sendBotEphemeral(tgUserId, await this.helpMessage());
       this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
       return;
@@ -436,6 +449,19 @@ export class TelegramBotOrchestratorService {
     }
 
     const trimmed = trimmedLower;
+    if (GROUP_START_CMD_REGEX.test(text.trim())) {
+      const payload = text.trim().split(/\s+/).slice(1).join(' ').trim();
+      if (!payload || (!payload.includes('auth') && payload !== 'community')) {
+        await this.sendBotEphemeral(
+          chatId,
+          await this.helpMessage(community.id),
+          message.message_id as number,
+        );
+        this.scheduleEphemeralUserMessage(chatId, message.message_id as number);
+      }
+      return;
+    }
+
     const replyTo = message.reply_to_message as
       | { message_id?: number; from?: { id: number; first_name?: string; username?: string } }
       | undefined;
@@ -662,14 +688,22 @@ export class TelegramBotOrchestratorService {
       case 'guide':
       case 'гайд': {
         const sent = await this.sendGuideToUser(tgUserId, community);
-        if (!sent && replyInGroup && message?.message_id) {
+        if (replyInGroup && message?.message_id) {
+          const replyTo = message.message_id as number;
+          if (sent) {
+            await this.sendBotEphemeral(replyChatId, TG_MSG.commandAnswerInDm, replyTo);
+          } else {
+            const botUsername =
+              this.configService.get('bot')?.username?.replace(/^@/, '') ?? 'meriterbot';
+            await this.sendBotOpenHint(replyChatId, botUsername, 'guide', replyTo);
+          }
+        } else if (!sent) {
           const botUsername =
             this.configService.get('bot')?.username?.replace(/^@/, '') ?? 'meriterbot';
-          await this.sendBotEphemeral(
-            replyChatId,
-            TG_MSG.guideDmFailed(botUsername),
-            message.message_id as number,
-          );
+          await this.tgBots.tgSend({
+            tgChatId: tgUserId,
+            text: TG_MSG.guideDmFailed(botUsername),
+          });
         }
         break;
       }
@@ -1640,12 +1674,37 @@ export class TelegramBotOrchestratorService {
     chatId: string,
     text: string,
     replyToMessageId?: number,
+    reply_markup?: TelegramInlineReplyMarkup,
   ): Promise<number | null> {
     return this.tgBots.tgReplyEphemeral({
       chat_id: chatId,
       text,
       reply_to_message_id: replyToMessageId,
+      reply_markup,
     });
+  }
+
+  private async sendBotOpenHint(
+    chatId: string,
+    botUsername: string,
+    purpose: 'guide' | 'vote',
+    replyToMessageId?: number,
+  ): Promise<number | null> {
+    const text =
+      purpose === 'guide'
+        ? TG_MSG.guideDmFailed(botUsername)
+        : TG_MSG.voteAmountDmFailed(botUsername);
+    const startPayload = purpose === 'guide' ? 'guide' : 'vote';
+    const buttonLabel =
+      purpose === 'guide'
+        ? TG_BOT_OPEN_BUTTON_LABELS.guide
+        : TG_BOT_OPEN_BUTTON_LABELS.vote;
+    return this.sendBotEphemeral(
+      chatId,
+      text,
+      replyToMessageId,
+      buildTelegramBotOpenKeyboard(botUsername, startPayload, buttonLabel),
+    );
   }
 
   /** Auto-delete user's bot command after the same TTL as bot replies. */
@@ -1899,10 +1958,12 @@ export class TelegramBotOrchestratorService {
 
     await this.pendingModel.deleteOne({ id: pendingId }).exec();
     const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '') ?? 'meriterbot';
-    await this.tgBots.tgSend({
-      tgChatId: tgUserId,
-      text: TG_MSG.voteAmountDmFailed(botUsername),
-    });
+    await this.sendBotOpenHint(
+      context.groupChatId,
+      botUsername,
+      'vote',
+      context.replyToMessageId,
+    );
   }
 
   private async sendVoteSuccessReport(

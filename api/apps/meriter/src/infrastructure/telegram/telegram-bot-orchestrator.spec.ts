@@ -309,10 +309,10 @@ describe('TelegramBotOrchestrator (integration)', () => {
     expect(scheduleDeleteSpy).toHaveBeenCalledWith(tgChatId, 55);
   });
 
-  it('group /guide sends HTML guide to DM and deletes command in group', async () => {
+  it('group /guide sends guide to DM and replies ephemerally in group', async () => {
     await seedLinkedCommunity();
     const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
-    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(99);
     const scheduleDeleteSpy = jest.spyOn(tgBotsService, 'tgScheduleDeleteMessage');
 
     await webhookController.handleWebhook(botUsername, {
@@ -338,8 +338,106 @@ describe('TelegramBotOrchestrator (integration)', () => {
       }),
     );
     expect(String(sendSpy.mock.calls.at(-1)?.[0]?.text ?? '')).toContain('Гайд по Meriter');
-    expect(ephemeralSpy).not.toHaveBeenCalled();
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chat_id: tgChatId,
+        reply_to_message_id: 56,
+      }),
+    );
+    expect(String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '')).toContain('личку');
     expect(scheduleDeleteSpy).toHaveBeenCalledWith(tgChatId, 56);
+  });
+
+  it('group /guide shows ephemeral hint with open-bot button when DM is unavailable', async () => {
+    await seedLinkedCommunity();
+    jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(false);
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(99);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 15,
+      message: {
+        message_id: 58,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'Irina',
+          last_name: 'Test',
+        },
+        text: '/guide',
+      },
+    } as TelegramTypes.Update);
+
+    expect(String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '')).toContain('@test_bot');
+    expect(ephemeralSpy.mock.calls.at(-1)?.[0]?.reply_markup).toEqual(
+      expect.objectContaining({
+        inline_keyboard: [
+          [
+            expect.objectContaining({
+              text: expect.stringContaining('гайд'),
+              url: 'https://t.me/test_bot?start=guide',
+            }),
+          ],
+        ],
+      }),
+    );
+  });
+
+  it('DM /start guide sends guide after provisioning', async () => {
+    await seedLinkedCommunity();
+    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 17,
+      message: {
+        message_id: 59,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgUserId), type: 'private' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        text: '/start guide',
+      },
+    } as TelegramTypes.Update);
+
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tgChatId: tgUserId,
+        parseMode: 'HTML',
+      }),
+    );
+    expect(String(sendSpy.mock.calls.at(-1)?.[0]?.text ?? '')).toContain('Гайд по Meriter');
+  });
+
+  it('group /start provisions member and sends help in group', async () => {
+    await seedLinkedCommunity();
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+    const scheduleDeleteSpy = jest.spyOn(tgBotsService, 'tgScheduleDeleteMessage');
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 16,
+      message: {
+        message_id: 57,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'Irina',
+          last_name: 'Test',
+        },
+        text: '/start',
+      },
+    } as TelegramTypes.Update);
+
+    expect(ephemeralSpy).toHaveBeenCalled();
+    const sentText = String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '');
+    expect(sentText).toContain('/balance');
+    expect(scheduleDeleteSpy).toHaveBeenCalledWith(tgChatId, 57);
   });
 
   it('DM /баланс (Russian alias) still works', async () => {
@@ -614,16 +712,31 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
   it('message_reaction ❤️ notifies user when group prompt fails', async () => {
     const { messageId } = await seedPublicationWithAnchor(99, { otherAuthor: true });
-    jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(null);
-    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(null);
 
     await webhookController.handleWebhook(
       botUsername,
       messageReactionUpdate('❤️', messageId, 31),
     );
 
-    expect(tgSendSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ tgChatId: tgUserId, text: expect.stringContaining('Start') }),
+    const openHintCall = ephemeralSpy.mock.calls.find(
+      (call) => call[0]?.reply_markup != null,
+    );
+    expect(openHintCall?.[0]).toEqual(
+      expect.objectContaining({
+        chat_id: tgChatId,
+        reply_to_message_id: messageId,
+        text: expect.stringContaining('@test_bot'),
+        reply_markup: expect.objectContaining({
+          inline_keyboard: [
+            [
+              expect.objectContaining({
+                url: 'https://t.me/test_bot?start=vote',
+              }),
+            ],
+          ],
+        }),
+      }),
     );
     expect(await pendingModel.findOne({ telegramUserId: tgUserId }).exec()).toBeNull();
   });
