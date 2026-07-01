@@ -30,3 +30,17 @@ export function telegramChatIdLookupVariants(raw: string): string[] {
 
   return [...variants];
 }
+
+/** Chat ids to use for Telegram API calls when a group migrated (current + stored legacy aliases). */
+export function expandTelegramChatIds(
+  primaryChatId: string,
+  legacyChatIds: readonly string[] = [],
+): string[] {
+  const ids = new Set<string>();
+  for (const raw of [primaryChatId, ...legacyChatIds]) {
+    for (const variant of telegramChatIdLookupVariants(raw)) {
+      ids.add(variant);
+    }
+  }
+  return [...ids];
+}

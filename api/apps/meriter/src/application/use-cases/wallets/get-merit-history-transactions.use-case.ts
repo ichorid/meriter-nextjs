@@ -182,6 +182,7 @@ export class GetMeritHistoryTransactionsUseCase {
         id: tx.id,
         referenceType: tx.referenceType,
         referenceId: tx.referenceId,
+        createdAt: tx.createdAt,
       })),
       {
         db: this.deps.db,

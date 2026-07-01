@@ -14,6 +14,7 @@ export type MeritHistoryEnrichment = {
   eventPublicationId?: string | null;
   telegramChatId?: string;
   telegramMessageId?: number;
+  publicationVoteDirection?: 'up' | 'down';
 };
 
 export type MeritHistoryRowInput = {
@@ -89,9 +90,10 @@ export function formatMeritHistoryLine(row: MeritHistoryRowInput): string {
   if (rt === 'publication_vote') {
     const title = en?.publicationTitle?.trim();
     if (title) {
-      return row.type === 'deposit'
-        ? `Голос за «${title}»`
-        : `Голос против «${title}»`;
+      const voteUp =
+        en?.publicationVoteDirection === 'up' ||
+        (en?.publicationVoteDirection !== 'down' && row.type === 'deposit');
+      return voteUp ? `Голос за «${title}»` : `Голос против «${title}»`;
     }
   }
 

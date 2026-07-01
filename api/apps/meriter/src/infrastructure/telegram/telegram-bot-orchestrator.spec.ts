@@ -924,6 +924,80 @@ describe('TelegramBotOrchestrator (integration)', () => {
     expect(welcomeCall).toBeUndefined();
   });
 
+  it('new_chat_members join sends personalized welcome to group', async () => {
+    await seedLinkedCommunity();
+    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const newMemberTgId = 900997;
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 481,
+      message: {
+        message_id: 481,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG' },
+        new_chat_members: [
+          {
+            id: newMemberTgId,
+            is_bot: false,
+            first_name: 'Anna',
+            last_name: 'Join',
+          },
+        ],
+      },
+    } as TelegramTypes.Update);
+
+    const welcomeCall = sendSpy.mock.calls.find(
+      ([args]) =>
+        args.tgChatId === tgChatId &&
+        String(args.text).includes('Привет, Anna!') &&
+        String(args.text).includes('/start'),
+    );
+    expect(welcomeCall).toBeDefined();
+  });
+
+  it('group /settings syncs Telegram creator to lead before access check', async () => {
+    await seedLinkedCommunity();
+    jest.spyOn(tgBotsService, 'tgFetchChatMember').mockResolvedValue({
+      status: 'creator',
+      user: {
+        id: Number(tgUserId),
+        is_bot: false,
+        first_name: 'TG',
+      },
+    });
+    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 482,
+      message: {
+        message_id: 482,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        text: '/settings',
+      },
+    } as TelegramTypes.Update);
+
+    const leadOnlyCall = sendSpy.mock.calls.find(([args]) =>
+      String(args.text).includes('только лиду сообщества'),
+    );
+    expect(leadOnlyCall).toBeUndefined();
+    expect(sendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tgChatId: tgUserId,
+      }),
+    );
+    expect(String(sendSpy.mock.calls.at(-1)?.[0]?.text ?? '')).toContain('Ежедневная квота');
+    expect(ephemeralSpy).toHaveBeenCalled();
+  });
+
   it('lead can toggle new member welcome from settings keyboard', async () => {
     const { communityId } = await seedLeadCommunity();
     await communityModel.updateOne(

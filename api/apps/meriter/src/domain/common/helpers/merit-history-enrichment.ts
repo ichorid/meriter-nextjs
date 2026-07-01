@@ -25,6 +25,8 @@ export type MeritHistoryEnrichmentPayload = {
   eventPublicationId?: string | null;
   telegramChatId?: string;
   telegramMessageId?: number;
+  /** Voter-side publication_vote rows: debit ≠ downvote (wallet-funded upvotes). */
+  publicationVoteDirection?: 'up' | 'down';
 };
 
 const PUBLICATION_REF_TYPES = new Set<string>([
@@ -153,6 +155,7 @@ export async function enrichMeritHistoryTransactions(
     id: string;
     referenceType?: string | null;
     referenceId?: string | null;
+    createdAt?: Date | string;
   }>,
   deps: {
     db: MeritHistoryMongoDb | undefined;
@@ -176,6 +179,7 @@ export async function enrichMeritHistoryTransactions(
 
   const meritTransferIds: string[] = [];
   const publicationDirectByTx = new Map<string, string>();
+  const publicationVoteByTx = new Map<string, { publicationId: string; createdAt?: Date }>();
   const voteLookupIds: string[] = [];
   const voteVoteByTx = new Map<string, string>();
   const withdrawalVoteByTx = new Map<string, string>();
@@ -189,6 +193,19 @@ export async function enrichMeritHistoryTransactions(
 
     if (rt === 'merit_transfer') {
       meritTransferIds.push(rid);
+      continue;
+    }
+    if (rt === 'publication_vote') {
+      publicationVoteByTx.set(tx.id, {
+        publicationId: rid,
+        createdAt:
+          tx.createdAt instanceof Date
+            ? tx.createdAt
+            : tx.createdAt
+              ? new Date(tx.createdAt)
+              : undefined,
+      });
+      publicationDirectByTx.set(tx.id, rid);
       continue;
     }
     if (PUBLICATION_REF_TYPES.has(rt)) {
@@ -300,6 +317,49 @@ export async function enrichMeritHistoryTransactions(
   const publicationsMap = await loadPublicationsMap(db, publicationIds);
   const telegramAnchorsMap = await loadTelegramAnchorsMap(db, publicationIds);
 
+  const publicationVoteDirectionByTx = new Map<string, 'up' | 'down'>();
+  if (publicationVoteByTx.size > 0) {
+    const pubIdsForVotes = [...new Set([...publicationVoteByTx.values()].map((v) => v.publicationId))];
+    const voterVoteDocs = await db
+      .collection('votes')
+      .find({
+        userId: walletOwnerUserId,
+        targetType: 'publication',
+        targetId: { $in: pubIdsForVotes },
+      })
+      .project({ targetId: 1, direction: 1, createdAt: 1 })
+      .toArray();
+
+    for (const [txId, { publicationId, createdAt }] of publicationVoteByTx) {
+      const candidates = voterVoteDocs.filter(
+        (v) => v?.targetId != null && String(v.targetId) === publicationId,
+      );
+      if (candidates.length === 0) {
+        continue;
+      }
+      let picked = candidates[0] as { direction?: string; createdAt?: Date };
+      if (candidates.length > 1 && createdAt) {
+        const txMs = createdAt.getTime();
+        let bestDiff = Number.POSITIVE_INFINITY;
+        for (const c of candidates) {
+          const voteAt = (c as { createdAt?: Date }).createdAt;
+          if (!voteAt) {
+            continue;
+          }
+          const diff = Math.abs(new Date(voteAt).getTime() - txMs);
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            picked = c as { direction?: string; createdAt?: Date };
+          }
+        }
+      }
+      const dir = picked?.direction === 'down' ? 'down' : picked?.direction === 'up' ? 'up' : undefined;
+      if (dir) {
+        publicationVoteDirectionByTx.set(txId, dir);
+      }
+    }
+  }
+
   const pollIds = [...new Set([...pollDirectByTx.values()])];
   const pollsMap = await loadPollsMap(db, pollIds);
 
@@ -359,7 +419,11 @@ export async function enrichMeritHistoryTransactions(
       ? await batchFetchUsers([...counterpartyIds])
       : new Map<string, unknown>();
 
-  function attachPublication(txId: string, publicationId: string): void {
+  function attachPublication(
+    txId: string,
+    publicationId: string,
+    options?: { publicationVoteDirection?: 'up' | 'down' },
+  ): void {
     const pub = publicationsMap.get(publicationId);
     const cid = pub?.communityId ? String(pub.communityId) : null;
     const anchor = telegramAnchorsMap.get(publicationId);
@@ -389,11 +453,18 @@ export async function enrichMeritHistoryTransactions(
             telegramMessageId: anchor.telegramMessageId,
           }
         : {}),
+      ...(options?.publicationVoteDirection
+        ? { publicationVoteDirection: options.publicationVoteDirection }
+        : {}),
     });
   }
 
   for (const [txId, pid] of publicationDirectByTx) {
-    if (publicationsMap.has(pid)) attachPublication(txId, pid);
+    if (publicationsMap.has(pid)) {
+      attachPublication(txId, pid, {
+        publicationVoteDirection: publicationVoteDirectionByTx.get(txId),
+      });
+    }
   }
 
   for (const [txId, vid] of voteVoteByTx) {

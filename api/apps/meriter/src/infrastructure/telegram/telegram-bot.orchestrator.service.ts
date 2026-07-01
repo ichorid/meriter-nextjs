@@ -105,7 +105,7 @@ import {
   parseVoteAmountReply,
   resolveVoteAmountDirection,
 } from './telegram-vote-amount-parse';
-import { telegramGroupSendNotificationParams } from './telegram-chat-id.util';
+import { telegramChatIdLookupVariants, telegramGroupSendNotificationParams, expandTelegramChatIds } from './telegram-chat-id.util';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -248,7 +248,7 @@ export class TelegramBotOrchestratorService {
       if (existing?.telegramFrozenAt) {
         await this.communityModel.updateOne(
           { id: existing.id },
-          { $set: { telegramFrozenAt: null, updatedAt: new Date() } },
+          { $unset: { telegramFrozenAt: '' }, $set: { updatedAt: new Date() } },
         );
         await this.sendGroupWelcome(chatId, this.buildCommunityUsageInput(existing), existing.id);
         return;
@@ -403,6 +403,11 @@ export class TelegramBotOrchestratorService {
               community,
               String(member.id),
               member as { first_name?: string; last_name?: string; username?: string },
+            );
+            await this.sendNewMemberWelcomeIfEnabled(
+              community,
+              chatId,
+              member as { first_name?: string; last_name?: string },
             );
           }
         }
@@ -848,6 +853,12 @@ export class TelegramBotOrchestratorService {
       }
       case 'settings':
       case 'настройки': {
+        if (replyInGroup) {
+          const tgMember = await this.tgBots.tgFetchChatMember(replyChatId, tgUserId);
+          if (tgMember?.status) {
+            await this.syncTelegramAdminRole(community, tgUserId, tgMember.status);
+          }
+        }
         const role = await this.userCommunityRoleService.getRole(userId, community.id);
         if (role?.role !== 'lead') {
           const leadOnlyText = TG_MSG.settingsLeadOnly;
@@ -1869,8 +1880,52 @@ export class TelegramBotOrchestratorService {
   }
 
   private async findCommunityByChatId(telegramChatId: string): Promise<Community | null> {
-    const doc = await this.communityModel.findOne({ telegramChatId }).lean();
-    return doc as Community | null;
+    const variants = telegramChatIdLookupVariants(telegramChatId);
+    if (variants.length === 0) {
+      return null;
+    }
+    const matches = await this.communityModel
+      .find({
+        $or: [
+          { telegramChatId: { $in: variants } },
+          { 'settings.telegramLegacyChatIds': { $in: variants } },
+        ],
+      })
+      .lean();
+    if (matches.length === 0) {
+      return null;
+    }
+    if (matches.length === 1) {
+      return matches[0] as Community;
+    }
+    const active = matches.filter((doc) => !doc.telegramFrozenAt);
+    const pool = active.length > 0 ? active : matches;
+    pool.sort((a, b) => {
+      const aArchived = /archived duplicate/i.test(a.name ?? '') ? 1 : 0;
+      const bArchived = /archived duplicate/i.test(b.name ?? '') ? 1 : 0;
+      if (aArchived !== bArchived) {
+        return aArchived - bArchived;
+      }
+      return String(b.updatedAt ?? 0).localeCompare(String(a.updatedAt ?? 0));
+    });
+    return pool[0] as Community;
+  }
+
+  private communityLegacyChatIds(community?: Community | null): string[] {
+    const raw = community?.settings?.telegramLegacyChatIds;
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return raw.filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
+  }
+
+  /** Telegram API chat ids for a community (current + migration legacy aliases). */
+  private telegramChatIdsForCommunity(community: Community, incomingChatId?: string): string[] {
+    const legacy = this.communityLegacyChatIds(community);
+    const primary =
+      incomingChatId?.trim() ||
+      (community.telegramChatId ? String(community.telegramChatId) : '');
+    return expandTelegramChatIds(primary, legacy);
   }
 
   async saveAnchor(
@@ -2322,10 +2377,7 @@ export class TelegramBotOrchestratorService {
     recipient?: { credit: string; debit: string; nominator?: string },
   ): Promise<void> {
     const text = TG_MSG.voteSuccess(voterLabel, amount, direction, recipient);
-    const community = await this.communityModel
-      .findOne({ telegramChatId: groupFeedback.groupChatId })
-      .select({ settings: 1 })
-      .lean();
+    const community = await this.findCommunityByChatId(groupFeedback.groupChatId);
     const ephemeral = community?.settings?.telegramVoteSuccessEphemeral !== false;
     if (groupFeedback.replyToMessageId != null) {
       if (ephemeral) {
@@ -3300,10 +3352,18 @@ export class TelegramBotOrchestratorService {
     const groupFeedback =
       hashtagMessageId != null
         ? {
-            groupChatId: community.telegramChatId,
+            groupChatId:
+              panelChatId ??
+              community.telegramChatId ??
+              this.communityLegacyChatIds(community)[0] ??
+              '',
             replyToMessageId: hashtagMessageId,
           }
         : undefined;
+
+    if (groupFeedback && !groupFeedback.groupChatId) {
+      return;
+    }
 
     await this.executeVote(
       voter.id,
@@ -3354,12 +3414,27 @@ export class TelegramBotOrchestratorService {
 
       const recipient = await this.resolveVotePanelRecipient(publicationId);
 
-      await this.tgBots.tgEditMessageText({
-        chat_id: panelAnchor.telegramChatId,
-        message_id: panelAnchor.telegramMessageId,
-        text: buildVotePanelMessageText(recipient, metrics),
-        reply_markup: buildVotePanelKeyboard(publicationId),
-      });
+      const community = await this.communityService.getCommunity(
+        publication.getCommunityId.getValue(),
+      );
+      const chatIds = community
+        ? this.telegramChatIdsForCommunity(community, panelAnchor.telegramChatId)
+        : expandTelegramChatIds(panelAnchor.telegramChatId);
+
+      const panelText = buildVotePanelMessageText(recipient, metrics);
+      const panelKeyboard = buildVotePanelKeyboard(publicationId);
+
+      for (const chatId of chatIds) {
+        const edited = await this.tgBots.tgEditMessageText({
+          chat_id: chatId,
+          message_id: panelAnchor.telegramMessageId,
+          text: panelText,
+          reply_markup: panelKeyboard,
+        });
+        if (edited) {
+          return;
+        }
+      }
     } catch (error) {
       if (
         error instanceof Error &&

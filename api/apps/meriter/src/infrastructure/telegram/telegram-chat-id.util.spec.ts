@@ -1,4 +1,5 @@
 import {
+  expandTelegramChatIds,
   isTelegramGroupChatId,
   telegramChatIdLookupVariants,
   telegramGroupSendNotificationParams,
@@ -35,6 +36,16 @@ describe('telegramChatIdLookupVariants', () => {
   it('adds supergroup prefix for legacy group id', () => {
     expect(telegramChatIdLookupVariants('-1234567890')).toEqual(
       expect.arrayContaining(['-1234567890', '-1001234567890']),
+    );
+  });
+});
+
+describe('expandTelegramChatIds', () => {
+  it('merges primary id, variants, and explicit legacy aliases', () => {
+    expect(
+      expandTelegramChatIds('-1004324573589', ['-5565524009']),
+    ).toEqual(
+      expect.arrayContaining(['-1004324573589', '-4324573589', '-5565524009']),
     );
   });
 });
