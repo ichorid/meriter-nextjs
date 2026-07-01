@@ -74,6 +74,20 @@ export type ResolveTelegramBeneficiaryDeps = {
 const LEGACY_BEN_PATTERN = /\/ben:@?([\w\d]+)/gi;
 const INLINE_DLYA_PATTERN = /(?:^|\s)для\s+@([a-zA-Z0-9_]{1,32})(?:\s*:)?\s*/gi;
 const INLINE_DLYA_PARSE_PATTERN = /(?:^|\s)для\s+@([a-zA-Z0-9_]{1,32})(?::|\s|$)/i;
+const HASHTAG_MENTION_PATTERN = /#[^\s#@]+\s+@([a-zA-Z0-9_]{1,32})/i;
+const HASHTAG_MENTION_STRIP_PATTERN = /(#[^\s#@]+)\s+@[a-zA-Z0-9_]{1,32}\s*/gi;
+
+function isEntityHashtagNomination(messageText: string, entity: TelegramMessageEntity): boolean {
+  const slice = messageText.slice(entity.offset, entity.offset + entity.length);
+  if (entity.type === 'text_mention' && entity.user?.id) {
+    const before = messageText.slice(0, entity.offset);
+    return /#[^\s#@]+\s*$/.test(before);
+  }
+  if (entity.type === 'mention') {
+    return /^@/.test(slice) && /#[^\s#@]+\s*$/.test(messageText.slice(0, entity.offset));
+  }
+  return false;
+}
 
 function isEntityAfterDlya(messageText: string, entityOffset: number): boolean {
   const dlyaIdx = messageText.toLowerCase().indexOf('для');
@@ -87,6 +101,23 @@ function pickTextMentionBeneficiary(
   const candidates = entities.filter((entity) => entity.type === 'text_mention' && entity.user?.id);
   if (candidates.length === 0) {
     return undefined;
+  }
+
+  const hashtagUsername = messageText.match(HASHTAG_MENTION_PATTERN)?.[1]?.toLowerCase();
+  if (hashtagUsername) {
+    const byUsername = candidates.find(
+      (entity) => entity.user?.username?.toLowerCase() === hashtagUsername,
+    );
+    if (byUsername) {
+      return byUsername;
+    }
+  }
+
+  const hashtagNominee = candidates.filter((entity) =>
+    isEntityHashtagNomination(messageText, entity),
+  );
+  if (hashtagNominee.length > 0) {
+    return hashtagNominee.sort((a, b) => a.offset - b.offset)[0];
   }
 
   const dlyaUsername = messageText.match(INLINE_DLYA_PARSE_PATTERN)?.[1]?.toLowerCase();
@@ -129,6 +160,9 @@ function pickMentionBeneficiary(
     if (lowerDlyaUsername && username.toLowerCase() === lowerDlyaUsername) {
       return { kind: 'username', username };
     }
+    if (isEntityHashtagNomination(messageText, entity)) {
+      return { kind: 'username', username };
+    }
     if (isEntityAfterDlya(messageText, entity.offset)) {
       return { kind: 'username', username };
     }
@@ -151,6 +185,7 @@ function buildDisplayName(profile: {
 export function stripInlineBeneficiaryMarkers(messageText: string): string {
   let text = messageText.replace(LEGACY_BEN_PATTERN, ' ');
   text = text.replace(INLINE_DLYA_PATTERN, ' ');
+  text = text.replace(HASHTAG_MENTION_STRIP_PATTERN, '$1 ');
   return text.replace(/\s{2,}/g, ' ').trim();
 }
 
@@ -189,6 +224,11 @@ export function parseInlineBeneficiaryFromMessage(
   const dlya = messageText.match(INLINE_DLYA_PARSE_PATTERN);
   if (dlya) {
     return { kind: 'username', username: dlya[1] };
+  }
+
+  const hashtagMention = messageText.match(HASHTAG_MENTION_PATTERN);
+  if (hashtagMention) {
+    return { kind: 'username', username: hashtagMention[1] };
   }
 
   return null;

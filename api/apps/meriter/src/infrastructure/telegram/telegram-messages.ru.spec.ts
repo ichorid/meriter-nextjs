@@ -219,6 +219,15 @@ describe('telegram group welcome copy', () => {
     expect(
       TG_MSG.voteSuccess('Иван', 5, 'up', { credit: 'Петру', debit: 'Петра' }),
     ).toBe('Иван начислил Петру 5 заслуг.');
+    expect(
+      TG_MSG.voteSuccess('Карнаухова Юлия', 5, 'up', {
+        credit: 'Дмитрий Соснин',
+        debit: 'Дмитрия Соснина',
+        nominator: 'Наталия',
+      }),
+    ).toBe(
+      'Карнаухова Юлия начислил Дмитрий Соснин 5 заслуг (номинация от Наталия).',
+    );
   });
 
   it('vote amount group prompt mentions voter at start', () => {

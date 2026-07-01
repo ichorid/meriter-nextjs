@@ -69,6 +69,24 @@ describe('telegram-beneficiary', () => {
       });
     });
 
+    it('parses #hashtag @username nomination without «для»', () => {
+      const text = '#Заслуга @dmitrsosnin Благодарю Дмитрия';
+      expect(parseInlineBeneficiaryFromMessage(text)).toEqual({
+        kind: 'username',
+        username: 'dmitrsosnin',
+      });
+      expect(stripInlineBeneficiaryMarkers(text)).toBe('#Заслуга Благодарю Дмитрия');
+    });
+
+    it('parses #hashtag @username from mention entity', () => {
+      const text = '#заслуга @ivan помог';
+      const entities = [{ type: 'mention', offset: 9, length: 5 }];
+      expect(parseInlineBeneficiaryFromMessage(text, entities)).toEqual({
+        kind: 'username',
+        username: 'ivan',
+      });
+    });
+
     it('prefers text_mention whose username matches «для @username»', () => {
       const text = '#заслуга для @prokhortseva спасибо';
       const entities = [

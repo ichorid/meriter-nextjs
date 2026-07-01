@@ -555,6 +555,13 @@ export function mapTelegramUserFacingError(message: string): string {
 
 export const TG_VOTE_DEFAULT_COMMENT = 'В Telegram-группе';
 
+export type VoteSuccessRecipient = {
+  credit: string;
+  debit: string;
+  /** Nominator display label when post is a beneficiary nomination. */
+  nominator?: string;
+};
+
 export const TG_MSG = {
   frozenMember:
     'Доступ к заслугам приостановлен — вы не состоите в Telegram-группе. Вернитесь в группу.',
@@ -565,13 +572,16 @@ export const TG_MSG = {
     voterName: string,
     amount: number,
     direction: 'up' | 'down',
-    recipient?: { credit: string; debit: string },
+    recipient?: VoteSuccessRecipient,
   ) => {
     const credit = recipient?.credit ?? 'автору';
     const debit = recipient?.debit ?? 'автора';
+    const nominationSuffix = recipient?.nominator
+      ? ` (номинация от ${recipient.nominator})`
+      : '';
     return direction === 'up'
-      ? `${voterName} начислил ${credit} ${amount} заслуг.`
-      : `${voterName} списал у ${debit} ${amount} заслуг.`;
+      ? `${voterName} начислил ${credit} ${amount} заслуг${nominationSuffix}.`
+      : `${voterName} списал у ${debit} ${amount} заслуг${nominationSuffix}.`;
   },
   voteAmountWrongUser:
     'Эти кнопки — не для вас. Чтобы проголосовать, поставьте ❤️ или 👎 под постом.',

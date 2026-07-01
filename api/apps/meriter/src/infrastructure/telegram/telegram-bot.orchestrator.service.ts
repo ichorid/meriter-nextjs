@@ -1979,9 +1979,33 @@ export class TelegramBotOrchestratorService {
     return resolvePublicationVoteBlockReason(authorId, beneficiaryId, voterId);
   }
 
+  private memberLabelFromUser(
+    user: {
+      displayName?: string;
+      username?: string;
+      firstName?: string;
+      lastName?: string;
+    } | null | undefined,
+    userId: string,
+    fallback: string,
+  ): string {
+    if (!user) {
+      return fallback;
+    }
+    return formatTelegramMemberLabel(
+      {
+        displayName: user.displayName,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+      userId,
+    );
+  }
+
   private async resolveVoteRecipientLabels(
     publicationId: string,
-  ): Promise<{ credit: string; debit: string }> {
+  ): Promise<{ credit: string; debit: string; nominator?: string }> {
     const publication = await this.publicationService.getPublication(publicationId);
     if (!publication) {
       return { credit: 'автору', debit: 'автора' };
@@ -1991,14 +2015,19 @@ export class TelegramBotOrchestratorService {
     if (beneficiaryId === authorId) {
       return { credit: 'автору', debit: 'автора' };
     }
-    const user = await this.userService.getUserById(beneficiaryId);
-    const name = user
-      ? formatTelegramMemberLabel(
-          { displayName: user.displayName, username: user.username },
-          beneficiaryId,
-        )
-      : 'получателю';
-    return { credit: name, debit: name };
+    const beneficiaryUser = await this.userService.getUserById(beneficiaryId);
+    const beneficiaryLabel = this.memberLabelFromUser(
+      beneficiaryUser,
+      beneficiaryId,
+      'получателю',
+    );
+    const authorUser = await this.userService.getUserById(authorId);
+    const nominatorLabel = this.memberLabelFromUser(authorUser, authorId, 'автора');
+    return {
+      credit: beneficiaryLabel,
+      debit: beneficiaryLabel,
+      nominator: nominatorLabel,
+    };
   }
 
   private async promptVoteAmount(
@@ -2121,7 +2150,7 @@ export class TelegramBotOrchestratorService {
     voterLabel: string,
     amount: number,
     direction: 'up' | 'down',
-    recipient?: { credit: string; debit: string },
+    recipient?: { credit: string; debit: string; nominator?: string },
   ): Promise<void> {
     const text = TG_MSG.voteSuccess(voterLabel, amount, direction, recipient);
     const community = await this.communityModel
@@ -2971,22 +3000,16 @@ export class TelegramBotOrchestratorService {
     const authorId = publication.getAuthorId.getValue();
     const beneficiaryId = publication.getBeneficiaryId?.getValue() ?? authorId;
     const beneficiaryUser = await this.userService.getUserById(beneficiaryId);
-    const beneficiaryDisplay = beneficiaryUser
-      ? formatTelegramMemberLabel(
-          { displayName: beneficiaryUser.displayName, username: beneficiaryUser.username },
-          beneficiaryId,
-        )
-      : 'получателю';
+    const beneficiaryDisplay = this.memberLabelFromUser(
+      beneficiaryUser,
+      beneficiaryId,
+      'получателю',
+    );
     if (beneficiaryId === authorId) {
       return { displayName: beneficiaryDisplay, isNomination: false };
     }
     const authorUser = await this.userService.getUserById(authorId);
-    const nominatorDisplay = authorUser
-      ? formatTelegramMemberLabel(
-          { displayName: authorUser.displayName, username: authorUser.username },
-          authorId,
-        )
-      : 'автор';
+    const nominatorDisplay = this.memberLabelFromUser(authorUser, authorId, 'автор');
     return {
       displayName: beneficiaryDisplay,
       isNomination: true,
