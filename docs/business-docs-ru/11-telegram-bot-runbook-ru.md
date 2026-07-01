@@ -388,8 +388,38 @@ Cutover на `meriter.pro` — только после **`mongodump`** с dev VP
 
 ### Repair (ops)
 
-Скрипт `api/scripts/repair-telegram-chat-id.ts --dry-run` (фаза 4) — аудит anchors vs `telegramChatId`. Ручные скрипты для инцидента — локально в `backups/` (не в git).
+Скрипт `api/scripts/repair-telegram-chat-id.ts` (фаза 4):
+
+```bash
+pnpm --filter @meriter/api repair:telegram-chat-id              # аудит (--dry-run по умолчанию)
+pnpm --filter @meriter/api repair:telegram-chat-id:apply        # переписать anchor.telegramChatId → текущий chat id
+pnpm exec ts-node scripts/repair-telegram-chat-id.ts --community-id=<id> --dry-run
+```
+
+Логи/метрики в API (structured `Logger`):
+
+| Сигнал | Когда |
+|--------|--------|
+| `telegram.migration.applied` | Auto-handler применил migration / idempotent repeat |
+| `telegram.community.duplicate_chat_match` | Re-add heuristic или repair-скрипт нашёл дубликаты |
+| `telegram.anchor.chat_mismatch` | Anchor lookup: chat id в webhook ≠ сохранённый anchor (decoupled lookup всё равно находит по `communityId`) |
+
+Ручные скрипты для инцидента — локально в `backups/` (не в git).
 
 ### Merge duplicate community (если уже создан)
 
-**Осторожно:** memberships, wallets, publications. Отдельная процедура — только после бэкапа Mongo. Предпочтительно: archive duplicate (`name` + `(archived duplicate)`), перенести `telegramChatId` + legacy ids на канонический, `$unset telegramFrozenAt` на каноническом.
+**Осторожно:** memberships, wallets, publications. Только после бэкапа Mongo.
+
+1. **Определить канонический** community (active, без `(archived duplicate)` в имени, свежий `updatedAt`, нет `telegramFrozenAt` или его снимут после merge).
+2. **Archive duplicate:** `$set: { name: '<old name> (archived duplicate)', telegramFrozenAt: new Date() }` на дубликате; **не** удалять документ сразу.
+3. **Перенести привязку Telegram на канонический:**
+   - `$set: { telegramChatId: '<current supergroup id>' }`
+   - `$addToSet: { 'settings.telegramLegacyChatIds': '<legacy id>' }` для всех известных старых id
+   - `$unset: { telegramFrozenAt: '' }` на каноническом
+4. **Anchors:** `db.telegram_publication_anchors.updateMany({ communityId: '<duplicateId>' }, { $set: { communityId: '<canonicalId>' } })` — только если публикации уже перенесены или дубликат пустой; иначе merge publications отдельно.
+5. **Memberships / roles:** для каждого `userId` в duplicate — `$addToSet` members, upsert `user_community_roles` на канонический id; **не** сливать wallets автоматически (разные `communityId` → разные кошельки; перенос merits — отдельное решение продукта).
+6. **Wallets:** перенос баланса duplicate → canonical только по явному ops-решению (ручной `$inc` / script); по умолчанию оставить frozen duplicate wallet как read-only audit trail.
+7. **Publications:** если duplicate успел создать посты — перенос `communityId` на canonical или soft-delete duplicate posts; проверить `telegram_publication_anchors`.
+8. **Проверка:** `repair-telegram-chat-id --community-id=<canonical>` → 0 mismatches; mini-app auth по новому chat id; голос reaction/panel smoke test.
+
+Предпочтительно: archive duplicate, перенести `telegramChatId` + legacy ids на канонический, `$unset telegramFrozenAt` на каноническом — **до** merge memberships/wallets.

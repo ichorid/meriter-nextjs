@@ -1,6 +1,6 @@
 {
   "name": "@meriter/api",
-  "version": "0.66.1",
+  "version": "0.66.2",
   "description": "",
   "author": "",
   "private": true,
@@ -10,6 +10,8 @@
     "build": "nest build",
     "migrate:comment-mode": "ts-node scripts/migrate-comment-mode.ts",
     "migrate:comment-mode:dry": "ts-node scripts/migrate-comment-mode.ts --dry-run",
+    "repair:telegram-chat-id": "ts-node scripts/repair-telegram-chat-id.ts --dry-run",
+    "repair:telegram-chat-id:apply": "ts-node scripts/repair-telegram-chat-id.ts --apply",
     "migrate:collaborative-documents": "ts-node scripts/migrate-collaborative-documents.ts",
     "migrate:collaborative-documents:dry": "ts-node scripts/migrate-collaborative-documents.ts --dry-run",
     "migrate:global-merit": "ts-node scripts/migrate-to-global-merit.ts",

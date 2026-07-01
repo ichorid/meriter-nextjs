@@ -31,6 +31,10 @@ import {
   TelegramPublicationAnchorDocument,
 } from '../../domain/models/telegram/telegram-publication-anchor.schema';
 import {
+  TelegramChatMemberDirectorySchemaClass,
+  TelegramChatMemberDirectoryDocument,
+} from '../../domain/models/telegram/telegram-chat-member-directory.schema';
+import {
   TelegramBotPendingActionSchemaClass,
   TelegramBotPendingActionDocument,
   type TelegramBotPendingActionType,
@@ -109,7 +113,7 @@ import {
   parseVoteAmountReply,
   resolveVoteAmountDirection,
 } from './telegram-vote-amount-parse';
-import { telegramChatIdLookupVariants, telegramGroupSendNotificationParams, buildTelegramSupergroupChatLink } from './telegram-chat-id.util';
+import { telegramChatIdLookupVariants, expandTelegramChatIds, telegramGroupSendNotificationParams, buildTelegramSupergroupChatLink } from './telegram-chat-id.util';
 import { TelegramCommunityChatResolver } from './telegram-community-chat.resolver';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -198,6 +202,8 @@ export class TelegramBotOrchestratorService {
     private readonly userModel: Model<UserDocument>,
     @InjectModel(TelegramPublicationAnchorSchemaClass.name)
     private readonly anchorModel: Model<TelegramPublicationAnchorDocument>,
+    @InjectModel(TelegramChatMemberDirectorySchemaClass.name)
+    private readonly chatMemberDirectoryModel: Model<TelegramChatMemberDirectoryDocument>,
     @InjectModel(TelegramBotPendingActionSchemaClass.name)
     private readonly pendingModel: Model<TelegramBotPendingActionDocument>,
     private readonly chatResolver: TelegramCommunityChatResolver,
@@ -274,6 +280,15 @@ export class TelegramBotOrchestratorService {
         await this.sendGroupWelcome(chatId, this.buildCommunityUsageInput(existing), existing.id);
         return;
       }
+      const relinked = await this.tryRelinkFrozenCommunityOnBotReadd(
+        chatId,
+        String(from.id),
+        chat.title,
+      );
+      if (relinked) {
+        await this.sendGroupWelcome(chatId, this.buildCommunityUsageInput(relinked), relinked.id);
+        return;
+      }
       await this.startOnboarding(chatId, String(from.id), chat.title);
     }
   }
@@ -348,16 +363,27 @@ export class TelegramBotOrchestratorService {
   }
 
   private async handleMessage(message: Record<string, unknown>): Promise<void> {
-    const from = message.from as { id: number; first_name?: string; last_name?: string; username?: string };
     const chat = message.chat as { id: number; type?: string; title?: string };
-    const text = (message.text as string | undefined) ?? (message.caption as string | undefined);
-    const connectedWebsite = message.connected_website;
-
-    if (connectedWebsite || !chat) {
+    if (!chat) {
       return;
     }
 
     const chatId = String(chat.id);
+    const migrateTo = message.migrate_to_chat_id as number | undefined;
+    const migrateFrom = message.migrate_from_chat_id as number | undefined;
+    if (migrateTo != null || migrateFrom != null) {
+      await this.handleChatMigrationEvent(chatId, migrateTo, migrateFrom);
+      return;
+    }
+
+    const from = message.from as { id: number; first_name?: string; last_name?: string; username?: string };
+    const text = (message.text as string | undefined) ?? (message.caption as string | undefined);
+    const connectedWebsite = message.connected_website;
+
+    if (connectedWebsite) {
+      return;
+    }
+
     await this.indexTelegramMessageMembers(message, chatId);
 
     if (!from || !text) {
@@ -503,6 +529,10 @@ export class TelegramBotOrchestratorService {
       const joinCommunityId = parseMemberJoinStartPayload(referal);
       if (joinCommunityId) {
         await this.handleMemberJoinDeepLink(tgUserId, from, joinCommunityId, triggerMessageId);
+        return;
+      }
+      if (referal.startsWith('relink:')) {
+        await this.handleRelinkStart(tgUserId, from, referal.slice('relink:'.length).trim());
         return;
       }
       if (referal === 'guide') {
@@ -1057,9 +1087,11 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
-    const anchor = await this.anchorModel
-      .findOne({ telegramChatId: chatId, telegramMessageId: messageId })
-      .lean();
+    const anchor = await this.resolvePublicationAnchor({
+      communityId: community.id,
+      telegramMessageId: messageId,
+      hintChatId: chatId,
+    });
     if (!anchor) {
       this.logger.warn('message_reaction: no publication anchor', { chatId, messageId });
       if (community.settings?.telegramReactionNoHashtagHintEnabled !== false) {
@@ -1528,6 +1560,21 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
+    const frozenLeadMismatch = await this.findFrozenLeadCommunityChatMismatch(
+      initiator.id,
+      payload.telegramChatId,
+    );
+    if (frozenLeadMismatch) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: TG_MSG.onboardingRelinkFrozenLead(
+          frozenLeadMismatch.name,
+          frozenLeadMismatch.id,
+        ),
+      });
+      return;
+    }
+
     const createSettings: NonNullable<Parameters<CommunityService['createCommunity']>[0]['settings']> = {
       currencyNames: { singular: 'заслуга', plural: 'заслуги', genitive: 'заслуг' },
       dailyEmission: payload.quotaEnabled ? (payload.dailyEmission ?? 5) : 0,
@@ -1912,6 +1959,323 @@ export class TelegramBotOrchestratorService {
 
   private async findCommunityByChatId(telegramChatId: string): Promise<Community | null> {
     return this.chatResolver.resolveByIncomingChatId(telegramChatId);
+  }
+
+  private async handleChatMigrationEvent(
+    eventChatId: string,
+    migrateTo?: number,
+    migrateFrom?: number,
+  ): Promise<void> {
+    let fromChatId: string;
+    let toChatId: string;
+    if (migrateTo != null && migrateFrom != null) {
+      fromChatId = String(migrateFrom);
+      toChatId = String(migrateTo);
+    } else if (migrateTo != null) {
+      fromChatId = eventChatId;
+      toChatId = String(migrateTo);
+    } else if (migrateFrom != null) {
+      fromChatId = String(migrateFrom);
+      toChatId = eventChatId;
+    } else {
+      return;
+    }
+
+    if (fromChatId === toChatId) {
+      return;
+    }
+
+    const community = await this.findCommunityByChatId(fromChatId);
+    if (!community?.id) {
+      this.logger.warn('telegram.migration.skipped: community not found', {
+        fromChatId,
+        toChatId,
+      });
+      return;
+    }
+
+    if (String(community.telegramChatId) === toChatId) {
+      await this.communityModel.updateOne(
+        { id: community.id },
+        {
+          $addToSet: { 'settings.telegramLegacyChatIds': fromChatId },
+          $set: { updatedAt: new Date() },
+        },
+      );
+      this.logger.log('telegram.migration.applied', {
+        communityId: community.id,
+        fromChatId,
+        toChatId,
+        idempotent: true,
+      });
+      return;
+    }
+
+    await this.applyTelegramChatMigration(fromChatId, toChatId, community.id);
+  }
+
+  private async applyTelegramChatMigration(
+    fromChatId: string,
+    toChatId: string,
+    communityId: string,
+    options?: { unfrozen?: boolean },
+  ): Promise<void> {
+    const now = new Date();
+    const updateOps: Record<string, unknown> = {
+      $set: {
+        telegramChatId: toChatId,
+        updatedAt: now,
+      },
+      $addToSet: { 'settings.telegramLegacyChatIds': fromChatId },
+    };
+    if (options?.unfrozen) {
+      updateOps.$unset = { telegramFrozenAt: '' };
+    }
+    await this.communityModel.updateOne({ id: communityId }, updateOps);
+
+    const fromVariants = telegramChatIdLookupVariants(fromChatId);
+    await this.anchorModel.updateMany(
+      { communityId, telegramChatId: { $in: fromVariants } },
+      { $set: { telegramChatId: toChatId, updatedAt: now } },
+    );
+    await this.chatMemberDirectoryModel.updateMany(
+      { telegramChatId: { $in: fromVariants } },
+      { $set: { telegramChatId: toChatId, updatedAt: now } },
+    );
+
+    this.logger.log('telegram.migration.applied', {
+      communityId,
+      fromChatId,
+      toChatId,
+      unfrozen: options?.unfrozen === true,
+    });
+  }
+
+  private async tryRelinkFrozenCommunityOnBotReadd(
+    chatId: string,
+    initiatorTgId: string,
+    chatTitle?: string,
+  ): Promise<Community | null> {
+    const chatVariants = telegramChatIdLookupVariants(chatId);
+    const titlePattern = chatTitle?.trim()
+      ? new RegExp(`^${chatTitle.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i')
+      : null;
+
+    const candidates = await this.communityModel
+      .find({
+        telegramFrozenAt: { $exists: true, $ne: null },
+        telegramChatId: { $exists: true, $nin: [null, ''] },
+        $or: [
+          { telegramChatId: { $in: chatVariants } },
+          { 'settings.telegramLegacyChatIds': { $in: chatVariants } },
+          ...(titlePattern ? [{ name: titlePattern }] : []),
+        ],
+      })
+      .lean();
+
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    const initiator = await this.userService.getUserByAuthId('telegram', initiatorTgId);
+
+    for (const doc of candidates) {
+      const community = doc as Community;
+      const storedVariants = telegramChatIdLookupVariants(String(community.telegramChatId));
+      const legacyIds = this.communityLegacyChatIds(community);
+      const matchesChatId =
+        chatVariants.some((variant) => storedVariants.includes(variant)) ||
+        chatVariants.some((variant) =>
+          legacyIds.some((legacyId) =>
+            telegramChatIdLookupVariants(legacyId).includes(variant),
+          ),
+        );
+
+      const titleMatch =
+        Boolean(titlePattern) &&
+        Boolean(community.name?.trim()) &&
+        titlePattern!.test(community.name.trim());
+
+      if (!matchesChatId && !titleMatch) {
+        continue;
+      }
+
+      if (titleMatch && !matchesChatId) {
+        if (!initiator) {
+          continue;
+        }
+        const role = await this.userCommunityRoleService.getRole(initiator.id, community.id);
+        if (role?.role !== 'lead') {
+          continue;
+        }
+        this.logger.warn('telegram.community.duplicate_chat_match', {
+          communityId: community.id,
+          chatId,
+          initiatorTgId,
+          reason: 'frozen_title_lead_relink',
+        });
+      }
+
+      await this.applyTelegramChatMigration(String(community.telegramChatId), chatId, community.id, {
+        unfrozen: true,
+      });
+      return (await this.communityService.getCommunity(community.id)) ?? null;
+    }
+
+    return null;
+  }
+
+  private async findFrozenLeadCommunityChatMismatch(
+    userId: string,
+    onboardingChatId?: string,
+  ): Promise<{ id: string; name: string } | null> {
+    const trimmedChatId = onboardingChatId?.trim();
+    if (!trimmedChatId) {
+      return null;
+    }
+
+    const leadCommunityIds = await this.rolePersistence.findActiveCommunitiesByUserAndRole(
+      userId,
+      'lead',
+    );
+    if (leadCommunityIds.length === 0) {
+      return null;
+    }
+
+    const onboardingVariants = telegramChatIdLookupVariants(trimmedChatId);
+    const communities = await this.communityModel
+      .find({
+        id: { $in: leadCommunityIds },
+        telegramChatId: { $exists: true, $nin: [null, ''] },
+        telegramFrozenAt: { $exists: true, $ne: null },
+      })
+      .lean();
+
+    for (const doc of communities) {
+      const community = doc as Community;
+      const currentVariants = telegramChatIdLookupVariants(String(community.telegramChatId));
+      const legacyIds = this.communityLegacyChatIds(community);
+      const alreadyMatches =
+        onboardingVariants.some((variant) => currentVariants.includes(variant)) ||
+        onboardingVariants.some((variant) =>
+          legacyIds.some((legacyId) =>
+            telegramChatIdLookupVariants(legacyId).includes(variant),
+          ),
+        );
+      if (!alreadyMatches) {
+        return { id: community.id, name: community.name ?? 'сообщество' };
+      }
+    }
+
+    return null;
+  }
+
+  private async handleRelinkStart(
+    tgUserId: string,
+    from: { first_name?: string; last_name?: string; username?: string },
+    communityId: string,
+  ): Promise<void> {
+    const trimmedCommunityId = communityId.trim();
+    if (!trimmedCommunityId) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.relinkCommunityNotAllowed });
+      return;
+    }
+
+    const community = await this.communityService.getCommunity(trimmedCommunityId);
+    if (!community?.telegramChatId || !community.telegramFrozenAt) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.relinkCommunityNotAllowed });
+      return;
+    }
+
+    const user = await this.ensureTelegramUser(tgUserId, from);
+    const role = await this.userCommunityRoleService.getRole(user.id, trimmedCommunityId);
+    if (role?.role !== 'lead') {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.relinkCommunityNotAllowed });
+      return;
+    }
+
+    const pending = await this.pendingModel
+      .findOne({
+        telegramUserId: tgUserId,
+        action: { $regex: /^onboarding_/ },
+        expiresAt: { $gt: new Date() },
+      })
+      .sort({ createdAt: -1 })
+      .lean();
+    const targetChatId = (pending?.payload as OnboardingPayload | undefined)?.telegramChatId?.trim();
+    if (!targetChatId) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: TG_MSG.relinkCommunityNeedGroup(community.name ?? 'сообщество'),
+      });
+      return;
+    }
+
+    const chatMember = await this.tgBots.tgFetchChatMember(targetChatId, tgUserId);
+    if (
+      !chatMember?.status ||
+      chatMember.status === 'left' ||
+      chatMember.status === 'kicked'
+    ) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.relinkCommunityNotAllowed });
+      return;
+    }
+
+    await this.applyTelegramChatMigration(
+      String(community.telegramChatId),
+      targetChatId,
+      trimmedCommunityId,
+      { unfrozen: true },
+    );
+    await this.clearPending(tgUserId);
+    await this.tgBots.tgSend({
+      tgChatId: tgUserId,
+      text: TG_MSG.relinkCommunitySuccess(community.name ?? 'сообщество'),
+    });
+  }
+
+  private async resolvePublicationAnchor(params: {
+    communityId: string;
+    telegramMessageId: number;
+    hintChatId?: string;
+  }): Promise<(TelegramPublicationAnchorDocument & { _id?: unknown }) | null> {
+    const { communityId, telegramMessageId, hintChatId } = params;
+
+    const byCommunity = await this.anchorModel
+      .findOne({ communityId, telegramMessageId })
+      .lean();
+    if (byCommunity) {
+      const hint = hintChatId?.trim();
+      if (
+        hint &&
+        byCommunity.telegramChatId !== hint &&
+        !telegramChatIdLookupVariants(hint).includes(byCommunity.telegramChatId)
+      ) {
+        this.logger.warn('telegram.anchor.chat_mismatch', {
+          communityId,
+          telegramMessageId,
+          hintChatId: hint,
+          anchorChatId: byCommunity.telegramChatId,
+        });
+      }
+      return byCommunity as TelegramPublicationAnchorDocument;
+    }
+
+    const hint = hintChatId?.trim();
+    if (!hint) {
+      return null;
+    }
+
+    for (const variant of telegramChatIdLookupVariants(hint)) {
+      const byChat = await this.anchorModel
+        .findOne({ telegramChatId: variant, telegramMessageId })
+        .lean();
+      if (byChat) {
+        return byChat as TelegramPublicationAnchorDocument;
+      }
+    }
+
+    return null;
   }
 
   private communityLegacyChatIds(community?: Community | null): string[] {
@@ -2729,9 +3093,11 @@ export class TelegramBotOrchestratorService {
     if (!chatId) {
       return;
     }
-    const anchor = await this.anchorModel
-      .findOne({ telegramChatId: chatId, telegramMessageId: replyMessageId })
-      .lean();
+    const anchor = await this.resolvePublicationAnchor({
+      communityId: community.id,
+      telegramMessageId: replyMessageId,
+      hintChatId: chatId,
+    });
     if (!anchor) {
       await this.tgBots.tgReplyEphemeral({
         chat_id: chatId,

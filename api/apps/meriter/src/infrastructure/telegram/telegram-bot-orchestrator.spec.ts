@@ -36,6 +36,10 @@ import {
   PublicationSchemaClass,
   PublicationDocument,
 } from '../../domain/models/publication/publication.schema';
+import {
+  TelegramChatMemberDirectorySchemaClass,
+  TelegramChatMemberDirectoryDocument,
+} from '../../domain/models/telegram/telegram-chat-member-directory.schema';
 import { TelegramInfrastructureModule } from './telegram.module';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramBotOrchestratorService } from './telegram-bot.orchestrator.service';
@@ -57,8 +61,11 @@ describe('TelegramBotOrchestrator (integration)', () => {
   let anchorModel: Model<TelegramPublicationAnchorDocument>;
   let publicationModel: Model<PublicationDocument>;
   let identityModel: Model<UserAuthIdentityDocument>;
+  let chatMemberDirectoryModel: Model<TelegramChatMemberDirectoryDocument>;
 
   const tgChatId = '-1009876543210';
+  const legacyGroupChatId = '-5565524009';
+  const migratedSupergroupChatId = '-1004324573589';
   const tgUserId = '900002';
   const botUsername = 'test_bot';
 
@@ -100,6 +107,9 @@ describe('TelegramBotOrchestrator (integration)', () => {
     anchorModel = moduleRef.get(getModelToken(TelegramPublicationAnchorSchemaClass.name));
     publicationModel = moduleRef.get(getModelToken(PublicationSchemaClass.name));
     identityModel = moduleRef.get(getModelToken(UserAuthIdentitySchemaClass.name));
+    chatMemberDirectoryModel = moduleRef.get(
+      getModelToken(TelegramChatMemberDirectorySchemaClass.name),
+    );
   });
 
   afterAll(async () => {
@@ -112,6 +122,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
     await anchorModel.deleteMany({});
     await publicationModel.deleteMany({});
     await identityModel.deleteMany({});
+    await chatMemberDirectoryModel.deleteMany({});
     await userCommunityRoleModel.deleteMany({});
     await communityModel.deleteMany({});
     await userModel.deleteMany({});
@@ -1675,7 +1686,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
   it('vote panel +1 success report sends without thread when all reply targets fail', async () => {
     const legacyChatId = '-5565524009';
-    const { communityId, publicationId, messageId } = await seedPublicationWithAnchor(136, {
+    const { communityId, publicationId } = await seedPublicationWithAnchor(136, {
       otherAuthor: true,
     });
     await communityModel.updateOne(
@@ -2037,5 +2048,305 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
     const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
     expect((pending?.payload as { promptMessageId?: number }).promptMessageId).toBe(1502);
+  });
+
+  async function seedLegacyLinkedCommunity(options?: {
+    chatId?: string;
+    name?: string;
+    frozen?: boolean;
+  }) {
+    const now = new Date();
+    const communityId = uid();
+    const userId = uid();
+    const chatId = options?.chatId ?? legacyGroupChatId;
+
+    await userModel.create({
+      id: userId,
+      authProvider: 'telegram',
+      authId: tgUserId,
+      displayName: 'TG Lead',
+      username: 'tg_lead',
+      communityMemberships: [communityId],
+      communityTags: [],
+      profile: {},
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await communityModel.create({
+      id: communityId,
+      name: options?.name ?? 'Ruslan Team',
+      telegramChatId: chatId,
+      ...(options?.frozen ? { telegramFrozenAt: now } : {}),
+      members: [userId],
+      settings: {
+        currencyNames: { singular: 'заслуга', plural: 'заслуги', genitive: 'заслуг' },
+        dailyEmission: 5,
+        postCost: 0,
+      },
+      hashtags: ['заслуга'],
+      hashtagDescriptions: {},
+      isActive: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await userCommunityRoleModel.create({
+      id: uid(),
+      userId,
+      communityId,
+      role: 'lead',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { communityId, userId, chatId };
+  }
+
+  function migrationMessageUpdate(
+    fromChatId: string,
+    toChatId: number,
+    updateId: number,
+  ): TelegramTypes.Update {
+    return {
+      update_id: updateId,
+      message: {
+        message_id: updateId,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(fromChatId), type: 'group', title: 'Ruslan Team' },
+        migrate_to_chat_id: Number(toChatId),
+      },
+    } as TelegramTypes.Update;
+  }
+
+  function botReaddedUpdate(chatId: string, updateId: number): TelegramTypes.Update {
+    return {
+      update_id: updateId,
+      my_chat_member: {
+        chat: { id: Number(chatId), type: 'supergroup', title: 'Ruslan Team' },
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG', last_name: 'Lead' },
+        date: Math.floor(Date.now() / 1000),
+        old_chat_member: { user: { id: 1, is_bot: true, first_name: 'Meriter' }, status: 'left' },
+        new_chat_member: { user: { id: 1, is_bot: true, first_name: 'Meriter' }, status: 'member' },
+      },
+    } as TelegramTypes.Update;
+  }
+
+  it('migrate_to_chat_id moves community, legacy ids, anchors, and member directory', async () => {
+    const { communityId } = await seedLegacyLinkedCommunity();
+    const now = new Date();
+    const publicationId = uid();
+    const messageId = 42;
+
+    await publicationModel.create({
+      id: publicationId,
+      authorId: uid(),
+      communityId,
+      content: '#заслуга legacy post',
+      type: 'text',
+      hashtags: ['заслуга'],
+      postType: 'basic',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await anchorModel.create({
+      id: uid(),
+      communityId,
+      telegramChatId: legacyGroupChatId,
+      telegramMessageId: messageId,
+      publicationId,
+      anchorType: 'hashtag',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await chatMemberDirectoryModel.create({
+      id: uid(),
+      telegramChatId: legacyGroupChatId,
+      telegramUserId: tgUserId,
+      lastSeenAt: now,
+      lastSource: 'message',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await webhookController.handleWebhook(
+      botUsername,
+      migrationMessageUpdate(legacyGroupChatId, Number(migratedSupergroupChatId), 9001),
+    );
+
+    const community = await communityModel.findOne({ id: communityId }).lean();
+    expect(community?.telegramChatId).toBe(migratedSupergroupChatId);
+    expect(community?.settings?.telegramLegacyChatIds).toEqual(
+      expect.arrayContaining([legacyGroupChatId]),
+    );
+
+    const anchor = await anchorModel.findOne({ publicationId }).lean();
+    expect(anchor?.telegramChatId).toBe(migratedSupergroupChatId);
+
+    const directory = await chatMemberDirectoryModel
+      .findOne({ telegramUserId: tgUserId })
+      .lean();
+    expect(directory?.telegramChatId).toBe(migratedSupergroupChatId);
+  });
+
+  it('migrate_to_chat_id is idempotent on repeat', async () => {
+    const { communityId } = await seedLegacyLinkedCommunity();
+    const payload = migrationMessageUpdate(
+      legacyGroupChatId,
+      Number(migratedSupergroupChatId),
+      9002,
+    );
+
+    await webhookController.handleWebhook(botUsername, payload);
+    await webhookController.handleWebhook(botUsername, payload);
+
+    const community = await communityModel.findOne({ id: communityId }).lean();
+    expect(community?.telegramChatId).toBe(migratedSupergroupChatId);
+    expect(community?.settings?.telegramLegacyChatIds?.filter((id) => id === legacyGroupChatId))
+      .toHaveLength(1);
+  });
+
+  it('bot re-added to supergroup relinks frozen community instead of starting onboarding', async () => {
+    await seedLegacyLinkedCommunity({ frozen: true, name: 'Ruslan Team' });
+    jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    jest.spyOn(tgBotsService, 'tgSendMessage').mockResolvedValue(100);
+    jest.spyOn(tgBotsService, 'tgPinChatMessage').mockResolvedValue(true);
+    jest.spyOn(tgBotsService, 'syncTelegramChatAdministrators').mockResolvedValue(undefined);
+
+    await webhookController.handleWebhook(
+      botUsername,
+      botReaddedUpdate(migratedSupergroupChatId, 9003),
+    );
+
+    const communities = await communityModel.find({ name: 'Ruslan Team' }).lean();
+    expect(communities).toHaveLength(1);
+    expect(communities[0]?.telegramChatId).toBe(migratedSupergroupChatId);
+    expect(communities[0]?.telegramFrozenAt).toBeUndefined();
+    expect(communities[0]?.settings?.telegramLegacyChatIds).toEqual(
+      expect.arrayContaining([legacyGroupChatId]),
+    );
+
+    const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
+    expect(pending).toBeNull();
+  });
+
+  it('finishOnboarding blocked when lead has frozen community with different chat id', async () => {
+    await seedLegacyLinkedCommunity({ frozen: true, name: 'Frozen Lead Community' });
+    const now = new Date();
+    await pendingModel.create({
+      id: uid(),
+      telegramUserId: tgUserId,
+      action: 'onboarding_command_delivery',
+      payload: {
+        telegramChatId: migratedSupergroupChatId,
+        name: 'Duplicate Community',
+        platformIntegration: false,
+        quotaEnabled: false,
+        hashtag: 'заслуга',
+        postCost: 0,
+        welcomeMerits: 0,
+        votePanelEnabled: false,
+      },
+      expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const beforeCount = await communityModel.countDocuments({});
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 9004,
+      callback_query: {
+        id: 'cb-onboard-relink-block',
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG' },
+        message: {
+          message_id: 1,
+          chat: { id: Number(tgUserId), type: 'private' },
+        },
+        chat_instance: '1',
+        data: 'onboard:cmd_del:dm',
+      },
+    } as TelegramTypes.Update);
+
+    expect(await communityModel.countDocuments({})).toBe(beforeCount);
+    expect(tgSendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tgChatId: tgUserId,
+        text: expect.stringContaining('Frozen Lead Community'),
+      }),
+    );
+  });
+
+  it('message_reaction finds anchor by communityId when stored chat id differs', async () => {
+    const { communityId } = await seedLegacyLinkedCommunity({
+      chatId: migratedSupergroupChatId,
+    });
+    const now = new Date();
+    const publicationId = uid();
+    const messageId = 77;
+
+    await publicationModel.create({
+      id: publicationId,
+      authorId: uid(),
+      communityId,
+      content: '#заслуга mismatched chat anchor',
+      type: 'text',
+      hashtags: ['заслуга'],
+      postType: 'basic',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await anchorModel.create({
+      id: uid(),
+      communityId,
+      telegramChatId: legacyGroupChatId,
+      telegramMessageId: messageId,
+      publicationId,
+      anchorType: 'hashtag',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const executeMock = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 9005,
+      message_reaction: {
+        chat: {
+          id: Number(migratedSupergroupChatId),
+          type: 'supergroup',
+          title: 'Ruslan Team',
+        },
+        message_id: messageId,
+        user: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'Lead',
+        },
+        date: Math.floor(Date.now() / 1000),
+        old_reaction: [],
+        new_reaction: [{ type: 'emoji', emoji: '👍' }],
+      },
+    } as TelegramTypes.Update);
+
+    expect(executeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quotaAmount: 1,
+        walletAmount: 0,
+        direction: 'up',
+        comment: TG_VOTE_DEFAULT_COMMENT,
+      }),
+    );
   });
 });
