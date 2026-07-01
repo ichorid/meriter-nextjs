@@ -257,6 +257,7 @@ describe('telegram-beneficiary', () => {
       expect(result.error).toBe(
         formatTelegramBeneficiaryNotFoundError('@exegetta', { mentionWithoutId: true }),
       );
+      expect(result.error).toContain('/start');
     });
   });
 });

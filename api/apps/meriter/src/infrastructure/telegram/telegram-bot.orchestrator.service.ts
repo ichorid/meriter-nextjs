@@ -982,6 +982,9 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
+    const chatId = String(chat.id);
+    await this.tgBots.recordTelegramChatMember(chatId, user, 'message');
+
     const added = newReactions.filter(
       (nr) => !oldReactions.some((or) => reactionTypeKey(or) === reactionTypeKey(nr)),
     );
@@ -990,7 +993,6 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
-    const chatId = String(chat.id);
     this.logger.log(
       `message_reaction chat=${chatId} message=${messageId} user=${user.id} added=${voteAdded.map((r) => r.emoji ?? r.type).join(',')}`,
     );
@@ -1103,10 +1105,22 @@ export class TelegramBotOrchestratorService {
 
   private async handleCallbackQuery(query: Record<string, unknown>): Promise<void> {
     const data = query.data as string | undefined;
-    const from = query.from as { id: number };
+    const from = query.from as {
+      id: number;
+      username?: string;
+      first_name?: string;
+      last_name?: string;
+      is_bot?: boolean;
+    };
+    const message = query.message as { chat?: { id: number; type?: string } } | undefined;
     const id = query.id as string;
     if (!data || !from?.id) {
       return;
+    }
+
+    const chatId = message?.chat?.id != null ? String(message.chat.id) : undefined;
+    if (chatId && message?.chat?.type !== 'private') {
+      await this.tgBots.recordTelegramChatMember(chatId, from, 'message');
     }
 
     const tgUserId = String(from.id);
