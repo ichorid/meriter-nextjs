@@ -69,7 +69,7 @@ describe('telegram group welcome copy', () => {
       hashtags: ['предложение'],
     });
     expect(text).toContain('#предложение');
-    expect(text).toContain('«#предложение для @username»');
+    expect(text).toContain('выберите участника из списка @ по имени');
   });
 
   it('group welcome adds daily merits paragraph when quota is enabled', () => {
@@ -237,7 +237,7 @@ describe('telegram group welcome copy', () => {
       communityName: 'Test',
       hashtags: ['заслуга'],
     });
-    expect(text).toContain('«#заслуга для @username»');
+    expect(text).toContain('выберите участника из списка @ по имени');
     expect(text).toContain('ответьте на его сообщение');
   });
 

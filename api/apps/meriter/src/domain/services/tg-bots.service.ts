@@ -43,6 +43,11 @@ import {
   TelegramPublicationAnchorSchemaClass,
   TelegramPublicationAnchorDocument,
 } from '../models/telegram/telegram-publication-anchor.schema';
+import {
+  TelegramChatMemberDirectorySchemaClass,
+  TelegramChatMemberDirectoryDocument,
+  TelegramChatMemberDirectorySource,
+} from '../models/telegram/telegram-chat-member-directory.schema';
 
 /** Default lifetime for bot messages that should not clutter group history. */
 export const TG_BOT_EPHEMERAL_TTL_SEC = 60;
@@ -78,6 +83,8 @@ export class TgBotsService {
     private communityModel: Model<CommunityDocument>,
     @InjectModel(TelegramPublicationAnchorSchemaClass.name)
     private anchorModel: Model<TelegramPublicationAnchorDocument>,
+    @InjectModel(TelegramChatMemberDirectorySchemaClass.name)
+    private chatMemberDirectoryModel: Model<TelegramChatMemberDirectoryDocument>,
     private publicationService: PublicationService,
     private userCommunityRoleService: UserCommunityRoleService,
     private communityService: CommunityService,
@@ -1099,41 +1106,75 @@ export class TgBotsService {
 
       return null;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Failed to get user info for @${cleanUsername}:`, errorMessage);
+      const axiosData =
+        typeof error === 'object' &&
+        error != null &&
+        'response' in error &&
+        typeof (error as { response?: { data?: { description?: string } } }).response?.data
+          ?.description === 'string'
+          ? (error as { response: { data: { description: string } } }).response.data.description
+          : undefined;
+      const errorMessage = axiosData ?? (error instanceof Error ? error.message : String(error));
+      this.logger.debug(
+        `getChat(@${cleanUsername}) unavailable for bot API user lookup: ${errorMessage}`,
+      );
       return null;
     }
   }
 
-  async tgResolveGroupMemberByUsername(
+  async recordTelegramChatMember(
     tgChatId: string | number,
-    username: string,
-  ): Promise<{ id: string; username?: string; firstName?: string; lastName?: string } | null> {
-    const clean = username.replace(/^@/, '').trim();
-    if (!clean) {
-      return null;
+    user: {
+      id: number | string;
+      username?: string;
+      first_name?: string;
+      last_name?: string;
+      is_bot?: boolean;
+    },
+    source: TelegramChatMemberDirectorySource,
+  ): Promise<void> {
+    if (user.is_bot || user.id == null || user.id === '') {
+      return;
     }
+    const telegramChatId = String(tgChatId);
+    const telegramUserId = String(user.id);
+    const username = user.username?.trim();
+    const usernameLower = username?.toLowerCase();
+    const now = new Date();
+
+    try {
+      await this.chatMemberDirectoryModel.findOneAndUpdate(
+        { telegramChatId, telegramUserId },
+        {
+          $set: {
+            telegramChatId,
+            telegramUserId,
+            ...(username ? { username, usernameLower } : {}),
+            firstName: user.first_name,
+            lastName: user.last_name,
+            lastSeenAt: now,
+            lastSource: source,
+          },
+          $setOnInsert: { id: uid() },
+        },
+        { upsert: true },
+      );
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to record chat member ${telegramUserId} in ${telegramChatId}:`,
+        errorMessage,
+      );
+    }
+  }
+
+  async syncTelegramChatAdministrators(
+    tgChatId: string | number,
+  ): Promise<void> {
     const noAxios = this.configService.get('noAxios');
     if (noAxios) {
-      return null;
+      return;
     }
-
-    const userInfo = await this.tgGetUserByUsername(clean);
-    if (userInfo?.id) {
-      const member = await this.tgFetchChatMember(tgChatId, userInfo.id);
-      if (member?.user?.id && TELEGRAM_ACTIVE_CHAT_MEMBER_STATUSES.has(member.status)) {
-        const chatUser = member.user;
-        if (!chatUser.is_bot) {
-          return {
-            id: String(chatUser.id),
-            username: chatUser.username ?? userInfo.username ?? clean,
-            firstName: chatUser.first_name ?? userInfo.first_name,
-            lastName: chatUser.last_name ?? userInfo.last_name,
-          };
-        }
-      }
-    }
-
     try {
       const response = await Axios.get(BOT_URL + '/getChatAdministrators', {
         params: { chat_id: tgChatId },
@@ -1153,6 +1194,165 @@ export class TgBotsService {
         if (!user?.id || user.is_bot) {
           continue;
         }
+        await this.recordTelegramChatMember(tgChatId, user, 'admin_sync');
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to sync chat ${tgChatId} administrators:`, errorMessage);
+    }
+  }
+
+  private async findChatMemberDirectoryByUsername(
+    tgChatId: string | number,
+    username: string,
+  ): Promise<{
+    id: string;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+  } | null> {
+    const clean = username.replace(/^@/, '').trim().toLowerCase();
+    if (!clean) {
+      return null;
+    }
+    const inChat = await this.chatMemberDirectoryModel
+      .findOne({ telegramChatId: String(tgChatId), usernameLower: clean })
+      .lean();
+    if (inChat?.telegramUserId) {
+      return {
+        id: inChat.telegramUserId,
+        username: inChat.username,
+        firstName: inChat.firstName,
+        lastName: inChat.lastName,
+      };
+    }
+    const globalHit = await this.chatMemberDirectoryModel
+      .findOne({ usernameLower: clean })
+      .sort({ lastSeenAt: -1 })
+      .lean();
+    if (!globalHit?.telegramUserId) {
+      return null;
+    }
+    return {
+      id: globalHit.telegramUserId,
+      username: globalHit.username,
+      firstName: globalHit.firstName,
+      lastName: globalHit.lastName,
+    };
+  }
+
+  private async verifyActiveGroupMemberById(
+    tgChatId: string | number,
+    profile: {
+      id: string;
+      username?: string;
+      firstName?: string;
+      lastName?: string;
+    },
+    source: TelegramChatMemberDirectorySource,
+  ): Promise<{ id: string; username?: string; firstName?: string; lastName?: string } | null> {
+    const member = await this.tgFetchChatMember(tgChatId, profile.id);
+    if (!member?.user?.id || !TELEGRAM_ACTIVE_CHAT_MEMBER_STATUSES.has(member.status)) {
+      return null;
+    }
+    const chatUser = member.user;
+    if (chatUser.is_bot) {
+      return null;
+    }
+    const resolved = {
+      id: String(chatUser.id),
+      username: chatUser.username ?? profile.username,
+      firstName: chatUser.first_name ?? profile.firstName,
+      lastName: chatUser.last_name ?? profile.lastName,
+    };
+    await this.recordTelegramChatMember(
+      tgChatId,
+      {
+        id: resolved.id,
+        username: resolved.username,
+        first_name: resolved.firstName,
+        last_name: resolved.lastName,
+      },
+      source,
+    );
+    return resolved;
+  }
+
+  async tgResolveGroupMemberByUsername(
+    tgChatId: string | number,
+    username: string,
+  ): Promise<{ id: string; username?: string; firstName?: string; lastName?: string } | null> {
+    const clean = username.replace(/^@/, '').trim();
+    if (!clean) {
+      return null;
+    }
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) {
+      return null;
+    }
+
+    const fromDirectory = await this.findChatMemberDirectoryByUsername(tgChatId, clean);
+    if (fromDirectory) {
+      const verified = await this.verifyActiveGroupMemberById(
+        tgChatId,
+        fromDirectory,
+        'message',
+      );
+      if (verified) {
+        return verified;
+      }
+    }
+
+    const fromAdmins = await this.scanChatAdministratorsForUsername(tgChatId, clean);
+    if (fromAdmins) {
+      return fromAdmins;
+    }
+
+    const userInfo = await this.tgGetUserByUsername(clean);
+    if (userInfo?.id) {
+      const verified = await this.verifyActiveGroupMemberById(
+        tgChatId,
+        {
+          id: String(userInfo.id),
+          username: userInfo.username ?? clean,
+          firstName: userInfo.first_name,
+          lastName: userInfo.last_name,
+        },
+        'getChat',
+      );
+      if (verified) {
+        return verified;
+      }
+    }
+
+    return null;
+  }
+
+  private async scanChatAdministratorsForUsername(
+    tgChatId: string | number,
+    username: string,
+  ): Promise<{ id: string; username?: string; firstName?: string; lastName?: string } | null> {
+    const clean = username.replace(/^@/, '').trim();
+    try {
+      const response = await Axios.get(BOT_URL + '/getChatAdministrators', {
+        params: { chat_id: tgChatId },
+        timeout: 5000,
+      });
+      const rows = response.data?.result ?? [];
+      for (const row of rows) {
+        const user = row?.user as
+          | {
+              id?: number | string;
+              is_bot?: boolean;
+              username?: string;
+              first_name?: string;
+              last_name?: string;
+            }
+          | undefined;
+        if (!user?.id || user.is_bot) {
+          continue;
+        }
+        await this.recordTelegramChatMember(tgChatId, user, 'admin_sync');
         if (user.username?.toLowerCase() === clean.toLowerCase()) {
           return {
             id: String(user.id),

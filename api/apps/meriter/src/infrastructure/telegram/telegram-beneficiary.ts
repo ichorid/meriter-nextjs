@@ -21,7 +21,7 @@ export type TelegramReplyFrom = {
 };
 
 export type ParsedInlineBeneficiary =
-  | { kind: 'username'; username: string }
+  | { kind: 'username'; username: string; viaMentionEntity?: boolean }
   | { kind: 'telegram_id'; telegramId: string }
   | {
       kind: 'text_mention';
@@ -158,13 +158,13 @@ function pickMentionBeneficiary(
     }
     const username = match[1].trim();
     if (lowerDlyaUsername && username.toLowerCase() === lowerDlyaUsername) {
-      return { kind: 'username', username };
+      return { kind: 'username', username, viaMentionEntity: true };
     }
     if (isEntityHashtagNomination(messageText, entity)) {
-      return { kind: 'username', username };
+      return { kind: 'username', username, viaMentionEntity: true };
     }
     if (isEntityAfterDlya(messageText, entity.offset)) {
-      return { kind: 'username', username };
+      return { kind: 'username', username, viaMentionEntity: true };
     }
   }
 
@@ -234,10 +234,20 @@ export function parseInlineBeneficiaryFromMessage(
   return null;
 }
 
-export function formatTelegramBeneficiaryNotFoundError(label: string): string {
+export function formatTelegramBeneficiaryNotFoundError(
+  label: string,
+  options?: { mentionWithoutId?: boolean },
+): string {
+  if (options?.mentionWithoutId) {
+    return (
+      `⚠️ Telegram не передал id для ${label}.\n\n` +
+      'Наберите «для», нажмите @ и выберите участника из списка группы по имени (как «Иван», без @username), ' +
+      'или ответьте на сообщение этого человека.'
+    );
+  }
   return (
     `⚠️ Пользователь ${label} не найден.\n\n` +
-    'Получатель должен состоять в группе. Выберите @username из списка участников Telegram или ответьте на его сообщение в чате.'
+    'Получатель должен состоять в группе. Выберите участника из списка @ по имени или ответьте на его сообщение в чате.'
   );
 }
 
@@ -363,7 +373,9 @@ async function resolveInlineBeneficiary(
   if (!telegramId) {
     return {
       beneficiary: null,
-      error: formatTelegramBeneficiaryNotFoundError(`@${inline.username}`),
+      error: formatTelegramBeneficiaryNotFoundError(`@${inline.username}`, {
+        mentionWithoutId: inline.viaMentionEntity === true,
+      }),
     };
   }
 

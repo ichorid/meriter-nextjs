@@ -225,6 +225,13 @@ export class TelegramBotOrchestratorService {
     const newStatus = newMember?.status;
 
     if (
+      (oldStatus === 'left' || oldStatus === 'kicked') &&
+      (newStatus === 'member' || newStatus === 'administrator')
+    ) {
+      await this.tgBots.syncTelegramChatAdministrators(chatId);
+    }
+
+    if (
       (oldStatus === 'member' || oldStatus === 'administrator') &&
       (newStatus === 'left' || newStatus === 'kicked')
     ) {
@@ -302,6 +309,7 @@ export class TelegramBotOrchestratorService {
         if (newMember.user?.is_bot === true) {
           return;
         }
+        await this.tgBots.recordTelegramChatMember(chatId, tgUser, 'chat_member');
         await this.provisionMember(community, tgUserId, tgUser as { first_name?: string; last_name?: string; username?: string });
         await this.syncTelegramAdminRole(community, tgUserId, newStatus);
         await this.sendNewMemberWelcomeIfEnabled(
@@ -310,6 +318,7 @@ export class TelegramBotOrchestratorService {
           tgUser as { first_name?: string; last_name?: string },
         );
       } else if (newStatus === 'administrator' || newStatus === 'creator') {
+        await this.tgBots.recordTelegramChatMember(chatId, tgUser, 'chat_member');
         await this.syncTelegramAdminRole(community, tgUserId, newStatus);
       }
       return;
@@ -326,12 +335,18 @@ export class TelegramBotOrchestratorService {
     const text = (message.text as string | undefined) ?? (message.caption as string | undefined);
     const connectedWebsite = message.connected_website;
 
-    if (connectedWebsite || !from || !chat || !text) {
+    if (connectedWebsite || !chat) {
+      return;
+    }
+
+    const chatId = String(chat.id);
+    await this.indexTelegramMessageMembers(message, chatId);
+
+    if (!from || !text) {
       return;
     }
 
     const userId = String(from.id);
-    const chatId = String(chat.id);
 
     if (chatId === userId) {
       await this.handleDirectMessage(
@@ -344,6 +359,81 @@ export class TelegramBotOrchestratorService {
     }
 
     await this.handleGroupMessage(message, text, userId, chatId, from);
+  }
+
+  private async indexTelegramMessageMembers(
+    message: Record<string, unknown>,
+    chatId: string,
+  ): Promise<void> {
+    const chat = message.chat as { type?: string } | undefined;
+    if (chat?.type === 'private') {
+      return;
+    }
+
+    const from = message.from as
+      | {
+          id: number;
+          username?: string;
+          first_name?: string;
+          last_name?: string;
+          is_bot?: boolean;
+        }
+      | undefined;
+    if (from?.id && !from.is_bot) {
+      await this.tgBots.recordTelegramChatMember(chatId, from, 'message');
+    }
+
+    const newMembers = message.new_chat_members as
+      | Array<{
+          id: number;
+          username?: string;
+          first_name?: string;
+          last_name?: string;
+          is_bot?: boolean;
+        }>
+      | undefined;
+    if (newMembers?.length) {
+      for (const member of newMembers) {
+        if (member?.id && !member.is_bot) {
+          await this.tgBots.recordTelegramChatMember(chatId, member, 'new_chat_members');
+        }
+      }
+    }
+
+    const entities = (message.entities ?? message.caption_entities) as
+      | Array<{
+          type: string;
+          user?: {
+            id: number;
+            username?: string;
+            first_name?: string;
+            last_name?: string;
+            is_bot?: boolean;
+          };
+        }>
+      | undefined;
+    if (entities?.length) {
+      for (const entity of entities) {
+        if (entity.type === 'text_mention' && entity.user?.id && !entity.user.is_bot) {
+          await this.tgBots.recordTelegramChatMember(chatId, entity.user, 'text_mention');
+        }
+      }
+    }
+
+    const replyTo = message.reply_to_message as
+      | {
+          from?: {
+            id: number;
+            username?: string;
+            first_name?: string;
+            last_name?: string;
+            is_bot?: boolean;
+          };
+        }
+      | undefined;
+    if (replyTo?.from?.id && !replyTo.from.is_bot) {
+      await this.tgBots.recordTelegramChatMember(chatId, replyTo.from, 'reply');
+    }
   }
 
   private async handleDirectMessage(

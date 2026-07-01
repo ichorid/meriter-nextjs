@@ -280,8 +280,8 @@ function buildPostForSelfStep(input: CommunityUsageRulesInput): string {
 function buildPostForOthersStep(input: CommunityUsageRulesInput): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
   return (
-    `2. Если вы хотите собирать заслуги для другого пользователя, просто ответьте на его сообщение ` +
-    `и добавьте в свой ответ #${hashtag} или напишите в своём сообщении «#${hashtag} для @username».`
+    `2. Если вы хотите собирать заслуги для другого пользователя, ответьте на его сообщение ` +
+    `и добавьте #${hashtag}, либо напишите «#${hashtag} для …» и выберите участника из списка @ по имени (как «Иван»).`
   );
 }
 

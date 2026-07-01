@@ -66,6 +66,7 @@ describe('telegram-beneficiary', () => {
       expect(parseInlineBeneficiaryFromMessage(text, entities)).toEqual({
         kind: 'username',
         username: 'prokhortseva',
+        viaMentionEntity: true,
       });
     });
 
@@ -84,6 +85,7 @@ describe('telegram-beneficiary', () => {
       expect(parseInlineBeneficiaryFromMessage(text, entities)).toEqual({
         kind: 'username',
         username: 'ivan',
+        viaMentionEntity: true,
       });
     });
 
@@ -239,6 +241,22 @@ describe('telegram-beneficiary', () => {
         resolveUsernameViaTelegramApi: jest.fn().mockResolvedValue(null),
       });
       expect(result.error).toBe(formatTelegramBeneficiaryNotFoundError('@ghost'));
+    });
+
+    it('returns mention-without-id hint when Telegram sent mention entity only', async () => {
+      const text = '#заслуга для @exegetta текст';
+      const entities = [{ type: 'mention', offset: 13, length: 9 }];
+      const result = await resolveTelegramPublicationBeneficiary({
+        ...baseDeps,
+        messageText: text,
+        entities,
+        findUserByUsername: jest.fn().mockResolvedValue(null),
+        resolveUsernameInGroupChat: jest.fn().mockResolvedValue(null),
+        resolveUsernameViaTelegramApi: jest.fn().mockResolvedValue(null),
+      });
+      expect(result.error).toBe(
+        formatTelegramBeneficiaryNotFoundError('@exegetta', { mentionWithoutId: true }),
+      );
     });
   });
 });

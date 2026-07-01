@@ -109,6 +109,10 @@ import {
   TelegramPublicationAnchorSchemaClass,
   TelegramPublicationAnchorSchema,
 } from './domain/models/telegram/telegram-publication-anchor.schema';
+import {
+  TelegramChatMemberDirectorySchemaClass,
+  TelegramChatMemberDirectorySchema,
+} from './domain/models/telegram/telegram-chat-member-directory.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -229,6 +233,10 @@ import { EventBus } from './domain/events/event-bus';
       {
         name: TelegramPublicationAnchorSchemaClass.name,
         schema: TelegramPublicationAnchorSchema,
+      },
+      {
+        name: TelegramChatMemberDirectorySchemaClass.name,
+        schema: TelegramChatMemberDirectorySchema,
       },
     ]),
   ],

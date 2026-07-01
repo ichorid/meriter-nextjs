@@ -14,6 +14,10 @@ import {
   TelegramBotPendingActionSchemaClass,
   TelegramBotPendingActionSchema,
 } from '../../domain/models/telegram/telegram-bot-pending-action.schema';
+import {
+  TelegramChatMemberDirectorySchemaClass,
+  TelegramChatMemberDirectorySchema,
+} from '../../domain/models/telegram/telegram-chat-member-directory.schema';
 import { TgBotsService } from '../../domain/services/tg-bots.service';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramBotOrchestratorService } from './telegram-bot.orchestrator.service';
@@ -31,6 +35,10 @@ import { MERIT_TRANSFER_GROUP_NOTIFY_PORT } from '../../domain/ports/merit-trans
       { name: CommunitySchemaClass.name, schema: CommunitySchema },
       { name: TelegramPublicationAnchorSchemaClass.name, schema: TelegramPublicationAnchorSchema },
       { name: TelegramBotPendingActionSchemaClass.name, schema: TelegramBotPendingActionSchema },
+      {
+        name: TelegramChatMemberDirectorySchemaClass.name,
+        schema: TelegramChatMemberDirectorySchema,
+      },
     ]),
     DomainModule,
     CommonServicesModule,
