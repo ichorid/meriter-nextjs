@@ -423,3 +423,78 @@ pnpm exec ts-node scripts/repair-telegram-chat-id.ts --community-id=<id> --dry-r
 8. **Проверка:** `repair-telegram-chat-id --community-id=<canonical>` → 0 mismatches; mini-app auth по новому chat id; голос reaction/panel smoke test.
 
 Предпочтительно: archive duplicate, перенести `telegramChatId` + legacy ids на канонический, `$unset telegramFrozenAt` на каноническом — **до** merge memberships/wallets.
+
+---
+
+## 14. Checklist: Mini App + prod audit (read-only, без изменения бота)
+
+Используйте **до/после deploy** API с Telegram. Ничего из этого раздела не меняет runtime бота — только конфиг, Mongo read и smoke.
+
+### 14.1 BotFather / Mini App URL (обязательно)
+
+| # | Проверка | Ожидание |
+|---|----------|----------|
+| 1 | **Menu Button / Mini App URL** в @BotFather | `{COMMUNITY_WEB_BASE_URL}/tg` (например `https://community-dobro.meriter.pro/tg`) — **не** основной `web` (`DOMAIN`) |
+| 2 | **`COMMUNITY_WEB_BASE_URL`** на API | Совпадает с доменом community-web; **отличается** от `DOMAIN`, если Mini App не должен показывать browser-login |
+| 3 | **`/setdomain`** (Login Widget, если нужен) | Домен community-web, см. [`13-telegram-stack-deployment-ru.md`](./13-telegram-stack-deployment-ru.md) |
+| 4 | **`MERITER_PRODUCT_MODE`** | `telegram_mvp` для community-web auth |
+| 5 | **`TELEGRAM_BOT_ENABLED=true`** на prod с ботом | Иначе webhook no-op (см. лог `telegram.update.skipped`) |
+
+Подробнее: [`13-telegram-stack-deployment-ru.md`](./13-telegram-stack-deployment-ru.md) § BotFather, [`12-community-web-runbook-ru.md`](./12-community-web-runbook-ru.md).
+
+### 14.2 Smoke после deploy (5 минут)
+
+1. Группа с привязанным ботом: `/баланс` → ephemeral ответ с «Кошелёк».
+2. Реакция 👍 под постом с хэштегом → заслуга (или понятная ошибка в ephemeral).
+3. Mini App из меню бота → `/tg` → redirect на `/c/{communityId}/me` (не login SMS в браузере).
+4. `GET /api/telegram/hooks/{botUsername}` не используется — только **POST** webhook от Telegram.
+
+### 14.3 Prod audit (только чтение Mongo + dry-run)
+
+**A. Скрипт (рекомендуется):**
+
+```bash
+pnpm --filter @meriter/api repair:telegram-chat-id
+# или по одному community:
+pnpm exec ts-node scripts/repair-telegram-chat-id.ts --community-id=<id> --dry-run
+```
+
+**B. Дубликаты по текущему chat id:**
+
+```javascript
+db.communities.aggregate([
+  { $match: { telegramChatId: { $exists: true, $nin: [null, ''] } } },
+  { $group: { _id: '$telegramChatId', ids: { $push: '$id' }, n: { $sum: 1 } } },
+  { $match: { n: { $gt: 1 } } },
+]);
+```
+
+**C. Frozen с `null` (исправлять ops вручную `$unset`, не `$set null`):**
+
+```javascript
+db.communities.find(
+  { telegramChatId: { $exists: true, $ne: null }, telegramFrozenAt: null },
+  { id: 1, name: 1, telegramChatId: 1 },
+);
+```
+
+**D. Community по chat id (canonical vs duplicate):**
+
+```javascript
+db.communities.find({
+  $or: [
+    { telegramChatId: '<CHAT_ID>' },
+    { 'settings.telegramLegacyChatIds': '<CHAT_ID>' },
+  ],
+}, { id: 1, name: 1, telegramChatId: 1, telegramFrozenAt: 1, 'settings.telegramLegacyChatIds': 1 });
+```
+
+**E. Anchors vs текущий chat id (см. mismatch в логах `telegram.anchor.chat_mismatch`):**
+
+```javascript
+db.telegram_publication_anchors.find({ communityId: '<COMMUNITY_ID>' }, {
+  telegramChatId: 1, telegramMessageId: 1, publicationId: 1, anchorType: 1,
+});
+```
+
+Запись в Mongo (`--apply`, merge duplicate) — **отдельное ops-решение**, не часть deploy.

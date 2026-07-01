@@ -43,6 +43,7 @@ import {
 import { TelegramInfrastructureModule } from './telegram.module';
 import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramBotOrchestratorService } from './telegram-bot.orchestrator.service';
+import { FeatureFlagsService } from '../../common/services/feature-flags.service';
 import { TG_BOT_OPEN_BUTTON_LABELS, TG_MSG, TG_VOTE_DEFAULT_COMMENT } from './telegram-messages.ru';
 import * as TelegramTypes from '@common/extapis/telegram/telegram.types';
 
@@ -559,8 +560,58 @@ describe('TelegramBotOrchestrator (integration)', () => {
     } as TelegramTypes.Update);
 
     expect(ephemeralSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ text: TG_MSG.groupNotLinked }),
+      expect.objectContaining({ text: TG_MSG.groupNotLinked(botUsername) }),
     );
+  });
+
+  it('skips bot handlers when TELEGRAM_BOT_ENABLED feature flag is off', async () => {
+    await seedLinkedCommunity();
+    const featureFlags = moduleRef.get(FeatureFlagsService);
+    const flagSpy = jest.spyOn(featureFlags, 'isTelegramBotEnabled').mockReturnValue(false);
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 11,
+      message: {
+        message_id: 2,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgUserId), type: 'private' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        text: '/balance',
+      },
+    } as TelegramTypes.Update);
+
+    expect(ephemeralSpy).not.toHaveBeenCalled();
+    flagSpy.mockRestore();
+  });
+
+  it('bot removed from group sets telegramFrozenAt on linked community', async () => {
+    const { communityId } = await seedLinkedCommunity();
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 9010,
+      my_chat_member: {
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Linked TG Community' },
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG', last_name: 'User' },
+        date: Math.floor(Date.now() / 1000),
+        old_chat_member: {
+          user: { id: 1, is_bot: true, first_name: 'Meriter' },
+          status: 'administrator',
+        },
+        new_chat_member: {
+          user: { id: 1, is_bot: true, first_name: 'Meriter' },
+          status: 'left',
+        },
+      },
+    } as TelegramTypes.Update);
+
+    const community = await communityModel.findOne({ id: communityId }).lean();
+    expect(community?.telegramFrozenAt).toBeTruthy();
   });
 
   async function seedOnboardingFutureVisionStep() {

@@ -37,7 +37,10 @@ import {
   type TelegramMessageEntity,
   type TelegramReplyFrom,
 } from '../../infrastructure/telegram/telegram-beneficiary';
-import type { TelegramInlineReplyMarkup } from '../../infrastructure/telegram/telegram-messages.ru';
+import {
+  TG_MSG,
+  type TelegramInlineReplyMarkup,
+} from '../../infrastructure/telegram/telegram-messages.ru';
 import { UpdateEventItem } from './user-updates.service';
 import { FeatureFlagsService } from '../../common/services/feature-flags.service';
 import {
@@ -719,7 +722,7 @@ export class TgBotsService {
         await this.tgReplyEphemeral({
           reply_to_message_id: messageId,
           chat_id: tgChatId,
-          text: 'Пост сохранён в Meriter.',
+          text: TG_MSG.postSavedAck,
         });
       }
     }

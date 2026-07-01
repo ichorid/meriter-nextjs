@@ -115,6 +115,7 @@ import {
 } from './telegram-vote-amount-parse';
 import { telegramChatIdLookupVariants, expandTelegramChatIds, telegramGroupSendNotificationParams, buildTelegramSupergroupChatLink } from './telegram-chat-id.util';
 import { TelegramCommunityChatResolver } from './telegram-community-chat.resolver';
+import { describeTelegramUpdateMeta } from './telegram-update-log.util';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -211,8 +212,14 @@ export class TelegramBotOrchestratorService {
 
   async handleUpdate(body: TelegramTypes.Update): Promise<void> {
     if (!this.featureFlags.isTelegramBotEnabled()) {
+      this.logger.debug('telegram.update.skipped', {
+        reason: 'TELEGRAM_BOT_ENABLED',
+        updateId: body.update_id,
+      });
       return;
     }
+
+    this.logTelegramUpdateReceived(body);
 
     if (body.my_chat_member) {
       await this.handleMyChatMember(body.my_chat_member);
@@ -237,6 +244,10 @@ export class TelegramBotOrchestratorService {
     if (body.message) {
       await this.handleMessage(body.message);
     }
+  }
+
+  private logTelegramUpdateReceived(body: TelegramTypes.Update): void {
+    this.logger.debug('telegram.update.received', describeTelegramUpdateMeta(body));
   }
 
   private async handleMyChatMember(event: Record<string, unknown>): Promise<void> {
@@ -623,7 +634,10 @@ export class TelegramBotOrchestratorService {
     if (!community) {
       if (isBotCommand || trimmedLower.startsWith('#')) {
         const pending = await this.getPending(tgUserId);
-        const hint = pending ? TG_MSG.onboardingInProgress : TG_MSG.groupNotLinked;
+        const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '').trim();
+        const hint = pending
+          ? TG_MSG.onboardingInProgress
+          : TG_MSG.groupNotLinked(botUsername);
         await this.tgBots.tgReplyEphemeral({
           reply_to_message_id: message.message_id as number,
           chat_id: chatId,
@@ -1449,7 +1463,7 @@ export class TelegramBotOrchestratorService {
         if (!preset) {
           await this.tgBots.tgSend({
             tgChatId: tgUserId,
-            text: 'Ответьте 1, 2 или 3 — см. варианты в вопросе выше.',
+            text: TG_MSG.onboardingCommandDeliveryInvalid,
           });
           return true;
         }
@@ -3651,7 +3665,7 @@ export class TelegramBotOrchestratorService {
     if (!token || this.configService.get('noAxios')) {
       await this.tgBots.tgSend({
         tgChatId: tgUserId,
-        text: `${text}\n\nОтветьте 1, 2 или 3.`,
+        text: `${text}\n\n${TG_MSG.onboardingCommandDeliveryNumericSuffix}`,
       });
       return;
     }

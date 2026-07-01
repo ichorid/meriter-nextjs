@@ -789,8 +789,17 @@ export const TG_MSG = {
     'Сообщество ещё не настроено.\n\n' +
     '1) Добавьте бота в группу\n' +
     '2) Завершите мастер настройки в личке с ботом (тому, кто добавил бота)',
-  groupNotLinked:
-    'Бот не привязан к этой группе.\n\nТому, кто добавил бота, нужно завершить настройку в личке с @ботом.',
+  groupNotLinked: (botUsername?: string) => {
+    const handle = botUsername?.replace(/^@/, '').trim();
+    const atBot = handle ? `@${handle}` : '@ботом';
+    return (
+      'Бот не привязан к этой группе.\n\n' +
+      `Тому, кто добавил бота, нужно завершить настройку в личке с ${atBot}.`
+    );
+  },
+  onboardingCommandDeliveryInvalid:
+    'Ответьте 1, 2 или 3 — см. варианты в вопросе выше.',
+  onboardingCommandDeliveryNumericSuffix: 'Ответьте 1, 2 или 3.',
   onboardingInProgress:
     'Настройка не завершена. Продолжите ответы в личке с ботом — бот задаст следующий вопрос.',
   multipleLinkedCommunities:
@@ -834,7 +843,7 @@ export const TG_MSG = {
   settingsCommandRouteCycled: (label: string) => `Команда: ${label}`,
   commandAnswerInDm: 'Ответ отправлен в личку с ботом.',
   miniAppLinkUnavailable: 'Ссылка на приложение временно недоступна. Попробуйте позже.',
-  postSavedAck: 'Пост сохранён.',
+  postSavedAck: 'Пост сохранён в Meriter.',
 } as const;
 
 export const TG_EMOJI = {

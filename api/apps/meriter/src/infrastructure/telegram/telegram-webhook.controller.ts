@@ -22,7 +22,10 @@ export class TelegramWebhookController {
     @Param('botUsername') botUsername: string,
     @Body() body: TelegramTypes.Update,
   ): Promise<{ ok: true }> {
-    this.logger.debug(`Telegram webhook for @${botUsername} update_id=${body.update_id}`);
+    this.logger.debug('Telegram webhook ingress', {
+      botUsername,
+      updateId: body.update_id,
+    });
     await this.telegramBotOrchestrator.handleUpdate(body);
     return { ok: true };
   }
