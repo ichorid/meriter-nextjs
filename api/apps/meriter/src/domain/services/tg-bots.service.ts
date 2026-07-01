@@ -59,6 +59,25 @@ const TELEGRAM_ACTIVE_CHAT_MEMBER_STATUSES = new Set([
   'restricted',
 ]);
 
+const TELEGRAM_MEMBER_LOOKUP_RETRY_ATTEMPTS = 5;
+const TELEGRAM_MEMBER_LOOKUP_RETRY_DELAY_MS = 400;
+const TELEGRAM_NOMINATION_RESOLVE_RETRY_DELAY_MS = 1500;
+
+const USERNAME_NOMINATION_MESSAGE_PATTERN =
+  /(?:^|\s)для\s+@[a-zA-Z0-9_]{1,32}|#[^\s#@]+\s+@[a-zA-Z0-9_]{1,32}/i;
+
+type RecentChatMemberCacheEntry = {
+  id: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+  expiresAt: number;
+};
+
+function delayMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function telegramUsernameRegex(username: string): RegExp {
   const clean = username.replace(/^@/, '').trim();
   const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -73,6 +92,7 @@ function telegramUsernameRegex(username: string): RegExp {
 @Injectable()
 export class TgBotsService {
   private readonly logger = new Logger(TgBotsService.name);
+  private readonly recentChatMemberByUsername = new Map<string, RecentChatMemberCacheEntry>();
   telegramApiUrl: string;
   s3: S3Client | null; // Allow s3 to be null
   private readonly s3Bucket?: string;
@@ -589,7 +609,7 @@ export class TgBotsService {
       return undefined;
     }
 
-    const { beneficiary, cleanedText, error } = await this.resolvePublicationBeneficiary({
+    let { beneficiary, cleanedText, error } = await this.resolvePublicationBeneficiary({
       messageText: messageText || '',
       tgChatId,
       authorTelegramId: tgUserId,
@@ -597,6 +617,26 @@ export class TgBotsService {
       replyToFrom,
       communityId: communityDoc.id,
     });
+
+    if (
+      error &&
+      USERNAME_NOMINATION_MESSAGE_PATTERN.test(messageText || '')
+    ) {
+      await delayMs(TELEGRAM_NOMINATION_RESOLVE_RETRY_DELAY_MS);
+      const retry = await this.resolvePublicationBeneficiary({
+        messageText: messageText || '',
+        tgChatId,
+        authorTelegramId: tgUserId,
+        entities: entities as TelegramMessageEntity[] | undefined,
+        replyToFrom,
+        communityId: communityDoc.id,
+      });
+      if (retry.beneficiary) {
+        beneficiary = retry.beneficiary;
+        cleanedText = retry.cleanedText;
+        error = retry.error;
+      }
+    }
 
     // If there's an error with the beneficiary, send error message and abort
     if (error) {
@@ -1159,6 +1199,15 @@ export class TgBotsService {
         },
         { upsert: true },
       );
+      if (usernameLower) {
+        this.recentChatMemberByUsername.set(`${telegramChatId}:${usernameLower}`, {
+          id: telegramUserId,
+          username,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          expiresAt: Date.now() + 5 * 60 * 1000,
+        });
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.warn(
@@ -1202,6 +1251,34 @@ export class TgBotsService {
     }
   }
 
+  private getRecentChatMemberByUsername(
+    tgChatId: string | number,
+    username: string,
+  ): {
+    id: string;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+  } | null {
+    const clean = username.replace(/^@/, '').trim().toLowerCase();
+    if (!clean) {
+      return null;
+    }
+    const cached = this.recentChatMemberByUsername.get(`${String(tgChatId)}:${clean}`);
+    if (!cached || cached.expiresAt <= Date.now()) {
+      if (cached) {
+        this.recentChatMemberByUsername.delete(`${String(tgChatId)}:${clean}`);
+      }
+      return null;
+    }
+    return {
+      id: cached.id,
+      username: cached.username,
+      firstName: cached.firstName,
+      lastName: cached.lastName,
+    };
+  }
+
   private async findChatMemberDirectoryByUsername(
     tgChatId: string | number,
     username: string,
@@ -1214,6 +1291,10 @@ export class TgBotsService {
     const clean = username.replace(/^@/, '').trim().toLowerCase();
     if (!clean) {
       return null;
+    }
+    const cached = this.getRecentChatMemberByUsername(tgChatId, clean);
+    if (cached) {
+      return cached;
     }
     const inChat = await this.chatMemberDirectoryModel
       .findOne({ telegramChatId: String(tgChatId), usernameLower: clean })
@@ -1251,31 +1332,35 @@ export class TgBotsService {
     },
     source: TelegramChatMemberDirectorySource,
   ): Promise<{ id: string; username?: string; firstName?: string; lastName?: string } | null> {
-    const member = await this.tgFetchChatMember(tgChatId, profile.id);
-    if (!member?.user?.id || !TELEGRAM_ACTIVE_CHAT_MEMBER_STATUSES.has(member.status)) {
-      return null;
+    for (let attempt = 0; attempt < TELEGRAM_MEMBER_LOOKUP_RETRY_ATTEMPTS; attempt++) {
+      const member = await this.tgFetchChatMember(tgChatId, profile.id);
+      if (member?.user?.id && TELEGRAM_ACTIVE_CHAT_MEMBER_STATUSES.has(member.status)) {
+        const chatUser = member.user;
+        if (!chatUser.is_bot) {
+          const resolved = {
+            id: String(chatUser.id),
+            username: chatUser.username ?? profile.username,
+            firstName: chatUser.first_name ?? profile.firstName,
+            lastName: chatUser.last_name ?? profile.lastName,
+          };
+          await this.recordTelegramChatMember(
+            tgChatId,
+            {
+              id: resolved.id,
+              username: resolved.username,
+              first_name: resolved.firstName,
+              last_name: resolved.lastName,
+            },
+            source,
+          );
+          return resolved;
+        }
+      }
+      if (attempt < TELEGRAM_MEMBER_LOOKUP_RETRY_ATTEMPTS - 1) {
+        await delayMs(TELEGRAM_MEMBER_LOOKUP_RETRY_DELAY_MS);
+      }
     }
-    const chatUser = member.user;
-    if (chatUser.is_bot) {
-      return null;
-    }
-    const resolved = {
-      id: String(chatUser.id),
-      username: chatUser.username ?? profile.username,
-      firstName: chatUser.first_name ?? profile.firstName,
-      lastName: chatUser.last_name ?? profile.lastName,
-    };
-    await this.recordTelegramChatMember(
-      tgChatId,
-      {
-        id: resolved.id,
-        username: resolved.username,
-        first_name: resolved.firstName,
-        last_name: resolved.lastName,
-      },
-      source,
-    );
-    return resolved;
+    return null;
   }
 
   async tgResolveGroupMemberByUsername(
@@ -1291,37 +1376,48 @@ export class TgBotsService {
       return null;
     }
 
-    const fromDirectory = await this.findChatMemberDirectoryByUsername(tgChatId, clean);
-    if (fromDirectory) {
-      const verified = await this.verifyActiveGroupMemberById(
-        tgChatId,
-        fromDirectory,
-        'message',
-      );
-      if (verified) {
-        return verified;
+    let fromAdmins: { id: string; username?: string; firstName?: string; lastName?: string } | null =
+      null;
+
+    for (let attempt = 0; attempt < TELEGRAM_MEMBER_LOOKUP_RETRY_ATTEMPTS; attempt++) {
+      const fromDirectory = await this.findChatMemberDirectoryByUsername(tgChatId, clean);
+      if (fromDirectory) {
+        const verified = await this.verifyActiveGroupMemberById(
+          tgChatId,
+          fromDirectory,
+          'message',
+        );
+        if (verified) {
+          return verified;
+        }
       }
-    }
 
-    const fromAdmins = await this.scanChatAdministratorsForUsername(tgChatId, clean);
-    if (fromAdmins) {
-      return fromAdmins;
-    }
+      if (attempt === 0) {
+        fromAdmins = await this.scanChatAdministratorsForUsername(tgChatId, clean);
+        if (fromAdmins) {
+          return fromAdmins;
+        }
 
-    const userInfo = await this.tgGetUserByUsername(clean);
-    if (userInfo?.id) {
-      const verified = await this.verifyActiveGroupMemberById(
-        tgChatId,
-        {
-          id: String(userInfo.id),
-          username: userInfo.username ?? clean,
-          firstName: userInfo.first_name,
-          lastName: userInfo.last_name,
-        },
-        'getChat',
-      );
-      if (verified) {
-        return verified;
+        const userInfo = await this.tgGetUserByUsername(clean);
+        if (userInfo?.id) {
+          const verified = await this.verifyActiveGroupMemberById(
+            tgChatId,
+            {
+              id: String(userInfo.id),
+              username: userInfo.username ?? clean,
+              firstName: userInfo.first_name,
+              lastName: userInfo.last_name,
+            },
+            'getChat',
+          );
+          if (verified) {
+            return verified;
+          }
+        }
+      }
+
+      if (attempt < TELEGRAM_MEMBER_LOOKUP_RETRY_ATTEMPTS - 1) {
+        await delayMs(TELEGRAM_MEMBER_LOOKUP_RETRY_DELAY_MS);
       }
     }
 

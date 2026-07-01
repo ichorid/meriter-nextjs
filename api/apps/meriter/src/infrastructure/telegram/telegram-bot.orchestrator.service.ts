@@ -393,10 +393,26 @@ export class TelegramBotOrchestratorService {
         }>
       | undefined;
     if (newMembers?.length) {
+      const community = await this.findCommunityByChatId(chatId);
       for (const member of newMembers) {
         if (member?.id && !member.is_bot) {
           await this.tgBots.recordTelegramChatMember(chatId, member, 'new_chat_members');
+          if (community && !community.telegramFrozenAt) {
+            await this.provisionMember(
+              community,
+              String(member.id),
+              member as { first_name?: string; last_name?: string; username?: string },
+            );
+          }
         }
+      }
+    } else {
+      const serviceText = (message.text as string | undefined)?.trim();
+      if (serviceText && /(added|добавил|пригласил|joined|присоедин)/i.test(serviceText)) {
+        this.logger.warn('Join service message without new_chat_members payload', {
+          chatId,
+          serviceText,
+        });
       }
     }
 
