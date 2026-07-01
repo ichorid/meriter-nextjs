@@ -47,6 +47,13 @@ import {
 /** Default lifetime for bot messages that should not clutter group history. */
 export const TG_BOT_EPHEMERAL_TTL_SEC = 60;
 
+const TELEGRAM_ACTIVE_CHAT_MEMBER_STATUSES = new Set([
+  'creator',
+  'administrator',
+  'member',
+  'restricted',
+]);
+
 function telegramUsernameRegex(username: string): RegExp {
   const clean = username.replace(/^@/, '').trim();
   const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -586,6 +593,11 @@ export class TgBotsService {
 
     // If there's an error with the beneficiary, send error message and abort
     if (error) {
+      this.logger.warn(`Beneficiary resolve failed: ${error}`, {
+        tgChatId,
+        entityTypes: entities?.map((entity) => entity.type),
+        entityCount: entities?.length ?? 0,
+      });
       this.logger.warn(`❌ Beneficiary error, sending error message to chat`);
       if (messageId !== undefined) {
         await this.tgReplyMessage({
@@ -1022,25 +1034,44 @@ export class TgBotsService {
       .then((d) => d?.result);
   }
 
-  async tgGetChatMember(tgChatId: string | number, tgUserId: string | number) {
-    //if (tgChatId.length < 4 && process.env.NODE_ENV !== "test") return;
+  async tgFetchChatMember(
+    tgChatId: string | number,
+    tgUserId: string | number,
+  ): Promise<{
+    status: string;
+    user?: {
+      id: number;
+      is_bot?: boolean;
+      username?: string;
+      first_name?: string;
+      last_name?: string;
+    };
+  } | null> {
     const params = { chat_id: tgChatId, user_id: tgUserId };
     const noAxios = this.configService.get('noAxios');
-    if (noAxios) return null;
-    return await Axios.get(BOT_URL + "/getChatMember", {
-      params,
-      timeout: 5000, // 5 second timeout to prevent hanging requests
-    })
-      .then((d) => d.data)
-      .then((d) => {
-        const st = d?.result?.status;
-        //   console.log(d);
-        return st === "member" || st === "administrator" || st === "creator";
-      })
-      .catch((e) => {
-        this.logger.warn(`Failed to get chat member ${tgUserId} from ${tgChatId}:`, e.message);
-        return false;
+    if (noAxios) {
+      return null;
+    }
+    try {
+      const response = await Axios.get(BOT_URL + '/getChatMember', {
+        params,
+        timeout: 5000,
       });
+      const result = response.data?.result;
+      if (!result?.status) {
+        return null;
+      }
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to get chat member ${tgUserId} from ${tgChatId}:`, errorMessage);
+      return null;
+    }
+  }
+
+  async tgGetChatMember(tgChatId: string | number, tgUserId: string | number) {
+    const member = await this.tgFetchChatMember(tgChatId, tgUserId);
+    return member ? TELEGRAM_ACTIVE_CHAT_MEMBER_STATUSES.has(member.status) : false;
   }
 
   async tgGetUserByUsername(username: string) {
@@ -1086,6 +1117,23 @@ export class TgBotsService {
     if (noAxios) {
       return null;
     }
+
+    const userInfo = await this.tgGetUserByUsername(clean);
+    if (userInfo?.id) {
+      const member = await this.tgFetchChatMember(tgChatId, userInfo.id);
+      if (member?.user?.id && TELEGRAM_ACTIVE_CHAT_MEMBER_STATUSES.has(member.status)) {
+        const chatUser = member.user;
+        if (!chatUser.is_bot) {
+          return {
+            id: String(chatUser.id),
+            username: chatUser.username ?? userInfo.username ?? clean,
+            firstName: chatUser.first_name ?? userInfo.first_name,
+            lastName: chatUser.last_name ?? userInfo.last_name,
+          };
+        }
+      }
+    }
+
     try {
       const response = await Axios.get(BOT_URL + '/getChatAdministrators', {
         params: { chat_id: tgChatId },

@@ -75,6 +75,68 @@ const LEGACY_BEN_PATTERN = /\/ben:@?([\w\d]+)/gi;
 const INLINE_DLYA_PATTERN = /(?:^|\s)для\s+@([a-zA-Z0-9_]{1,32})(?:\s*:)?\s*/gi;
 const INLINE_DLYA_PARSE_PATTERN = /(?:^|\s)для\s+@([a-zA-Z0-9_]{1,32})(?::|\s|$)/i;
 
+function isEntityAfterDlya(messageText: string, entityOffset: number): boolean {
+  const dlyaIdx = messageText.toLowerCase().indexOf('для');
+  return dlyaIdx >= 0 && entityOffset >= dlyaIdx;
+}
+
+function pickTextMentionBeneficiary(
+  messageText: string,
+  entities: TelegramMessageEntity[],
+): TelegramMessageEntity | undefined {
+  const candidates = entities.filter((entity) => entity.type === 'text_mention' && entity.user?.id);
+  if (candidates.length === 0) {
+    return undefined;
+  }
+
+  const dlyaUsername = messageText.match(INLINE_DLYA_PARSE_PATTERN)?.[1]?.toLowerCase();
+  if (dlyaUsername) {
+    const byUsername = candidates.find(
+      (entity) => entity.user?.username?.toLowerCase() === dlyaUsername,
+    );
+    if (byUsername) {
+      return byUsername;
+    }
+  }
+
+  const afterDlya = candidates
+    .filter((entity) => isEntityAfterDlya(messageText, entity.offset))
+    .sort((a, b) => a.offset - b.offset);
+  if (afterDlya.length > 0) {
+    return afterDlya[0];
+  }
+
+  return candidates[0];
+}
+
+function pickMentionBeneficiary(
+  messageText: string,
+  entities: TelegramMessageEntity[],
+): ParsedInlineBeneficiary | null {
+  const dlyaUsername = messageText.match(INLINE_DLYA_PARSE_PATTERN)?.[1];
+  const lowerDlyaUsername = dlyaUsername?.toLowerCase();
+
+  for (const entity of entities) {
+    if (entity.type !== 'mention') {
+      continue;
+    }
+    const slice = messageText.slice(entity.offset, entity.offset + entity.length);
+    const match = slice.match(/^@(.+)$/i);
+    if (!match) {
+      continue;
+    }
+    const username = match[1].trim();
+    if (lowerDlyaUsername && username.toLowerCase() === lowerDlyaUsername) {
+      return { kind: 'username', username };
+    }
+    if (isEntityAfterDlya(messageText, entity.offset)) {
+      return { kind: 'username', username };
+    }
+  }
+
+  return null;
+}
+
 function buildDisplayName(profile: {
   first_name?: string;
   last_name?: string;
@@ -107,43 +169,20 @@ export function parseInlineBeneficiaryFromMessage(
   }
 
   if (entities?.length) {
-    const lower = messageText.toLowerCase();
-    const dlyaIdx = lower.indexOf('для');
-
-    let textMention: TelegramMessageEntity | undefined;
-    for (const ent of entities) {
-      if (ent.type !== 'text_mention' || !ent.user?.id) {
-        continue;
-      }
-      if (dlyaIdx >= 0 && ent.offset >= dlyaIdx && ent.offset <= dlyaIdx + 12) {
-        textMention = ent;
-        break;
-      }
-      textMention ??= ent;
-    }
+    const textMention = pickTextMentionBeneficiary(messageText, entities);
     if (textMention?.user) {
-      const u = textMention.user;
+      const user = textMention.user;
       return {
         kind: 'text_mention',
-        telegramId: String(u.id),
-        displayName: buildDisplayName(u),
-        username: u.username,
+        telegramId: String(user.id),
+        displayName: buildDisplayName(user),
+        username: user.username,
       };
     }
 
-    for (const ent of entities) {
-      if (ent.type !== 'mention') {
-        continue;
-      }
-      const slice = messageText.slice(ent.offset, ent.offset + ent.length);
-      const m = slice.match(/^@(.+)$/);
-      if (!m) {
-        continue;
-      }
-      const before = lower.slice(Math.max(0, ent.offset - 8), ent.offset);
-      if (before.includes('для')) {
-        return { kind: 'username', username: m[1] };
-      }
+    const mention = pickMentionBeneficiary(messageText, entities);
+    if (mention) {
+      return mention;
     }
   }
 
@@ -251,21 +290,21 @@ async function resolveInlineBeneficiary(
       first_name: byUsername.displayName,
     };
   } else {
-    const inCommunity = await deps.findCommunityMemberByUsername?.(inline.username);
-    if (inCommunity) {
-      telegramId = inCommunity.telegramId;
+    const inGroup = await deps.resolveUsernameInGroupChat?.(inline.username);
+    if (inGroup) {
+      telegramId = inGroup.id;
       profile = {
-        username: inCommunity.username ?? inline.username,
-        first_name: inCommunity.displayName,
+        username: inGroup.username ?? inline.username,
+        first_name: inGroup.firstName,
+        last_name: inGroup.lastName,
       };
     } else {
-      const inGroup = await deps.resolveUsernameInGroupChat?.(inline.username);
-      if (inGroup) {
-        telegramId = inGroup.id;
+      const inCommunity = await deps.findCommunityMemberByUsername?.(inline.username);
+      if (inCommunity) {
+        telegramId = inCommunity.telegramId;
         profile = {
-          username: inGroup.username ?? inline.username,
-          first_name: inGroup.firstName,
-          last_name: inGroup.lastName,
+          username: inCommunity.username ?? inline.username,
+          first_name: inCommunity.displayName,
         };
       } else {
         const fromApi = await deps.resolveUsernameViaTelegramApi(inline.username);

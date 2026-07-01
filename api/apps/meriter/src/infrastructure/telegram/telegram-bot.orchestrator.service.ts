@@ -354,6 +354,10 @@ export class TelegramBotOrchestratorService {
         });
         return;
       }
+      const primaryCommunityBefore = await this.resolvePrimaryTelegramCommunityForUser(tgUserId);
+      const isReturning = primaryCommunityBefore
+        ? await this.isReturningMeriterMember(tgUserId, primaryCommunityBefore.id)
+        : Boolean(await this.userService.getUserByAuthId('telegram', tgUserId));
       await this.provisionLinkedTelegramCommunities(tgUserId, from);
       if (referal === 'guide') {
         await this.handleDirectBotCommand(tgUserId, from, 'guide', '', triggerMessageId);
@@ -364,7 +368,15 @@ export class TelegramBotOrchestratorService {
         this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
         return;
       }
-      await this.sendBotEphemeral(tgUserId, await this.helpMessage());
+      const primaryCommunity = await this.resolvePrimaryTelegramCommunityForUser(tgUserId);
+      await this.sendBotEphemeral(
+        tgUserId,
+        await this.helpMessage(primaryCommunity?.id, {
+          forStart: true,
+          isReturning,
+          tgUserId,
+        }),
+      );
       this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
       return;
     }
@@ -457,6 +469,17 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
+    const trimmed = trimmedLower;
+    const startPayload = GROUP_START_CMD_REGEX.test(text.trim())
+      ? text.trim().split(/\s+/).slice(1).join(' ').trim()
+      : '';
+    const isBareGroupStart =
+      GROUP_START_CMD_REGEX.test(text.trim()) &&
+      (!startPayload || (!startPayload.includes('auth') && startPayload !== 'community'));
+    const isReturningBeforeProvision = isBareGroupStart
+      ? await this.isReturningMeriterMember(tgUserId, community.id)
+      : false;
+
     const user = await this.provisionMember(community, tgUserId, from);
     if (!user) {
       return;
@@ -466,17 +489,16 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
-    const trimmed = trimmedLower;
-    if (GROUP_START_CMD_REGEX.test(text.trim())) {
-      const payload = text.trim().split(/\s+/).slice(1).join(' ').trim();
-      if (!payload || (!payload.includes('auth') && payload !== 'community')) {
-        await this.sendBotEphemeral(
-          chatId,
-          await this.helpMessage(community.id),
-          message.message_id as number,
-        );
-        this.scheduleEphemeralUserMessage(chatId, message.message_id as number);
-      }
+    if (isBareGroupStart) {
+      await this.sendBotEphemeral(
+        chatId,
+        await this.helpMessage(community.id, {
+          forStart: true,
+          isReturning: isReturningBeforeProvision,
+        }),
+        message.message_id as number,
+      );
+      this.scheduleEphemeralUserMessage(chatId, message.message_id as number);
       return;
     }
 
@@ -1710,15 +1732,28 @@ export class TelegramBotOrchestratorService {
     );
   }
 
-  private async helpMessage(communityId?: string): Promise<string> {
+  private async helpMessage(
+    communityId?: string,
+    options?: { forStart?: boolean; isReturning?: boolean; tgUserId?: string },
+  ): Promise<string> {
     const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '');
-    if (!communityId) {
-      return buildTelegramHelpMessage('', { botUsername });
+    let community = communityId ? await this.communityService.getCommunity(communityId) : null;
+    if (!community && options?.tgUserId) {
+      community = await this.resolvePrimaryTelegramCommunityForUser(options.tgUserId);
     }
-    const community = await this.communityService.getCommunity(communityId);
+
+    let startWelcomeMerits: number | undefined;
+    if (options?.forStart && !options?.isReturning && community) {
+      const welcome = this.communityService.startingMeritsOnJoin(community);
+      if (welcome > 0) {
+        startWelcomeMerits = welcome;
+      }
+    }
+
     if (!community) {
-      return buildTelegramHelpMessage('', { botUsername });
+      return buildTelegramHelpMessage('', { botUsername, startWelcomeMerits });
     }
+
     return buildTelegramHelpMessage('', {
       communityId: community.id,
       communityName: community.name,
@@ -1726,7 +1761,37 @@ export class TelegramBotOrchestratorService {
       botUsername,
       platformIntegration: community.settings?.telegramPlatformIntegration === true,
       votePanelEnabled: community.settings?.telegramVotePanelEnabled === true,
+      startWelcomeMerits,
     });
+  }
+
+  private async resolvePrimaryTelegramCommunityForUser(
+    tgUserId: string,
+  ): Promise<Community | null> {
+    const user = await this.userService.getUserByAuthId('telegram', tgUserId);
+    if (!user?.communityMemberships?.length) {
+      return null;
+    }
+    const doc = await this.communityModel
+      .findOne({
+        id: { $in: user.communityMemberships },
+        telegramChatId: { $exists: true, $nin: [null, ''] },
+        $or: [{ telegramFrozenAt: { $exists: false } }, { telegramFrozenAt: null }],
+      })
+      .lean();
+    return doc ? (doc as Community) : null;
+  }
+
+  private async isReturningMeriterMember(
+    tgUserId: string,
+    communityId: string,
+  ): Promise<boolean> {
+    const user = await this.userService.getUserByAuthId('telegram', tgUserId);
+    if (!user) {
+      return false;
+    }
+    const role = await this.userCommunityRoleService.getRole(user.id, communityId);
+    return Boolean(role);
   }
 
   private async sendGuideToUser(

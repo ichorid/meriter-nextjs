@@ -54,8 +54,9 @@ describe('telegram group welcome copy', () => {
     });
     expect(text).toMatch(/^Привет!\n\nЯ – Меритер/);
     expect(text).toContain('1. Публикуйте посты с #заслуга, чтобы собирать заслуги для себя');
-    expect(text).toContain('\n\n2. Голосуйте за чужие посты с #заслуга реакциями');
-    expect(text).toContain('\n\n3. Проверяйте баланс и историю');
+    expect(text).toContain('2. Если вы хотите собирать заслуги для другого пользователя');
+    expect(text).toContain('\n\n3. Голосуйте за чужие посты с #заслуга реакциями');
+    expect(text).toContain('\n\n4. Проверяйте баланс и историю');
     expect(text).not.toContain('Meriter подключён');
     expect(text).not.toContain('• Пример:');
   });
@@ -110,29 +111,46 @@ describe('telegram group welcome copy', () => {
     const text = buildTelegramHelpMessage('', {
       communityName: 'Test',
       hashtags: ['заслуга'],
+      botUsername: 'meriter_bot',
+      communityId: 'comm-1',
     });
+    expect(text).toContain('Добро пожаловать в Meriter!');
     expect(text).toContain('/balance — ваши заслуги');
     expect(text).toContain('/guide — подробный гайд');
     expect(text).toContain('/link — ссылка');
+    expect(text).toContain('/settings — настройки (только для администратора группы)');
     expect(text).toContain(
-      '1. Публикуйте посты с #заслуга, чтобы собирать заслуги для себя',
+      '1. Публикуйте посты с #заслуга, чтобы собирать заслуги для себя.',
     );
-    expect(text).toContain('2. Голосуйте за чужие посты с #заслуга реакциями');
-    expect(text).toContain('3. Проверяйте баланс и историю');
-    expect(text).toContain('4. Если нужен подробный гайд, отправьте команду /guide');
+    expect(text).toContain(
+      '2. Если вы хотите собирать заслуги для другого пользователя',
+    );
+    expect(text).toContain('3. Голосуйте за чужие посты с #заслуга реакциями');
+    expect(text).toContain('4. Проверяйте баланс и историю в мини-приложении: t.me/meriter_bot?startapp=comm-1');
+    expect(text).toContain('5. Если нужен подробный гайд, отправьте команду /guide');
     expect(text).not.toContain('Голосование реакциями');
     expect(text).not.toContain('• Пример:');
     expect(text).not.toContain('Заслуги — внутренняя валюта');
   });
 
-  it('help describes panel voting in step 2 when vote panel is enabled', () => {
+  it('help adds welcome grant line for /start new members', () => {
+    const text = buildTelegramHelpMessage('', {
+      hashtags: ['заслуга'],
+      botUsername: 'meriter_bot',
+      startWelcomeMerits: 10,
+    });
+    expect(text).toContain('Вам начислено 10 приветственных заслуг');
+    expect(text).toContain('Дальше всё просто');
+  });
+
+  it('help describes panel voting in step 3 when vote panel is enabled', () => {
     const text = buildTelegramHelpMessage('', {
       communityName: 'Test',
       hashtags: ['заслуга'],
       votePanelEnabled: true,
     });
     expect(text).toContain(
-      '2. Голосуйте за чужие посты с #заслуга кнопками под постом (+1, своя сумма, против)',
+      '3. Голосуйте за чужие посты с #заслуга кнопками, которые бот размещает под его постом',
     );
     expect(text).not.toContain('Голосование\n• +1');
     expect(text).not.toContain('Голосование реакциями');
@@ -147,9 +165,9 @@ describe('telegram group welcome copy', () => {
       votePanelEnabled: true,
     });
     expect(text).toContain(
-      '2. Голосуйте за чужие посты с #заслуга кнопками под постом (+1, своя сумма, против)',
+      '3. Голосуйте за чужие посты с #заслуга кнопками, которые бот размещает под его постом',
     );
-    expect(text).not.toContain('2. Голосуйте за чужие посты с #заслуга реакциями');
+    expect(text).not.toContain('3. Голосуйте за чужие посты с #заслуга реакциями');
     expect(text).not.toContain('счётчики');
   });
 
@@ -186,7 +204,7 @@ describe('telegram group welcome copy', () => {
     expect(TG_MSG.reactionPostNotFound('заслуга')).not.toContain('сохранённым');
   });
 
-  it('group welcome mentions beneficiary post format in step 1', () => {
+  it('group welcome mentions beneficiary post format in step 2', () => {
     const text = buildGroupWelcomeMessage({
       communityName: 'Test',
       hashtags: ['заслуга'],

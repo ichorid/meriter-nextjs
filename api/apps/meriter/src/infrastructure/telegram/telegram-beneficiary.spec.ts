@@ -59,6 +59,39 @@ describe('telegram-beneficiary', () => {
         username: undefined,
       });
     });
+
+    it('parses mention entity when Telegram sends username without user id', () => {
+      const text = '#заслуга для @prokhortseva спасибо';
+      const entities = [{ type: 'mention', offset: 13, length: 14 }];
+      expect(parseInlineBeneficiaryFromMessage(text, entities)).toEqual({
+        kind: 'username',
+        username: 'prokhortseva',
+      });
+    });
+
+    it('prefers text_mention whose username matches «для @username»', () => {
+      const text = '#заслуга для @prokhortseva спасибо';
+      const entities = [
+        {
+          type: 'text_mention',
+          offset: 0,
+          length: 8,
+          user: { id: 111, first_name: 'Other', username: 'other' },
+        },
+        {
+          type: 'text_mention',
+          offset: 13,
+          length: 14,
+          user: { id: 4242, first_name: 'Anna', username: 'prokhortseva' },
+        },
+      ];
+      expect(parseInlineBeneficiaryFromMessage(text, entities)).toEqual({
+        kind: 'text_mention',
+        telegramId: '4242',
+        displayName: 'Anna',
+        username: 'prokhortseva',
+      });
+    });
   });
 
   describe('resolveTelegramPublicationBeneficiary', () => {
@@ -113,10 +146,12 @@ describe('telegram-beneficiary', () => {
     });
 
     it('resolves username via community member lookup', async () => {
+      const resolveUsernameInGroupChat = jest.fn().mockResolvedValue(null);
       const result = await resolveTelegramPublicationBeneficiary({
         ...baseDeps,
         messageText: '#заслуга для @prokhortseva спасибо',
         findUserByUsername: jest.fn().mockResolvedValue(null),
+        resolveUsernameInGroupChat,
         findCommunityMemberByUsername: jest.fn().mockResolvedValue({
           id: 'u-pro',
           telegramId: '4242',
@@ -126,6 +161,41 @@ describe('telegram-beneficiary', () => {
       });
       expect(result.beneficiary?.telegramId).toBe('4242');
       expect(result.error).toBeUndefined();
+      expect(resolveUsernameInGroupChat).toHaveBeenCalledWith('prokhortseva');
+    });
+
+    it('prefers group chat lookup before community DB for silent member username', async () => {
+      const findCommunityMemberByUsername = jest.fn();
+      const result = await resolveTelegramPublicationBeneficiary({
+        ...baseDeps,
+        messageText: '#заслуга для @prokhortseva спасибо',
+        findUserByUsername: jest.fn().mockResolvedValue(null),
+        resolveUsernameInGroupChat: jest.fn().mockResolvedValue({
+          id: '7777',
+          username: 'prokhortseva',
+          firstName: 'Anna',
+        }),
+        findCommunityMemberByUsername,
+      });
+      expect(result.beneficiary?.telegramId).toBe('7777');
+      expect(findCommunityMemberByUsername).not.toHaveBeenCalled();
+    });
+
+    it('accepts restricted chat members as beneficiaries', async () => {
+      const isChatMember = jest.fn().mockResolvedValue(true);
+      const result = await resolveTelegramPublicationBeneficiary({
+        ...baseDeps,
+        messageText: '#заслуга для @quiet спасибо',
+        findUserByUsername: jest.fn().mockResolvedValue(null),
+        resolveUsernameInGroupChat: jest.fn().mockResolvedValue({
+          id: '8888',
+          username: 'quiet',
+          firstName: 'Quiet',
+        }),
+        isChatMember,
+      });
+      expect(result.beneficiary?.telegramId).toBe('8888');
+      expect(isChatMember).toHaveBeenCalledWith('-1001', '8888');
     });
 
     it('resolves username via group chat lookup', async () => {

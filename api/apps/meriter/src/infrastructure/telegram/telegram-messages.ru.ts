@@ -256,11 +256,15 @@ function joinTelegramBlocks(blocks: string[]): string {
   return blocks.filter((block) => block.trim().length > 0).join('\n\n');
 }
 
-function buildPostsStep(input: CommunityUsageRulesInput): string {
+function buildPostForSelfStep(input: CommunityUsageRulesInput): string {
+  const hashtag = primaryCommunityHashtag(input.hashtags);
+  return `1. Публикуйте посты с #${hashtag}, чтобы собирать заслуги для себя.`;
+}
+
+function buildPostForOthersStep(input: CommunityUsageRulesInput): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
   return (
-    `1. Публикуйте посты с #${hashtag}, чтобы собирать заслуги для себя. ` +
-    `Если вы хотите собирать заслуги для другого пользователя, просто ответьте на его сообщение ` +
+    `2. Если вы хотите собирать заслуги для другого пользователя, просто ответьте на его сообщение ` +
     `и добавьте в свой ответ #${hashtag} или напишите в своём сообщении «#${hashtag} для @username».`
   );
 }
@@ -269,23 +273,24 @@ function buildVotingStep(input: CommunityUsageRulesInput): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
   if (input.votePanelEnabled) {
     return (
-      `2. Голосуйте за чужие посты с #${hashtag} кнопками под постом (+1, своя сумма, против)`
+      `3. Голосуйте за чужие посты с #${hashtag} кнопками, которые бот размещает под его постом`
     );
   }
-  return `2. Голосуйте за чужие посты с #${hashtag} реакциями 👍 ❤️ 👎`;
+  return `3. Голосуйте за чужие посты с #${hashtag} реакциями 👍 ❤️ 👎`;
 }
 
 function buildMiniAppStep(): string {
-  return '3. Проверяйте баланс и историю в мини-приложении (ссылка ниже)';
+  return '4. Проверяйте баланс и историю в мини-приложении (ссылка ниже)';
 }
 
 function buildGuideStep(): string {
-  return '4. Если нужен подробный гайд, отправьте команду /guide — бот пришлёт инструкцию в личку';
+  return '5. Если нужен подробный гайд, отправьте команду /guide — бот пришлёт инструкцию в личку';
 }
 
 function buildNumberedUsageSteps(input: CommunityUsageRulesInput): string {
   return joinTelegramBlocks([
-    buildPostsStep(input),
+    buildPostForSelfStep(input),
+    buildPostForOthersStep(input),
     buildVotingStep(input),
     buildMiniAppStep(),
     buildGuideStep(),
@@ -307,7 +312,7 @@ function buildReactionVotingRules(votePanelEnabled?: boolean): string {
       '• +1 / +3 / +5 — начислить заслуги\n' +
         '• Своя сумма — введите число ответом на подсказку бота\n' +
         '• Против — списать заслуги с получателя\n' +
-        '• Текущая сумма заслуг — строка «Сейчас заслуг: …» под постом',
+        '• Текущая сумма заслуг — строка «Заслуг собрано: …» под постом',
     ]);
   }
   return joinTelegramBlocks([
@@ -340,10 +345,6 @@ function buildWelcomeMeritsParagraph(welcomeMerits?: number): string {
     return '';
   }
   return `\n\nНовым участникам — ${welcomeMerits} приветственных заслуг.`;
-}
-
-function buildHelpUsageIntro(input: CommunityUsageRulesInput): string {
-  return buildNumberedUsageSteps(input);
 }
 
 function buildCommunityUsageBody(input: CommunityUsageRulesInput): string {
@@ -480,25 +481,49 @@ export function buildTelegramHelpMessage(
     botUsername?: string;
     platformIntegration?: boolean;
     votePanelEnabled?: boolean;
+    /** Shown on /start for new members only (after welcome merits grant). */
+    startWelcomeMerits?: number;
   },
 ): string {
-  const rulesBlock = `${buildHelpUsageIntro({
+  const input: CommunityUsageRulesInput = {
     communityName: options?.communityName ?? 'сообщество',
     hashtags: options?.hashtags,
     platformIntegration: options?.platformIntegration,
     botUsername: options?.botUsername,
     votePanelEnabled: options?.votePanelEnabled,
-  })}\n\n`;
+  };
+  const miniAppLink =
+    options?.botUsername != null
+      ? buildTelegramMiniAppStartLink(options.botUsername, options?.communityId)
+      : undefined;
+  const miniAppStep =
+    miniAppLink != null
+      ? `4. Проверяйте баланс и историю в мини-приложении: ${miniAppLink}`
+      : '4. Проверяйте баланс и историю в мини-приложении (команда /link).';
+
+  const welcomeGrant =
+    options?.startWelcomeMerits != null && options.startWelcomeMerits > 0
+      ? `\n\nВам начислено ${options.startWelcomeMerits} приветственных заслуг. Дальше всё просто:`
+      : '';
+
+  const steps = joinTelegramBlocks([
+    buildPostForSelfStep(input),
+    buildPostForOthersStep(input),
+    buildVotingStep(input),
+    miniAppStep,
+    buildGuideStep(),
+  ]);
 
   return (
-    `${rulesBlock}` +
+    `Добро пожаловать в Meriter!${welcomeGrant}\n\n` +
+    `${steps}\n\n` +
     `Команды в чате:\n` +
     `/balance — ваши заслуги\n` +
     `/members — список участников\n` +
-    `/settings — настройки (лид)\n` +
     `/help — краткая подсказка\n` +
     `/guide — подробный гайд (в личку)\n` +
     `/link — ссылка на мини-приложение\n` +
+    `/settings — настройки (только для администратора группы)\n` +
     `/linkandpin — ссылка и закрепить`
   );
 }

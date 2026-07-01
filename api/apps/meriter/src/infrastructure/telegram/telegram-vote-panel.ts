@@ -21,7 +21,7 @@ export function buildVotePanelMessageText(
   recipient: VotePanelRecipient,
   metrics: VotePanelMetrics,
 ): string {
-  const netLine = `\n\nСейчас заслуг: ${netMerits(metrics)}`;
+  const netLine = `\n\nЗаслуг собрано: ${netMerits(metrics)}`;
   if (recipient.isNomination && recipient.nominatorDisplayName) {
     return (
       `Начислить заслуги: ${recipient.displayName}\n` +
