@@ -29,6 +29,24 @@ describe('telegram-beneficiary', () => {
       });
     });
 
+    it('prefers text_mention entity over plain-text «для @username»', () => {
+      const text = '#заслуга для @prokhortseva спасибо';
+      const entities = [
+        {
+          type: 'text_mention',
+          offset: 8,
+          length: 12,
+          user: { id: 4242, first_name: 'Anna', username: 'prokhortseva' },
+        },
+      ];
+      expect(parseInlineBeneficiaryFromMessage(text, entities)).toEqual({
+        kind: 'text_mention',
+        telegramId: '4242',
+        displayName: 'Anna',
+        username: 'prokhortseva',
+      });
+    });
+
     it('parses text_mention after для', () => {
       const text = '#заслуга для Иван помог';
       const entities = [
@@ -92,6 +110,37 @@ describe('telegram-beneficiary', () => {
       });
       expect(result.beneficiary?.telegramId).toBe('300');
       expect(result.cleanedText).toBe('#заслуга помог');
+    });
+
+    it('resolves username via community member lookup', async () => {
+      const result = await resolveTelegramPublicationBeneficiary({
+        ...baseDeps,
+        messageText: '#заслуга для @prokhortseva спасибо',
+        findUserByUsername: jest.fn().mockResolvedValue(null),
+        findCommunityMemberByUsername: jest.fn().mockResolvedValue({
+          id: 'u-pro',
+          telegramId: '4242',
+          displayName: 'Anna',
+          username: 'prokhortseva',
+        }),
+      });
+      expect(result.beneficiary?.telegramId).toBe('4242');
+      expect(result.error).toBeUndefined();
+    });
+
+    it('resolves username via group chat lookup', async () => {
+      const result = await resolveTelegramPublicationBeneficiary({
+        ...baseDeps,
+        messageText: '#заслуга для @prokhortseva спасибо',
+        findUserByUsername: jest.fn().mockResolvedValue(null),
+        findCommunityMemberByUsername: jest.fn().mockResolvedValue(null),
+        resolveUsernameInGroupChat: jest.fn().mockResolvedValue({
+          id: '7777',
+          username: 'prokhortseva',
+          firstName: 'Anna',
+        }),
+      });
+      expect(result.beneficiary?.telegramId).toBe('7777');
     });
 
     it('returns MVP error when username not found', async () => {

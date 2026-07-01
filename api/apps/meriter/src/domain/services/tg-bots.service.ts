@@ -46,6 +46,12 @@ import {
 /** Default lifetime for bot messages that should not clutter group history. */
 export const TG_BOT_EPHEMERAL_TTL_SEC = 60;
 
+function telegramUsernameRegex(username: string): RegExp {
+  const clean = username.replace(/^@/, '').trim();
+  const escaped = clean.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`^${escaped}$`, 'i');
+}
+
 /**
  * BC-19 Telegram bot domain service (OD-4).
  * Inbound hashtag-gated publications route through PublicationService.createPublication
@@ -341,8 +347,14 @@ export class TgBotsService {
         return { id: user.id, displayName: user.displayName, username: user.username };
       },
       findUserByUsername: async (username) => {
-        const user = await this.userModel.findOne({ username }).lean();
-        if (!user?.id || user.authProvider !== 'telegram' || !user.authId) return null;
+        const user = await this.userModel
+          .findOne({
+            username: telegramUsernameRegex(username),
+            authProvider: 'telegram',
+            authId: { $exists: true, $nin: [null, ''] },
+          })
+          .lean();
+        if (!user?.id || !user.authId) return null;
         return {
           id: user.id,
           telegramId: user.authId,
@@ -350,6 +362,37 @@ export class TgBotsService {
           username: user.username,
         };
       },
+      findCommunityMemberByUsername: async (username) => {
+        const roleMemberIds =
+          await this.userCommunityRoleService.getMemberUserIdsInCommunity(communityId);
+        const communityDoc = await this.communityModel
+          .findOne({ id: communityId })
+          .select({ members: 1 })
+          .lean();
+        const memberIds = [...new Set([...(communityDoc?.members ?? []), ...roleMemberIds])];
+        if (memberIds.length === 0) {
+          return null;
+        }
+        const user = await this.userModel
+          .findOne({
+            id: { $in: memberIds },
+            username: telegramUsernameRegex(username),
+            authProvider: 'telegram',
+            authId: { $exists: true, $nin: [null, ''] },
+          })
+          .lean();
+        if (!user?.id || !user.authId) {
+          return null;
+        }
+        return {
+          id: user.id,
+          telegramId: user.authId,
+          displayName: user.displayName,
+          username: user.username,
+        };
+      },
+      resolveUsernameInGroupChat: async (username) =>
+        this.tgResolveGroupMemberByUsername(tgChatId, username),
       resolveUsernameViaTelegramApi: async (username) => {
         try {
           const info = await this.tgGetUserByUsername(username);
@@ -1025,6 +1068,56 @@ export class TgBotsService {
       this.logger.warn(`Failed to get user info for @${cleanUsername}:`, errorMessage);
       return null;
     }
+  }
+
+  async tgResolveGroupMemberByUsername(
+    tgChatId: string | number,
+    username: string,
+  ): Promise<{ id: string; username?: string; firstName?: string; lastName?: string } | null> {
+    const clean = username.replace(/^@/, '').trim();
+    if (!clean) {
+      return null;
+    }
+    const noAxios = this.configService.get('noAxios');
+    if (noAxios) {
+      return null;
+    }
+    try {
+      const response = await Axios.get(BOT_URL + '/getChatAdministrators', {
+        params: { chat_id: tgChatId },
+        timeout: 5000,
+      });
+      const rows = response.data?.result ?? [];
+      for (const row of rows) {
+        const user = row?.user as
+          | {
+              id?: number | string;
+              is_bot?: boolean;
+              username?: string;
+              first_name?: string;
+              last_name?: string;
+            }
+          | undefined;
+        if (!user?.id || user.is_bot) {
+          continue;
+        }
+        if (user.username?.toLowerCase() === clean.toLowerCase()) {
+          return {
+            id: String(user.id),
+            username: user.username,
+            firstName: user.first_name,
+            lastName: user.last_name,
+          };
+        }
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to resolve @${clean} among chat ${tgChatId} administrators:`,
+        errorMessage,
+      );
+    }
+    return null;
   }
 
   async tgSend({

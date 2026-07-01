@@ -57,6 +57,12 @@ export type ResolveTelegramBeneficiaryDeps = {
   resolveUsernameViaTelegramApi: (
     username: string,
   ) => Promise<{ id: string; username?: string; firstName?: string; lastName?: string } | null>;
+  findCommunityMemberByUsername?: (
+    username: string,
+  ) => Promise<{ id: string; telegramId: string; displayName?: string; username?: string } | null>;
+  resolveUsernameInGroupChat?: (
+    username: string,
+  ) => Promise<{ id: string; username?: string; firstName?: string; lastName?: string } | null>;
   isChatMember: (tgChatId: string, tgUserId: string) => Promise<boolean>;
   ensureTelegramUser: (
     telegramId: string,
@@ -100,52 +106,50 @@ export function parseInlineBeneficiaryFromMessage(
     return { kind: 'username', username: id };
   }
 
+  if (entities?.length) {
+    const lower = messageText.toLowerCase();
+    const dlyaIdx = lower.indexOf('для');
+
+    let textMention: TelegramMessageEntity | undefined;
+    for (const ent of entities) {
+      if (ent.type !== 'text_mention' || !ent.user?.id) {
+        continue;
+      }
+      if (dlyaIdx >= 0 && ent.offset >= dlyaIdx && ent.offset <= dlyaIdx + 12) {
+        textMention = ent;
+        break;
+      }
+      textMention ??= ent;
+    }
+    if (textMention?.user) {
+      const u = textMention.user;
+      return {
+        kind: 'text_mention',
+        telegramId: String(u.id),
+        displayName: buildDisplayName(u),
+        username: u.username,
+      };
+    }
+
+    for (const ent of entities) {
+      if (ent.type !== 'mention') {
+        continue;
+      }
+      const slice = messageText.slice(ent.offset, ent.offset + ent.length);
+      const m = slice.match(/^@(.+)$/);
+      if (!m) {
+        continue;
+      }
+      const before = lower.slice(Math.max(0, ent.offset - 8), ent.offset);
+      if (before.includes('для')) {
+        return { kind: 'username', username: m[1] };
+      }
+    }
+  }
+
   const dlya = messageText.match(INLINE_DLYA_PARSE_PATTERN);
   if (dlya) {
     return { kind: 'username', username: dlya[1] };
-  }
-
-  if (!entities?.length) {
-    return null;
-  }
-
-  const lower = messageText.toLowerCase();
-  const dlyaIdx = lower.indexOf('для');
-
-  let textMention: TelegramMessageEntity | undefined;
-  for (const ent of entities) {
-    if (ent.type !== 'text_mention' || !ent.user?.id) {
-      continue;
-    }
-    if (dlyaIdx >= 0 && ent.offset >= dlyaIdx && ent.offset <= dlyaIdx + 12) {
-      textMention = ent;
-      break;
-    }
-    textMention ??= ent;
-  }
-  if (textMention?.user) {
-    const u = textMention.user;
-    return {
-      kind: 'text_mention',
-      telegramId: String(u.id),
-      displayName: buildDisplayName(u),
-      username: u.username,
-    };
-  }
-
-  for (const ent of entities) {
-    if (ent.type !== 'mention') {
-      continue;
-    }
-    const slice = messageText.slice(ent.offset, ent.offset + ent.length);
-    const m = slice.match(/^@(.+)$/);
-    if (!m) {
-      continue;
-    }
-    const before = lower.slice(Math.max(0, ent.offset - 8), ent.offset);
-    if (before.includes('для')) {
-      return { kind: 'username', username: m[1] };
-    }
   }
 
   return null;
@@ -154,7 +158,7 @@ export function parseInlineBeneficiaryFromMessage(
 export function formatTelegramBeneficiaryNotFoundError(label: string): string {
   return (
     `⚠️ Пользователь ${label} не найден.\n\n` +
-    'Получатель заслуг должен быть в группе и хотя бы раз написать боту в личку (Start).'
+    'Получатель должен состоять в группе. Выберите @username из списка участников Telegram или ответьте на его сообщение в чате.'
   );
 }
 
@@ -247,14 +251,33 @@ async function resolveInlineBeneficiary(
       first_name: byUsername.displayName,
     };
   } else {
-    const fromApi = await deps.resolveUsernameViaTelegramApi(inline.username);
-    if (fromApi) {
-      telegramId = fromApi.id;
+    const inCommunity = await deps.findCommunityMemberByUsername?.(inline.username);
+    if (inCommunity) {
+      telegramId = inCommunity.telegramId;
       profile = {
-        username: fromApi.username ?? inline.username,
-        first_name: fromApi.firstName,
-        last_name: fromApi.lastName,
+        username: inCommunity.username ?? inline.username,
+        first_name: inCommunity.displayName,
       };
+    } else {
+      const inGroup = await deps.resolveUsernameInGroupChat?.(inline.username);
+      if (inGroup) {
+        telegramId = inGroup.id;
+        profile = {
+          username: inGroup.username ?? inline.username,
+          first_name: inGroup.firstName,
+          last_name: inGroup.lastName,
+        };
+      } else {
+        const fromApi = await deps.resolveUsernameViaTelegramApi(inline.username);
+        if (fromApi) {
+          telegramId = fromApi.id;
+          profile = {
+            username: fromApi.username ?? inline.username,
+            first_name: fromApi.firstName,
+            last_name: fromApi.lastName,
+          };
+        }
+      }
     }
   }
 
