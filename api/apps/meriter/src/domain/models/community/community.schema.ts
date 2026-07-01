@@ -99,6 +99,8 @@ export interface CommunitySettings {
   telegramReactionNoHashtagHintEnabled?: boolean;
   /** Telegram MVP: bot posts persistent vote panel with merit counters after hashtag posts. */
   telegramVotePanelEnabled?: boolean;
+  /** Telegram MVP: vote success lines in group auto-delete (default on). */
+  telegramVoteSuccessEphemeral?: boolean;
   /** Per-command delivery for /balance, /members, /help, /link. */
   telegramCommandRouting?: {
     balance?: { destination: 'group' | 'dm'; ephemeral?: boolean };
@@ -469,6 +471,7 @@ export class CommunitySchemaClass implements Community {
       telegramPublicationAckEnabled: { type: Boolean, default: false },
       telegramReactionNoHashtagHintEnabled: { type: Boolean, default: true },
       telegramVotePanelEnabled: { type: Boolean, default: false },
+      telegramVoteSuccessEphemeral: { type: Boolean, default: true },
       telegramCommandRouting: {
         type: {
           balance: {

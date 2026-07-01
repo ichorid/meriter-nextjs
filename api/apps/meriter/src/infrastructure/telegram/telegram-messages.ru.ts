@@ -143,6 +143,8 @@ export function buildSettingsLeadSummary(community: CommunitySettingsSnapshotInp
     community.settings?.telegramReactionNoHashtagHintEnabled !== false ? 'вкл' : 'выкл';
   const votePanel =
     community.settings?.telegramVotePanelEnabled === true ? 'вкл' : 'выкл';
+  const voteSuccessEphemeral =
+    community.settings?.telegramVoteSuccessEphemeral !== false ? 'исчезает' : 'остаётся';
   const routing = community.settings?.telegramCommandRouting;
   const routeLines = (['balance', 'members', 'help', 'link'] as TelegramRoutableCommand[])
     .map((cmd) => {
@@ -159,6 +161,7 @@ export function buildSettingsLeadSummary(community: CommunitySettingsSnapshotInp
     `• Приветственные заслуги: ${s.welcomeMerits}\n` +
     `• Подсказка без хэштега: ${noHashtagHint}\n` +
     `• Панель голосования: ${votePanel}\n` +
+    `• Отчёт о голосе: ${voteSuccessEphemeral}\n` +
     `${routeLines}\n\n` +
     `Нажмите кнопку — бот задаст вопрос в личке или переключит режим.`
   );
@@ -194,6 +197,7 @@ export function buildSettingsEditKeyboard(
   options: {
     reactionNoHashtagHintEnabled?: boolean;
     votePanelEnabled?: boolean;
+    voteSuccessEphemeral?: boolean;
     commandRouting?: TelegramCommandRoutingSettings;
   } = {},
 ): {
@@ -209,6 +213,10 @@ export function buildSettingsEditKeyboard(
   const panelLabel = options.votePanelEnabled
     ? 'Панель голосования: вкл'
     : 'Панель голосования: выкл';
+  const voteSuccessLabel =
+    options.voteSuccessEphemeral !== false
+      ? 'Отчёт о голосе: исчезает'
+      : 'Отчёт о голосе: остаётся';
   const routing = options.commandRouting;
   const cmdRow = (cmd: TelegramRoutableCommand) => ({
     text: formatTelegramCommandDeliveryLabel(
@@ -230,6 +238,12 @@ export function buildSettingsEditKeyboard(
         {
           text: panelLabel,
           callback_data: `settings:toggle:vote_panel:${communityId}`,
+        },
+      ],
+      [
+        {
+          text: voteSuccessLabel,
+          callback_data: `settings:toggle:vote_success_ephemeral:${communityId}`,
         },
       ],
       [cmdRow('balance'), cmdRow('members')],
@@ -541,6 +555,13 @@ export const TG_MSG = {
     'Насколько заслуг начислить автору?\n\nВыберите сумму кнопкой или ответьте числом на это сообщение.',
   voteAmountGroupPromptDown:
     'Насколько заслуг списать с автора?\n\nВыберите сумму кнопкой или ответьте числом на это сообщение.',
+  voteAmountInvalidRetry:
+    'Не понял сумму. Напишите число — например 10 или 10 заслуг.\n\n' +
+    'Ответьте на это сообщение: внизу уже открыто поле ввода.',
+  voteDirectionFlippedFromSign:
+    'Вы указали «−» — списываем заслуги с автора (против), а не начисляем.',
+  voteDirectionFlippedFromSignUp:
+    'Вы указали «+» — начисляем заслуги автору, а не списываем.',
   balanceSelf: (name: string, wallet: number, quota: number, quotaMax: number, pct: number) =>
     `Ваши заслуги в «${name}»:\n\n` +
     `Кошелёк — накопленные заслуги: ${wallet}\n` +
@@ -599,6 +620,10 @@ export const TG_MSG = {
       : 'Подсказка без хэштега выключена.',
   settingsVotePanelToggled: (enabled: boolean) =>
     enabled ? 'Панель голосования включена.' : 'Панель голосования выключена.',
+  settingsVoteSuccessEphemeralToggled: (enabled: boolean) =>
+    enabled
+      ? 'Отчёт о голосе: исчезает из чата.'
+      : 'Отчёт о голосе: остаётся в чате.',
   settingsCommandRouteCycled: (label: string) => `Команда: ${label}`,
   commandAnswerInDm: 'Ответ отправлен в личку с ботом.',
   miniAppLinkUnavailable: 'Ссылка на приложение временно недоступна. Попробуйте позже.',

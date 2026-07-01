@@ -987,7 +987,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
   });
 
-  it('message_reaction 👍 posts permanent vote success report in group', async () => {
+  it('message_reaction 👍 posts ephemeral vote success report in group by default', async () => {
     const { messageId } = await seedPublicationWithAnchor(99, { otherAuthor: true });
     const executeMock = jest.fn().mockResolvedValue(undefined);
     jest
@@ -1004,14 +1004,14 @@ describe('TelegramBotOrchestrator (integration)', () => {
       messageReactionUpdate('👍', messageId, 42),
     );
 
-    expect(replySpy).toHaveBeenCalledWith(
+    expect(ephemeralSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         chat_id: tgChatId,
         reply_to_message_id: messageId,
         text: expect.stringContaining('начислил автору 1 заслуг'),
       }),
     );
-    expect(ephemeralSpy).not.toHaveBeenCalledWith(
+    expect(replySpy).not.toHaveBeenCalledWith(
       expect.objectContaining({ text: expect.stringContaining('начислил автору') }),
     );
   });
@@ -1313,5 +1313,168 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
     expect(scheduleDeleteSpy).toHaveBeenCalledWith(tgChatId, userReplyMessageId);
     expect(executeMock).toHaveBeenCalled();
+  });
+
+  it('numeric reply accepts merit suffix and minus flips to downvote', async () => {
+    const { publicationId, userId, messageId } = await seedPublicationWithAnchor(130, {
+      otherAuthor: true,
+    });
+    const promptMessageId = 1400;
+    const userReplyMessageId = 1402;
+    const now = new Date();
+    await pendingModel.create({
+      id: uid(),
+      telegramUserId: tgUserId,
+      action: 'confirm_vote_amount',
+      payload: {
+        voterId: userId,
+        publicationId,
+        direction: 'up',
+        groupChatId: tgChatId,
+        reactedMessageId: messageId,
+        promptMessageId,
+      },
+      expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const executeMock = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(2002);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 47,
+      message: {
+        message_id: userReplyMessageId,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'Юлия',
+          last_name: 'Test',
+        },
+        text: '10 заслуг',
+        reply_to_message: {
+          message_id: promptMessageId,
+          from: { id: 1, is_bot: true, first_name: 'Meriter' },
+        },
+      },
+    } as TelegramTypes.Update);
+
+    expect(executeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ direction: 'up', quotaAmount: 10 }),
+    );
+
+    await pendingModel.deleteMany({ telegramUserId: tgUserId }).exec();
+    await pendingModel.create({
+      id: uid(),
+      telegramUserId: tgUserId,
+      action: 'confirm_vote_amount',
+      payload: {
+        voterId: userId,
+        publicationId,
+        direction: 'up',
+        groupChatId: tgChatId,
+        reactedMessageId: messageId,
+        promptMessageId,
+      },
+      expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 48,
+      message: {
+        message_id: 1403,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'Юлия',
+          last_name: 'Test',
+        },
+        text: '-10',
+        reply_to_message: {
+          message_id: promptMessageId,
+          from: { id: 1, is_bot: true, first_name: 'Meriter' },
+        },
+      },
+    } as TelegramTypes.Update);
+
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ text: TG_MSG.voteDirectionFlippedFromSign }),
+    );
+    expect(executeMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ direction: 'down', walletAmount: 10 }),
+    );
+  });
+
+  it('invalid numeric reply sends force-reply retry prompt', async () => {
+    const { publicationId, userId, messageId } = await seedPublicationWithAnchor(131, {
+      otherAuthor: true,
+    });
+    const promptMessageId = 1500;
+    const userReplyMessageId = 1501;
+    const now = new Date();
+    await pendingModel.create({
+      id: uid(),
+      telegramUserId: tgUserId,
+      action: 'confirm_vote_amount',
+      payload: {
+        voterId: userId,
+        publicationId,
+        direction: 'up',
+        groupChatId: tgChatId,
+        reactedMessageId: messageId,
+        promptMessageId,
+      },
+      expiresAt: new Date(now.getTime() + 15 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    });
+    const forceReplySpy = jest
+      .spyOn(
+        orchestrator as unknown as {
+          sendTelegramForceReply: (...args: unknown[]) => Promise<number | null>;
+        },
+        'sendTelegramForceReply',
+      )
+      .mockResolvedValue(1502);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 49,
+      message: {
+        message_id: userReplyMessageId,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: {
+          id: Number(tgUserId),
+          is_bot: false,
+          first_name: 'TG',
+          last_name: 'User',
+        },
+        text: 'много заслуг',
+        reply_to_message: {
+          message_id: promptMessageId,
+          from: { id: 1, is_bot: true, first_name: 'Meriter' },
+        },
+      },
+    } as TelegramTypes.Update);
+
+    expect(forceReplySpy).toHaveBeenCalledWith(
+      tgChatId,
+      TG_MSG.voteAmountInvalidRetry,
+      userReplyMessageId,
+    );
+    const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
+    expect((pending?.payload as { promptMessageId?: number }).promptMessageId).toBe(1502);
   });
 });
