@@ -11,7 +11,7 @@ import {
   CommunitySchemaClass,
   CommunityDocument,
 } from '../../domain/models/community/community.schema';
-import { telegramChatIdLookupVariants } from '../../infrastructure/telegram/telegram-chat-id.util';
+import { TelegramCommunityChatResolver } from '../telegram/telegram-community-chat.resolver';
 import { JwtService } from '../../common/utils/jwt-service.util';
 import * as crypto from 'crypto';
 import {
@@ -48,6 +48,7 @@ export class AuthProviderService {
     private communityModel: Model<CommunityDocument>,
     @InjectModel(PasskeyChallenge.name)
     private passkeyChallengeModel: Model<PasskeyChallengeDocument>,
+    private readonly telegramCommunityChatResolver: TelegramCommunityChatResolver,
   ) { }
 
   private isFakeDataMode(): boolean {
@@ -1049,16 +1050,7 @@ export class AuthProviderService {
   async resolveCommunityIdByTelegramChatId(
     telegramChatId: string,
   ): Promise<string | null> {
-    const variants = telegramChatIdLookupVariants(telegramChatId);
-    if (variants.length === 0) return null;
-
-    const doc = await this.communityModel
-      .findOne({
-        telegramChatId: { $in: variants },
-        telegramFrozenAt: { $exists: false },
-      })
-      .lean();
-    return doc?.id ?? null;
+    return this.telegramCommunityChatResolver.resolveCommunityIdForMiniApp(telegramChatId);
   }
 
   /** Resolve community id from Mini App start_param (must be a TG-linked, non-frozen community). */

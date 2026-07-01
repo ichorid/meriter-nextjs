@@ -1,7 +1,7 @@
 import { Logger } from '@nestjs/common';
 import type { Model } from 'mongoose';
 import type { CommunityDocument } from '../../../domain/models/community/community.schema';
-import { telegramChatIdLookupVariants } from '../../../infrastructure/telegram/telegram-chat-id.util';
+import { createTelegramCommunityChatResolver } from '../../../infrastructure/telegram/telegram-community-chat.resolver';
 
 export type GetCommunityByTelegramChatIdResult = {
   communityId: string;
@@ -20,15 +20,13 @@ export class GetCommunityByTelegramChatIdUseCase {
   constructor(private readonly deps: GetCommunityByTelegramChatIdDeps) {}
 
   async execute(telegramChatId: string): Promise<GetCommunityByTelegramChatIdResult> {
-    const variants = telegramChatIdLookupVariants(telegramChatId);
-    if (variants.length === 0) return null;
-
-    const doc = await this.deps.communityModel
-      .findOne({ telegramChatId: { $in: variants } })
-      .lean();
+    const resolver = createTelegramCommunityChatResolver({
+      communityModel: this.deps.communityModel,
+    });
+    const doc = await resolver.resolveByIncomingChatId(telegramChatId);
 
     if (!doc?.id) {
-      this.logger.debug(`No community for telegramChatId variants=${variants.join(',')}`);
+      this.logger.debug(`No community for telegramChatId=${telegramChatId}`);
       return null;
     }
 

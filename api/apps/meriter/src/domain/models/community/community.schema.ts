@@ -114,6 +114,8 @@ export interface CommunitySettings {
   telegramPlatformIntegration?: boolean;
   /** When platform integration is on: private (default) or public OB card. */
   telegramPlatformVisibility?: 'private' | 'public';
+  /** Previous Telegram chat ids after group→supergroup migration (lookup + API retry). */
+  telegramLegacyChatIds?: string[];
 }
 
 export interface CommunityMeritConversion {
@@ -503,6 +505,7 @@ export class CommunitySchemaClass implements Community {
         enum: ['private', 'public'],
         default: 'private',
       },
+      telegramLegacyChatIds: { type: [String], default: undefined },
     },
     default: {},
   })

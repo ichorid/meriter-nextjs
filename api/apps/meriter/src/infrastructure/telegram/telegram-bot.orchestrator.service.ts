@@ -109,7 +109,8 @@ import {
   parseVoteAmountReply,
   resolveVoteAmountDirection,
 } from './telegram-vote-amount-parse';
-import { telegramChatIdLookupVariants, telegramGroupSendNotificationParams, expandTelegramChatIds, buildTelegramSupergroupChatLink } from './telegram-chat-id.util';
+import { telegramChatIdLookupVariants, telegramGroupSendNotificationParams, buildTelegramSupergroupChatLink } from './telegram-chat-id.util';
+import { TelegramCommunityChatResolver } from './telegram-community-chat.resolver';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -192,6 +193,7 @@ export class TelegramBotOrchestratorService {
     private readonly anchorModel: Model<TelegramPublicationAnchorDocument>,
     @InjectModel(TelegramBotPendingActionSchemaClass.name)
     private readonly pendingModel: Model<TelegramBotPendingActionDocument>,
+    private readonly chatResolver: TelegramCommunityChatResolver,
   ) {}
 
   async handleUpdate(body: TelegramTypes.Update): Promise<void> {
@@ -1897,52 +1899,16 @@ export class TelegramBotOrchestratorService {
   }
 
   private async findCommunityByChatId(telegramChatId: string): Promise<Community | null> {
-    const variants = telegramChatIdLookupVariants(telegramChatId);
-    if (variants.length === 0) {
-      return null;
-    }
-    const matches = await this.communityModel
-      .find({
-        $or: [
-          { telegramChatId: { $in: variants } },
-          { 'settings.telegramLegacyChatIds': { $in: variants } },
-        ],
-      })
-      .lean();
-    if (matches.length === 0) {
-      return null;
-    }
-    if (matches.length === 1) {
-      return matches[0] as Community;
-    }
-    const active = matches.filter((doc) => !doc.telegramFrozenAt);
-    const pool = active.length > 0 ? active : matches;
-    pool.sort((a, b) => {
-      const aArchived = /archived duplicate/i.test(a.name ?? '') ? 1 : 0;
-      const bArchived = /archived duplicate/i.test(b.name ?? '') ? 1 : 0;
-      if (aArchived !== bArchived) {
-        return aArchived - bArchived;
-      }
-      return String(b.updatedAt ?? 0).localeCompare(String(a.updatedAt ?? 0));
-    });
-    return pool[0] as Community;
+    return this.chatResolver.resolveByIncomingChatId(telegramChatId);
   }
 
   private communityLegacyChatIds(community?: Community | null): string[] {
-    const raw = community?.settings?.telegramLegacyChatIds;
-    if (!Array.isArray(raw)) {
-      return [];
-    }
-    return raw.filter((id): id is string => typeof id === 'string' && id.trim().length > 0);
+    return this.chatResolver.communityLegacyChatIds(community);
   }
 
   /** Telegram API chat ids for a community (current + migration legacy aliases). */
   private telegramChatIdsForCommunity(community: Community, incomingChatId?: string): string[] {
-    const legacy = this.communityLegacyChatIds(community);
-    const primary =
-      incomingChatId?.trim() ||
-      (community.telegramChatId ? String(community.telegramChatId) : '');
-    return expandTelegramChatIds(primary, legacy);
+    return this.chatResolver.chatIdsForApi(community, incomingChatId);
   }
 
   async saveAnchor(

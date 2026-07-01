@@ -25,10 +25,12 @@ import {
   AuthMagicLinkSchema,
 } from '../../domain/models/auth/auth-magic-link.schema';
 import { DomainModule } from '../../domain.module';
+import { TelegramInfrastructureModule } from '../telegram/telegram.module';
 
 @Module({
   imports: [
     DomainModule,
+    TelegramInfrastructureModule,
     MongooseModule.forFeature([
       { name: CommunitySchemaClass.name, schema: CommunitySchema },
       { name: PasskeyChallenge.name, schema: PasskeyChallengeSchema },

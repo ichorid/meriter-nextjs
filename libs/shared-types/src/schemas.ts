@@ -229,6 +229,8 @@ export const CommunitySettingsSchema = z.object({
   documentVotingDurationHours: z.number().int().min(1).default(48),
   documentDefaultMode: z.enum(["manual", "auto"]).default("manual"),
   documentAutoApplyTimerHours: z.number().int().min(1).default(48),
+  /** Previous Telegram chat ids after group→supergroup migration. */
+  telegramLegacyChatIds: z.array(z.string()).optional(),
 });
 
 export const CommunityMeritConversionSchema = z.object({

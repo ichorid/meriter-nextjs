@@ -338,3 +338,58 @@ npx jest apps/meriter/src/infrastructure/telegram/telegram-hashtag-publication.s
 Cutover на `meriter.pro` — только после **`mongodump`** с dev VPS и узкого merge/cherry-pick bot-кода в **`main`**. См. § «Будущий переезд» в [15-dev-pilot-meriter-bot-ru.md](./15-dev-pilot-meriter-bot-ru.md).
 
 **Не пушить секреты в git.**
+
+---
+
+## 13. Миграция group → supergroup (Telegram)
+
+Когда Telegram апгрейдит обычную группу в **supergroup**, chat id меняется (например `-5565524009` → `-1004324573589`). Бот получает service-сообщение `migrate_to_chat_id`. Без обработки webhook'и с новым id не находят community → ломаются голоса, mini-app, `/settings`.
+
+### Симптомы
+
+| Симптом | Что видно |
+|---------|-----------|
+| Старые кнопки +1 | Счётчик и баланс обновляются, ephemeral «X начислил Y» — нет |
+| Два community в Mongo | Канонический + archived duplicate после re-add бота |
+| Mini-app / auth | «Community not found» по chat id |
+| `/settings`, lead | Частично «не тот» community / права |
+
+### Поля Mongo (community)
+
+| Поле | Назначение |
+|------|------------|
+| `telegramChatId` | **Текущий** chat id (unique sparse index) |
+| `settings.telegramLegacyChatIds[]` | Старые id после миграции (lookup + retry Telegram API) |
+| `telegramFrozenAt` | Заморозка при удалении бота; для mini-app community **активна** только если поле **отсутствует** (`$unset`), не `$set: null` |
+| `telegram_publication_anchors.telegramChatId` | Chat id на момент создания anchor (может быть legacy) |
+
+### Postmortem: Ruslan (2026)
+
+| Сущность | Id / значение |
+|----------|----------------|
+| Канонический community | `c8695af4240` |
+| Archived duplicate | `69a22ed1c90` |
+| Legacy chat (basic group) | `-5565524009` |
+| Current chat (supergroup) | `-1004324573589` |
+
+**Цепочка:** онбординг на legacy id → upgrade без handler → lookup null → re-add бота → второй community.
+
+### Чеклист диагностики
+
+1. `db.communities.find({ $or: [ { telegramChatId: '<chatId>' }, { 'settings.telegramLegacyChatIds': '<chatId>' } ] })` — один active, нет duplicate?
+2. `telegramChatId` совпадает с **текущим** id группы (Bot API / `getChat`)?
+3. Anchors: `db.telegram_publication_anchors.find({ communityId: '...' })` — смешанные `telegramChatId` нормальны до repair/migration handler.
+4. `telegramFrozenAt` — поле должно быть **удалено** (`$unset`), не `null`.
+5. Логи: `TelegramCommunityChatResolver`, `TelegramBotOrchestratorService`.
+
+### `-100X` vs `-X` (не путать с migration)
+
+`telegramChatIdLookupVariants` — альтернативные формы **одного** supergroup id. Это **не** связь pre/post migration (`5565524009` ≠ `4324573589`). Для migration нужны `telegramLegacyChatIds` и auto-handler (API ≥ 0.66.0).
+
+### Repair (ops)
+
+Скрипт `api/scripts/repair-telegram-chat-id.ts --dry-run` (фаза 4) — аудит anchors vs `telegramChatId`. Ручные скрипты для инцидента — локально в `backups/` (не в git).
+
+### Merge duplicate community (если уже создан)
+
+**Осторожно:** memberships, wallets, publications. Отдельная процедура — только после бэкапа Mongo. Предпочтительно: archive duplicate (`name` + `(archived duplicate)`), перенести `telegramChatId` + legacy ids на канонический, `$unset telegramFrozenAt` на каноническом.
