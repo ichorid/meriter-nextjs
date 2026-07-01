@@ -31,6 +31,7 @@ import { Upload } from "@aws-sdk/lib-storage";
 import * as stream from "stream";
 
 import { escapeMarkdownV2 } from '../../common/helpers/telegram';
+import { telegramGroupSendNotificationParams } from '../../infrastructure/telegram/telegram-chat-id.util';
 import {
   resolveTelegramPublicationBeneficiary,
   type TelegramMessageEntity,
@@ -836,6 +837,7 @@ export class TgBotsService {
     if (reply_markup) {
       params.reply_markup = JSON.stringify(reply_markup);
     }
+    Object.assign(params, telegramGroupSendNotificationParams(chat_id));
     try {
       const noAxios = this.configService.get('noAxios');
       if (noAxios) {
@@ -1738,7 +1740,13 @@ export class TgBotsService {
   }
 
   async telegramReplyMessage(token: string, reply_to_message_id: number, chat_id: string | number, text: string) {
-    const params = { reply_to_message_id, chat_id, text, parse_mode: "MarkdownV2" };
+    const params = {
+      reply_to_message_id,
+      chat_id,
+      text,
+      parse_mode: 'MarkdownV2',
+      ...telegramGroupSendNotificationParams(chat_id),
+    };
     return await Promise.all([
       Axios.get(`${this.telegramApiUrl}/bot${token}/sendMessage`, {
         params,
@@ -1746,7 +1754,12 @@ export class TgBotsService {
     ]);
   }
   async telegramSendMessage(token: string, chat_id: string | number, text: string) {
-    const params = { chat_id, text, parse_mode: "MarkdownV2" };
+    const params = {
+      chat_id,
+      text,
+      parse_mode: 'MarkdownV2',
+      ...telegramGroupSendNotificationParams(chat_id),
+    };
     try {
       const _r = await Promise.all([
         Axios.get(`${this.telegramApiUrl}/bot${token}/sendMessage`, {

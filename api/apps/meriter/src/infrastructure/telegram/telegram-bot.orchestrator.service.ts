@@ -105,6 +105,7 @@ import {
   parseVoteAmountReply,
   resolveVoteAmountDirection,
 } from './telegram-vote-amount-parse';
+import { telegramGroupSendNotificationParams } from './telegram-chat-id.util';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -2765,6 +2766,7 @@ export class TelegramBotOrchestratorService {
         ...(replyToMessageId != null ? { reply_to_message_id: replyToMessageId } : {}),
         text,
         ...(entities?.length ? { entities } : {}),
+        ...telegramGroupSendNotificationParams(chatId),
         reply_markup: {
           force_reply: true,
           selective: replyToMessageId != null,
@@ -2823,6 +2825,7 @@ export class TelegramBotOrchestratorService {
         reply_to_message_id: replyToMessageId,
         text,
         entities,
+        ...telegramGroupSendNotificationParams(chatId),
         reply_markup: {
           inline_keyboard: [
             [

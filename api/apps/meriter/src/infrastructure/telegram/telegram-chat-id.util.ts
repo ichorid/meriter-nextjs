@@ -1,3 +1,16 @@
+/** Group / supergroup / channel ids are negative in Bot API; private chats use positive user ids. */
+export function isTelegramGroupChatId(chatId: string | number): boolean {
+  const trimmed = String(chatId).trim();
+  return trimmed.startsWith('-');
+}
+
+/** Silent delivery for group chats (no sound / muted push per Telegram client rules). */
+export function telegramGroupSendNotificationParams(
+  chatId: string | number,
+): { disable_notification: true } | Record<string, never> {
+  return isTelegramGroupChatId(chatId) ? { disable_notification: true } : {};
+}
+
 /** Telegram chat id variants for DB lookup (supergroup -100… vs legacy forms). */
 export function telegramChatIdLookupVariants(raw: string): string[] {
   const trimmed = raw.trim();

@@ -10,6 +10,7 @@ import type {
 } from '../../domain/models/telegram/telegram-publication-anchor.schema';
 import type { PublicationService } from '../../domain/services/publication.service';
 import type { UserService } from '../../domain/services/user.service';
+import { telegramGroupSendNotificationParams } from '../../infrastructure/telegram/telegram-chat-id.util';
 
 export type MirrorPublicationToTelegramDeps = {
   configService: ConfigService<AppConfig>;
@@ -117,6 +118,7 @@ export class MirrorPublicationToTelegramUseCase {
       const res = await Axios.post(`${apiUrl}/bot${token}/sendMessage`, {
         chat_id: chatId,
         text,
+        ...telegramGroupSendNotificationParams(chatId),
       });
       return res.data?.result ?? null;
     } catch (error) {

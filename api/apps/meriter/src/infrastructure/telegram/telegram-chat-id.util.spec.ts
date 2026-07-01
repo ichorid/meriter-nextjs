@@ -1,4 +1,29 @@
-import { telegramChatIdLookupVariants } from './telegram-chat-id.util';
+import {
+  isTelegramGroupChatId,
+  telegramChatIdLookupVariants,
+  telegramGroupSendNotificationParams,
+} from './telegram-chat-id.util';
+
+describe('isTelegramGroupChatId', () => {
+  it('treats negative ids as group chats', () => {
+    expect(isTelegramGroupChatId('-1001234567890')).toBe(true);
+    expect(isTelegramGroupChatId(-1001234567890)).toBe(true);
+  });
+
+  it('treats positive user ids as private chats', () => {
+    expect(isTelegramGroupChatId('424242')).toBe(false);
+    expect(isTelegramGroupChatId(424242)).toBe(false);
+  });
+});
+
+describe('telegramGroupSendNotificationParams', () => {
+  it('enables disable_notification for groups only', () => {
+    expect(telegramGroupSendNotificationParams('-1001')).toEqual({
+      disable_notification: true,
+    });
+    expect(telegramGroupSendNotificationParams('900001')).toEqual({});
+  });
+});
 
 describe('telegramChatIdLookupVariants', () => {
   it('includes supergroup and legacy negative ids', () => {
