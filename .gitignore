@@ -75,6 +75,9 @@ lerna-debug.log*
 # Codegraph
 .codegraph/
 
+# Local ops: Mongo dumps and one-off repair scripts (never commit data)
+backups/
+
 # Misc
 .eslintcache
 .prettiercache

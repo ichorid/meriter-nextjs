@@ -437,6 +437,7 @@ export function buildTelegramBotOpenKeyboard(
 
 export const TG_BOT_OPEN_BUTTON_LABELS = {
   guide: 'Получить гайд в личку',
+  viewGuideInDm: 'Посмотреть гайд',
   vote: 'Открыть бота',
   settings: 'Открыть настройки в личку',
 } as const;
@@ -487,7 +488,7 @@ export function buildNewMemberWelcomeMessage(greetingName: string): string {
   return (
     `Привет, ${greetingName}!\n\n` +
     `В этой группе работает бот Meriter — он ведёт учёт заслуг участников.\n\n` +
-    `Напишите /start, чтобы получить краткую инструкцию.`
+    `Нажмите кнопку ниже, чтобы начать.`
   );
 }
 

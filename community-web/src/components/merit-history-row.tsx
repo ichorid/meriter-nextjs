@@ -3,6 +3,7 @@
 import {
   formatMeritHistoryLine,
   meritHistoryMessageLink,
+  resolveMeritHistoryDisplayAmount,
   type MeritHistoryEnrichment,
 } from '@/lib/merit-history-line';
 import { openTelegramMessage } from '@/lib/telegram-message-link';
@@ -24,8 +25,14 @@ function formatMeritAmount(amount: number): string {
 }
 
 export function MeritHistoryRow({ row }: { row: MeritHistoryRowData }) {
-  const multiplier = row.ledgerMultiplier ?? (row.type === 'deposit' ? 1 : -1);
-  const signed = row.amount * multiplier;
+  const { signed, tone } = resolveMeritHistoryDisplayAmount({
+    type: row.type,
+    amount: row.amount,
+    description: row.description,
+    referenceType: row.referenceType,
+    ledgerMultiplier: row.ledgerMultiplier,
+    meritHistoryEnrichment: row.meritHistoryEnrichment,
+  });
   const line = formatMeritHistoryLine(row);
   const msgLink = meritHistoryMessageLink(row.meritHistoryEnrichment);
   const pubTitle = row.meritHistoryEnrichment?.publicationTitle?.trim();
@@ -36,7 +43,9 @@ export function MeritHistoryRow({ row }: { row: MeritHistoryRowData }) {
         <span className="min-w-0 leading-snug">{line}</span>
         <span
           className={
-            signed >= 0 ? 'text-green-400 shrink-0 tabular-nums' : 'text-red-400 shrink-0 tabular-nums'
+            tone === 'positive'
+              ? 'text-green-400 shrink-0 tabular-nums'
+              : 'text-red-400 shrink-0 tabular-nums'
           }
         >
           {formatMeritAmount(signed)}

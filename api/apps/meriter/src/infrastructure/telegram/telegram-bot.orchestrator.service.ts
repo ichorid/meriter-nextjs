@@ -127,6 +127,8 @@ type BotCommandContext = {
 type GroupFeedbackContext = {
   groupChatId: string;
   replyToMessageId?: number;
+  /** Chat id where `replyToMessageId` was posted (may differ after supergroup migration). */
+  replyAnchorChatId?: string;
 };
 
 type OnboardingPayload = {
@@ -403,11 +405,6 @@ export class TelegramBotOrchestratorService {
               community,
               String(member.id),
               member as { first_name?: string; last_name?: string; username?: string },
-            );
-            await this.sendNewMemberWelcomeIfEnabled(
-              community,
-              chatId,
-              member as { first_name?: string; last_name?: string },
             );
           }
         }
@@ -877,7 +874,7 @@ export class TelegramBotOrchestratorService {
         if (replyInGroup && message?.message_id) {
           const replyTo = message.message_id as number;
           if (sent) {
-            await this.sendBotEphemeral(replyChatId, TG_MSG.commandAnswerInDm, replyTo);
+            await this.sendCommandAnswerInDmEphemeral(replyChatId, replyTo);
             this.scheduleEphemeralUserMessage(replyChatId, replyTo);
           } else {
             const botUsername =
@@ -910,7 +907,7 @@ export class TelegramBotOrchestratorService {
         if (replyInGroup && message?.message_id) {
           const replyTo = message.message_id as number;
           if (sent) {
-            await this.sendBotEphemeral(replyChatId, TG_MSG.commandAnswerInDm, replyTo);
+            await this.sendCommandAnswerInDmEphemeral(replyChatId, replyTo);
           } else {
             const botUsername =
               this.configService.get('bot')?.username?.replace(/^@/, '') ?? 'meriterbot';
@@ -1610,9 +1607,14 @@ export class TelegramBotOrchestratorService {
       return;
     }
     const greetingName = resolveNewMemberGreetingName(profile);
+    const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '').trim();
+    const replyMarkup = botUsername
+      ? buildTelegramBotOpenKeyboard(botUsername, 'guide', TG_BOT_OPEN_BUTTON_LABELS.guide)
+      : undefined;
     await this.tgBots.tgSend({
       tgChatId: chatId,
       text: buildNewMemberWelcomeMessage(greetingName),
+      reply_markup: replyMarkup,
     });
   }
 
@@ -2047,6 +2049,28 @@ export class TelegramBotOrchestratorService {
     });
   }
 
+  /** After a command answer was sent to DM — ephemeral group ack with link to open the bot. */
+  private async sendCommandAnswerInDmEphemeral(
+    chatId: string,
+    replyToMessageId: number,
+  ): Promise<number | null> {
+    const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '').trim();
+    const keyboard =
+      botUsername != null && botUsername.length > 0
+        ? buildTelegramBotOpenKeyboard(
+            botUsername,
+            'guide',
+            TG_BOT_OPEN_BUTTON_LABELS.viewGuideInDm,
+          )
+        : undefined;
+    return this.sendBotEphemeral(
+      chatId,
+      TG_MSG.commandAnswerInDm,
+      replyToMessageId,
+      keyboard,
+    );
+  }
+
   private async sendBotOpenHint(
     chatId: string,
     botUsername: string,
@@ -2263,6 +2287,7 @@ export class TelegramBotOrchestratorService {
     context?: {
       groupChatId?: string;
       replyToMessageId?: number;
+      replyAnchorChatId?: string;
       reactedMessageId?: number;
       voterFirstName?: string;
       voterLastName?: string;
@@ -2317,6 +2342,7 @@ export class TelegramBotOrchestratorService {
         publicationId,
         direction,
         groupChatId: context.groupChatId,
+        replyAnchorChatId: context.replyAnchorChatId,
         reactedMessageId: context.reactedMessageId ?? context.replyToMessageId,
         promptMessageId: context.replyToMessageId,
       },
@@ -2369,6 +2395,71 @@ export class TelegramBotOrchestratorService {
     );
   }
 
+  private buildVoteFeedbackChatIds(
+    community: Community | null | undefined,
+    groupFeedback: GroupFeedbackContext,
+  ): string[] {
+    const legacy = community ? this.communityLegacyChatIds(community) : [];
+    const ids = new Set<string>();
+    const add = (raw?: string | null) => {
+      const trimmed = raw?.trim();
+      if (trimmed) {
+        ids.add(trimmed);
+      }
+    };
+    add(groupFeedback.groupChatId);
+    add(groupFeedback.replyAnchorChatId);
+    add(community?.telegramChatId);
+    for (const leg of legacy) {
+      add(leg);
+      for (const variant of telegramChatIdLookupVariants(leg)) {
+        ids.add(variant);
+      }
+    }
+    return [...ids];
+  }
+
+  /** Ephemeral or persistent group vote feedback; tries legacy chat ids when reply target fails. */
+  private async sendGroupVoteFeedbackMessage(
+    community: Community | null | undefined,
+    groupFeedback: GroupFeedbackContext,
+    text: string,
+    ephemeral: boolean,
+  ): Promise<void> {
+    const chatIds = this.buildVoteFeedbackChatIds(community, groupFeedback);
+    if (chatIds.length === 0) {
+      return;
+    }
+
+    if (groupFeedback.replyToMessageId != null) {
+      for (const chatId of chatIds) {
+        const messageId = ephemeral
+          ? await this.tgBots.tgReplyEphemeral({
+              chat_id: chatId,
+              reply_to_message_id: groupFeedback.replyToMessageId,
+              text,
+            })
+          : await this.tgBots.tgReplyMessage({
+              chat_id: chatId,
+              reply_to_message_id: groupFeedback.replyToMessageId,
+              text,
+            });
+        if (messageId != null) {
+          return;
+        }
+      }
+    }
+
+    for (const chatId of chatIds) {
+      const messageId = ephemeral
+        ? await this.tgBots.tgReplyEphemeral({ chat_id: chatId, text })
+        : await this.tgBots.tgSendMessage({ chat_id: chatId, text });
+      if (messageId != null) {
+        return;
+      }
+    }
+  }
+
   private async sendVoteSuccessReport(
     groupFeedback: GroupFeedbackContext,
     voterLabel: string,
@@ -2379,30 +2470,7 @@ export class TelegramBotOrchestratorService {
     const text = TG_MSG.voteSuccess(voterLabel, amount, direction, recipient);
     const community = await this.findCommunityByChatId(groupFeedback.groupChatId);
     const ephemeral = community?.settings?.telegramVoteSuccessEphemeral !== false;
-    if (groupFeedback.replyToMessageId != null) {
-      if (ephemeral) {
-        await this.tgBots.tgReplyEphemeral({
-          chat_id: groupFeedback.groupChatId,
-          reply_to_message_id: groupFeedback.replyToMessageId,
-          text,
-        });
-      } else {
-        await this.tgBots.tgReplyMessage({
-          chat_id: groupFeedback.groupChatId,
-          reply_to_message_id: groupFeedback.replyToMessageId,
-          text,
-        });
-      }
-      return;
-    }
-    if (ephemeral) {
-      await this.tgBots.tgReplyEphemeral({
-        chat_id: groupFeedback.groupChatId,
-        text,
-      });
-    } else {
-      await this.tgBots.tgSendMessage({ chat_id: groupFeedback.groupChatId, text });
-    }
+    await this.sendGroupVoteFeedbackMessage(community, groupFeedback, text, ephemeral);
   }
 
   private async handleVoteAmountCallback(
@@ -2465,6 +2533,10 @@ export class TelegramBotOrchestratorService {
         ? {
             groupChatId: payload.groupChatId,
             replyToMessageId: payload.reactedMessageId,
+            replyAnchorChatId:
+              typeof payload.replyAnchorChatId === 'string'
+                ? payload.replyAnchorChatId
+                : undefined,
           }
         : undefined;
     if (options?.directionFlippedNotice && groupFeedback) {
@@ -3099,7 +3171,7 @@ export class TelegramBotOrchestratorService {
         await this.tgBots.tgSend({ tgChatId: tgUserId, text });
       }
       if (replyInGroup && replyTo != null) {
-        await this.sendBotEphemeral(replyChatId, TG_MSG.commandAnswerInDm, replyTo);
+        await this.sendCommandAnswerInDmEphemeral(replyChatId, replyTo);
       }
       return;
     }
@@ -3340,6 +3412,7 @@ export class TelegramBotOrchestratorService {
         {
         groupChatId: panelChatId ?? community.telegramChatId,
         replyToMessageId: panelMessageId ?? hashtagMessageId,
+        replyAnchorChatId: hashtagAnchor?.telegramChatId,
         reactedMessageId: hashtagMessageId,
         voterFirstName: from.first_name,
         voterLastName: from.last_name,
@@ -3358,6 +3431,7 @@ export class TelegramBotOrchestratorService {
               this.communityLegacyChatIds(community)[0] ??
               '',
             replyToMessageId: hashtagMessageId,
+            replyAnchorChatId: hashtagAnchor?.telegramChatId,
           }
         : undefined;
 

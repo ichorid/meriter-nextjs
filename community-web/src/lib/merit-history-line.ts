@@ -19,10 +19,36 @@ export type MeritHistoryEnrichment = {
 
 export type MeritHistoryRowInput = {
   type: string;
+  amount: number;
   description?: string | null;
   referenceType?: string | null;
+  ledgerMultiplier?: number;
   meritHistoryEnrichment?: MeritHistoryEnrichment | null;
 };
+
+export type MeritHistoryDisplayAmount = {
+  signed: number;
+  tone: 'positive' | 'negative';
+};
+
+/** UI sign for merit history rows (upvotes are positive actions even when paid from wallet). */
+export function resolveMeritHistoryDisplayAmount(row: MeritHistoryRowInput): MeritHistoryDisplayAmount {
+  const en = row.meritHistoryEnrichment;
+  const rt = row.referenceType?.trim() ?? '';
+  const multiplier = row.ledgerMultiplier ?? (row.type === 'deposit' ? 1 : -1);
+
+  if (rt === 'publication_vote') {
+    if (en?.publicationVoteDirection === 'up') {
+      return { signed: row.amount, tone: 'positive' };
+    }
+    if (en?.publicationVoteDirection === 'down') {
+      return { signed: -row.amount, tone: 'negative' };
+    }
+  }
+
+  const signed = row.amount * multiplier;
+  return { signed, tone: signed >= 0 ? 'positive' : 'negative' };
+}
 
 const REF_TYPE_LABELS: Record<string, string> = {
   publication_vote: 'Голос за публикацию',
