@@ -77,20 +77,20 @@ describe('buildTelegramHelpMessage', () => {
     expect(text).not.toContain('/перевод');
   });
 
-  it('includes mini-app hint in usage rules', () => {
+  it('includes mini-app link inline in usage rules', () => {
     const text = buildTelegramHelpMessage('', {
       botUsername: 'meriter_bot',
       communityName: 'Test',
       hashtags: ['заслуга'],
       platformIntegration: true,
     });
-    expect(text).toContain('мини-приложении (ссылка ниже)');
+    expect(text).toContain('мини-приложении: t.me/meriter_bot?startapp');
     expect(text).toContain('#заслуга');
     expect(text).toContain('собирать заслуги для себя');
     expect(text).toContain('👎');
     expect(text).not.toContain('/login');
     expect(text).not.toContain('Публикация в чате');
-    expect(text).not.toContain('https://t.me/meriter_bot?startapp');
+    expect(text).not.toContain('ссылка ниже');
   });
 
   it('uses configured hashtag for chat-only communities', () => {
