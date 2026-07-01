@@ -1,16 +1,16 @@
 import { Logger } from '@nestjs/common';
 import type { ConfigService } from '@nestjs/config';
 import type { Model } from 'mongoose';
-import type { AppConfig } from '../../config/configuration';
+import type { AppConfig } from '../../../config/configuration';
 import type {
   CommunityDocument,
-} from '../../domain/models/community/community.schema';
+} from '../../../domain/models/community/community.schema';
 import type {
   TelegramPublicationAnchorDocument,
-} from '../../domain/models/telegram/telegram-publication-anchor.schema';
-import type { PublicationService } from '../../domain/services/publication.service';
-import type { UserService } from '../../domain/services/user.service';
-import { telegramGroupSendNotificationParams } from '../../infrastructure/telegram/telegram-chat-id.util';
+} from '../../../domain/models/telegram/telegram-publication-anchor.schema';
+import type { PublicationService } from '../../../domain/services/publication.service';
+import type { UserService } from '../../../domain/services/user.service';
+import { telegramGroupSendNotificationParams } from '../../../infrastructure/telegram/telegram-chat-id.util';
 
 export type MirrorPublicationToTelegramDeps = {
   configService: ConfigService<AppConfig>;
