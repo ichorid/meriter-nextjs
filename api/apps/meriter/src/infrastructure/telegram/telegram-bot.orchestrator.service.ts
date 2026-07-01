@@ -51,6 +51,10 @@ import {
   buildTelegramMiniAppStartLink,
   buildTelegramBotOpenKeyboard,
   TG_BOT_OPEN_BUTTON_LABELS,
+  buildMemberJoinStartPayload,
+  parseMemberJoinStartPayload,
+  buildMemberWelcomeLandingMessage,
+  buildMemberWelcomeLandingKeyboard,
   type TelegramInlineReplyMarkup,
   buildOnboardingDoneMessage,
   buildTelegramHelpMessage,
@@ -105,7 +109,7 @@ import {
   parseVoteAmountReply,
   resolveVoteAmountDirection,
 } from './telegram-vote-amount-parse';
-import { telegramChatIdLookupVariants, telegramGroupSendNotificationParams, expandTelegramChatIds } from './telegram-chat-id.util';
+import { telegramChatIdLookupVariants, telegramGroupSendNotificationParams, expandTelegramChatIds, buildTelegramSupergroupChatLink } from './telegram-chat-id.util';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -129,6 +133,8 @@ type GroupFeedbackContext = {
   replyToMessageId?: number;
   /** Chat id where `replyToMessageId` was posted (may differ after supergroup migration). */
   replyAnchorChatId?: string;
+  /** Alternate reply targets when primary id is stale after chat migration (e.g. vote panel message). */
+  fallbackReplyToMessageIds?: number[];
 };
 
 type OnboardingPayload = {
@@ -485,6 +491,11 @@ export class TelegramBotOrchestratorService {
         ? await this.isReturningMeriterMember(tgUserId, primaryCommunityBefore.id)
         : Boolean(await this.userService.getUserByAuthId('telegram', tgUserId));
       await this.provisionLinkedTelegramCommunities(tgUserId, from);
+      const joinCommunityId = parseMemberJoinStartPayload(referal);
+      if (joinCommunityId) {
+        await this.handleMemberJoinDeepLink(tgUserId, from, joinCommunityId, triggerMessageId);
+        return;
+      }
       if (referal === 'guide') {
         await this.handleDirectBotCommand(tgUserId, from, 'guide', '', triggerMessageId);
         return;
@@ -1609,10 +1620,14 @@ export class TelegramBotOrchestratorService {
     const greetingName = resolveNewMemberGreetingName(profile);
     const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '').trim();
     const replyMarkup = botUsername
-      ? buildTelegramBotOpenKeyboard(botUsername, 'guide', TG_BOT_OPEN_BUTTON_LABELS.guide)
+      ? buildTelegramBotOpenKeyboard(
+          botUsername,
+          buildMemberJoinStartPayload(community.id),
+          TG_BOT_OPEN_BUTTON_LABELS.openBot,
+        )
       : undefined;
-    await this.tgBots.tgSend({
-      tgChatId: chatId,
+    await this.tgBots.tgReplyEphemeral({
+      chat_id: chatId,
       text: buildNewMemberWelcomeMessage(greetingName),
       reply_markup: replyMarkup,
     });
@@ -1956,6 +1971,95 @@ export class TelegramBotOrchestratorService {
       },
       { upsert: true },
     );
+  }
+
+  private async resolveTelegramGroupChatLink(telegramChatId: string): Promise<string | null> {
+    try {
+      const chat = (await this.tgBots.tgGetChat(telegramChatId)) as
+        | { invite_link?: string }
+        | null
+        | undefined;
+      const invite = chat?.invite_link?.trim();
+      if (invite) {
+        return invite;
+      }
+    } catch {
+      /* fall through to supergroup link */
+    }
+    return buildTelegramSupergroupChatLink(telegramChatId);
+  }
+
+  private async handleMemberJoinDeepLink(
+    tgUserId: string,
+    from: { first_name?: string; last_name?: string; username?: string },
+    communityId: string,
+    triggerMessageId?: number,
+  ): Promise<void> {
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community?.telegramChatId || community.telegramFrozenAt) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: TG_MSG.memberJoinDeepLinkCommunityNotFound,
+      });
+      return;
+    }
+
+    const chatMember = await this.tgBots.tgFetchChatMember(community.telegramChatId, tgUserId);
+    if (
+      !chatMember?.status ||
+      chatMember.status === 'left' ||
+      chatMember.status === 'kicked'
+    ) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: TG_MSG.memberJoinDeepLinkNotInGroup(community.name),
+      });
+      return;
+    }
+
+    const isReturning = await this.isReturningMeriterMember(tgUserId, community.id);
+    const user = await this.provisionMember(community, tgUserId, from);
+    if (await this.isMemberFrozen(user.id, community.id)) {
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: TG_MSG.frozenMember });
+      return;
+    }
+
+    const stats = await this.getMemberStats(community, user.id);
+    const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '').trim();
+    const startWelcomeMerits =
+      !isReturning && this.communityService.startingMeritsOnJoin(community) > 0
+        ? this.communityService.startingMeritsOnJoin(community)
+        : undefined;
+    const groupChatUrl = await this.resolveTelegramGroupChatLink(community.telegramChatId);
+    const miniAppUrl = botUsername
+      ? buildTelegramMiniAppStartLink(botUsername, community.id)
+      : null;
+
+    const text = buildMemberWelcomeLandingMessage({
+      communityName: community.name,
+      communityId: community.id,
+      hashtags: community.hashtags,
+      botUsername,
+      votePanelEnabled: community.settings?.telegramVotePanelEnabled === true,
+      isReturning,
+      wallet: stats.wallet,
+      quota: stats.quota,
+      quotaMax: stats.quotaMax,
+      startWelcomeMerits,
+    });
+    const replyMarkup = buildMemberWelcomeLandingKeyboard({
+      groupChatUrl,
+      miniAppUrl,
+    });
+
+    await this.tgBots.tgSend({
+      tgChatId: tgUserId,
+      text,
+      reply_markup: replyMarkup,
+    });
+    if (triggerMessageId != null) {
+      this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
+    }
   }
 
   private async helpMessage(
@@ -2400,23 +2504,43 @@ export class TelegramBotOrchestratorService {
     groupFeedback: GroupFeedbackContext,
   ): string[] {
     const legacy = community ? this.communityLegacyChatIds(community) : [];
-    const ids = new Set<string>();
+    const ids: string[] = [];
+    const seen = new Set<string>();
     const add = (raw?: string | null) => {
       const trimmed = raw?.trim();
-      if (trimmed) {
-        ids.add(trimmed);
+      if (!trimmed || seen.has(trimmed)) {
+        return;
       }
+      seen.add(trimmed);
+      ids.push(trimmed);
     };
     add(groupFeedback.groupChatId);
-    add(groupFeedback.replyAnchorChatId);
     add(community?.telegramChatId);
+    add(groupFeedback.replyAnchorChatId);
     for (const leg of legacy) {
       add(leg);
       for (const variant of telegramChatIdLookupVariants(leg)) {
-        ids.add(variant);
+        add(variant);
       }
     }
-    return [...ids];
+    return ids;
+  }
+
+  private voteFeedbackReplyTargets(groupFeedback: GroupFeedbackContext): number[] {
+    const targets: number[] = [];
+    const seen = new Set<number>();
+    const add = (messageId?: number | null) => {
+      if (messageId == null || seen.has(messageId)) {
+        return;
+      }
+      seen.add(messageId);
+      targets.push(messageId);
+    };
+    add(groupFeedback.replyToMessageId);
+    for (const messageId of groupFeedback.fallbackReplyToMessageIds ?? []) {
+      add(messageId);
+    }
+    return targets;
   }
 
   /** Ephemeral or persistent group vote feedback; tries legacy chat ids when reply target fails. */
@@ -2425,29 +2549,42 @@ export class TelegramBotOrchestratorService {
     groupFeedback: GroupFeedbackContext,
     text: string,
     ephemeral: boolean,
+    options?: { requireReply?: boolean },
   ): Promise<void> {
     const chatIds = this.buildVoteFeedbackChatIds(community, groupFeedback);
     if (chatIds.length === 0) {
       return;
     }
 
-    if (groupFeedback.replyToMessageId != null) {
+    const replyTargets = this.voteFeedbackReplyTargets(groupFeedback);
+    if (replyTargets.length > 0) {
       for (const chatId of chatIds) {
-        const messageId = ephemeral
-          ? await this.tgBots.tgReplyEphemeral({
-              chat_id: chatId,
-              reply_to_message_id: groupFeedback.replyToMessageId,
-              text,
-            })
-          : await this.tgBots.tgReplyMessage({
-              chat_id: chatId,
-              reply_to_message_id: groupFeedback.replyToMessageId,
-              text,
-            });
-        if (messageId != null) {
-          return;
+        for (const replyToMessageId of replyTargets) {
+          const messageId = ephemeral
+            ? await this.tgBots.tgReplyEphemeral({
+                chat_id: chatId,
+                reply_to_message_id: replyToMessageId,
+                text,
+              })
+            : await this.tgBots.tgReplyMessage({
+                chat_id: chatId,
+                reply_to_message_id: replyToMessageId,
+                text,
+              });
+          if (messageId != null) {
+            return;
+          }
         }
       }
+    }
+
+    if (options?.requireReply) {
+      this.logger.warn('Group vote feedback could not reply to any target', {
+        chatIds,
+        replyTargets,
+        groupChatId: groupFeedback.groupChatId,
+      });
+      return;
     }
 
     for (const chatId of chatIds) {
@@ -2470,7 +2607,9 @@ export class TelegramBotOrchestratorService {
     const text = TG_MSG.voteSuccess(voterLabel, amount, direction, recipient);
     const community = await this.findCommunityByChatId(groupFeedback.groupChatId);
     const ephemeral = community?.settings?.telegramVoteSuccessEphemeral !== false;
-    await this.sendGroupVoteFeedbackMessage(community, groupFeedback, text, ephemeral);
+    await this.sendGroupVoteFeedbackMessage(community, groupFeedback, text, ephemeral, {
+      requireReply: true,
+    });
   }
 
   private async handleVoteAmountCallback(
@@ -2519,6 +2658,8 @@ export class TelegramBotOrchestratorService {
       direction: 'up' | 'down';
       groupChatId?: string;
       reactedMessageId?: number;
+      replyAnchorChatId?: string;
+      promptMessageId?: number;
     };
     await this.pendingModel.deleteOne({ id: pendingId }).exec();
     if (options?.ephemeralUserReply) {
@@ -2528,17 +2669,32 @@ export class TelegramBotOrchestratorService {
       );
     }
     const direction = options?.directionOverride ?? payload.direction;
-    const groupFeedback =
+    let groupFeedback:
+      | {
+          groupChatId: string;
+          replyToMessageId: number;
+          replyAnchorChatId?: string;
+          fallbackReplyToMessageIds?: number[];
+        }
+      | undefined =
       payload.groupChatId && payload.reactedMessageId != null
         ? {
             groupChatId: payload.groupChatId,
             replyToMessageId: payload.reactedMessageId,
-            replyAnchorChatId:
-              typeof payload.replyAnchorChatId === 'string'
-                ? payload.replyAnchorChatId
-                : undefined,
+            replyAnchorChatId: payload.replyAnchorChatId,
           }
         : undefined;
+    if (groupFeedback) {
+      const panelAnchor = await this.anchorModel
+        .findOne({ publicationId: payload.publicationId, anchorType: 'vote_panel' })
+        .lean();
+      const fallbacks = [payload.promptMessageId, panelAnchor?.telegramMessageId].filter(
+        (id): id is number => typeof id === 'number',
+      );
+      if (fallbacks.length > 0) {
+        groupFeedback = { ...groupFeedback, fallbackReplyToMessageIds: fallbacks };
+      }
+    }
     if (options?.directionFlippedNotice && groupFeedback) {
       const flipText =
         options.directionFlippedNotice === 'down'
@@ -3399,6 +3555,13 @@ export class TelegramBotOrchestratorService {
       .findOne({ publicationId: parsed.publicationId, anchorType: 'hashtag' })
       .lean();
     const hashtagMessageId = hashtagAnchor?.telegramMessageId;
+    const panelAnchor = await this.anchorModel
+      .findOne({ publicationId: parsed.publicationId, anchorType: 'vote_panel' })
+      .lean();
+    const votePanelReplyFallbacks = [
+      panelMessageId,
+      panelAnchor?.telegramMessageId,
+    ].filter((id): id is number => typeof id === 'number');
 
     const wantsCustom =
       ('custom' in parsed && parsed.custom === true) || parsed.direction === 'down';
@@ -3432,6 +3595,7 @@ export class TelegramBotOrchestratorService {
               '',
             replyToMessageId: hashtagMessageId,
             replyAnchorChatId: hashtagAnchor?.telegramChatId,
+            fallbackReplyToMessageIds: votePanelReplyFallbacks,
           }
         : undefined;
 

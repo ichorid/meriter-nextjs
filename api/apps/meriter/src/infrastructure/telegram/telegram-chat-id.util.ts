@@ -31,6 +31,19 @@ export function telegramChatIdLookupVariants(raw: string): string[] {
   return [...variants];
 }
 
+/**
+ * Private supergroup link (member-only). `-1004324573589` → `https://t.me/c/4324573589`.
+ * Returns null for non-supergroup ids (use getChat invite_link when available).
+ */
+export function buildTelegramSupergroupChatLink(telegramChatId: string): string | null {
+  const trimmed = telegramChatId.trim();
+  const match = trimmed.match(/^-100(\d+)$/);
+  if (!match) {
+    return null;
+  }
+  return `https://t.me/c/${match[1]}`;
+}
+
 /** Chat ids to use for Telegram API calls when a group migrated (current + stored legacy aliases). */
 export function expandTelegramChatIds(
   primaryChatId: string,

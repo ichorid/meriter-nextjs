@@ -1,6 +1,10 @@
 import {
   buildGroupWelcomeMessage,
   buildNewMemberWelcomeMessage,
+  buildMemberJoinStartPayload,
+  buildMemberWelcomeLandingKeyboard,
+  buildMemberWelcomeLandingMessage,
+  parseMemberJoinStartPayload,
   resolveNewMemberGreetingName,
   buildTelegramBotOpenKeyboard,
   buildTelegramBotStartLink,
@@ -196,9 +200,44 @@ describe('telegram group welcome copy', () => {
     expect(text).toBe(
       'Привет, Мария!\n\n' +
         'В этой группе работает бот Meriter — он ведёт учёт заслуг участников.\n\n' +
-        'Нажмите кнопку ниже, чтобы начать.',
+        'Чтобы начать, нажмите кнопку ниже. В открывшемся чате с ботом нажмите «Запустить» или напишите /start.',
     );
     expect(text).not.toContain('@');
+  });
+
+  it('parseMemberJoinStartPayload extracts community id', () => {
+    expect(buildMemberJoinStartPayload('c8695af4240')).toBe('join_c8695af4240');
+    expect(parseMemberJoinStartPayload('join_c8695af4240')).toBe('c8695af4240');
+    expect(parseMemberJoinStartPayload('guide')).toBeNull();
+  });
+
+  it('buildMemberWelcomeLandingMessage emphasizes group chat and stats', () => {
+    const text = buildMemberWelcomeLandingMessage({
+      communityName: 'Клуб',
+      hashtags: ['заслуга'],
+      votePanelEnabled: true,
+      isReturning: false,
+      wallet: 10,
+      quota: 5,
+      quotaMax: 100,
+      startWelcomeMerits: 10,
+    });
+    expect(text).toContain('групповом чате');
+    expect(text).toContain('Баланс: 10 заслуг');
+    expect(text).toContain('10 приветственных заслуг');
+    expect(text).toContain('Команды (/balance');
+  });
+
+  it('buildMemberWelcomeLandingKeyboard includes return and mini-app urls', () => {
+    const kb = buildMemberWelcomeLandingKeyboard({
+      groupChatUrl: 'https://t.me/c/123',
+      miniAppUrl: 't.me/bot?startapp=comm-1',
+    });
+    expect(kb?.inline_keyboard[0][0]).toEqual({
+      text: TG_BOT_OPEN_BUTTON_LABELS.returnToGroupChat,
+      url: 'https://t.me/c/123',
+    });
+    expect(kb?.inline_keyboard[1][0].url).toBe('https://t.me/bot?startapp=comm-1');
   });
 
   it('resolveNewMemberGreetingName falls back when first name is missing', () => {

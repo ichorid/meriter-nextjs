@@ -841,9 +841,11 @@ describe('TelegramBotOrchestrator (integration)', () => {
     expect(scheduleDeleteSpy).toHaveBeenCalledWith(tgChatId, 57);
   });
 
-  it('chat_member join sends personalized welcome to group', async () => {
+  it('chat_member join sends personalized ephemeral welcome to group', async () => {
     await seedLinkedCommunity();
-    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const ephemeralSpy = jest
+      .spyOn(tgBotsService, 'tgReplyEphemeral')
+      .mockResolvedValue(1);
     const newMemberTgId = 900999;
 
     await webhookController.handleWebhook(botUsername, {
@@ -873,16 +875,19 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    const welcomeCall = sendSpy.mock.calls.find(
+    const welcomeCall = ephemeralSpy.mock.calls.find(
       ([args]) =>
-        args.tgChatId === tgChatId &&
+        args.chat_id === tgChatId &&
         String(args.text).includes('Привет, Мария!') &&
-        String(args.text).includes('Нажмите кнопку ниже'),
+        String(args.text).includes('Чтобы начать, нажмите кнопку ниже'),
     );
     expect(welcomeCall).toBeDefined();
     expect(String(welcomeCall?.[0]?.text ?? '')).not.toContain('@');
     expect(welcomeCall?.[0]?.reply_markup?.inline_keyboard?.[0]?.[0]?.text).toBe(
-      TG_BOT_OPEN_BUTTON_LABELS.guide,
+      TG_BOT_OPEN_BUTTON_LABELS.openBot,
+    );
+    expect(welcomeCall?.[0]?.reply_markup?.inline_keyboard?.[0]?.[0]?.url).toContain(
+      'start=join_',
     );
   });
 
@@ -892,7 +897,9 @@ describe('TelegramBotOrchestrator (integration)', () => {
       { id: communityId },
       { $set: { 'settings.telegramNewMemberWelcomeEnabled': false } },
     );
-    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const ephemeralSpy = jest
+      .spyOn(tgBotsService, 'tgReplyEphemeral')
+      .mockResolvedValue(1);
     const newMemberTgId = 900998;
 
     await webhookController.handleWebhook(botUsername, {
@@ -912,15 +919,17 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    const welcomeCall = sendSpy.mock.calls.find(
-      ([args]) => args.tgChatId === tgChatId && String(args.text).includes('Привет, Bot!'),
+    const welcomeCall = ephemeralSpy.mock.calls.find(
+      ([args]) => args.chat_id === tgChatId && String(args.text).includes('Привет, Bot!'),
     );
     expect(welcomeCall).toBeUndefined();
   });
 
   it('chat_member join ignores bots', async () => {
     await seedLinkedCommunity();
-    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const ephemeralSpy = jest
+      .spyOn(tgBotsService, 'tgReplyEphemeral')
+      .mockResolvedValue(1);
 
     await webhookController.handleWebhook(botUsername, {
       update_id: 48,
@@ -939,15 +948,17 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    const welcomeCall = sendSpy.mock.calls.find(
-      ([args]) => args.tgChatId === tgChatId && String(args.text).includes('Привет,'),
+    const welcomeCall = ephemeralSpy.mock.calls.find(
+      ([args]) => args.chat_id === tgChatId && String(args.text).includes('Привет,'),
     );
     expect(welcomeCall).toBeUndefined();
   });
 
   it('new_chat_members join does not send welcome (chat_member update owns welcome)', async () => {
     await seedLinkedCommunity();
-    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const ephemeralSpy = jest
+      .spyOn(tgBotsService, 'tgReplyEphemeral')
+      .mockResolvedValue(1);
     const newMemberTgId = 900997;
 
     await webhookController.handleWebhook(botUsername, {
@@ -968,16 +979,18 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    const welcomeCall = sendSpy.mock.calls.find(
+    const welcomeCall = ephemeralSpy.mock.calls.find(
       ([args]) =>
-        args.tgChatId === tgChatId && String(args.text).includes('Привет, Anna!'),
+        args.chat_id === tgChatId && String(args.text).includes('Привет, Anna!'),
     );
     expect(welcomeCall).toBeUndefined();
   });
 
   it('chat_member and new_chat_members for same join send welcome once', async () => {
     await seedLinkedCommunity();
-    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const ephemeralSpy = jest
+      .spyOn(tgBotsService, 'tgReplyEphemeral')
+      .mockResolvedValue(1);
     const newMemberTgId = 900996;
 
     await webhookController.handleWebhook(botUsername, {
@@ -1025,11 +1038,51 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    const welcomeCalls = sendSpy.mock.calls.filter(
+    const welcomeCalls = ephemeralSpy.mock.calls.filter(
       ([args]) =>
-        args.tgChatId === tgChatId && String(args.text).includes('Привет, Ivan!'),
+        args.chat_id === tgChatId && String(args.text).includes('Привет, Ivan!'),
     );
     expect(welcomeCalls).toHaveLength(1);
+  });
+
+  it('DM /start join_{communityId} sends member landing with return-to-chat button', async () => {
+    const { communityId } = await seedLinkedCommunity();
+    await communityModel.updateOne(
+      { id: communityId },
+      { $set: { 'settings.telegramVotePanelEnabled': true, 'meritSettings.startingMerits': 10 } },
+    );
+    jest.spyOn(tgBotsService, 'tgFetchChatMember').mockResolvedValue({
+      status: 'member',
+      user: { id: 999888777, is_bot: false, first_name: 'New' },
+    });
+    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const newMemberTgId = '999888777';
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 482.5,
+      message: {
+        message_id: 4825,
+        date: Math.floor(Date.now() / 1000),
+        chat: { id: Number(newMemberTgId), type: 'private', first_name: 'New' },
+        from: { id: Number(newMemberTgId), is_bot: false, first_name: 'New' },
+        text: `/start join_${communityId}`,
+      },
+    } as TelegramTypes.Update);
+
+    const landingCall = sendSpy.mock.calls.find(
+      ([args]) =>
+        args.tgChatId === newMemberTgId &&
+        String(args.text).includes('групповом чате') &&
+        String(args.text).includes('Linked TG Community'),
+    );
+    expect(landingCall).toBeDefined();
+    const keyboard = landingCall?.[0]?.reply_markup?.inline_keyboard ?? [];
+    expect(keyboard.some((row) => row.some((btn) => btn.text === TG_BOT_OPEN_BUTTON_LABELS.returnToGroupChat))).toBe(
+      true,
+    );
+    expect(keyboard.some((row) => row.some((btn) => btn.text === TG_BOT_OPEN_BUTTON_LABELS.miniApp))).toBe(
+      true,
+    );
   });
 
   it('group /settings syncs Telegram creator to lead before access check', async () => {
@@ -1584,7 +1637,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
       .spyOn(tgBotsService, 'tgReplyEphemeral')
       .mockImplementation(async (args) => {
         if (
-          args.reply_to_message_id === messageId &&
+          args.reply_to_message_id != null &&
           String(args.text).includes('начислил') &&
           String(args.chat_id) !== legacyChatId
         ) {
@@ -1618,6 +1671,81 @@ describe('TelegramBotOrchestrator (integration)', () => {
         text: expect.stringContaining('начислил'),
       }),
     );
+  });
+
+  it('vote panel +1 success report replies to panel when hashtag reply fails', async () => {
+    const { communityId, publicationId } = await seedPublicationWithAnchor(134, {
+      otherAuthor: true,
+    });
+    await communityModel.updateOne(
+      { id: communityId },
+      { $set: { 'settings.telegramVotePanelEnabled': true } },
+    );
+    const panelMessageId = 135;
+    const hashtagMessageId = 134;
+    await anchorModel.create({
+      id: uid(),
+      communityId,
+      telegramChatId: tgChatId,
+      telegramMessageId: panelMessageId,
+      publicationId,
+      anchorType: 'vote_panel',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const executeMock = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+    const ephemeralSpy = jest
+      .spyOn(tgBotsService, 'tgReplyEphemeral')
+      .mockImplementation(async (args) => {
+        if (
+          String(args.text).includes('начислил') &&
+          args.reply_to_message_id === hashtagMessageId
+        ) {
+          return null;
+        }
+        if (
+          String(args.text).includes('начислил') &&
+          args.reply_to_message_id === panelMessageId
+        ) {
+          return 9002;
+        }
+        return 1;
+      });
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 45.2,
+      callback_query: {
+        id: 'cb-vp-up1-panel-fallback',
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG', last_name: 'User' },
+        message: {
+          message_id: panelMessageId,
+          chat: { id: Number(tgChatId), type: 'supergroup' },
+        },
+        chat_instance: '1',
+        data: `vp:${publicationId}:up:1`,
+      },
+    } as TelegramTypes.Update);
+
+    expect(executeMock).toHaveBeenCalled();
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chat_id: tgChatId,
+        reply_to_message_id: panelMessageId,
+        text: expect.stringContaining('начислил'),
+      }),
+    );
+    expect(
+      ephemeralSpy.mock.calls.filter(
+        ([args]) =>
+          String(args.text).includes('начислил') && args.reply_to_message_id == null,
+      ),
+    ).toHaveLength(0);
   });
 
   it('numeric reply to vote amount prompt is scheduled for deletion', async () => {

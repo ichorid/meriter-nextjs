@@ -272,25 +272,35 @@ function joinTelegramBlocks(blocks: string[]): string {
   return blocks.filter((block) => block.trim().length > 0).join('\n\n');
 }
 
-function buildPostForSelfStep(input: CommunityUsageRulesInput): string {
+function buildPostForSelfStep(input: CommunityUsageRulesInput, inGroupChat = false): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
+  if (inGroupChat) {
+    return `1. В групповом чате публикуйте посты с #${hashtag}, чтобы собирать заслуги для себя.`;
+  }
   return `1. Публикуйте посты с #${hashtag}, чтобы собирать заслуги для себя.`;
 }
 
-function buildPostForOthersStep(input: CommunityUsageRulesInput): string {
+function buildPostForOthersStep(input: CommunityUsageRulesInput, inGroupChat = false): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
+  const replyHint = inGroupChat
+    ? 'в групповом чате ответьте на его сообщение'
+    : 'ответьте на его сообщение';
   return (
-    `2. Если вы хотите собирать заслуги для другого пользователя, ответьте на его сообщение ` +
+    `2. Если вы хотите собирать заслуги для другого пользователя, ${replyHint} ` +
     `и добавьте #${hashtag}, либо напишите «#${hashtag} для …» и выберите участника из списка @ по имени (как «Иван»).`
   );
 }
 
-function buildVotingStep(input: CommunityUsageRulesInput): string {
+function buildVotingStep(input: CommunityUsageRulesInput, inGroupChat = false): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
   if (input.votePanelEnabled) {
-    return (
-      `3. Голосуйте за чужие посты с #${hashtag} кнопками, которые бот размещает под его постом`
-    );
+    if (inGroupChat) {
+      return `3. В групповом чате голосуйте за чужие посты с #${hashtag} кнопками, которые бот размещает под его постом`;
+    }
+    return `3. Голосуйте за чужие посты с #${hashtag} кнопками, которые бот размещает под его постом`;
+  }
+  if (inGroupChat) {
+    return `3. В групповом чате голосуйте за чужие посты с #${hashtag} реакциями 👍 ❤️ 👎`;
   }
   return `3. Голосуйте за чужие посты с #${hashtag} реакциями 👍 ❤️ 👎`;
 }
@@ -438,9 +448,27 @@ export function buildTelegramBotOpenKeyboard(
 export const TG_BOT_OPEN_BUTTON_LABELS = {
   guide: 'Получить гайд в личку',
   viewGuideInDm: 'Посмотреть гайд',
+  openBot: 'Открыть бота Meriter',
+  returnToGroupChat: 'Вернуться в чат',
+  miniApp: 'Мини-приложение',
   vote: 'Открыть бота',
   settings: 'Открыть настройки в личку',
 } as const;
+
+const MEMBER_JOIN_START_PREFIX = 'join_';
+
+export function buildMemberJoinStartPayload(communityId: string): string {
+  return `${MEMBER_JOIN_START_PREFIX}${communityId.trim()}`;
+}
+
+export function parseMemberJoinStartPayload(referral: string): string | null {
+  const trimmed = referral.trim();
+  if (!trimmed.startsWith(MEMBER_JOIN_START_PREFIX)) {
+    return null;
+  }
+  const communityId = trimmed.slice(MEMBER_JOIN_START_PREFIX.length).trim();
+  return /^[a-zA-Z0-9_-]+$/.test(communityId) ? communityId : null;
+}
 
 function formatTelegramBotHandle(botUsername: string): string {
   return botUsername.replace(/^@/, '').trim();
@@ -488,8 +516,86 @@ export function buildNewMemberWelcomeMessage(greetingName: string): string {
   return (
     `Привет, ${greetingName}!\n\n` +
     `В этой группе работает бот Meriter — он ведёт учёт заслуг участников.\n\n` +
-    `Нажмите кнопку ниже, чтобы начать.`
+    `Чтобы начать, нажмите кнопку ниже. В открывшемся чате с ботом нажмите «Запустить» или напишите /start.`
   );
+}
+
+export type MemberWelcomeLandingInput = {
+  communityName: string;
+  communityId?: string;
+  hashtags?: string[];
+  botUsername?: string;
+  votePanelEnabled?: boolean;
+  isReturning: boolean;
+  wallet: number;
+  quota: number;
+  quotaMax: number;
+  startWelcomeMerits?: number;
+};
+
+export function buildMemberWelcomeLandingMessage(input: MemberWelcomeLandingInput): string {
+  const usageInput: CommunityUsageRulesInput = {
+    communityName: input.communityName,
+    hashtags: input.hashtags,
+    botUsername: input.botUsername,
+    votePanelEnabled: input.votePanelEnabled,
+  };
+
+  const intro = input.isReturning
+    ? `Снова здесь! Группа «${input.communityName}».\n\n` +
+      `Напоминание: посты, голосование и команды — в групповом чате, не здесь в личке. ` +
+      `Личка с ботом — для подсказок, баланса и мини-приложения.`
+    : `Добро пожаловать в Meriter!\n\n` +
+      `Группа «${input.communityName}».\n\n` +
+      `Главное: заслуги, посты и голосование — в групповом чате, а не здесь. ` +
+      `Личка с ботом — для подсказок, баланса и мини-приложения.`;
+
+  const welcomeGrant =
+    !input.isReturning && input.startWelcomeMerits != null && input.startWelcomeMerits > 0
+      ? `\n\nВам начислено ${input.startWelcomeMerits} приветственных заслуг.`
+      : '';
+
+  const statsParts = [`Баланс: ${input.wallet} заслуг`];
+  if (input.quotaMax > 0) {
+    statsParts.push(`квота сегодня: ${input.quota}/${input.quotaMax}`);
+  }
+  const statsLine = `\n\n${statsParts.join(' · ')}`;
+
+  const steps = joinTelegramBlocks([
+    buildPostForSelfStep(usageInput, true),
+    buildPostForOthersStep(usageInput, true),
+    buildVotingStep(usageInput, true),
+    buildMiniAppStep(),
+    buildGuideStep(),
+  ]);
+
+  return (
+    `${intro}${welcomeGrant}${statsLine}\n\n` +
+    `${steps}\n\n` +
+    `Команды (/balance, /members, /help …) пишите в групповом чате, не здесь.\n\n` +
+    `Подробный гайд: /guide в групповом чате или здесь в личке.`
+  );
+}
+
+export function buildMemberWelcomeLandingKeyboard(options: {
+  groupChatUrl?: string | null;
+  miniAppUrl?: string | null;
+}): TelegramInlineReplyMarkup | undefined {
+  const rows: TelegramInlineReplyMarkup['inline_keyboard'] = [];
+  if (options.groupChatUrl?.trim()) {
+    rows.push([
+      {
+        text: TG_BOT_OPEN_BUTTON_LABELS.returnToGroupChat,
+        url: options.groupChatUrl.trim(),
+      },
+    ]);
+  }
+  if (options.miniAppUrl?.trim()) {
+    const raw = options.miniAppUrl.trim();
+    const url = raw.startsWith('http') ? raw : `https://${raw}`;
+    rows.push([{ text: TG_BOT_OPEN_BUTTON_LABELS.miniApp, url }]);
+  }
+  return rows.length > 0 ? { inline_keyboard: rows } : undefined;
 }
 
 export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): string {
@@ -678,6 +784,10 @@ export const TG_MSG = {
     'Настройка не завершена. Продолжите ответы в личке с ботом — бот задаст следующий вопрос.',
   multipleLinkedCommunities:
     'У вас несколько сообществ Meriter. Используйте команды в той группе, где хотите действовать.',
+  memberJoinDeepLinkCommunityNotFound:
+    'Не удалось найти это сообщество Meriter. Вернитесь в группу и нажмите кнопку ещё раз.',
+  memberJoinDeepLinkNotInGroup: (communityName: string) =>
+    `Вы не состоите в группе «${communityName}». Вернитесь в группу Telegram и нажмите кнопку снова.`,
   settingsLeadOnly: 'Настройки бота доступны только лиду сообщества.',
   settingsDmFailed: (botUsername: string) => formatTelegramBotOpenHint(botUsername, 'settings'),
   settingsUpdated: (snapshot: ReturnType<typeof communitySettingsSnapshot>) => {
