@@ -854,6 +854,32 @@ describe('TelegramBotOrchestrator (integration)', () => {
     expect(ephemeralSpy).not.toHaveBeenCalled();
   });
 
+  it('message_reaction with vote panel enabled silently ignores vote emoji', async () => {
+    const { messageId } = await seedPublicationWithAnchor(406, { otherAuthor: true });
+    await communityModel.updateOne(
+      { telegramChatId: tgChatId },
+      { $set: { 'settings.telegramVotePanelEnabled': true } },
+    );
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(1);
+    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const executeMock = jest.fn();
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+
+    await webhookController.handleWebhook(
+      botUsername,
+      messageReactionUpdate('👍', messageId, 40),
+    );
+
+    expect(ephemeralSpy).not.toHaveBeenCalled();
+    expect(sendSpy).not.toHaveBeenCalled();
+    expect(executeMock).not.toHaveBeenCalled();
+  });
+
   it('group /settings for lead sends settings to DM and replies ephemerally in group', async () => {
     await seedLeadCommunity();
     const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);

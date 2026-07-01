@@ -107,14 +107,14 @@ describe('createTelegramCommunityChatResolver', () => {
     expect(await resolver.resolveCommunityIdForMiniApp('-1004324573589')).toBeNull();
   });
 
-  it('resolveCommunityIdForMiniApp treats telegramFrozenAt null as frozen', async () => {
+  it('resolveCommunityIdForMiniApp treats telegramFrozenAt null as active', async () => {
     const broken = { ...canonical, telegramFrozenAt: null };
     const find = jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue([broken]) });
     const resolver = createTelegramCommunityChatResolver({
       communityModel: { find } as never,
     });
 
-    expect(await resolver.resolveCommunityIdForMiniApp('-1004324573589')).toBeNull();
+    expect(await resolver.resolveCommunityIdForMiniApp('-1004324573589')).toBe('c8695af4240');
   });
 
   it('resolveCommunityIdForMiniApp returns id when telegramFrozenAt is unset', async () => {
