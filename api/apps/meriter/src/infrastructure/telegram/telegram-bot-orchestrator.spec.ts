@@ -1673,6 +1673,83 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
   });
 
+  it('vote panel +1 success report sends without thread when all reply targets fail', async () => {
+    const legacyChatId = '-5565524009';
+    const { communityId, publicationId, messageId } = await seedPublicationWithAnchor(136, {
+      otherAuthor: true,
+    });
+    await communityModel.updateOne(
+      { id: communityId },
+      {
+        $set: {
+          'settings.telegramVotePanelEnabled': true,
+          'settings.telegramLegacyChatIds': [legacyChatId],
+        },
+      },
+    );
+    await anchorModel.updateOne(
+      { publicationId, anchorType: 'hashtag' },
+      { $set: { telegramChatId: legacyChatId } },
+    );
+    const panelMessageId = 137;
+    await anchorModel.create({
+      id: uid(),
+      communityId,
+      telegramChatId: tgChatId,
+      telegramMessageId: panelMessageId,
+      publicationId,
+      anchorType: 'vote_panel',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const executeMock = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+    const ephemeralSpy = jest
+      .spyOn(tgBotsService, 'tgReplyEphemeral')
+      .mockImplementation(async (args) => {
+        if (String(args.text).includes('начислил') && args.reply_to_message_id != null) {
+          return null;
+        }
+        if (String(args.text).includes('начислил')) {
+          return 9003;
+        }
+        return 1;
+      });
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 45.3,
+      callback_query: {
+        id: 'cb-vp-up1-no-reply',
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG', last_name: 'User' },
+        message: {
+          message_id: panelMessageId,
+          chat: { id: Number(tgChatId), type: 'supergroup' },
+        },
+        chat_instance: '1',
+        data: `vp:${publicationId}:up:1`,
+      },
+    } as TelegramTypes.Update);
+
+    expect(executeMock).toHaveBeenCalled();
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chat_id: tgChatId,
+        text: expect.stringContaining('начислил'),
+      }),
+    );
+    expect(
+      ephemeralSpy.mock.calls.some(
+        ([args]) =>
+          String(args.text).includes('начислил') && args.reply_to_message_id == null,
+      ),
+    ).toBe(true);
+  });
+
   it('vote panel +1 success report replies to panel when hashtag reply fails', async () => {
     const { communityId, publicationId } = await seedPublicationWithAnchor(134, {
       otherAuthor: true,
@@ -1740,12 +1817,6 @@ describe('TelegramBotOrchestrator (integration)', () => {
         text: expect.stringContaining('начислил'),
       }),
     );
-    expect(
-      ephemeralSpy.mock.calls.filter(
-        ([args]) =>
-          String(args.text).includes('начислил') && args.reply_to_message_id == null,
-      ),
-    ).toHaveLength(0);
   });
 
   it('numeric reply to vote amount prompt is scheduled for deletion', async () => {

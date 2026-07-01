@@ -129,6 +129,11 @@ type BotCommandContext = {
   replyInGroup: boolean;
 };
 
+type VoteFeedbackReplyAttempt = {
+  chatId: string;
+  messageId: number;
+};
+
 type GroupFeedbackContext = {
   groupChatId: string;
   replyToMessageId?: number;
@@ -136,6 +141,8 @@ type GroupFeedbackContext = {
   replyAnchorChatId?: string;
   /** Alternate reply targets when primary id is stale after chat migration (e.g. vote panel message). */
   fallbackReplyToMessageIds?: number[];
+  /** Preferred order: reply in the chat where each message was posted (avoids cross-chat id mismatch). */
+  replyAttempts?: VoteFeedbackReplyAttempt[];
 };
 
 type OnboardingPayload = {
@@ -1066,7 +1073,12 @@ export class TelegramBotOrchestratorService {
     }
 
     const voteBlockReason = await this.getPublicationVoteBlockReason(voter.id, anchor.publicationId);
-    const groupFeedback: GroupFeedbackContext = { groupChatId: chatId, replyToMessageId: messageId };
+    const groupFeedback: GroupFeedbackContext = {
+      groupChatId: chatId,
+      replyToMessageId: messageId,
+      replyAnchorChatId: chatId,
+      replyAttempts: [{ chatId, messageId }],
+    };
 
     for (const reaction of voteAdded) {
       const emoji = reaction.emoji ?? '';
@@ -2492,68 +2504,81 @@ export class TelegramBotOrchestratorService {
     return ids;
   }
 
-  private voteFeedbackReplyTargets(groupFeedback: GroupFeedbackContext): number[] {
-    const targets: number[] = [];
-    const seen = new Set<number>();
-    const add = (messageId?: number | null) => {
-      if (messageId == null || seen.has(messageId)) {
+  private buildVoteFeedbackReplyAttempts(
+    groupFeedback: GroupFeedbackContext,
+  ): VoteFeedbackReplyAttempt[] {
+    const attempts: VoteFeedbackReplyAttempt[] = [];
+    const seen = new Set<string>();
+    const add = (chatId?: string | null, messageId?: number | null) => {
+      const trimmedChatId = chatId?.trim();
+      if (!trimmedChatId || messageId == null) {
         return;
       }
-      seen.add(messageId);
-      targets.push(messageId);
+      const key = `${trimmedChatId}:${messageId}`;
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      attempts.push({ chatId: trimmedChatId, messageId });
     };
-    add(groupFeedback.replyToMessageId);
-    for (const messageId of groupFeedback.fallbackReplyToMessageIds ?? []) {
-      add(messageId);
+
+    for (const attempt of groupFeedback.replyAttempts ?? []) {
+      add(attempt.chatId, attempt.messageId);
     }
-    return targets;
+
+    if (attempts.length > 0) {
+      return attempts;
+    }
+
+    add(groupFeedback.replyAnchorChatId, groupFeedback.replyToMessageId);
+    add(groupFeedback.groupChatId, groupFeedback.replyToMessageId);
+    for (const messageId of groupFeedback.fallbackReplyToMessageIds ?? []) {
+      add(groupFeedback.groupChatId, messageId);
+    }
+    return attempts;
   }
 
-  /** Ephemeral or persistent group vote feedback; tries legacy chat ids when reply target fails. */
+  /** Ephemeral or persistent group vote feedback; pairs chat id with message id per anchor. */
   private async sendGroupVoteFeedbackMessage(
     community: Community | null | undefined,
     groupFeedback: GroupFeedbackContext,
     text: string,
     ephemeral: boolean,
-    options?: { requireReply?: boolean },
   ): Promise<void> {
-    const chatIds = this.buildVoteFeedbackChatIds(community, groupFeedback);
-    if (chatIds.length === 0) {
+    const deliveryChatIds = this.buildVoteFeedbackChatIds(community, groupFeedback);
+    if (deliveryChatIds.length === 0) {
       return;
     }
 
-    const replyTargets = this.voteFeedbackReplyTargets(groupFeedback);
-    if (replyTargets.length > 0) {
-      for (const chatId of chatIds) {
-        for (const replyToMessageId of replyTargets) {
-          const messageId = ephemeral
-            ? await this.tgBots.tgReplyEphemeral({
-                chat_id: chatId,
-                reply_to_message_id: replyToMessageId,
-                text,
-              })
-            : await this.tgBots.tgReplyMessage({
-                chat_id: chatId,
-                reply_to_message_id: replyToMessageId,
-                text,
-              });
-          if (messageId != null) {
-            return;
-          }
+    const replyAttempts = this.buildVoteFeedbackReplyAttempts(groupFeedback);
+    for (const attempt of replyAttempts) {
+      for (const chatId of telegramChatIdLookupVariants(attempt.chatId)) {
+        const messageId = ephemeral
+          ? await this.tgBots.tgReplyEphemeral({
+              chat_id: chatId,
+              reply_to_message_id: attempt.messageId,
+              text,
+            })
+          : await this.tgBots.tgReplyMessage({
+              chat_id: chatId,
+              reply_to_message_id: attempt.messageId,
+              text,
+            });
+        if (messageId != null) {
+          return;
         }
       }
     }
 
-    if (options?.requireReply) {
-      this.logger.warn('Group vote feedback could not reply to any target', {
-        chatIds,
-        replyTargets,
+    if (replyAttempts.length > 0) {
+      this.logger.warn('Group vote feedback could not reply in anchor chat; sending without thread', {
+        deliveryChatIds,
+        replyAttempts,
         groupChatId: groupFeedback.groupChatId,
       });
-      return;
     }
 
-    for (const chatId of chatIds) {
+    for (const chatId of deliveryChatIds) {
       const messageId = ephemeral
         ? await this.tgBots.tgReplyEphemeral({ chat_id: chatId, text })
         : await this.tgBots.tgSendMessage({ chat_id: chatId, text });
@@ -2573,9 +2598,7 @@ export class TelegramBotOrchestratorService {
     const text = TG_MSG.voteSuccess(voterLabel, amount, direction, recipient);
     const community = await this.findCommunityByChatId(groupFeedback.groupChatId);
     const ephemeral = community?.settings?.telegramVoteSuccessEphemeral !== false;
-    await this.sendGroupVoteFeedbackMessage(community, groupFeedback, text, ephemeral, {
-      requireReply: true,
-    });
+    await this.sendGroupVoteFeedbackMessage(community, groupFeedback, text, ephemeral);
   }
 
   private async handleVoteAmountCallback(
@@ -2635,14 +2658,7 @@ export class TelegramBotOrchestratorService {
       );
     }
     const direction = options?.directionOverride ?? payload.direction;
-    let groupFeedback:
-      | {
-          groupChatId: string;
-          replyToMessageId: number;
-          replyAnchorChatId?: string;
-          fallbackReplyToMessageIds?: number[];
-        }
-      | undefined =
+    let groupFeedback: GroupFeedbackContext | undefined =
       payload.groupChatId && payload.reactedMessageId != null
         ? {
             groupChatId: payload.groupChatId,
@@ -2654,11 +2670,28 @@ export class TelegramBotOrchestratorService {
       const panelAnchor = await this.anchorModel
         .findOne({ publicationId: payload.publicationId, anchorType: 'vote_panel' })
         .lean();
-      const fallbacks = [payload.promptMessageId, panelAnchor?.telegramMessageId].filter(
-        (id): id is number => typeof id === 'number',
+      const replyAttempts: VoteFeedbackReplyAttempt[] = [];
+      const seen = new Set<string>();
+      const addAttempt = (chatId?: string | null, messageId?: number | null) => {
+        const trimmedChatId = chatId?.trim();
+        if (!trimmedChatId || messageId == null) {
+          return;
+        }
+        const key = `${trimmedChatId}:${messageId}`;
+        if (seen.has(key)) {
+          return;
+        }
+        seen.add(key);
+        replyAttempts.push({ chatId: trimmedChatId, messageId });
+      };
+      addAttempt(
+        payload.replyAnchorChatId ?? payload.groupChatId,
+        payload.reactedMessageId,
       );
-      if (fallbacks.length > 0) {
-        groupFeedback = { ...groupFeedback, fallbackReplyToMessageIds: fallbacks };
+      addAttempt(payload.groupChatId, payload.promptMessageId);
+      addAttempt(panelAnchor?.telegramChatId, panelAnchor?.telegramMessageId);
+      if (replyAttempts.length > 0) {
+        groupFeedback = { ...groupFeedback, replyAttempts };
       }
     }
     if (options?.directionFlippedNotice && groupFeedback) {
@@ -3524,10 +3557,8 @@ export class TelegramBotOrchestratorService {
     const panelAnchor = await this.anchorModel
       .findOne({ publicationId: parsed.publicationId, anchorType: 'vote_panel' })
       .lean();
-    const votePanelReplyFallbacks = [
-      panelMessageId,
-      panelAnchor?.telegramMessageId,
-    ].filter((id): id is number => typeof id === 'number');
+    const panelChatIdResolved =
+      panelChatId ?? community.telegramChatId ?? panelAnchor?.telegramChatId ?? undefined;
 
     const wantsCustom =
       ('custom' in parsed && parsed.custom === true) || parsed.direction === 'down';
@@ -3553,16 +3584,35 @@ export class TelegramBotOrchestratorService {
 
     const groupFeedback =
       hashtagMessageId != null
-        ? {
-            groupChatId:
-              panelChatId ??
-              community.telegramChatId ??
-              this.communityLegacyChatIds(community)[0] ??
-              '',
-            replyToMessageId: hashtagMessageId,
-            replyAnchorChatId: hashtagAnchor?.telegramChatId,
-            fallbackReplyToMessageIds: votePanelReplyFallbacks,
-          }
+        ? (() => {
+            const replyAttempts: VoteFeedbackReplyAttempt[] = [];
+            const seen = new Set<string>();
+            const addAttempt = (chatId?: string | null, messageId?: number | null) => {
+              const trimmedChatId = chatId?.trim();
+              if (!trimmedChatId || messageId == null) {
+                return;
+              }
+              const key = `${trimmedChatId}:${messageId}`;
+              if (seen.has(key)) {
+                return;
+              }
+              seen.add(key);
+              replyAttempts.push({ chatId: trimmedChatId, messageId });
+            };
+            addAttempt(hashtagAnchor?.telegramChatId, hashtagMessageId);
+            addAttempt(panelChatIdResolved, panelMessageId);
+            addAttempt(panelAnchor?.telegramChatId, panelAnchor?.telegramMessageId);
+            return {
+              groupChatId:
+                panelChatIdResolved ??
+                community.telegramChatId ??
+                this.communityLegacyChatIds(community)[0] ??
+                '',
+              replyToMessageId: hashtagMessageId,
+              replyAnchorChatId: hashtagAnchor?.telegramChatId,
+              replyAttempts,
+            };
+          })()
         : undefined;
 
     if (groupFeedback && !groupFeedback.groupChatId) {
