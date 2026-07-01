@@ -635,7 +635,7 @@ describe('TelegramBotOrchestrator (integration)', () => {
 
     expect(tgSendSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        text: expect.stringMatching(/Шаг 5 из 7[\s\S]*приветственных заслуг/),
+        text: expect.stringMatching(/Шаг 5 из 8[\s\S]*приветственных заслуг/),
       }),
     );
     const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
@@ -821,6 +821,129 @@ describe('TelegramBotOrchestrator (integration)', () => {
     );
     expect(String(ephemeralSpy.mock.calls.at(-1)?.[0]?.text ?? '')).toContain('личку');
     expect(scheduleDeleteSpy).toHaveBeenCalledWith(tgChatId, 57);
+  });
+
+  it('chat_member join sends personalized welcome to group', async () => {
+    await seedLinkedCommunity();
+    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const newMemberTgId = 900999;
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 46,
+      chat_member: {
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG' },
+        date: Math.floor(Date.now() / 1000),
+        old_chat_member: {
+          user: {
+            id: newMemberTgId,
+            is_bot: false,
+            first_name: 'Мария',
+            last_name: 'Архип',
+          },
+          status: 'left',
+        },
+        new_chat_member: {
+          user: {
+            id: newMemberTgId,
+            is_bot: false,
+            first_name: 'Мария',
+            last_name: 'Архип',
+          },
+          status: 'member',
+        },
+      },
+    } as TelegramTypes.Update);
+
+    const welcomeCall = sendSpy.mock.calls.find(
+      ([args]) =>
+        args.tgChatId === tgChatId &&
+        String(args.text).includes('Привет, Мария!') &&
+        String(args.text).includes('/start'),
+    );
+    expect(welcomeCall).toBeDefined();
+    expect(String(welcomeCall?.[0]?.text ?? '')).not.toContain('@');
+  });
+
+  it('chat_member join skips welcome when setting is disabled', async () => {
+    const { communityId } = await seedLinkedCommunity();
+    await communityModel.updateOne(
+      { id: communityId },
+      { $set: { 'settings.telegramNewMemberWelcomeEnabled': false } },
+    );
+    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    const newMemberTgId = 900998;
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 47,
+      chat_member: {
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG' },
+        date: Math.floor(Date.now() / 1000),
+        old_chat_member: {
+          user: { id: newMemberTgId, is_bot: false, first_name: 'Bot', last_name: 'User' },
+          status: 'left',
+        },
+        new_chat_member: {
+          user: { id: newMemberTgId, is_bot: false, first_name: 'Bot', last_name: 'User' },
+          status: 'member',
+        },
+      },
+    } as TelegramTypes.Update);
+
+    const welcomeCall = sendSpy.mock.calls.find(
+      ([args]) => args.tgChatId === tgChatId && String(args.text).includes('Привет, Bot!'),
+    );
+    expect(welcomeCall).toBeUndefined();
+  });
+
+  it('chat_member join ignores bots', async () => {
+    await seedLinkedCommunity();
+    const sendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 48,
+      chat_member: {
+        chat: { id: Number(tgChatId), type: 'supergroup', title: 'Test' },
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG' },
+        date: Math.floor(Date.now() / 1000),
+        old_chat_member: {
+          user: { id: 777001, is_bot: true, first_name: 'OtherBot', username: 'other_bot' },
+          status: 'left',
+        },
+        new_chat_member: {
+          user: { id: 777001, is_bot: true, first_name: 'OtherBot', username: 'other_bot' },
+          status: 'member',
+        },
+      },
+    } as TelegramTypes.Update);
+
+    const welcomeCall = sendSpy.mock.calls.find(
+      ([args]) => args.tgChatId === tgChatId && String(args.text).includes('Привет,'),
+    );
+    expect(welcomeCall).toBeUndefined();
+  });
+
+  it('lead can toggle new member welcome from settings keyboard', async () => {
+    const { communityId } = await seedLeadCommunity();
+    await communityModel.updateOne(
+      { id: communityId },
+      { $set: { 'settings.telegramNewMemberWelcomeEnabled': true } },
+    );
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 49,
+      callback_query: {
+        id: 'cb-settings-toggle-welcome',
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG' },
+        message: { message_id: 58, chat: { id: Number(tgChatId), type: 'supergroup' } },
+        chat_instance: '1',
+        data: `settings:toggle:new_member_welcome:${communityId}`,
+      },
+    } as TelegramTypes.Update);
+
+    const updated = await communityModel.findOne({ id: communityId }).lean();
+    expect(updated?.settings?.telegramNewMemberWelcomeEnabled).toBe(false);
   });
 
   it('lead can toggle reaction no-hashtag hint from settings keyboard', async () => {

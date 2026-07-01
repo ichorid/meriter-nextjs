@@ -59,6 +59,9 @@ const ONBOARDING_STEP_BODIES: Partial<Record<TelegramBotPendingActionType, strin
     'Показывать под постами кнопки начисления заслуг со счётчиками?\n\n' +
     'Если да — участники голосуют кнопками (+1, своя сумма, против).\n' +
     'Если нет — реакциями 👍❤️👎',
+  onboarding_new_member_welcome:
+    'Приветствовать новых участников при входе в группу?\n\n' +
+    'Бот отправит короткое сообщение с просьбой написать /start.',
   onboarding_command_delivery:
     'Куда отвечать на /balance, /members, /help и /link?\n\n' +
     '1 — в группу, сообщение исчезает через минуту (по умолчанию)\n' +
@@ -90,6 +93,7 @@ export type CommunitySettingsSnapshotInput = {
     postCost?: number;
     telegramReactionNoHashtagHintEnabled?: boolean;
     telegramVotePanelEnabled?: boolean;
+    telegramNewMemberWelcomeEnabled?: boolean;
     telegramCommandRouting?: TelegramCommandRoutingSettings;
   };
   meritSettings?: { startingMerits?: number };
@@ -145,6 +149,8 @@ export function buildSettingsLeadSummary(community: CommunitySettingsSnapshotInp
     community.settings?.telegramVotePanelEnabled === true ? 'вкл' : 'выкл';
   const voteSuccessEphemeral =
     community.settings?.telegramVoteSuccessEphemeral !== false ? 'исчезает' : 'остаётся';
+  const newMemberWelcome =
+    community.settings?.telegramNewMemberWelcomeEnabled !== false ? 'вкл' : 'выкл';
   const routing = community.settings?.telegramCommandRouting;
   const routeLines = (['balance', 'members', 'help', 'link'] as TelegramRoutableCommand[])
     .map((cmd) => {
@@ -162,6 +168,7 @@ export function buildSettingsLeadSummary(community: CommunitySettingsSnapshotInp
     `• Подсказка без хэштега: ${noHashtagHint}\n` +
     `• Панель голосования: ${votePanel}\n` +
     `• Отчёт о голосе: ${voteSuccessEphemeral}\n` +
+    `• Приветствие новых участников: ${newMemberWelcome}\n` +
     `${routeLines}\n\n` +
     `Нажмите кнопку — бот задаст вопрос в личке или переключит режим.`
   );
@@ -198,6 +205,7 @@ export function buildSettingsEditKeyboard(
     reactionNoHashtagHintEnabled?: boolean;
     votePanelEnabled?: boolean;
     voteSuccessEphemeral?: boolean;
+    newMemberWelcomeEnabled?: boolean;
     commandRouting?: TelegramCommandRoutingSettings;
   } = {},
 ): {
@@ -217,6 +225,10 @@ export function buildSettingsEditKeyboard(
     options.voteSuccessEphemeral !== false
       ? 'Отчёт о голосе: исчезает'
       : 'Отчёт о голосе: остаётся';
+  const newMemberWelcomeLabel =
+    options.newMemberWelcomeEnabled !== false
+      ? 'Приветствие новых: вкл'
+      : 'Приветствие новых: выкл';
   const routing = options.commandRouting;
   const cmdRow = (cmd: TelegramRoutableCommand) => ({
     text: formatTelegramCommandDeliveryLabel(
@@ -244,6 +256,10 @@ export function buildSettingsEditKeyboard(
         {
           text: voteSuccessLabel,
           callback_data: `settings:toggle:vote_success_ephemeral:${communityId}`,
+        },
+        {
+          text: newMemberWelcomeLabel,
+          callback_data: `settings:toggle:new_member_welcome:${communityId}`,
         },
       ],
       [cmdRow('balance'), cmdRow('members')],
@@ -449,6 +465,29 @@ export function formatTelegramBotOpenHint(
   return (
     `Не удалось написать вам в личку — вы ещё не запускали бота.\n\n` +
     `Откройте бота (кликните @${handle} или кнопку ниже), затем повторите реакцию в группе.`
+  );
+}
+
+export function resolveNewMemberGreetingName(profile: {
+  first_name?: string;
+  last_name?: string;
+}): string {
+  const first = profile.first_name?.trim();
+  if (first) {
+    return first;
+  }
+  const last = profile.last_name?.trim();
+  if (last) {
+    return last;
+  }
+  return 'друг';
+}
+
+export function buildNewMemberWelcomeMessage(greetingName: string): string {
+  return (
+    `Привет, ${greetingName}!\n\n` +
+    `В этой группе работает бот Meriter — он ведёт учёт заслуг участников.\n\n` +
+    `Напишите /start, чтобы получить краткую инструкцию.`
   );
 }
 
@@ -666,6 +705,10 @@ export const TG_MSG = {
     enabled
       ? 'Отчёт о голосе: исчезает из чата.'
       : 'Отчёт о голосе: остаётся в чате.',
+  settingsNewMemberWelcomeToggled: (enabled: boolean) =>
+    enabled
+      ? 'Приветствие новых участников включено.'
+      : 'Приветствие новых участников выключено.',
   settingsCommandRouteCycled: (label: string) => `Команда: ${label}`,
   commandAnswerInDm: 'Ответ отправлен в личку с ботом.',
   miniAppLinkUnavailable: 'Ссылка на приложение временно недоступна. Попробуйте позже.',

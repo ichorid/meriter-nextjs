@@ -16,6 +16,7 @@ describe('telegram-onboarding-flow', () => {
       'onboarding_post_cost',
       'onboarding_welcome_merits',
       'onboarding_vote_panel',
+      'onboarding_new_member_welcome',
       'onboarding_command_delivery',
     ]);
     expect(actions).not.toContain('onboarding_platform_integration');
@@ -46,6 +47,6 @@ describe('telegram-onboarding-flow', () => {
       platformIntegration: false,
       quotaEnabled: false,
     }, 'Welcome body');
-    expect(prompt).toBe('Шаг 5 из 7\n\nWelcome body');
+    expect(prompt).toBe('Шаг 5 из 8\n\nWelcome body');
   });
 });

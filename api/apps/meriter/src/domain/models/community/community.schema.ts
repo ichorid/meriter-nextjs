@@ -101,6 +101,8 @@ export interface CommunitySettings {
   telegramVotePanelEnabled?: boolean;
   /** Telegram MVP: vote success lines in group auto-delete (default on). */
   telegramVoteSuccessEphemeral?: boolean;
+  /** Telegram MVP: short welcome when a user joins the linked group (default on). */
+  telegramNewMemberWelcomeEnabled?: boolean;
   /** Per-command delivery for /balance, /members, /help, /link. */
   telegramCommandRouting?: {
     balance?: { destination: 'group' | 'dm'; ephemeral?: boolean };
@@ -472,6 +474,7 @@ export class CommunitySchemaClass implements Community {
       telegramReactionNoHashtagHintEnabled: { type: Boolean, default: true },
       telegramVotePanelEnabled: { type: Boolean, default: false },
       telegramVoteSuccessEphemeral: { type: Boolean, default: true },
+      telegramNewMemberWelcomeEnabled: { type: Boolean, default: true },
       telegramCommandRouting: {
         type: {
           balance: {

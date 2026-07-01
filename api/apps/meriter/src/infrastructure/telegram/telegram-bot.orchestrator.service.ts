@@ -46,6 +46,8 @@ import {
   TG_MSG,
   TG_VOTE_DEFAULT_COMMENT,
   buildGroupWelcomeMessage,
+  buildNewMemberWelcomeMessage,
+  resolveNewMemberGreetingName,
   buildTelegramMiniAppStartLink,
   buildTelegramBotOpenKeyboard,
   TG_BOT_OPEN_BUTTON_LABELS,
@@ -141,6 +143,7 @@ type OnboardingPayload = {
   telegramPublicationAckEnabled?: boolean;
   welcomeMerits?: number;
   votePanelEnabled?: boolean;
+  newMemberWelcomeEnabled?: boolean;
   telegramCommandRouting?: TelegramCommandRoutingSettings;
 };
 
@@ -271,7 +274,13 @@ export class TelegramBotOrchestratorService {
     const oldMember = event.old_chat_member as { status: string; user?: { id: number } };
     const newMember = event.new_chat_member as {
       status: string;
-      user?: { id: number; first_name?: string; last_name?: string; username?: string };
+      user?: {
+        id: number;
+        is_bot?: boolean;
+        first_name?: string;
+        last_name?: string;
+        username?: string;
+      };
     };
     const chatId = String(chat.id);
     const community = await this.findCommunityByChatId(chatId);
@@ -290,8 +299,16 @@ export class TelegramBotOrchestratorService {
 
     if (newStatus === 'member' || newStatus === 'administrator' || newStatus === 'creator') {
       if (oldStatus === 'left' || oldStatus === 'kicked' || oldStatus === 'restricted') {
+        if (newMember.user?.is_bot === true) {
+          return;
+        }
         await this.provisionMember(community, tgUserId, tgUser as { first_name?: string; last_name?: string; username?: string });
         await this.syncTelegramAdminRole(community, tgUserId, newStatus);
+        await this.sendNewMemberWelcomeIfEnabled(
+          community,
+          chatId,
+          tgUser as { first_name?: string; last_name?: string },
+        );
       } else if (newStatus === 'administrator' || newStatus === 'creator') {
         await this.syncTelegramAdminRole(community, tgUserId, newStatus);
       }
@@ -1048,6 +1065,16 @@ export class TelegramBotOrchestratorService {
       await this.answerCallback(id, toast);
       return;
     }
+    if (
+      parts[0] === 'settings' &&
+      parts[1] === 'toggle' &&
+      parts[2] === 'new_member_welcome' &&
+      parts[3]
+    ) {
+      const toast = await this.toggleNewMemberWelcome(tgUserId, parts[3]);
+      await this.answerCallback(id, toast);
+      return;
+    }
 
     await this.answerCallback(id);
 
@@ -1225,6 +1252,10 @@ export class TelegramBotOrchestratorService {
       }
       case 'onboarding_vote_panel':
         payload.votePanelEnabled = normalized === 'да' || normalized === 'yes';
+        await this.advanceOnboarding(tgUserId, 'onboarding_new_member_welcome', payload);
+        return true;
+      case 'onboarding_new_member_welcome':
+        payload.newMemberWelcomeEnabled = normalized === 'да' || normalized === 'yes';
         await this.advanceOnboarding(tgUserId, 'onboarding_command_delivery', payload);
         return true;
       case 'onboarding_command_delivery': {
@@ -1313,6 +1344,7 @@ export class TelegramBotOrchestratorService {
       'onboarding_moderation',
       'onboarding_publication_ack',
       'onboarding_vote_panel',
+      'onboarding_new_member_welcome',
     ];
     if (yesNoSteps.includes(nextAction)) {
       await this.sendCallbackPrompt(tgUserId, prompt, 'onboard:yes', 'onboard:no');
@@ -1388,6 +1420,7 @@ export class TelegramBotOrchestratorService {
             ? (payload.telegramPublicationAckEnabled ?? false)
             : false,
           'settings.telegramVotePanelEnabled': payload.votePanelEnabled === true,
+          'settings.telegramNewMemberWelcomeEnabled': payload.newMemberWelcomeEnabled !== false,
           'settings.telegramCommandRouting': payload.telegramCommandRouting ?? {},
           'settings.allowWithdraw': false,
           updatedAt: new Date(),
@@ -1434,6 +1467,21 @@ export class TelegramBotOrchestratorService {
       text: buildGroupWelcomeMessage(usageInput),
     });
     await this.sendGroupMiniAppLinkPrompt(chatId, usageInput.botUsername, communityId);
+  }
+
+  private async sendNewMemberWelcomeIfEnabled(
+    community: Community,
+    chatId: string,
+    profile: { first_name?: string; last_name?: string },
+  ): Promise<void> {
+    if (community.settings?.telegramNewMemberWelcomeEnabled === false) {
+      return;
+    }
+    const greetingName = resolveNewMemberGreetingName(profile);
+    await this.tgBots.tgSend({
+      tgChatId: chatId,
+      text: buildNewMemberWelcomeMessage(greetingName),
+    });
   }
 
   private async sendMiniAppLink(
@@ -2349,6 +2397,7 @@ export class TelegramBotOrchestratorService {
           community.settings?.telegramReactionNoHashtagHintEnabled !== false,
         votePanelEnabled: community.settings?.telegramVotePanelEnabled === true,
         voteSuccessEphemeral: community.settings?.telegramVoteSuccessEphemeral !== false,
+        newMemberWelcomeEnabled: community.settings?.telegramNewMemberWelcomeEnabled !== false,
         commandRouting: community.settings?.telegramCommandRouting,
       }),
     });
@@ -2407,6 +2456,36 @@ export class TelegramBotOrchestratorService {
       },
     );
     return TG_MSG.settingsReactionNoHashtagHintToggled(next);
+  }
+
+  private async toggleNewMemberWelcome(
+    tgUserId: string,
+    communityId: string,
+  ): Promise<string> {
+    const user = await this.userService.getUserByAuthId('telegram', tgUserId);
+    if (!user) {
+      return TG_MSG.settingsLeadOnly;
+    }
+    const role = await this.userCommunityRoleService.getRole(user.id, communityId);
+    if (role?.role !== 'lead') {
+      return TG_MSG.settingsLeadOnly;
+    }
+    const community = await this.communityService.getCommunity(communityId);
+    if (!community) {
+      return TG_MSG.noLinkedCommunity;
+    }
+    const enabled = community.settings?.telegramNewMemberWelcomeEnabled !== false;
+    const next = !enabled;
+    await this.communityModel.updateOne(
+      { id: communityId },
+      {
+        $set: {
+          'settings.telegramNewMemberWelcomeEnabled': next,
+          updatedAt: new Date(),
+        },
+      },
+    );
+    return TG_MSG.settingsNewMemberWelcomeToggled(next);
   }
 
   private async toggleVoteSuccessEphemeral(

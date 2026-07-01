@@ -15,6 +15,7 @@ export type TelegramBotPendingActionType =
   | 'onboarding_publication_ack'
   | 'onboarding_welcome_merits'
   | 'onboarding_vote_panel'
+  | 'onboarding_new_member_welcome'
   | 'onboarding_command_delivery'
   | 'onboarding_confirm'
   | 'settings_edit_name'

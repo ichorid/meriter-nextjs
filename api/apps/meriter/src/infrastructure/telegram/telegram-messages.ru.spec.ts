@@ -1,5 +1,7 @@
 import {
   buildGroupWelcomeMessage,
+  buildNewMemberWelcomeMessage,
+  resolveNewMemberGreetingName,
   buildTelegramBotOpenKeyboard,
   buildTelegramBotStartLink,
   buildTelegramHelpMessage,
@@ -186,6 +188,32 @@ describe('telegram group welcome copy', () => {
     expect(text).toContain('Отчёт о голосе');
     expect(text).toContain('/balance:');
     expect(text).not.toContain('Пост сохранён');
+  });
+
+  it('buildNewMemberWelcomeMessage greets by first name without mention', () => {
+    expect(resolveNewMemberGreetingName({ first_name: 'Мария', last_name: 'Архип' })).toBe('Мария');
+    const text = buildNewMemberWelcomeMessage('Мария');
+    expect(text).toBe(
+      'Привет, Мария!\n\n' +
+        'В этой группе работает бот Meriter — он ведёт учёт заслуг участников.\n\n' +
+        'Напишите /start, чтобы получить краткую инструкцию.',
+    );
+    expect(text).not.toContain('@');
+  });
+
+  it('resolveNewMemberGreetingName falls back when first name is missing', () => {
+    expect(resolveNewMemberGreetingName({ last_name: 'Архип' })).toBe('Архип');
+    expect(resolveNewMemberGreetingName({})).toBe('друг');
+  });
+
+  it('settings summary lists new member welcome toggle', () => {
+    const text = buildSettingsLeadSummary({
+      name: 'Клуб',
+      hashtags: ['заслуга'],
+      settings: { dailyEmission: 5, postCost: 1, telegramNewMemberWelcomeEnabled: false },
+      meritSettings: { startingMerits: 10 },
+    });
+    expect(text).toContain('Приветствие новых участников: выкл');
   });
 
   it('settingsUpdated reflects snapshot', () => {
