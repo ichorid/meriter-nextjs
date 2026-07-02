@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { trpc } from '@/lib/trpc/client';
 import {
@@ -12,9 +12,7 @@ import {
 import { initTelegramWebApp } from '@/lib/telegram-webapp';
 import { useTelegramMiniApp } from '@/lib/telegram-mini-app-context';
 import { TgCommunityPicker } from '@/components/tg-community-picker';
-import {
-  resolveTelegramBootContext,
-} from '@/lib/tg-boot-resolve';
+import { resolveTelegramBootContext } from '@/lib/tg-boot-resolve';
 
 type BootState =
   | 'loading'
@@ -34,7 +32,7 @@ export default function TelegramBootPage() {
   const [pickerCommunities, setPickerCommunities] = useState<
     Parameters<typeof TgCommunityPicker>[0]['communities']
   >([]);
-  const started = useRef(false);
+  const [bootKey, setBootKey] = useState(0);
 
   const webAppAuth = trpc.auth.authenticateTelegramWebApp.useMutation();
   const configQuery = trpc.config.getConfig.useQuery();
@@ -44,11 +42,11 @@ export default function TelegramBootPage() {
   }, []);
 
   useEffect(() => {
-    if (started.current) return;
     if (configQuery.isLoading) return;
-    started.current = true;
 
     void (async () => {
+      setState('loading');
+
       if (!isTelegramWebApp()) {
         setState('outside_telegram');
         return;
@@ -57,7 +55,7 @@ export default function TelegramBootPage() {
       const initData = getTelegramInitData();
       if (!initData) {
         setState('auth_error');
-        setMessage('Нет данных Telegram. Закройте и откройте снова из Telegram.');
+        setMessage('Нет данных Telegram. Закройте мини-приложение и откройте снова из группы.');
         return;
       }
 
@@ -70,10 +68,16 @@ export default function TelegramBootPage() {
         const chatId =
           authResult.telegramChatId || parseTelegramChatIdFromInitData(initData);
 
-        if (
-          authResult.communityId &&
-          !startParam?.startsWith('post:')
-        ) {
+        if (authResult.communityId && !startParam?.startsWith('post:')) {
+          if (chatId) {
+            const byChat = await utils.communities.getByTelegramChatId.fetch({
+              telegramChatId: chatId,
+            });
+            if (byChat?.isFrozen) {
+              setState('frozen');
+              return;
+            }
+          }
           setState('redirecting');
           router.replace(`/c/${authResult.communityId}/me`);
           return;
@@ -106,12 +110,17 @@ export default function TelegramBootPage() {
         router.replace(resolution.path);
       } catch {
         setState('auth_error');
-        setMessage('Не удалось войти. Закройте и откройте снова из Telegram.');
+        setMessage('Не удалось войти. Проверьте интернет и попробуйте снова.');
       }
     })();
-  }, [configQuery.isLoading, configQuery.data, router, setBootstrapped, utils, webAppAuth]);
+  }, [bootKey, configQuery.data, configQuery.isLoading]);
 
   const botUsername = configQuery.data?.botUsername?.replace(/^@/, '');
+
+  const retryBoot = () => {
+    setMessage('');
+    setBootKey((key) => key + 1);
+  };
 
   if (state === 'loading' || state === 'redirecting') {
     return (
@@ -141,10 +150,26 @@ export default function TelegramBootPage() {
 
   if (state === 'frozen') {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-stitch-canvas px-4">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-stitch-canvas px-4">
         <p className="max-w-sm text-center text-sm text-stitch-muted">
-          Доступ приостановлен — вернитесь в Telegram-группу сообщества.
+          Доступ приостановлен — бот удалён из Telegram-группы. Вернитесь в группу и попросите
+          администратора добавить бота снова.
         </p>
+        {botUsername && (
+          <a
+            href={`https://t.me/${botUsername}`}
+            className="rounded-lg bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-primary/90"
+          >
+            Открыть бота в Telegram
+          </a>
+        )}
+        <button
+          type="button"
+          onClick={retryBoot}
+          className="text-sm text-stitch-muted underline hover:text-stitch-text"
+        >
+          Проверить снова
+        </button>
       </div>
     );
   }
@@ -168,8 +193,15 @@ export default function TelegramBootPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-stitch-canvas px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-stitch-canvas px-4">
       <p className="max-w-sm text-center text-sm text-red-400">{message}</p>
+      <button
+        type="button"
+        onClick={retryBoot}
+        className="rounded-lg border border-stitch-border bg-stitch-surface px-4 py-3 text-sm font-medium text-stitch-text hover:bg-stitch-elevated"
+      >
+        Попробовать снова
+      </button>
     </div>
   );
 }

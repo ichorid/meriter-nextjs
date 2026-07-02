@@ -4,6 +4,7 @@ import type { Model } from 'mongoose';
 import type { AppConfig } from '../../config/configuration';
 import type { CommunityDocument } from '../../domain/models/community/community.schema';
 import type { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
+import { mongoActiveTelegramCommunityFilter } from '../../../infrastructure/telegram/telegram-community-frozen.util';
 
 export type TelegramCommunityListItem = {
   communityId: string;
@@ -38,7 +39,7 @@ export class ResolveTelegramCommunityUseCase {
       .find({
         id: { $in: communityIds },
         telegramChatId: { $exists: true, $nin: [null, ''] },
-        telegramFrozenAt: { $exists: false },
+        ...mongoActiveTelegramCommunityFilter(),
       })
       .lean();
 

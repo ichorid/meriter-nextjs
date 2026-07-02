@@ -12,6 +12,8 @@
     "migrate:comment-mode:dry": "ts-node scripts/migrate-comment-mode.ts --dry-run",
     "repair:telegram-chat-id": "ts-node scripts/repair-telegram-chat-id.ts --dry-run",
     "repair:telegram-chat-id:apply": "ts-node scripts/repair-telegram-chat-id.ts --apply",
+    "normalize:telegram-frozen-at": "ts-node scripts/normalize-telegram-frozen-at.ts --dry-run",
+    "normalize:telegram-frozen-at:apply": "ts-node scripts/normalize-telegram-frozen-at.ts --apply",
     "migrate:collaborative-documents": "ts-node scripts/migrate-collaborative-documents.ts",
     "migrate:collaborative-documents:dry": "ts-node scripts/migrate-collaborative-documents.ts --dry-run",
     "migrate:global-merit": "ts-node scripts/migrate-to-global-merit.ts",

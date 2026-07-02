@@ -598,6 +598,41 @@ export function buildMemberWelcomeLandingKeyboard(options: {
   return rows.length > 0 ? { inline_keyboard: rows } : undefined;
 }
 
+export function buildDmCommunityPickerKeyboard(
+  communities: Array<{ communityId: string; name: string }>,
+): TelegramInlineReplyMarkup {
+  return {
+    inline_keyboard: communities.map((community) => [
+      {
+        text: (community.name.trim() || community.communityId).slice(0, 64),
+        callback_data: `dm:pick:${community.communityId}`.slice(0, 64),
+      },
+    ]),
+  };
+}
+
+export function telegramDmCommandLabel(cmd: string): string {
+  switch (cmd.toLowerCase()) {
+    case 'balance':
+    case 'баланс':
+      return '/balance';
+    case 'members':
+    case 'участники':
+      return '/members';
+    case 'help':
+    case 'помощь':
+      return '/help';
+    case 'guide':
+      return '/guide';
+    case 'link':
+      return '/link';
+    case 'settings':
+      return '/settings';
+    default:
+      return `/${cmd}`;
+  }
+}
+
 export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): string {
   const dailyEmission = input.dailyEmission ?? 0;
   return (
@@ -677,26 +712,47 @@ export function buildTelegramHelpMessage(
 /** Map backend errors to plain Russian for chat users. */
 export function mapTelegramUserFacingError(message: string): string {
   const lower = message.toLowerCase();
+  if (lower.includes('insufficient quota')) {
+    return 'Не хватает квоты на сегодня. Проверьте баланс командой /balance.';
+  }
   if (
+    lower.includes('insufficient wallet') ||
+    lower.includes('insufficient recipient wallet') ||
     lower.includes('insufficient') ||
-    lower.includes('not enough') ||
-    lower.includes('не хватает')
+    lower.includes('not enough')
   ) {
     return TG_MSG.insufficientMerits;
+  }
+  if (lower.includes('cannot vote for own') || lower.includes('own post')) {
+    return TG_MSG.cannotVoteOwnPost;
+  }
+  if (lower.includes('downvotes are disabled')) {
+    return 'Списание заслуг (минус) отключено в этом сообществе.';
+  }
+  if (lower.includes('closed and cannot')) {
+    return 'Пост закрыт — голосовать нельзя.';
+  }
+  if (lower.includes('event publications cannot')) {
+    return 'За события голосовать нельзя.';
+  }
+  if (lower.includes('only project members')) {
+    return 'Голосовать заслугами могут только участники проекта.';
   }
   if (lower.includes('frozen') || lower.includes('заморож')) {
     return TG_MSG.frozenMember;
   }
-  if (lower.includes('permission') || lower.includes('forbidden') || lower.includes('доступ')) {
+  if (
+    lower.includes('permission') ||
+    lower.includes('forbidden') ||
+    lower.includes('do not have permission') ||
+    lower.includes('доступ')
+  ) {
     return 'У вас нет прав для этого действия.';
-  }
-  if (/^[a-z\s_-]+$/i.test(message.trim()) && message.length < 120) {
-    return TG_MSG.insufficientMerits;
   }
   if (/[\u0400-\u04FF]/.test(message)) {
     return message;
   }
-  return TG_MSG.insufficientMerits;
+  return TG_MSG.actionFailedGeneric;
 }
 
 export const TG_VOTE_DEFAULT_COMMENT = 'В Telegram-группе';
@@ -804,6 +860,16 @@ export const TG_MSG = {
     'Настройка не завершена. Продолжите ответы в личке с ботом — бот задаст следующий вопрос.',
   multipleLinkedCommunities:
     'У вас несколько сообществ Meriter. Используйте команды в той группе, где хотите действовать.',
+  dmPickCommunity: (commandLabel: string) =>
+    `Вы состоите в нескольких сообществах Meriter. Выберите, для какого выполнить «${commandLabel}»:`,
+  relinkCommunityMemberNeedLead: (communityName: string) =>
+    `Сообщество «${communityName}» на паузе. Попросите лидера добавить бота в группу и открыть /start relink:…`,
+  relinkCommunityAlreadyActive: (communityName: string) =>
+    `Сообщество «${communityName}» уже активно — бот снова в группе.`,
+  anonymousReactionsDisabled:
+    'Анонимные реакции не учитываются. Поставьте обычную реакцию ❤️ или 👎 под постом Meriter.',
+  actionFailedGeneric:
+    'Не удалось выполнить действие. Попробуйте /balance или обратитесь к лиду сообщества.',
   memberJoinDeepLinkCommunityNotFound:
     'Не удалось найти это сообщество Meriter. Вернитесь в группу и нажмите кнопку ещё раз.',
   memberJoinDeepLinkNotInGroup: (communityName: string) =>

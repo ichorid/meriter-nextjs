@@ -7,6 +7,7 @@ import {
   type CommunityDocument,
 } from '../../domain/models/community/community.schema';
 import { expandTelegramChatIds, telegramChatIdLookupVariants } from './telegram-chat-id.util';
+import { isTelegramCommunityFrozen } from './telegram-community-frozen.util';
 
 export type TelegramCommunityChatResolverDeps = {
   communityModel: Model<CommunityDocument>;
@@ -38,7 +39,7 @@ export function pickPreferredCommunityMatch<T extends Community>(matches: T[]): 
   if (matches.length === 1) {
     return matches[0]!;
   }
-  const active = matches.filter((doc) => !doc.telegramFrozenAt);
+  const active = matches.filter((doc) => !isTelegramCommunityFrozen(doc));
   const pool = active.length > 0 ? active : matches;
   pool.sort((a, b) => {
     const aArchived = /archived duplicate/i.test(a.name ?? '') ? 1 : 0;
@@ -64,9 +65,9 @@ export class TelegramCommunityChatResolver {
     private readonly communityModel: Model<CommunityDocument>,
   ) {}
 
-  /** Non-frozen for mini-app boot: field must be absent ($exists: false), not null. */
+  /** Non-frozen for mini-app boot: null and absent both mean active. */
   isActiveForTelegramMiniApp(community: Community): boolean {
-    return !Object.prototype.hasOwnProperty.call(community, 'telegramFrozenAt');
+    return !isTelegramCommunityFrozen(community);
   }
 
   async resolveByIncomingChatId(telegramChatId: string): Promise<Community | null> {
@@ -147,7 +148,7 @@ export function createTelegramCommunityChatResolver(
       return extractCommunityLegacyChatIds(community);
     },
     isActiveForTelegramMiniApp(community: Community): boolean {
-      return !Object.prototype.hasOwnProperty.call(community, 'telegramFrozenAt');
+      return !isTelegramCommunityFrozen(community);
     },
     async resolveCommunityIdForMiniApp(telegramChatId: string): Promise<string | null> {
       const community = await resolver.resolveByIncomingChatId(telegramChatId);

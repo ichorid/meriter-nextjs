@@ -31,7 +31,6 @@ export class TelegramWebhookController {
       botUsername,
       updateId: body.update_id,
     });
-
     const processing = this.processUpdate(botUsername, body);
     if (process.env.NODE_ENV === 'test') {
       await processing;
