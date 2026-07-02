@@ -231,4 +231,32 @@ describe('Telegram hashtag-gated publication (integration)', () => {
     expect(publications[0]?.content).toBe(`#${hashtag} webhook ingress`);
     expect(publications[0]?.hashtags).toEqual([hashtag]);
   });
+
+  it('accepts case-variant hashtag when community tag is lowercase', async () => {
+    const { communityId, authorId } = await seedCommunityAndAuthor();
+    await communityModel.updateOne(
+      { id: communityId },
+      { $set: { hashtags: ['заслуга'] } },
+    );
+
+    const messageText = '#Заслуга отличная работа';
+
+    const result = await tgBotsService.processRecieveMessageFromGroup({
+      tgChatId,
+      tgUserId: tgAuthorId,
+      tgAuthorName: 'Telegram Author',
+      messageText,
+      messageId: 100,
+      entities: [{ offset: 0, length: 8, type: 'hashtag' }],
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.communityId).toBe(communityId);
+
+    const publications = await publicationModel.find({ communityId }).lean();
+    expect(publications).toHaveLength(1);
+    expect(publications[0]?.authorId).toBe(authorId);
+    expect(publications[0]?.content).toBe(messageText);
+    expect(publications[0]?.hashtags).toEqual(['заслуга']);
+  });
 });

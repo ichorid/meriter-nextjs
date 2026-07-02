@@ -123,6 +123,7 @@ import {
   mongoFrozenTelegramCommunityFilter,
 } from './telegram-community-frozen.util';
 import { describeTelegramUpdateMeta } from './telegram-update-log.util';
+import { normalizeTelegramHashtag } from '../../common/helpers/telegram-hashtag';
 
 const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
@@ -1508,7 +1509,8 @@ export class TelegramBotOrchestratorService {
         return true;
       }
       case 'onboarding_hashtag':
-        payload.hashtag = text.trim().replace(/^#/, '').slice(0, 32) || 'заслуга';
+        payload.hashtag =
+          normalizeTelegramHashtag(text.trim()).slice(0, 32) || 'заслуга';
         await this.advanceOnboarding(tgUserId, 'onboarding_post_cost', payload);
         return true;
       case 'onboarding_post_cost': {
@@ -1595,7 +1597,8 @@ export class TelegramBotOrchestratorService {
         return true;
       }
       case 'settings_edit_hashtag': {
-        const hashtag = text.trim().replace(/^#/, '').slice(0, 32) || 'заслуга';
+        const hashtag =
+          normalizeTelegramHashtag(text.trim()).slice(0, 32) || 'заслуга';
         await this.applySettingsUpdate(tgUserId, String(payload.communityId), {
           hashtags: [hashtag],
         });

@@ -11,6 +11,7 @@ import {
   type TelegramCommandRoutingSettings,
   type TelegramRoutableCommand,
 } from './telegram-command-routing';
+import { normalizeTelegramHashtag } from '../../common/helpers/telegram-hashtag';
 
 export type CommunityUsageRulesInput = {
   communityName: string;
@@ -81,7 +82,7 @@ export function getOnboardingPrompt(
 }
 
 export function primaryCommunityHashtag(hashtags?: string[]): string {
-  const tag = (hashtags?.[0] ?? 'заслуга').replace(/^#/, '').trim();
+  const tag = normalizeTelegramHashtag(hashtags?.[0] ?? 'заслуга');
   return tag || 'заслуга';
 }
 

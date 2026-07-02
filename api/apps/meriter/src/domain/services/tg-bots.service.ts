@@ -31,6 +31,11 @@ import { Upload } from "@aws-sdk/lib-storage";
 import * as stream from "stream";
 
 import { escapeMarkdownV2 } from '../../common/helpers/telegram';
+import {
+  communityHashtagConfigured,
+  findMatchingCommunityHashtag,
+  normalizeTelegramHashtag,
+} from '../../common/helpers/telegram-hashtag';
 import { telegramGroupSendNotificationParams } from '../../infrastructure/telegram/telegram-chat-id.util';
 import {
   resolveTelegramPublicationBeneficiary,
@@ -576,8 +581,10 @@ export class TgBotsService {
       }
     }
 
-    const kw = keywords.find((k) =>
-      (messageText ?? "").match("#" + k)
+    const kw = findMatchingCommunityHashtag(
+      keywords,
+      messageText ?? '',
+      entities as TelegramMessageEntity[] | undefined,
     );
 
     this.logger.log(`🏷️  Chat keywords: ${keywords.join(', ')}`);
@@ -1833,8 +1840,8 @@ export class TgBotsService {
       throw new Error(`Community not found for chat ${fromChatId}`);
     }
 
-    const cleanKeyword = keyword.replace('#', '');
-    const hashtagExists = community.hashtags?.includes(cleanKeyword);
+    const cleanKeyword = normalizeTelegramHashtag(keyword);
+    const hashtagExists = communityHashtagConfigured(community.hashtags, cleanKeyword);
 
     if (!hashtagExists) {
       this.logger.error(`Hashtag #${cleanKeyword} not configured in community ${fromChatId}`);
