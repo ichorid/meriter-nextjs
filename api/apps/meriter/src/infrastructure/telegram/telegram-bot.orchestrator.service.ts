@@ -2874,6 +2874,58 @@ export class TelegramBotOrchestratorService {
     };
   }
 
+  private async publicationIsNomination(publicationId: string): Promise<boolean> {
+    const publication = await this.publicationService.getPublication(publicationId);
+    if (!publication) {
+      return false;
+    }
+    const authorId = publication.getAuthorId.getValue();
+    const beneficiaryId = publication.getBeneficiaryId?.getValue() ?? authorId;
+    return beneficiaryId !== authorId;
+  }
+
+  private buildVotePanelSuccessReplyAttempts(
+    isNomination: boolean,
+    targets: {
+      hashtagChatId?: string | null;
+      hashtagMessageId?: number | null;
+      panelChatId?: string | null;
+      panelMessageId?: number | null;
+      panelAnchorChatId?: string | null;
+      panelAnchorMessageId?: number | null;
+      promptChatId?: string | null;
+      promptMessageId?: number | null;
+    },
+  ): VoteFeedbackReplyAttempt[] {
+    const replyAttempts: VoteFeedbackReplyAttempt[] = [];
+    const seen = new Set<string>();
+    const addAttempt = (chatId?: string | null, messageId?: number | null) => {
+      const trimmedChatId = chatId?.trim();
+      if (!trimmedChatId || messageId == null) {
+        return;
+      }
+      const key = `${trimmedChatId}:${messageId}`;
+      if (seen.has(key)) {
+        return;
+      }
+      seen.add(key);
+      replyAttempts.push({ chatId: trimmedChatId, messageId });
+    };
+
+    if (isNomination) {
+      addAttempt(targets.panelChatId, targets.panelMessageId);
+      addAttempt(targets.panelAnchorChatId, targets.panelAnchorMessageId);
+      addAttempt(targets.promptChatId, targets.promptMessageId);
+      return replyAttempts;
+    }
+
+    addAttempt(targets.hashtagChatId, targets.hashtagMessageId);
+    addAttempt(targets.panelChatId, targets.panelMessageId);
+    addAttempt(targets.panelAnchorChatId, targets.panelAnchorMessageId);
+    addAttempt(targets.promptChatId, targets.promptMessageId);
+    return replyAttempts;
+  }
+
   private async promptVoteAmount(
     community: Community,
     voterId: string,
@@ -3184,28 +3236,25 @@ export class TelegramBotOrchestratorService {
       const panelAnchor = await this.anchorModel
         .findOne({ publicationId: payload.publicationId, anchorType: 'vote_panel' })
         .lean();
-      const replyAttempts: VoteFeedbackReplyAttempt[] = [];
-      const seen = new Set<string>();
-      const addAttempt = (chatId?: string | null, messageId?: number | null) => {
-        const trimmedChatId = chatId?.trim();
-        if (!trimmedChatId || messageId == null) {
-          return;
-        }
-        const key = `${trimmedChatId}:${messageId}`;
-        if (seen.has(key)) {
-          return;
-        }
-        seen.add(key);
-        replyAttempts.push({ chatId: trimmedChatId, messageId });
-      };
-      addAttempt(
-        payload.replyAnchorChatId ?? payload.groupChatId,
-        payload.reactedMessageId,
-      );
-      addAttempt(payload.groupChatId, payload.promptMessageId);
-      addAttempt(panelAnchor?.telegramChatId, panelAnchor?.telegramMessageId);
+      const isNomination = await this.publicationIsNomination(payload.publicationId);
+      const replyAttempts = this.buildVotePanelSuccessReplyAttempts(isNomination, {
+        hashtagChatId: payload.replyAnchorChatId ?? payload.groupChatId,
+        hashtagMessageId: payload.reactedMessageId,
+        panelChatId: panelAnchor?.telegramChatId ?? payload.groupChatId,
+        panelMessageId: panelAnchor?.telegramMessageId,
+        panelAnchorChatId: panelAnchor?.telegramChatId,
+        panelAnchorMessageId: panelAnchor?.telegramMessageId,
+        promptChatId: payload.groupChatId,
+        promptMessageId: payload.promptMessageId,
+      });
       if (replyAttempts.length > 0) {
-        groupFeedback = { ...groupFeedback, replyAttempts };
+        const primary = replyAttempts[0];
+        groupFeedback = {
+          ...groupFeedback,
+          replyToMessageId: primary.messageId,
+          replyAnchorChatId: primary.chatId,
+          replyAttempts,
+        };
       }
     }
     if (options?.directionFlippedNotice && groupFeedback) {
@@ -4098,34 +4147,27 @@ export class TelegramBotOrchestratorService {
       return;
     }
 
+    const isNomination = await this.publicationIsNomination(parsed.publicationId);
     const groupFeedback =
       hashtagMessageId != null
         ? (() => {
-            const replyAttempts: VoteFeedbackReplyAttempt[] = [];
-            const seen = new Set<string>();
-            const addAttempt = (chatId?: string | null, messageId?: number | null) => {
-              const trimmedChatId = chatId?.trim();
-              if (!trimmedChatId || messageId == null) {
-                return;
-              }
-              const key = `${trimmedChatId}:${messageId}`;
-              if (seen.has(key)) {
-                return;
-              }
-              seen.add(key);
-              replyAttempts.push({ chatId: trimmedChatId, messageId });
-            };
-            addAttempt(hashtagAnchor?.telegramChatId, hashtagMessageId);
-            addAttempt(panelChatIdResolved, panelMessageId);
-            addAttempt(panelAnchor?.telegramChatId, panelAnchor?.telegramMessageId);
+            const replyAttempts = this.buildVotePanelSuccessReplyAttempts(isNomination, {
+              hashtagChatId: hashtagAnchor?.telegramChatId,
+              hashtagMessageId,
+              panelChatId: panelChatIdResolved,
+              panelMessageId,
+              panelAnchorChatId: panelAnchor?.telegramChatId,
+              panelAnchorMessageId: panelAnchor?.telegramMessageId,
+            });
+            const primary = replyAttempts[0];
             return {
               groupChatId:
                 panelChatIdResolved ??
                 community.telegramChatId ??
                 this.communityLegacyChatIds(community)[0] ??
                 '',
-              replyToMessageId: hashtagMessageId,
-              replyAnchorChatId: hashtagAnchor?.telegramChatId,
+              replyToMessageId: primary?.messageId ?? hashtagMessageId,
+              replyAnchorChatId: primary?.chatId ?? hashtagAnchor?.telegramChatId,
               replyAttempts,
             };
           })()

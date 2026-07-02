@@ -1838,6 +1838,64 @@ describe('TelegramBotOrchestrator (integration)', () => {
     ).toBe(true);
   });
 
+  it('vote panel +1 on nomination replies to panel not nominator hashtag message', async () => {
+    const { communityId, publicationId, messageId: hashtagMessageId } =
+      await seedNominationPublication({});
+    await communityModel.updateOne(
+      { id: communityId },
+      { $set: { 'settings.telegramVotePanelEnabled': true } },
+    );
+    const panelMessageId = 138;
+    await anchorModel.create({
+      id: uid(),
+      communityId,
+      telegramChatId: tgChatId,
+      telegramMessageId: panelMessageId,
+      publicationId,
+      anchorType: 'vote_panel',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const executeMock = jest.fn().mockResolvedValue(undefined);
+    jest
+      .spyOn(
+        orchestrator as unknown as { createVoteUseCase: (...args: unknown[]) => { execute: jest.Mock } },
+        'createVoteUseCase',
+      )
+      .mockReturnValue({ execute: executeMock });
+    const ephemeralSpy = jest.spyOn(tgBotsService, 'tgReplyEphemeral').mockResolvedValue(9004);
+
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 45.25,
+      callback_query: {
+        id: 'cb-vp-up1-nomination',
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG', last_name: 'User' },
+        message: {
+          message_id: panelMessageId,
+          chat: { id: Number(tgChatId), type: 'supergroup' },
+        },
+        chat_instance: '1',
+        data: `vp:${publicationId}:up:1`,
+      },
+    } as TelegramTypes.Update);
+
+    expect(executeMock).toHaveBeenCalled();
+    expect(ephemeralSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chat_id: tgChatId,
+        reply_to_message_id: panelMessageId,
+        text: expect.stringContaining('начислил'),
+      }),
+    );
+    expect(
+      ephemeralSpy.mock.calls.some(
+        ([args]) =>
+          String(args.text).includes('начислил') &&
+          args.reply_to_message_id === hashtagMessageId,
+      ),
+    ).toBe(false);
+  });
+
   it('vote panel +1 success report replies to panel when hashtag reply fails', async () => {
     const { communityId, publicationId } = await seedPublicationWithAnchor(134, {
       otherAuthor: true,
