@@ -1017,23 +1017,27 @@ export class AuthProviderService {
       '365d',
     );
 
-    let primaryTelegramCommunityId =
-      await this.resolvePrimaryTelegramCommunityId(user.id);
-
     const telegramChatId = parsed.chat?.id != null ? String(parsed.chat.id) : null;
-    if (telegramChatId) {
-      const fromChat = await this.resolveCommunityIdByTelegramChatId(telegramChatId);
-      if (fromChat) {
-        primaryTelegramCommunityId = fromChat;
-      }
-    }
-
     const startParam = parsed.startParam?.trim() || null;
-    if (startParam && !startParam.includes(':')) {
-      const fromStart = await this.resolveCommunityIdByTelegramCommunityHint(startParam);
-      if (fromStart) {
-        primaryTelegramCommunityId = fromStart;
-      }
+    const startCommunityHint =
+      startParam && !startParam.includes(':') ? startParam : null;
+
+    const [fromMembership, fromChat, fromStart] = await Promise.all([
+      this.resolvePrimaryTelegramCommunityId(user.id),
+      telegramChatId
+        ? this.resolveCommunityIdByTelegramChatId(telegramChatId)
+        : Promise.resolve(null),
+      startCommunityHint
+        ? this.resolveCommunityIdByTelegramCommunityHint(startCommunityHint)
+        : Promise.resolve(null),
+    ]);
+
+    let primaryTelegramCommunityId = fromMembership;
+    if (fromChat) {
+      primaryTelegramCommunityId = fromChat;
+    }
+    if (fromStart) {
+      primaryTelegramCommunityId = fromStart;
     }
 
     return {

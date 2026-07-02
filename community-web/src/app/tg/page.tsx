@@ -70,6 +70,15 @@ export default function TelegramBootPage() {
         const chatId =
           authResult.telegramChatId || parseTelegramChatIdFromInitData(initData);
 
+        if (
+          authResult.communityId &&
+          !startParam?.startsWith('post:')
+        ) {
+          setState('redirecting');
+          router.replace(`/c/${authResult.communityId}/me`);
+          return;
+        }
+
         const resolution = await resolveTelegramBootContext({
           startParam,
           chatId,

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { WalletChip } from '@/components/wallet-chip';
 import { CommunityBottomNavTg } from '@/components/community-bottom-nav-tg';
@@ -18,6 +19,11 @@ export function TgShell({
   children: React.ReactNode;
   active: TgCommunityTabId;
 }) {
+  const [communitySwitcherReady, setCommunitySwitcherReady] = useState(false);
+  useEffect(() => {
+    setCommunitySwitcherReady(true);
+  }, []);
+
   const communityQuery = trpc.communities.getById.useQuery({ id: communityId });
   const walletQuery = trpc.wallets.getByCommunity.useQuery({
     userId: 'me',
@@ -29,6 +35,7 @@ export function TgShell({
   });
   const communitiesQuery = trpc.communities.listForTelegramUser.useQuery(undefined, {
     staleTime: 60_000,
+    enabled: communitySwitcherReady,
   });
   const isFrozen = useIsCommunityFrozen();
 

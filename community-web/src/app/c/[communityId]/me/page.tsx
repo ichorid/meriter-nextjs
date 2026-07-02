@@ -10,6 +10,7 @@ import { trpc } from '@/lib/trpc/client';
 
 function MePageInner({ communityId }: { communityId: string }) {
   const meQuery = trpc.users.getMe.useQuery();
+  const communityQuery = trpc.communities.getById.useQuery({ id: communityId });
   const walletQuery = trpc.wallets.getByCommunity.useQuery({
     userId: 'me',
     communityId,
@@ -20,7 +21,10 @@ function MePageInner({ communityId }: { communityId: string }) {
   });
   const membersQuery = trpc.communities.getMembers.useQuery(
     { id: communityId, pageSize: 100 },
-    { enabled: Boolean(communityId) },
+    {
+      enabled: Boolean(communityId) && walletQuery.isSuccess,
+      staleTime: 120_000,
+    },
   );
   const txQuery = trpc.wallets.getTransactions.useQuery(
     {
@@ -39,16 +43,18 @@ function MePageInner({ communityId }: { communityId: string }) {
   const quotaPct = quotaMax > 0 ? Math.round((quotaRemaining / quotaMax) * 100) : 0;
 
   const members = membersQuery.data?.data ?? [];
-  const memberTotal = membersQuery.data?.pagination?.total ?? members.length;
+  const memberTotal = communityQuery.data?.memberCount ?? membersQuery.data?.pagination?.total;
   const totalWallet = members.reduce((sum, m) => sum + (m.walletBalance ?? 0), 0);
   const poolPct =
-    totalWallet > 0 && meQuery.data?.id
+    membersQuery.isSuccess && totalWallet > 0 && meQuery.data?.id
       ? (
           ((members.find((m) => m.id === meQuery.data?.id)?.walletBalance ?? wallet) /
             totalWallet) *
           100
         ).toFixed(1)
-      : '0';
+      : membersQuery.isLoading
+        ? null
+        : '0';
 
   const txs = txQuery.data?.data ?? [];
 
@@ -57,7 +63,10 @@ function MePageInner({ communityId }: { communityId: string }) {
       <div className="space-y-6">
         <h1 className="text-xl font-extrabold tracking-tight">Мои заслуги</h1>
         <p className="flex flex-wrap items-center gap-1.5 text-sm text-stitch-muted">
-          <span>Участников в сообществе: {memberTotal}</span>
+          <span>
+            Участников в сообществе:{' '}
+            {memberTotal ?? (communityQuery.isLoading ? '…' : '—')}
+          </span>
           <HintIcon text={COMMUNITY_MEMBER_COUNT_HINT} />
         </p>
 
@@ -81,7 +90,9 @@ function MePageInner({ communityId }: { communityId: string }) {
           </div>
           <div>
             <p className="text-xs text-stitch-muted">Доля в пуле сообщества</p>
-            <p className="text-lg font-semibold">{poolPct}%</p>
+            <p className="text-lg font-semibold">
+              {poolPct === null ? '…' : `${poolPct}%`}
+            </p>
           </div>
         </div>
 
