@@ -2,6 +2,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 // walletApiV1 removed - all endpoints migrated to tRPC
 import { trpc } from '@/lib/trpc/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { queryKeys } from '@/lib/constants/queryKeys';
 import { STALE_TIME } from '@/lib/constants/query-config';
 
@@ -46,7 +47,10 @@ export function hasMemberQuotaDisplay(
 
 // Get user wallets
 export function useWallets() {
+  const { isAuthenticated } = useAuth();
+
   return trpc.wallets.getAll.useQuery(undefined, {
+    enabled: isAuthenticated,
     staleTime: STALE_TIME.MEDIUM,
   });
 }

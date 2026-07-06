@@ -1,5 +1,6 @@
 import { toastUiText } from '@/lib/i18n/api-error-toast';
 import { trpc } from '@/lib/trpc/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { STALE_TIME } from '@/lib/constants/query-config';
 import { useToastStore } from '@/shared/stores/toast.store';
 
@@ -144,7 +145,10 @@ export function useFavoriteCount() {
 }
 
 export function useUnreadFavoritesCount() {
+  const { isAuthenticated } = useAuth();
+
   return trpc.favorites.getUnreadCount.useQuery(undefined, {
+    enabled: isAuthenticated,
     staleTime: STALE_TIME.VERY_SHORT,
     refetchInterval: 30_000,
   });

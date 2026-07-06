@@ -1,5 +1,6 @@
 // Notifications React Query hooks - migrated to tRPC
 import { trpc } from "@/lib/trpc/client";
+import { useAuth } from '@/contexts/AuthContext';
 import type { Notification, NotificationPreferences } from "@/types/api-v1";
 
 interface GetNotificationsParams {
@@ -10,12 +11,15 @@ interface GetNotificationsParams {
 }
 
 export function useNotifications(params: GetNotificationsParams = {}) {
+    const { isAuthenticated } = useAuth();
+
     return trpc.notifications.getAll.useQuery({
         page: params.page,
         pageSize: params.pageSize,
         unreadOnly: params.unreadOnly,
         type: params.type,
     }, {
+        enabled: isAuthenticated,
         refetchInterval: 30000, // Poll every 30 seconds for real-time updates
         retry: false,
         retryOnMount: false,
@@ -27,6 +31,8 @@ export function useInfiniteNotifications(
     params: { unreadOnly?: boolean; type?: string } = {},
     pageSize: number = 20
 ) {
+    const { isAuthenticated } = useAuth();
+
     return trpc.notifications.getAll.useInfiniteQuery(
         {
             page: 1,
@@ -35,6 +41,7 @@ export function useInfiniteNotifications(
             type: params.type,
         },
         {
+            enabled: isAuthenticated,
             getNextPageParam: (lastPage) => {
                 if (!lastPage || lastPage.total === 0) return undefined;
                 const currentPage = lastPage.page || 1;
@@ -51,7 +58,10 @@ export function useInfiniteNotifications(
 }
 
 export function useUnreadCount() {
+    const { isAuthenticated } = useAuth();
+
     return trpc.notifications.getUnreadCount.useQuery(undefined, {
+        enabled: isAuthenticated,
         retry: false,
         retryOnMount: false,
         throwOnError: false,
@@ -61,7 +71,11 @@ export function useUnreadCount() {
 }
 
 export function useNotificationPreferences() {
-    return trpc.notifications.getPreferences.useQuery(undefined);
+    const { isAuthenticated } = useAuth();
+
+    return trpc.notifications.getPreferences.useQuery(undefined, {
+        enabled: isAuthenticated,
+    });
 }
 
 export const useMarkAsRead = () => {
