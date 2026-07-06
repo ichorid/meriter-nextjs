@@ -6,8 +6,16 @@
  */
 
 import * as Sentry from '@sentry/nextjs';
+import { TRPCError } from '@trpc/server';
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const packageJson = require('../package.json');
+
+const IGNORED_TRPC_ERROR_CODES: TRPCError['code'][] = [
+  'UNAUTHORIZED',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'BAD_REQUEST',
+];
 
 const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN;
 const SENTRY_ENVIRONMENT = process.env.NEXT_PUBLIC_SENTRY_ENVIRONMENT || process.env.NODE_ENV || 'development';
@@ -97,6 +105,17 @@ if (SENTRY_DSN) {
       /^chrome:\/\//i,
       /^chrome-extension:\/\//i,
     ],
+
+    beforeSend(event, hint) {
+      const original = hint.originalException;
+      if (
+        original instanceof TRPCError &&
+        IGNORED_TRPC_ERROR_CODES.includes(original.code)
+      ) {
+        return null;
+      }
+      return event;
+    },
   });
 }
 

@@ -18,6 +18,7 @@ import { ApiResponseInterceptor } from './common/interceptors/api-response.inter
 import { TrpcService } from './trpc/trpc.service';
 import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import * as Sentry from '@sentry/node';
+import { sentryBeforeSend } from './common/sentry/sentry-event-filter';
 declare const module: any;
 
 async function bootstrap() {
@@ -35,6 +36,7 @@ async function bootstrap() {
       environment: sentryEnvironment,
       ...(sentryRelease ? { release: sentryRelease } : {}),
       tracesSampleRate,
+      beforeSend: sentryBeforeSend,
       // Set platform tag to distinguish backend from frontend
       initialScope: {
         tags: {
