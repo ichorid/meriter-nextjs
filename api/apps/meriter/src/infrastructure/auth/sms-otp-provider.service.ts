@@ -3,6 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { SmsOtp, SmsOtpDocument } from '../../domain/models/auth/sms-otp.schema';
+import {
+    SmsRateLimitError,
+    SmsResendCooldownError,
+} from '../../domain/ports/sms-otp-provider.port';
 import { AppConfig } from '../../config/configuration';
 import { AuthMagicLinkService } from './magic-link-auth.service';
 import {
@@ -246,7 +250,7 @@ export class SmsProviderService {
         });
 
         if (recentCount >= this.rateLimitPerHour) {
-            throw new Error('Rate limit exceeded. Please try again later.');
+            throw new SmsRateLimitError();
         }
     }
 
@@ -282,7 +286,7 @@ export class SmsProviderService {
         // Check resend cooldown
         const canResendAt = await this.checkResendCooldown(phoneNumber);
         if (canResendAt && canResendAt > new Date()) {
-            throw new Error(`Please wait before requesting another code. Can resend at: ${canResendAt.toISOString()}`);
+            throw new SmsResendCooldownError(canResendAt);
         }
 
         // Generate OTP

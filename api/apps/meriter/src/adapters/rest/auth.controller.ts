@@ -18,7 +18,8 @@ import { SmsProviderService } from '../../api-v1/auth/sms-provider.service';
 import { EmailLoginLinkService } from '../../infrastructure/auth/email-login-link.service';
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../../infrastructure/auth/cookie-manager';
-import { UnauthorizedError, InternalServerError } from '../../common/exceptions/api.exceptions';
+import { UnauthorizedError, InternalServerError, TooManyRequestsError } from '../../common/exceptions/api.exceptions';
+import { SmsRateLimitError, SmsResendCooldownError } from '../../domain/ports/sms-otp-provider.port';
 import { AppConfig } from '../../config/configuration';
 import {
   EstablishSessionUseCase,
@@ -820,6 +821,10 @@ export class AuthController {
       if (error instanceof SmsAuthDisabledError) {
         throw new ForbiddenException(error.message);
       }
+      if (error instanceof SmsRateLimitError || error instanceof SmsResendCooldownError) {
+        this.logger.warn(`SMS send throttled for ${body.phoneNumber}: ${error.message}`);
+        throw new TooManyRequestsError(error.message);
+      }
       const errorMessage =
         error instanceof PhoneNumberRequiredError ||
         error instanceof InvalidPhoneNumberError
@@ -935,6 +940,10 @@ export class AuthController {
       });
     } catch (error) {
       if (error instanceof ForbiddenException) throw error;
+      if (error instanceof SmsRateLimitError || error instanceof SmsResendCooldownError) {
+        this.logger.warn(`Call check throttled: ${error.message}`);
+        throw new TooManyRequestsError(error.message);
+      }
       const errorMessage = error instanceof Error ? error.message : 'Failed to init call check';
       this.logger.error(`Call check init error: ${errorMessage}`, error);
       throw new InternalServerError(errorMessage);
