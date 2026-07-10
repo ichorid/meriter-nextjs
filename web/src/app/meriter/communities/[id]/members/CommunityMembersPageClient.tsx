@@ -248,7 +248,12 @@ export function CommunityMembersPageClient({
 
     const backTarget = sanitizeMeriterInternalPath(returnTo) ?? routes.community(communityId);
 
-    const renderMemberRow = (member: CommunityMember) => (
+    const renderMemberRow = (member: CommunityMember) => {
+        const memberRowHasTrailingActions =
+            Boolean(isAdmin) ||
+            (isCurrentUserMember && member.id !== user?.id);
+
+        return (
         <div key={member.id} className="relative group">
             <MemberCardWithMerits
                 memberId={member.id}
@@ -261,10 +266,11 @@ export function CommunityMembersPageClient({
                 hideTeamInfo={hideTeamInfo}
                 canViewMerits={canViewMerits}
                 onClick={() => router.push(routes.userProfile(member.id))}
-                hideChevron={isAdmin}
+                hideChevron={memberRowHasTrailingActions}
+                className={memberRowHasTrailingActions ? (isAdmin ? 'pr-24' : 'pr-14') : undefined}
             />
-            {(isAdmin || (isCurrentUserMember && member.id !== user?.id)) && (
-                <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            {memberRowHasTrailingActions && (
+                <div className="absolute right-2 top-1/2 z-10 flex -translate-y-1/2 flex-row-reverse items-center gap-0.5 opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
                     {isAdmin && member.id !== user?.id && (
                         <button
                             type="button"
@@ -382,7 +388,8 @@ export function CommunityMembersPageClient({
                 </div>
             )}
         </div>
-    );
+        );
+    };
 
     const pageHeader = (
         <SimpleStickyHeader

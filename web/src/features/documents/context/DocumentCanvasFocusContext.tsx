@@ -82,6 +82,7 @@ export interface DocumentCanvasFocusContextValue {
   votingDurationHours: number;
   docAllowDownvotes: boolean;
   canManageDocument: boolean;
+  canProposeDocumentVariants: boolean;
   community: DocumentCommunityContext | null;
   quotaRemaining: number;
   walletBalance: number;
@@ -140,6 +141,7 @@ export interface DocumentCanvasFocusProviderProps {
   votingDurationHours: number;
   docAllowDownvotes: boolean;
   canManageDocument: boolean;
+  canProposeDocumentVariants: boolean;
   community: DocumentCommunityContext | null;
   quotaRemaining: number;
   walletBalance: number;
@@ -148,6 +150,22 @@ export interface DocumentCanvasFocusProviderProps {
   addToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
   t: DocTranslate;
   children: ReactNode;
+}
+
+export function resolveDocumentEditorAccess(input: {
+  userId: string | undefined;
+  canManageDocument: boolean;
+  isCommunityMember: boolean;
+  documentCreators: 'admins' | 'members';
+}): { canUseGdocsEditor: boolean; canProposeDocumentVariants: boolean } {
+  const signedIn = Boolean(input.userId);
+  const canUseGdocsEditor = signedIn && input.canManageDocument;
+  const canProposeDocumentVariants =
+    signedIn &&
+    input.isCommunityMember &&
+    !input.canManageDocument &&
+    input.documentCreators === 'members';
+  return { canUseGdocsEditor, canProposeDocumentVariants };
 }
 
 export function DocumentCanvasFocusProvider({
@@ -159,6 +177,7 @@ export function DocumentCanvasFocusProvider({
   votingDurationHours,
   docAllowDownvotes,
   canManageDocument,
+  canProposeDocumentVariants,
   community,
   quotaRemaining,
   walletBalance,
@@ -272,6 +291,7 @@ export function DocumentCanvasFocusProvider({
       votingDurationHours,
       docAllowDownvotes,
       canManageDocument,
+      canProposeDocumentVariants,
       community,
       quotaRemaining,
       walletBalance,
@@ -309,6 +329,7 @@ export function DocumentCanvasFocusProvider({
       votingDurationHours,
       docAllowDownvotes,
       canManageDocument,
+      canProposeDocumentVariants,
       community,
       quotaRemaining,
       walletBalance,

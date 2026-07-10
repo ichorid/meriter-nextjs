@@ -331,7 +331,8 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             router.push(`/meriter/communities/${communityId}`);
             // Scroll to top after navigation completes
             setTimeout(() => {
-              window.scrollTo({ top: 0, behavior: 'smooth' });
+              const mainWrap = document.querySelector('.mainWrap') as HTMLElement | null;
+              mainWrap?.scrollTo({ top: 0, behavior: 'smooth' });
             }, 100);
           } else {
             router.push(routes.profile);

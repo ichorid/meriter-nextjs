@@ -19,6 +19,7 @@ import { IntlPortalWrapper } from '@/components/providers/IntlPortalWrapper';
 import { useFeaturesConfig } from '@/hooks/useConfig';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
+import { invalidatePersonalWalletCaches } from '@/hooks/api/invalidate-community-session-caches';
 import { canUseWalletForVoting } from './voting-utils';
 import { isPublicationEntitySourced } from '@/lib/publication-source';
 import type { VotingTargetType } from '@/stores/ui.store';
@@ -446,6 +447,9 @@ export const VotingPopup: React.FC<VotingPopupProps> = ({
                 utils.documents.getById.invalidate(),
               ],
         );
+        if (voteContextCommunityId) {
+          await invalidatePersonalWalletCaches(utils, [voteContextCommunityId]);
+        }
       } else {
         await voteOnVoteMutation.mutateAsync({
           voteId: targetId,

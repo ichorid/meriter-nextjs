@@ -207,7 +207,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     // Handle scroll to top
     const handleScrollToTop = () => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const mainWrap = document.querySelector('.mainWrap') as HTMLElement | null;
+        mainWrap?.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // Fake data generation state (dev mode only)
@@ -426,7 +427,6 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     useEffect(() => {
         setShowSearchModal(false);
         setBOpenFilters(false);
-        document.body.style.overflow = '';
     }, [communityHubFeedTab]);
 
     // Find the future-vision community ID when on marathon-of-good

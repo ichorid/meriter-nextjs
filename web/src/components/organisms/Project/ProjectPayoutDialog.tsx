@@ -16,6 +16,8 @@ import { useProjectPayoutExecute, useProjectPayoutPreview } from '@/hooks/api/us
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { WalletPayoutPreviewLines } from '@/components/molecules/WalletPayoutPreviewLines';
+import { cn } from '@/lib/utils';
+import { projectDividerClass } from './project-surface';
 
 export interface ProjectPayoutDialogProps {
   projectId: string;
@@ -158,7 +160,10 @@ export function ProjectPayoutDialog({
             <WalletPayoutPreviewLines
               lines={preview.lines}
               payoutAmount={preview.payoutAmount}
-              className="max-h-[min(70vh,28rem)] min-h-[2.5rem] space-y-3 overflow-y-auto rounded-md border border-white/10 p-2 text-xs"
+              className={cn(
+                'max-h-[min(70vh,28rem)] min-h-[2.5rem] space-y-3 overflow-y-auto rounded-md border p-2 text-xs',
+                projectDividerClass,
+              )}
             />
           )}
         </div>

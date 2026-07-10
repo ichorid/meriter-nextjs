@@ -9,14 +9,17 @@ import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/Context
 import { useAuth } from '@/contexts/AuthContext';
 import { trpc } from '@/lib/trpc/client';
 import { routes } from '@/lib/constants/routes';
-import { useCommunity, useWallets } from '@/hooks/api';
+import { useCommunity } from '@/hooks/api';
+import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useUserQuota } from '@/hooks/api/useQuota';
-import { getWalletBalance } from '@/lib/utils/wallet';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { DocumentStructureProvider } from '@/features/documents/context/DocumentStructureContext';
-import { DocumentCanvasFocusProvider } from '@/features/documents/context/DocumentCanvasFocusContext';
+import {
+  DocumentCanvasFocusProvider,
+  resolveDocumentEditorAccess,
+} from '@/features/documents/context/DocumentCanvasFocusContext';
 import { DocumentSettingsDialog } from '@/features/documents/components/DocumentSettingsDialog';
 import { DocumentCanvas } from '@/features/documents/components/DocumentCanvas';
 import { DocumentCanvasHeader } from '@/features/documents/components/DocumentCanvasHeader';
@@ -57,8 +60,9 @@ export function CommunityDocumentDetailPageClient({
   const { user, isLoading: authLoading } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id ?? '');
   const { data: community } = useCommunity(communityId);
-  const { data: wallets = [] } = useWallets();
   const { data: quotaData } = useUserQuota(communityId);
+  const { data: votingWalletBalance = 0 } = useWalletBalance(communityId);
+  const { data: globalWalletBalance = 0 } = useWalletBalance(GLOBAL_COMMUNITY_ID);
 
   const liveQueryOptions = documentLiveQueryOptions();
 
@@ -118,8 +122,9 @@ export function CommunityDocumentDetailPageClient({
   }, [docQuery.data?.sections, docQuery.dataUpdatedAt]);
 
   const quotaRemaining = quotaData?.remainingToday ?? 0;
-  const walletBalance = getWalletBalance(wallets, communityId);
-  const globalWalletBalance = getWalletBalance(wallets, GLOBAL_COMMUNITY_ID);
+  const walletBalance = typeof votingWalletBalance === 'number' ? votingWalletBalance : 0;
+  const resolvedGlobalWalletBalance =
+    typeof globalWalletBalance === 'number' ? globalWalletBalance : 0;
 
   const userRoleInCommunity =
     user?.globalRole === 'superadmin'
@@ -138,10 +143,12 @@ export function CommunityDocumentDetailPageClient({
     (community?.settings as { documentCreators?: 'admins' | 'members' } | undefined)
       ?.documentCreators ?? 'members';
 
-  const canUseGdocsEditor =
-    Boolean(user?.id) &&
-    (user?.globalRole === 'superadmin' ||
-      (isCommunityMember && (canManageDocument || documentCreators === 'members')));
+  const { canUseGdocsEditor, canProposeDocumentVariants } = resolveDocumentEditorAccess({
+    userId: user?.id,
+    canManageDocument,
+    isCommunityMember,
+    documentCreators,
+  });
 
   const pageHeader = (
     <SimpleStickyHeader
@@ -228,10 +235,11 @@ export function CommunityDocumentDetailPageClient({
     votingDurationHours: doc.votingDurationHours ?? 48,
     docAllowDownvotes: doc.allowDownvotes ?? true,
     canManageDocument,
+    canProposeDocumentVariants,
     community: community ?? null,
     quotaRemaining,
     walletBalance,
-    globalWalletBalance,
+    globalWalletBalance: resolvedGlobalWalletBalance,
     userId: user.id,
     addToast,
     t: t as DocTranslate,

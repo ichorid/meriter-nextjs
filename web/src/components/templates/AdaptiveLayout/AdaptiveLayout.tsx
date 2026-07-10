@@ -26,47 +26,26 @@ const ScrollToTopButton: React.FC = () => {
   const handleScrollToTop = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
-    if (mainWrap) {
-      mainWrap.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
-      document.body.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    const mainWrap = document.querySelector('.mainWrap') as HTMLElement | null;
+    mainWrap?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
+    const mainWrap = document.querySelector('.mainWrap') as HTMLElement | null;
+    if (!mainWrap) return;
+
     const checkScroll = () => {
-      const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
-      let scrollTop = 0;
-      if (mainWrap) {
-        scrollTop = mainWrap.scrollTop;
-      } else {
-        scrollTop = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      }
       const windowHeight = window.innerHeight;
-      setShowButton(scrollTop > windowHeight / 2);
+      setShowButton(mainWrap.scrollTop > windowHeight / 2);
     };
 
     const timeoutId = setTimeout(checkScroll, 100);
-    const mainWrap = document.querySelector('.mainWrap');
-
-    if (mainWrap) {
-      mainWrap.addEventListener('scroll', checkScroll, { passive: true });
-    } else {
-      window.addEventListener('scroll', checkScroll, { passive: true });
-    }
-
+    mainWrap.addEventListener('scroll', checkScroll, { passive: true });
     window.addEventListener('resize', checkScroll, { passive: true });
 
     return () => {
       clearTimeout(timeoutId);
-      if (mainWrap) {
-        mainWrap.removeEventListener('scroll', checkScroll);
-      } else {
-        window.removeEventListener('scroll', checkScroll);
-      }
+      mainWrap.removeEventListener('scroll', checkScroll);
       window.removeEventListener('resize', checkScroll);
     };
   }, []);

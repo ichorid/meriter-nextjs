@@ -18,6 +18,7 @@ import { useMeriterCommunityCreateContext } from '@/hooks/useMeriterCommunityCre
 import { CreateMenu } from '@/components/molecules/FabMenu/CreateMenu';
 import { Button } from '@/components/ui/shadcn/button';
 import { useMeriterStitchChrome } from '@/contexts/MeriterChromeContext';
+import { resolvePersonalWalletFromMap } from '@/lib/utils/wallet';
 
 export interface VerticalSidebarProps {
   className?: string;
@@ -623,7 +624,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                   <div className="text-xs text-base-content/50 px-2">{t('loadingCommunities')}</div>
                 ) : administeredCommunities.length > 0 ? (
                   administeredCommunities.map((community) => {
-                    const wallet = walletsMap.get(community.id);
+                    const wallet = resolvePersonalWalletFromMap(walletsMap, community);
                     const quota = quotasMap.get(community.id);
                     return (
                       <CommunityCard
@@ -633,7 +634,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         isExpanded={true}
                         compact={sc}
                         hideDescription={true}
-                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                        wallet={wallet ? { balance: wallet.balance, communityId: wallet.communityId } : undefined}
                         quota={
                           quota && typeof quota.remainingToday === 'number'
                             ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
@@ -659,7 +660,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                   <div className="text-xs text-base-content/50 px-2">{t('loadingCommunities')}</div>
                 ) : memberCommunities.length > 0 ? (
                   memberCommunities.map((community) => {
-                    const wallet = walletsMap.get(community.id);
+                    const wallet = resolvePersonalWalletFromMap(walletsMap, community);
                     const quota = quotasMap.get(community.id);
                     return (
                       <CommunityCard
@@ -669,7 +670,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         isExpanded={true}
                         compact={sc}
                         hideDescription={true}
-                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                        wallet={wallet ? { balance: wallet.balance, communityId: wallet.communityId } : undefined}
                         quota={
                           quota && typeof quota.remainingToday === 'number'
                             ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
@@ -695,7 +696,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                   <div className="text-xs text-base-content/50 px-2">{t('loadingCommunities')}</div>
                 ) : administeredProjects.length > 0 ? (
                   administeredProjects.map((community) => {
-                    const wallet = walletsMap.get(community.id);
+                    const wallet = resolvePersonalWalletFromMap(walletsMap, community);
                     const quota = quotasMap.get(community.id);
                     return (
                       <CommunityCard
@@ -705,7 +706,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         isExpanded={true}
                         compact={sc}
                         hideDescription={true}
-                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                        wallet={wallet ? { balance: wallet.balance, communityId: wallet.communityId } : undefined}
                         quota={
                           quota && typeof quota.remainingToday === 'number'
                             ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }
@@ -731,7 +732,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                   <div className="text-xs text-base-content/50 px-2">{t('loadingCommunities')}</div>
                 ) : memberProjects.length > 0 ? (
                   memberProjects.map((community) => {
-                    const wallet = walletsMap.get(community.id);
+                    const wallet = resolvePersonalWalletFromMap(walletsMap, community);
                     const quota = quotasMap.get(community.id);
                     return (
                       <CommunityCard
@@ -741,7 +742,7 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
                         isExpanded={true}
                         compact={sc}
                         hideDescription={true}
-                        wallet={wallet ? { balance: wallet.balance || 0, communityId: community.id } : undefined}
+                        wallet={wallet ? { balance: wallet.balance, communityId: wallet.communityId } : undefined}
                         quota={
                           quota && typeof quota.remainingToday === 'number'
                             ? { remainingToday: quota.remainingToday, dailyQuota: quota.dailyQuota ?? 0 }

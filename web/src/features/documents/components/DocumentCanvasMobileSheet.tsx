@@ -23,7 +23,9 @@ export function DocumentCanvasMobileSheet() {
   const votingDurationHours = focus?.votingDurationHours ?? 0;
   const block = blockId && focus ? focus.getBlock(blockId) : null;
   const proposalsLocked = block?.proposalsLocked === true;
-  const canProposeVariant = !proposalsLocked || canManageDocument;
+  const canProposeDocumentVariants = focus?.canProposeDocumentVariants ?? false;
+  const canProposeVariant =
+    canProposeDocumentVariants && (!proposalsLocked || canManageDocument);
 
   const sheetNeedsVariants =
     isMobile &&

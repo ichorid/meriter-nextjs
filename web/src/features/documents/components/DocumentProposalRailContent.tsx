@@ -74,7 +74,7 @@ export function DocumentProposalRailContent({
         </div>
       ) : null}
 
-      {focus.selectedRange ? (
+      {focus.selectedRange && focus.canProposeDocumentVariants ? (
         <DocumentProposeComposer
           blockId={focus.selectedRange.blockId}
           blockType={focus.selectedRange.blockType}

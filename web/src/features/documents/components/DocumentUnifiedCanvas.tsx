@@ -65,7 +65,7 @@ export function DocumentUnifiedCanvas({
 
   const handleMouseUp = useCallback(
     (blockId: string, blockHtml: string) => {
-      if (!readOnly || !focus) {
+      if (!readOnly || !focus?.canProposeDocumentVariants) {
         return;
       }
       const sel = window.getSelection();
@@ -99,8 +99,13 @@ export function DocumentUnifiedCanvas({
     [readOnly, focus, tGdocs],
   );
 
+  const participantHint = focus?.canProposeDocumentVariants ? (
+    <p className="mb-3 text-xs text-base-content/55">{tGdocs('participantCanvasHint')}</p>
+  ) : null;
+
   return (
     <div className="document-unified-canvas space-y-4 text-base leading-relaxed text-base-content/95">
+      {participantHint}
       {blocks.map((block) => {
         const html = block.officialContent ?? '';
         const isFocused = focus?.focusedBlockId === block.id;

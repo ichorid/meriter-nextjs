@@ -32,6 +32,13 @@ import { plainTextExcerpt } from '@/lib/utils/plain-text-excerpt';
 import { ticketHasWorkAccepted } from '@/lib/utils/project-ticket';
 import { cn } from '@/lib/utils';
 import { formatMerits } from '@/lib/utils/currency';
+import {
+  projectAvatarBorderClass,
+  projectDividerClass,
+  projectMutedBadgeClass,
+  projectPanelSurfaceClass,
+  projectSoftHoverClass,
+} from './project-surface';
 import { useUIStore } from '@/stores/ui.store';
 import type { TicketStatus } from '@meriter/shared-types';
 
@@ -146,8 +153,9 @@ export function TicketCard({
   return (
     <div
       className={cn(
-        'rounded-xl border border-white/10 bg-white/5 text-card-foreground shadow-none',
-        'transition-colors duration-200 hover:bg-white/[0.07]',
+        projectPanelSurfaceClass,
+        projectSoftHoverClass,
+        'text-card-foreground shadow-none transition-colors duration-200',
         highlighted && 'ring-2 ring-blue-500/80 ring-offset-2 ring-offset-background',
       )}
     >
@@ -158,7 +166,7 @@ export function TicketCard({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <TicketStatusBadge status={status} className="border-white/10 bg-white/10" />
+              <TicketStatusBadge status={status} className={projectMutedBadgeClass} />
               {ticket.title && <span className="font-medium text-base-content">{ticket.title}</span>}
             </div>
             <p className="text-sm text-base-content/70 line-clamp-2">
@@ -172,7 +180,9 @@ export function TicketCard({
       <div
         className={cn(
           'flex flex-wrap items-center gap-x-4 gap-y-2 px-4 pb-4',
-          showClosedAppreciationRating ? 'justify-between border-t border-white/10 pt-3' : 'justify-end',
+          showClosedAppreciationRating
+            ? cn('justify-between border-t pt-3', projectDividerClass)
+            : 'justify-end',
         )}
       >
           {showClosedAppreciationRating ? (
@@ -302,7 +312,7 @@ export function TicketCard({
           </div>
       </div>
       {canModerateTickets && isOpenNeutral && (
-        <div className="border-t border-white/10 px-4 pb-4 pt-3">
+        <div className={cn('border-t px-4 pb-4 pt-3', projectDividerClass)}>
           <ApplicantsPanel ticketId={ticket.id} />
         </div>
       )}
@@ -401,7 +411,10 @@ function BeneficiaryAvatar({ userId, isOpenNeutral }: { userId: string; isOpenNe
   if (isOpenNeutral) {
     return (
       <div
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/10 text-sm font-medium text-base-content/60"
+        className={cn(
+          'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-medium text-base-content/60',
+          projectMutedBadgeClass,
+        )}
         aria-hidden
       >
         ?
@@ -411,7 +424,7 @@ function BeneficiaryAvatar({ userId, isOpenNeutral }: { userId: string; isOpenNe
   const label = (user?.displayName ?? user?.username ?? userId).slice(0, 2).toUpperCase();
   const src = user?.avatarUrl?.trim() || undefined;
   return (
-    <Avatar className="h-9 w-9 shrink-0 border border-white/10">
+    <Avatar className={cn('h-9 w-9 shrink-0', projectAvatarBorderClass)}>
       {src ? <AvatarImage src={src} alt="" /> : null}
       <AvatarFallback className="text-xs font-medium">{label || '?'}</AvatarFallback>
     </Avatar>

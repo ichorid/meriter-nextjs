@@ -105,7 +105,9 @@ export function DocumentGdocsUnifiedEditor({
   const [editorContentKey, setEditorContentKey] = useState(0);
   const [isDirty, setIsDirty] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
-  const [persistMode, setPersistMode] = useState<GdocsPersistMode>('propose');
+  const [persistMode, setPersistMode] = useState<GdocsPersistMode>(
+    canManageDocument ? 'official' : 'propose',
+  );
   const [proposeCommentOpen, setProposeCommentOpen] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [pendingBlockLocks, setPendingBlockLocks] = useState<BlockLockState | null>(null);
@@ -483,6 +485,23 @@ export function DocumentGdocsUnifiedEditor({
     ) {
       return;
     }
+
+    const locksCleared =
+      !pendingBlockLocks.proposalsLocked && pendingBlockLocks.lockedRanges.length === 0;
+
+    if (locksCleared) {
+      const result = await syncMutation.mutateAsync({
+        documentId,
+        html: htmlRef.current,
+        expectedUpdatedAt: expectedUpdatedAtRef.current
+          ? new Date(expectedUpdatedAtRef.current)
+          : undefined,
+      });
+      expectedUpdatedAtRef.current = result.document.updatedAt;
+      setPendingBlockLocks(null);
+      return;
+    }
+
     await lockBlockMutation.mutateAsync({
       documentId,
       blockId: primaryBlock.id,
@@ -492,7 +511,13 @@ export function DocumentGdocsUnifiedEditor({
         ? new Date(expectedUpdatedAtRef.current)
         : undefined,
     });
-  }, [documentId, lockBlockMutation, pendingBlockLocks, primaryBlock]);
+  }, [
+    documentId,
+    lockBlockMutation,
+    pendingBlockLocks,
+    primaryBlock,
+    syncMutation,
+  ]);
 
   const isSaving = syncMutation.isPending || proposeMutation.isPending || lockBlockMutation.isPending;
 

@@ -17,6 +17,7 @@ export type FutureVisionFeedItem = {
   futureVisionText?: string;
   futureVisionTags?: string[];
   futureVisionCover?: string;
+  iconUrl?: string;
   futureVisionDocumentId?: string;
   futureVisionDocumentSections?: unknown;
   publicationId: string;
@@ -116,6 +117,7 @@ export class GetFutureVisionsFeedUseCase {
         futureVisionText: community.futureVisionText,
         futureVisionTags: community.futureVisionTags,
         futureVisionCover: community.futureVisionCover,
+        iconUrl: community.settings?.iconUrl,
         futureVisionDocumentId: obDocument?.id,
         futureVisionDocumentSections: obDocument?.sections,
         publicationId: post.id,

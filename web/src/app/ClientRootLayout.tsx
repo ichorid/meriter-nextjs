@@ -12,6 +12,7 @@ import { AppModeProvider } from '@/contexts/AppModeContext';
 import StyledJsxRegistry from '@/registry';
 import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 import { ClientRouter } from '@/components/ClientRouter';
+import { AuthSessionRefresh } from '@/components/AuthSessionRefresh';
 import { DevToolsBar } from '@/components/organisms/DevToolsBar/DevToolsBar';
 import { isTestAuthMode } from '@/config';
 import { TelegramHint } from '@/components/TelegramHint';
@@ -129,6 +130,7 @@ export default function ClientRootLayout({
               <TelegramHint />
               <Suspense fallback={null}>
                 <ClientRouter />
+                <AuthSessionRefresh />
               </Suspense>
               <AuthProvider>
                 {isTestAuthMode() && <DevToolsBar />}
@@ -137,7 +139,7 @@ export default function ClientRootLayout({
                   fallbackAuthnEnabled={fallbackAuthnEnabled}
                 >
                   <div
-                  className={`w-full min-w-0 flex flex-col flex-1 ${isTestAuthMode() ? 'pt-[60px]' : ''}`}
+                  className={`w-full min-w-0 flex flex-col flex-1 h-dvh min-h-0 overflow-hidden ${isTestAuthMode() ? 'pt-[60px]' : ''}`}
                   style={isTestAuthMode() ? { ['--dev-tools-bar-height' as string]: '60px' } : undefined}
                 >
                     <Root>{children}</Root>

@@ -24,6 +24,7 @@ import { EarnMeritsBirzhaButton } from '@/components/molecules/EarnMeritsBirzhaB
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
 import { cn } from '@/lib/utils';
+import { projectEmptyStateClass, projectSoftHoverClass } from '@/components/organisms/Project/project-surface';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
@@ -284,14 +285,44 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           hubKind="project"
         />
 
-        {projectHubFeedTab === 'posts' && isMember && user ? (
-          <ProjectWorkArea
-            projectId={projectId}
-            currentUserId={user.id}
-            canModerateTickets={canModerateTickets}
-            isMember={isMember}
-            readOnly={isArchived}
-          />
+        {projectHubFeedTab === 'posts' ? (
+          user ? (
+            isMember ? (
+              <ProjectWorkArea
+                projectId={projectId}
+                currentUserId={user.id}
+                canModerateTickets={canModerateTickets}
+                isMember={isMember}
+                readOnly={isArchived}
+              />
+            ) : (
+              <div className={cn(projectEmptyStateClass, 'flex flex-col items-center gap-4')}>
+                <p className="text-sm font-medium text-base-content">{t('postsTabMembersOnlyTitle')}</p>
+                <p className="max-w-md text-sm text-base-content/70">{t('postsTabMembersOnlyHint')}</p>
+                {!isArchived ? (
+                  <CommunityJoinRequestPanel
+                    communityId={projectId}
+                    layout="inline"
+                    entityKind="project"
+                    className="max-w-sm w-full"
+                  />
+                ) : null}
+              </div>
+            )
+          ) : (
+            <div className={cn(projectEmptyStateClass, 'flex flex-col items-center gap-4')}>
+              <p className="text-sm font-medium text-base-content">{t('postsTabMembersOnlyTitle')}</p>
+              <p className="max-w-md text-sm text-base-content/70">{t('postsTabSignInHint')}</p>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={() => router.push(routes.login)}
+              >
+                {tCommon('login')}
+              </Button>
+            </div>
+          )
         ) : null}
 
         {projectHubFeedTab === 'events' && user?.id ? (
@@ -326,7 +357,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-base-content hover:bg-white/10"
+                        className={cn('text-base-content', projectSoftHoverClass)}
                         onClick={() => setTransferAdminDialogOpen(true)}
                       >
                         {t('transferAdmin')}
@@ -335,7 +366,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-base-content hover:bg-white/10"
+                        className={cn('text-base-content', projectSoftHoverClass)}
                         onClick={() => setUpdateSharesDialogOpen(true)}
                       >
                         {t('updateShares')}
@@ -346,7 +377,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className={cn('text-base-content/55 hover:text-base-content/80 hover:bg-white/5')}
+                    className={cn('text-base-content/55 hover:text-base-content/80', projectSoftHoverClass)}
                     onClick={() => setLeaveDialogOpen(true)}
                     disabled={leaveProject.isPending}
                   >

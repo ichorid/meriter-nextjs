@@ -7,6 +7,11 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avat
 import { TicketStatusBadge } from '@/components/molecules/TicketStatusBadge';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
+import {
+  projectAvatarBorderClass,
+  projectMutedBadgeClass,
+  projectPanelInsetClass,
+} from './project-surface';
 import type { TicketStatus } from '@meriter/shared-types';
 
 export type TicketPostUserPreview = {
@@ -42,7 +47,7 @@ function ParticipantCard({
       href={routes.userProfile(user!.id!)}
       className="flex min-w-0 items-center gap-3 rounded-lg outline-none transition-colors hover:bg-black/[0.04] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background dark:hover:bg-white/[0.06]"
     >
-      <Avatar className="h-10 w-10 shrink-0 border border-white/10">
+      <Avatar className={cn('h-10 w-10 shrink-0', projectAvatarBorderClass)}>
         {user?.photoUrl ? <AvatarImage src={user.photoUrl} alt="" /> : null}
         <AvatarFallback userId={user!.id} className="text-sm font-medium">
           {displayName.slice(0, 1).toUpperCase()}
@@ -57,7 +62,7 @@ function ParticipantCard({
     </Link>
   ) : (
     <div className="flex min-w-0 items-center gap-3">
-      <Avatar className="h-10 w-10 shrink-0 border border-dashed border-white/20 bg-white/[0.06]">
+      <Avatar className="h-10 w-10 shrink-0 border border-dashed border-base-300/60 bg-base-200/40 dark:border-stitch-border/50 dark:bg-stitch-surface2/40">
         <AvatarFallback className="bg-transparent text-sm text-base-content/40">?</AvatarFallback>
       </Avatar>
       <p className="text-sm text-base-content/60">{displayName}</p>
@@ -66,10 +71,7 @@ function ParticipantCard({
 
   return (
     <div
-      className={cn(
-        'rounded-xl border border-white/10 bg-white/[0.04] p-3 sm:p-4',
-        'shadow-none',
-      )}
+      className={cn(projectPanelInsetClass, 'p-3 shadow-none sm:p-4')}
     >
       <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-base-content/50">
         {label}

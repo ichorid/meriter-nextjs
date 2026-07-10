@@ -8,6 +8,7 @@ import { useTickets } from '@/hooks/api/useTickets';
 import { TicketCard } from './TicketCard';
 import { Button } from '@/components/ui/shadcn/button';
 import type { TicketStatus } from '@meriter/shared-types';
+import { projectEmptyStateClass } from './project-surface';
 
 interface TicketListProps {
   projectId: string;
@@ -72,7 +73,7 @@ export function TicketList({
 
   if (list.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-white/20 bg-white/[0.02] px-6 py-12 text-center">
+      <div className={cn(projectEmptyStateClass, 'flex flex-col items-center justify-center gap-4')}>
         <CheckCircle2 className="h-12 w-12 text-base-content/30" aria-hidden />
         <p className="max-w-md text-sm text-base-content/70">{t('emptyTasksHint')}</p>
         {showLeadCtas && (

@@ -188,34 +188,35 @@ export function DocumentCloseVotingDialog() {
               </p>
 
               <label
-                className={cn(
-                  'flex cursor-pointer gap-3 rounded-lg border px-3 py-2',
-                  forcePick === 'official'
-                    ? 'border-primary/35 bg-primary/5'
-                    : 'border-base-300/40',
-                )}
-              >
-                <input
-                  type="radio"
-                  name="close-voting-force"
-                  checked={forcePick === 'official'}
-                  onChange={() => setForcePick('official')}
-                />
-                <span className="min-w-0">
-                  <span className="font-medium">{tCanvas('originalVariant')}</span>
-                  {block?.officialContent?.trim() ? (
-                    <span className="mt-0.5 block truncate text-xs text-base-content/55">
-                      {variantExcerpt(block.officialContent)}
-                    </span>
-                  ) : null}
-                </span>
-              </label>
+              className={cn(
+                'flex min-w-0 cursor-pointer gap-3 rounded-lg border px-3 py-2',
+                forcePick === 'official'
+                  ? 'border-primary/35 bg-primary/5'
+                  : 'border-base-300/40',
+              )}
+            >
+              <input
+                type="radio"
+                name="close-voting-force"
+                className="mt-1 shrink-0"
+                checked={forcePick === 'official'}
+                onChange={() => setForcePick('official')}
+              />
+              <span className="min-w-0 flex-1 overflow-hidden">
+                <span className="block font-medium">{tCanvas('originalVariant')}</span>
+                {block?.officialContent?.trim() ? (
+                  <span className="mt-0.5 block truncate text-xs text-base-content/55">
+                    {variantExcerpt(block.officialContent)}
+                  </span>
+                ) : null}
+              </span>
+            </label>
 
               {openVariants.map((v) => (
                 <label
                   key={v.id}
                   className={cn(
-                    'flex cursor-pointer gap-3 rounded-lg border px-3 py-2',
+                    'flex min-w-0 cursor-pointer gap-3 rounded-lg border px-3 py-2',
                     forcePick === v.id
                       ? 'border-primary/35 bg-primary/5'
                       : 'border-base-300/40',
@@ -224,12 +225,13 @@ export function DocumentCloseVotingDialog() {
                   <input
                     type="radio"
                     name="close-voting-force"
+                    className="mt-1 shrink-0"
                     checked={forcePick === v.id}
                     onChange={() => setForcePick(v.id)}
                   />
-                  <span className="min-w-0">
-                    <span className="font-medium">{t('statusOpen')}</span>
-                    <span className="mt-0.5 block text-xs text-base-content/55">
+                  <span className="min-w-0 flex-1 overflow-hidden">
+                    <span className="block font-medium">{t('statusOpen')}</span>
+                    <span className="mt-0.5 block truncate text-xs text-base-content/55">
                       {t('rating', { rating: v.rating ?? 0 })} · {variantExcerpt(v.content)}
                     </span>
                   </span>

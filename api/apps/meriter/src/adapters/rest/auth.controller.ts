@@ -132,6 +132,11 @@ export class AuthController {
     return false;
   }
 
+  private withSessionRefresh(url: string): string {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}sessionRefresh=1`;
+  }
+
   private getSanitizedSetCookieHeader(res: unknown): string[] | null {
     try {
       const r = res as { getHeader?: (name: string) => unknown } | null;
@@ -906,9 +911,11 @@ export class AuthController {
       }
 
       this.logger.log(`Magic link auth successful for ${result.channel}`);
-      const destination = result.isNewUser
-        ? `${appUrl}/meriter/welcome/link-account`
-        : `${appUrl}/meriter/profile`;
+      const destination = this.withSessionRefresh(
+        result.isNewUser
+          ? `${appUrl}/meriter/welcome/link-account`
+          : `${appUrl}/meriter/profile`,
+      );
       return res.redirect(302, destination);
     } catch (error) {
       this.logger.error(`Magic link redeem auth failed: ${error}`);

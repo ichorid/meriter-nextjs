@@ -54,6 +54,34 @@ export async function invalidateFutureVisionsList(utils: FutureVisionsListUtils)
   await utils.communities.getFutureVisions.invalidate();
 }
 
+/** Personal wallet reads after top-up, votes, etc. (tRPC keys — not legacy queryKeys.wallet). */
+export type PersonalWalletCacheUtils = {
+  wallets: {
+    getBalance: CommunitySessionCacheUtils['wallets']['getBalance'];
+    getAll: {
+      invalidate: () => Promise<unknown>;
+      refetch: () => Promise<unknown>;
+    };
+  };
+};
+
+export async function invalidatePersonalWalletCaches(
+  utils: PersonalWalletCacheUtils,
+  communityIds: string[] = [],
+): Promise<void> {
+  const ids = new Set([...communityIds, GLOBAL_COMMUNITY_ID]);
+
+  await Promise.all(
+    [...ids].map(async (communityId) => {
+      await utils.wallets.getBalance.invalidate({ communityId });
+      await utils.wallets.getBalance.refetch({ communityId });
+    }),
+  );
+
+  await utils.wallets.getAll.invalidate();
+  await utils.wallets.getAll.refetch();
+}
+
 export async function invalidateFeedWalletQuotaForCommunity(
   utils: CommunitySessionCacheUtils,
   options: { communityId: string; userId?: string | null },

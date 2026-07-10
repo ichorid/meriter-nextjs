@@ -7,6 +7,7 @@ import {
 import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../trpc';
 import { buildOfficialBlockVoteTargetId } from '../../domain/common/document-official-vote.util';
+import { filterDocumentBlockPanelVotes } from '../../domain/common/document-block-panel-votes.util';
 
 const ReferenceSchema = z.object({
   id: z.string().optional(),
@@ -158,19 +159,28 @@ export const documentVariantsRouter = router({
         input.documentId,
         input.blockId,
       );
+      const activeVariantIds = variants
+        .filter((v) => v.status === 'open' || v.status === 'closed-winner')
+        .map((v) => v.id);
       const votes = await ctx.voteService.getDocumentBlockPanelVotes(
         input.documentId,
         input.blockId,
         variants.map((v) => v.id),
       );
+      const panelVotes = filterDocumentBlockPanelVotes(votes, {
+        documentId: input.documentId,
+        blockId: input.blockId,
+        currentWaveStartedAt: block.currentWaveStartedAt,
+        activeVariantIds,
+      });
 
-      const userIds = [...new Set(votes.map((v) => v.userId))];
+      const userIds = [...new Set(panelVotes.map((v) => v.userId))];
       const userById = await ctx.userService.getUsersByIdsForEnrichment(userIds);
 
       return {
         officialRating: block.officialRating ?? 0,
         variants,
-        votes: votes.map((vote) => {
+        votes: panelVotes.map((vote) => {
           const user = userById.get(vote.userId);
           const amount = (vote.amountQuota ?? 0) + (vote.amountWallet ?? 0);
           const signedAmount = vote.direction === 'down' ? -amount : amount;

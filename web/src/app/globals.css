@@ -4,12 +4,13 @@
 
 @layer base {
 
-  /* Root html/body viewport constraints */
+  /* Root html/body viewport constraints — shell scroll lives in .mainWrap only */
   html,
   body {
     max-width: 100vw;
-    overflow-x: hidden;
-    height: 100%;
+    overflow: hidden;
+    height: 100dvh;
+    min-height: 0;
   }
 
   :root {
@@ -601,11 +602,12 @@
 /* App container styles - viewport containment */
 @layer components {
   .app {
-    min-height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     width: 100%;
     min-width: 0;
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -854,6 +856,7 @@
   .appShell {
     height: 100dvh;
     min-height: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -896,12 +899,73 @@
 
   /* Main scroll container */
   .mainWrap {
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     min-height: 0;
     min-width: 0;
     width: 100%;
     position: relative;
     z-index: 2;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--stitch-border-rgb) / 0.75) transparent;
+  }
+
+  .mainWrap::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .mainWrap::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .mainWrap::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--stitch-border-rgb) / 0.75);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  [data-theme="dark"] .mainWrap {
+    scrollbar-color: rgb(var(--stitch-muted-rgb) / 0.35) transparent;
+  }
+
+  [data-theme="dark"] .mainWrap::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--stitch-muted-rgb) / 0.35);
+  }
+
+  .leftNav .overflow-y-auto,
+  .inspectorDock {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--stitch-border-rgb) / 0.75) transparent;
+  }
+
+  .leftNav .overflow-y-auto::-webkit-scrollbar,
+  .inspectorDock::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .leftNav .overflow-y-auto::-webkit-scrollbar-track,
+  .inspectorDock::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .leftNav .overflow-y-auto::-webkit-scrollbar-thumb,
+  .inspectorDock::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--stitch-border-rgb) / 0.75);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  [data-theme="dark"] .leftNav .overflow-y-auto,
+  [data-theme="dark"] .inspectorDock {
+    scrollbar-color: rgb(var(--stitch-muted-rgb) / 0.35) transparent;
+  }
+
+  [data-theme="dark"] .leftNav .overflow-y-auto::-webkit-scrollbar-thumb,
+  [data-theme="dark"] .inspectorDock::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--stitch-muted-rgb) / 0.35);
   }
 
   .main {
@@ -1131,4 +1195,12 @@ ol.document-rich-content > li::before {
 .document-rich-content li > p {
   margin-block: 0;
   display: inline;
+}
+
+/* Guidewell help FAB — sit above mobile bottom nav (h-16 + safe area) */
+@media (max-width: 1023px) {
+  #guidewell-widget-host {
+    bottom: calc(4rem + env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
+    z-index: 35 !important;
+  }
 }

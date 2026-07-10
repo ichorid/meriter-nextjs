@@ -3,6 +3,8 @@
  */
 
 import type { Wallet } from '@/types/api-v1';
+import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { isPriorityCommunity } from '@/lib/community/is-priority-community';
 
 /**
  * Wallet-like interface for partial wallet objects
@@ -46,6 +48,34 @@ export function getWallet(wallets: Wallet[] | undefined, communityId: string | u
   }
   
   return wallets.find(w => w.communityId === communityId);
+}
+
+type CommunityWalletLookup = {
+  id: string;
+  typeTag?: string | null;
+  isPriority?: boolean | null;
+  isProject?: boolean | null;
+};
+
+/**
+ * Sidebar / list cards: priority hubs and projects debit the global personal wallet (G-11).
+ */
+export function resolvePersonalWalletFromMap(
+  walletsMap: Map<string, WalletOrLike>,
+  community: CommunityWalletLookup,
+): { balance: number; communityId: string } | undefined {
+  const useGlobalWallet =
+    isPriorityCommunity(community) || community.isProject === true;
+
+  if (useGlobalWallet) {
+    const global = walletsMap.get(GLOBAL_COMMUNITY_ID);
+    if (!global) return undefined;
+    return { balance: global.balance || 0, communityId: community.id };
+  }
+
+  const wallet = walletsMap.get(community.id);
+  if (!wallet) return undefined;
+  return { balance: wallet.balance || 0, communityId: community.id };
 }
 
 /**

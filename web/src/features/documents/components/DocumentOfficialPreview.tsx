@@ -10,22 +10,11 @@ import {
   sectionTitleForDisplay,
   type DocSection,
 } from '@/features/documents/lib/document-canvas-shared';
+import { joinBlocksToDisplayHtml } from '@/features/documents/lib/document-html-structure';
 import { htmlToPlainText } from '@/features/documents/lib/document-text-diff';
 import { cn } from '@/lib/utils';
 
 const COLLAPSED_MAX_PX = 132;
-
-function officialTypographyClass(blockType: string): string {
-  switch (blockType) {
-    case 'quote':
-      return 'border-l-2 border-base-content/25 pl-4 italic text-base-content/85';
-    case 'list-bullet':
-    case 'list-numbered':
-      return '';
-    default:
-      return 'text-base-content/95';
-  }
-}
 
 export interface DocumentOfficialPreviewProps {
   sections: DocSection[] | unknown;
@@ -82,14 +71,12 @@ export function DocumentOfficialPreview({ sections: sectionsRaw, className }: Do
               {sectionLabel ? (
                 <DocumentSectionHeading>{sectionLabel}</DocumentSectionHeading>
               ) : null}
-              {visibleBlocks.map((block) => (
+              {visibleBlocks.length > 0 ? (
                 <DocumentRichContent
-                  key={block.id}
-                  html={block.officialContent ?? ''}
-                  blockType={block.blockType}
-                  className={officialTypographyClass(block.blockType)}
+                  html={joinBlocksToDisplayHtml(visibleBlocks)}
+                  className="text-base-content/95"
                 />
-              ))}
+              ) : null}
             </div>
           );
         })}

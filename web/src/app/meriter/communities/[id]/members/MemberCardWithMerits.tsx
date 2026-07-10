@@ -19,6 +19,7 @@ interface MemberCardWithMeritsProps {
     onRemove?: () => void;
     showRemove?: boolean;
     hideChevron?: boolean;
+    className?: string;
 }
 
 export function MemberCardWithMerits({
@@ -33,6 +34,7 @@ export function MemberCardWithMerits({
     canViewMerits,
     onClick,
     hideChevron = false,
+    className,
 }: MemberCardWithMeritsProps) {
     // Fetch quota and wallet data if user has permission
     const { data: memberQuota } = useOtherUserQuota(memberId, communityId);
@@ -55,6 +57,7 @@ export function MemberCardWithMerits({
                 usedToday: memberQuota.usedToday,
             } : undefined}
             hideChevron={hideChevron}
+            className={className}
         />
     );
 }
