@@ -1,4 +1,5 @@
 import { mergeRangeIntoBlockHtmlWithRevisionMarks } from '@/features/documents/lib/document-block-merge';
+import { buildJoinedPlainTextRevisionHtml } from '@/features/documents/lib/document-joined-plain-revision-html';
 import {
   parseDocumentHtmlToBlocks,
   type ParsedStructureBlock,
@@ -122,6 +123,11 @@ export function buildJoinedDocumentRevisionHtml(
   officialHtml: string,
   variantHtml: string,
 ): string | null {
+  const plainRevision = buildJoinedPlainTextRevisionHtml(officialHtml, variantHtml);
+  if (plainRevision) {
+    return plainRevision;
+  }
+
   if (!variantDiffersFromOfficial(officialHtml, variantHtml)) {
     return null;
   }

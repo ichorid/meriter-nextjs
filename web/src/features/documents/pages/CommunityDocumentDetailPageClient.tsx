@@ -16,10 +16,13 @@ import { useUserQuota } from '@/hooks/api/useQuota';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { DocumentStructureProvider } from '@/features/documents/context/DocumentStructureContext';
+import { DocumentCanvasFocusProvider } from '@/features/documents/context/DocumentCanvasFocusContext';
 import {
-  DocumentCanvasFocusProvider,
+  resolveCanManageCollaborativeDocument,
   resolveDocumentEditorAccess,
-} from '@/features/documents/context/DocumentCanvasFocusContext';
+  resolveIsCommunityMember,
+  resolveUserRoleInCommunity,
+} from '@/features/documents/lib/document-editor-access';
 import { DocumentSettingsDialog } from '@/features/documents/components/DocumentSettingsDialog';
 import { DocumentCanvas } from '@/features/documents/components/DocumentCanvas';
 import { DocumentCanvasHeader } from '@/features/documents/components/DocumentCanvasHeader';
@@ -126,18 +129,23 @@ export function CommunityDocumentDetailPageClient({
   const resolvedGlobalWalletBalance =
     typeof globalWalletBalance === 'number' ? globalWalletBalance : 0;
 
-  const userRoleInCommunity =
-    user?.globalRole === 'superadmin'
-      ? 'superadmin'
-      : (userRoles.find((r) => r?.communityId === communityId)?.role ?? null);
+  const userRoleInCommunity = resolveUserRoleInCommunity({
+    user,
+    communityId,
+    userRoles,
+  });
 
-  const canManageDocument =
-    user?.globalRole === 'superadmin' ||
-    (docQuery.data?.createdBy != null && docQuery.data.createdBy === user?.id) ||
-    userRoleInCommunity === 'lead';
+  const canManageDocument = resolveCanManageCollaborativeDocument({
+    user,
+    community,
+    docCreatedBy: docQuery.data?.createdBy,
+    userRoleInCommunity,
+  });
 
-  const isCommunityMember =
-    userRoleInCommunity === 'lead' || userRoleInCommunity === 'participant';
+  const isCommunityMember = resolveIsCommunityMember({
+    user,
+    userRoleInCommunity,
+  });
 
   const documentCreators =
     (community?.settings as { documentCreators?: 'admins' | 'members' } | undefined)

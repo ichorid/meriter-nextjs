@@ -114,7 +114,8 @@ export function mergeRangeIntoBlockHtmlWithRevisionMarks(
   const insPart = normalized.proposedText.trim()
     ? `<ins class="${DOC_REVISION_INSERT_CLASS}">${normalized.proposedText}</ins>`
     : '';
-  const replacementHtml = insPart || delPart;
+  const replacementHtml =
+    delPart && insPart ? `${delPart}${insPart}` : insPart || delPart;
   const mergedPlain =
     plain.slice(0, rs) + blockHtmlToPlainText(normalized.proposedText) + plain.slice(re);
   if (!officialHtml?.trim()) {

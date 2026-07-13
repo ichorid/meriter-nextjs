@@ -28,4 +28,24 @@ describe('mergeRangeIntoBlockHtmlWithRevisionMarks', () => {
     expect(html).toContain('After');
     expect(html).toMatch(/<\/del>/);
   });
+
+  it('shows both <del> and <ins> for in-place replacement', () => {
+    const official = '<p>Keep this original tail</p>';
+    const plain = blockHtmlToPlainText(official);
+    const start = plain.indexOf('original');
+    const end = start + 'original'.length;
+    const html = mergeRangeIntoBlockHtmlWithRevisionMarks(
+      official,
+      start,
+      end,
+      'replacement',
+    );
+    expect(html).toMatch(
+      new RegExp(
+        `<del class="${DOC_REVISION_DELETE_CLASS}">original</del><ins class="doc-revision-ins">replacement</ins>`,
+      ),
+    );
+    expect(html).toContain('Keep this');
+    expect(html).toContain(' tail');
+  });
 });

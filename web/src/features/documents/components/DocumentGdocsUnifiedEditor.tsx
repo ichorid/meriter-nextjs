@@ -108,6 +108,7 @@ export function DocumentGdocsUnifiedEditor({
   const [persistMode, setPersistMode] = useState<GdocsPersistMode>(
     canManageDocument ? 'official' : 'propose',
   );
+  const prevCanManageDocumentRef = useRef(canManageDocument);
   const [proposeCommentOpen, setProposeCommentOpen] = useState(false);
   const [mergeDialogOpen, setMergeDialogOpen] = useState(false);
   const [pendingBlockLocks, setPendingBlockLocks] = useState<BlockLockState | null>(null);
@@ -140,6 +141,13 @@ export function DocumentGdocsUnifiedEditor({
   }, [locale, updatedAt]);
 
   const effectivePersistMode: GdocsPersistMode = canManageDocument ? persistMode : 'propose';
+
+  useEffect(() => {
+    if (!prevCanManageDocumentRef.current && canManageDocument) {
+      setPersistMode('official');
+    }
+    prevCanManageDocumentRef.current = canManageDocument;
+  }, [canManageDocument]);
 
   const serverRevisionKey = useMemo(
     () => buildDocumentServerRevisionKey(updatedAt, joinedOfficialHtml),

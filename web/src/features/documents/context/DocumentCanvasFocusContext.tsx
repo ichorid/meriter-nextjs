@@ -14,6 +14,7 @@ import type {
   DocumentCommunityContext,
 } from '@/features/documents/lib/document-canvas-shared';
 import { groupBlocksBySection } from '@/features/documents/lib/document-canvas-shared';
+export { resolveDocumentEditorAccess } from '@/features/documents/lib/document-editor-access';
 
 export type DocumentMobileSheet =
   | { kind: 'closed' }
@@ -150,22 +151,6 @@ export interface DocumentCanvasFocusProviderProps {
   addToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
   t: DocTranslate;
   children: ReactNode;
-}
-
-export function resolveDocumentEditorAccess(input: {
-  userId: string | undefined;
-  canManageDocument: boolean;
-  isCommunityMember: boolean;
-  documentCreators: 'admins' | 'members';
-}): { canUseGdocsEditor: boolean; canProposeDocumentVariants: boolean } {
-  const signedIn = Boolean(input.userId);
-  const canUseGdocsEditor = signedIn && input.canManageDocument;
-  const canProposeDocumentVariants =
-    signedIn &&
-    input.isCommunityMember &&
-    !input.canManageDocument &&
-    input.documentCreators === 'members';
-  return { canUseGdocsEditor, canProposeDocumentVariants };
 }
 
 export function DocumentCanvasFocusProvider({

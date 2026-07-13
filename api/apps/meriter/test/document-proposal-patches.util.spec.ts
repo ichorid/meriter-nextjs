@@ -140,18 +140,31 @@ describe('document-proposal-patches.util', () => {
     );
   });
 
-  it('allows delete and insert_after in one joined html propose', () => {
+  it('maps large in-block tail rewrite to a range patch, not full block delete', () => {
+    const longTail = 'A'.repeat(400);
+    const official = blocks([{ id: 'b1', html: `<p>${longTail} original ending</p>` }]);
+    const proposed = `<p>${longTail} replacement ending</p>`;
+    const result = computeProposalPatchesFromJoinedContent(official, proposed);
+    expect(result.patches).toHaveLength(1);
+    const patch = result.patches[0]!;
+    expect(patch.blockId).toBe('b1');
+    expect(patch.proposedText).toContain('replacement');
+    expect(patch.rangeStart).toBeGreaterThan(0);
+    expect(patch.rangeEnd).toBeGreaterThan(patch.rangeStart);
+    expect(isFullBlockDeletionPatch(official[0]!.officialContent, patch)).toBe(false);
+  });
+
+  it('maps in-place paragraph edits by order when middle block text changes', () => {
     const official = blocks([
       { id: 'b1', html: '<p>One</p>' },
       { id: 'b2', html: '<p>Two</p>' },
     ]);
     const proposed = '<p>One changed</p><p>Inserted</p>';
     const result = computeProposalPatchesFromJoinedContent(official, proposed);
-    expect(result.patches.some(isInsertBlocksPatch)).toBe(true);
-    expect(
-      result.patches.some(
-        (p) => p.blockId === 'b2' && p.proposedText === '' && !isInsertBlocksPatch(p),
-      ),
-    ).toBe(true);
+    expect(result.patches.some(isInsertBlocksPatch)).toBe(false);
+    const b2Patch = result.patches.find((p) => p.blockId === 'b2');
+    expect(b2Patch).toBeDefined();
+    expect(b2Patch!.proposedText).toContain('Inserted');
+    expect(isFullBlockDeletionPatch(official[1]!.officialContent, b2Patch!)).toBe(false);
   });
 });

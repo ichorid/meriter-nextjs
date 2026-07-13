@@ -22,6 +22,13 @@ export function buildJoinedHtmlFromPatches(
       const patch = patchByBlock.get(b.id);
       const officialHtml = b.officialContent ?? '';
       if (patch && isFullBlockDeletionPatch(officialHtml, patch)) {
+        const insertAfter = insertPatches.find((p) => p.insertAfterBlockId === b.id);
+        if (insertAfter?.insertBlocks?.length) {
+          return insertAfter.insertBlocks.map((ib) => ({
+            blockType: ib.blockType,
+            officialContent: ib.officialContent,
+          }));
+        }
         return [];
       }
       const row = {

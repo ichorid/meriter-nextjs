@@ -11,6 +11,7 @@ import {
 import {
   joinBlocksToDocumentHtml,
   mapStableBlockIds,
+  mapStableBlockIdsForProposal,
   parseDocumentHtmlToBlocks,
   type ParsedStructureBlock,
 } from './document-html-structure.util';
@@ -287,7 +288,11 @@ export function computeProposalPatchesFromJoinedContent(
     officialContent: b.officialContent,
   }));
   const parsed = parseDocumentHtmlToBlocks(proposed);
-  const { blocks: mapped, report } = mapStableBlockIds(existing, parsed);
+  const mapBlocks =
+    parsed.length === existing.length
+      ? mapStableBlockIdsForProposal
+      : mapStableBlockIds;
+  const { blocks: mapped, report } = mapBlocks(existing, parsed);
 
   const patches: DocumentVariantPatch[] = [];
   let lastPreservedId: string | null = null;

@@ -108,7 +108,7 @@ describe('document variant document preview', () => {
     expect(pair.variantHtml).toBe('<p>Alpha</p><p>Inserted</p><p>Beta</p>');
   });
 
-  it('buildDocumentVariantRevisionMarkupHtml is null for patch-scoped insert proposals', () => {
+  it('buildDocumentVariantRevisionMarkupHtml uses joined plain diff when content is present', () => {
     const markup = buildDocumentVariantRevisionMarkupHtml(
       sections,
       'b1',
@@ -132,17 +132,88 @@ describe('document variant document preview', () => {
         proposedText: '',
       },
     );
-    expect(markup).toBeNull();
+    expect(markup).not.toBeNull();
+    expect(markup).toContain('Inserted');
   });
 
-  it('buildDocumentVariantPreviewPair keeps other blocks and merges range edit', () => {
-    const pair = buildDocumentVariantPreviewPair(sections, 'b2', '<p>Beta</p>', {
-      content: '<p>Beta changed</p>',
-      rangeStart: 0,
-      rangeEnd: 4,
-      proposedText: 'Beta changed',
+  it('buildDocumentVariantPreviewPair prefers stored content over broken patch assembly', () => {
+    const longOfficial = `<p>${'A'.repeat(200)} original ending</p>`;
+    const longVariant = `<p>${'A'.repeat(200)} replacement ending</p>`;
+    const obSections = [
+      {
+        id: 's1',
+        order: 0,
+        blocks: [
+          {
+            id: 'b1',
+            order: 0,
+            blockType: 'paragraph',
+            officialContent: longOfficial,
+          },
+        ],
+      },
+    ];
+    const pair = buildDocumentVariantPreviewPair(obSections, 'b1', longOfficial, {
+      content: longVariant,
+      proposalScope: 'patches',
+      patches: [
+        {
+          blockId: 'b1',
+          rangeStart: 0,
+          rangeEnd: 220,
+          proposedText: '',
+          previewContent: '<p></p>',
+        },
+        {
+          blockId: 'b1',
+          insertAfterBlockId: 'b1',
+          insertBlocks: [{ blockType: 'paragraph', officialContent: longVariant }],
+          rangeStart: 0,
+          rangeEnd: 0,
+          proposedText: '',
+          previewContent: longVariant,
+        },
+      ],
     });
-    expect(pair.officialHtml).toBe(joinDocumentBlocksToHtml(sections));
-    expect(pair.variantHtml).toBe('<p>Alpha</p><p>Beta changed</p>');
+    expect(pair.variantHtml).toBe(longVariant);
+  });
+
+  it('buildDocumentVariantRevisionMarkupHtml shows character-precise del/ins for joined content', () => {
+    const official = '<p>Keep this original tail</p>';
+    const variant = '<p>Keep this replacement tail</p>';
+    const obSections = [
+      {
+        id: 's1',
+        order: 0,
+        blocks: [
+          {
+            id: 'b1',
+            order: 0,
+            blockType: 'paragraph',
+            officialContent: official,
+          },
+        ],
+      },
+    ];
+    const markup = buildDocumentVariantRevisionMarkupHtml(obSections, 'b1', official, {
+      content: variant,
+      proposalScope: 'patches',
+      patches: [
+        {
+          blockId: 'b1',
+          rangeStart: 0,
+          rangeEnd: 24,
+          proposedText: '',
+          previewContent: '<p></p>',
+        },
+      ],
+      rangeStart: 0,
+      rangeEnd: 24,
+      proposedText: '',
+    });
+    expect(markup).toMatch(/<del[^>]*>[\s\S]*original[\s\S]*<\/del>/);
+    expect(markup).toMatch(/<ins[^>]*>[\s\S]*replacement[\s\S]*<\/ins>/);
+    expect(markup).toContain('Keep this');
+    expect(markup).toContain(' tail');
   });
 });

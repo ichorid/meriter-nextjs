@@ -143,6 +143,84 @@ export function mapStableBlockIds(
   };
 }
 
+/**
+ * Proposal path: map parsed HTML blocks to stable ids by document order, not text similarity.
+ * In-place edits (including large tail rewrites) stay on the same block id with range patches.
+ */
+export function mapStableBlockIdsForProposal(
+  existingBlocks: ExistingBlockForMapping[],
+  parsed: ParsedStructureBlock[],
+): { blocks: MappedStructureBlock[]; report: BlockMappingReport } {
+  const usedIds = new Set<string>();
+  const preserved: string[] = [];
+  const created: string[] = [];
+  const removed: string[] = [];
+
+  const remaining = [...existingBlocks].sort((a, b) => a.order - b.order);
+
+  const blocks: MappedStructureBlock[] = parsed.map((parsedBlock, index) => {
+    const matchIdx = findProposalMatchIndex(remaining, parsedBlock, index);
+    if (matchIdx >= 0) {
+      const [matched] = remaining.splice(matchIdx, 1);
+      usedIds.add(matched.id);
+      preserved.push(matched.id);
+      return {
+        ...matched,
+        order: parsedBlock.order,
+        blockType: parsedBlock.blockType,
+        officialContent: parsedBlock.officialContent,
+      };
+    }
+    const id = randomUUID();
+    created.push(id);
+    return {
+      id,
+      order: parsedBlock.order,
+      blockType: parsedBlock.blockType,
+      officialContent: parsedBlock.officialContent,
+      proposalsLocked: false,
+      officialRating: 0,
+      editHistory: [],
+    };
+  });
+
+  for (const leftover of remaining) {
+    removed.push(leftover.id);
+  }
+
+  return {
+    blocks,
+    report: { preserved, created, removed },
+  };
+}
+
+function findProposalMatchIndex(
+  candidates: ExistingBlockForMapping[],
+  parsed: ParsedStructureBlock,
+  orderHint: number,
+): number {
+  if (candidates.length === 0) {
+    return -1;
+  }
+
+  let bestIdx = -1;
+  let bestOrderDist = Infinity;
+
+  for (let i = 0; i < candidates.length; i++) {
+    const c = candidates[i]!;
+    if (c.blockType !== parsed.blockType) {
+      continue;
+    }
+    const orderDist = Math.abs(c.order - orderHint);
+    if (orderDist < bestOrderDist) {
+      bestOrderDist = orderDist;
+      bestIdx = i;
+    }
+  }
+
+  return bestIdx;
+}
+
 function findBestMatchIndex(
   candidates: ExistingBlockForMapping[],
   parsed: ParsedStructureBlock,

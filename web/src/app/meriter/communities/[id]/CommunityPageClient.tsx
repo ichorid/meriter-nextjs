@@ -16,6 +16,10 @@ import type { FeedItem, PublicationFeedItem, PollFeedItem } from '@meriter/share
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
 import { communityMayHaveOfficialObDocument } from '@/features/documents/lib/community-ob-document';
+import {
+  resolveIsCommunityMember,
+  resolveUserRoleInCommunity,
+} from '@/features/documents/lib/document-editor-access';
 import { Loader2, Filter, X, ArrowUp, Coins, Search, Scale, Users, FolderKanban, ChevronRight, ArrowLeftRight, Calendar } from 'lucide-react';
 import { CommunityDocumentsHubTile } from '@/components/organisms/Community/CommunityDocumentsHubTile';
 import { communityShowsDocumentsHub } from '@/features/documents/lib/mvp-document-settings';
@@ -673,16 +677,16 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
     const tCommon = useCommonTranslations('common');
 
     // Get user's role in current community
-    const userRoleInCommunity =
-        user?.globalRole === 'superadmin'
-            ? 'superadmin'
-            : (userRoles.find((r) => r.communityId === chatId)?.role ?? null);
+    const userRoleInCommunity = resolveUserRoleInCommunity({
+        user,
+        communityId: chatId,
+        userRoles,
+    });
 
-    const isCommunityMember = userRoles.some(
-        (r) =>
-            r.communityId === chatId &&
-            (r.role === 'lead' || r.role === 'participant'),
-    );
+    const isCommunityMember = resolveIsCommunityMember({
+        user,
+        userRoleInCommunity,
+    });
 
     const documentsMode =
         (comms?.settings as { documentsMode?: string } | undefined)?.documentsMode ??
@@ -718,7 +722,7 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                 userRoleInCommunity === 'participant'));
 
     const canOpenObCollaborativeDocument = Boolean(
-        user?.id && isCommunityMember && obDocForHero?.id,
+        user?.id && (isCommunityMember || comms?.isAdmin) && obDocForHero?.id,
     );
 
     const obDocumentHref = canOpenObCollaborativeDocument

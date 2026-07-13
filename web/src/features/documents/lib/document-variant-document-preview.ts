@@ -1,11 +1,11 @@
+import { groupBlocksBySection } from '@/features/documents/lib/document-canvas-shared';
 import { buildJoinedHtmlFromPatches } from '@/features/documents/lib/document-proposal-joined-html';
 import { isInsertBlocksPatch } from '@/features/documents/lib/document-proposal-patch-utils';
+import { buildJoinedPlainTextRevisionHtml } from '@/features/documents/lib/document-joined-plain-revision-html';
 import {
   joinDocumentBlocksToHtml,
   joinDocumentWithBlockOverride,
 } from '@/features/documents/lib/document-html-structure';
-import { groupBlocksBySection } from '@/features/documents/lib/document-canvas-shared';
-import { parseDocumentHtmlToBlocks } from '@/features/documents/lib/document-html-parse-blocks';
 import {
   mergeRangeIntoBlockHtmlWithRevisionMarks,
   resolveVariantBlockPreviewHtml,
@@ -21,16 +21,12 @@ export type DocumentVariantDocumentPreviewPair = {
   variantHtml: string;
 };
 
-/** Multi-block or insert-after proposals store patches even when proposalScope is `block`. */
-/** Unified editor sends joined HTML; single-block composer may send one block only. */
-function shouldUseFullVariantContent(sections: unknown, trimmedContent: string): boolean {
+function variantContentDiffersFromOfficial(
+  sections: unknown,
+  trimmedContent: string,
+): boolean {
   const officialHtml = joinDocumentBlocksToHtml(sections);
-  if (blockHtmlToPlainText(trimmedContent) === blockHtmlToPlainText(officialHtml)) {
-    return false;
-  }
-  const officialBlockCount = groupBlocksBySection(sections).flatMap((g) => g.blocks).length;
-  const proposedBlockCount = parseDocumentHtmlToBlocks(trimmedContent).length;
-  return proposedBlockCount >= officialBlockCount;
+  return blockHtmlToPlainText(trimmedContent) !== blockHtmlToPlainText(officialHtml);
 }
 
 export function shouldBuildVariantHtmlFromPatches(variant: VariantPreviewInput): boolean {
@@ -46,7 +42,7 @@ export function shouldBuildVariantHtmlFromPatches(variant: VariantPreviewInput):
 
 /**
  * Canonical document-scoped proposed HTML for preview, diff, and highlights alignment.
- * Priority: patches → full `content` from propose → single-block merge.
+ * Priority: persisted `content` from editor (ground truth) → patches fallback → single-block merge.
  */
 export function buildProposedDocumentHtml(
   sections: unknown,
@@ -54,13 +50,13 @@ export function buildProposedDocumentHtml(
   anchorBlockId: string,
   blockOfficialHtml: string,
 ): string {
-  if (shouldBuildVariantHtmlFromPatches(variant)) {
-    return buildJoinedHtmlFromPatches(sections, variant.patches!);
+  const trimmedContent = variant.content?.trim();
+  if (trimmedContent && variantContentDiffersFromOfficial(sections, trimmedContent)) {
+    return trimmedContent;
   }
 
-  const trimmedContent = variant.content?.trim();
-  if (trimmedContent && shouldUseFullVariantContent(sections, trimmedContent)) {
-    return trimmedContent;
+  if (shouldBuildVariantHtmlFromPatches(variant)) {
+    return buildJoinedHtmlFromPatches(sections, variant.patches!);
   }
 
   const variantBlockHtml = resolveVariantBlockPreviewHtml(blockOfficialHtml, variant);
@@ -79,16 +75,21 @@ export function buildDocumentVariantPreviewPair(
   return { officialHtml, variantHtml };
 }
 
-/** Full-document HTML with <del>/<ins> on the edited block (range proposals). */
+/** Full-document HTML with <del>/<ins> marks (character-precise joined plain diff). */
 export function buildDocumentVariantRevisionMarkupHtml(
   sections: unknown,
   blockId: string,
   blockOfficialHtml: string,
   variant: VariantPreviewInput,
 ): string | null {
-  if (shouldBuildVariantHtmlFromPatches(variant) || variant.proposalScope === 'patches') {
-    return null;
+  const officialHtml = joinDocumentBlocksToHtml(sections);
+  const variantHtml = buildProposedDocumentHtml(sections, variant, blockId, blockOfficialHtml);
+
+  const joinedRevision = buildJoinedPlainTextRevisionHtml(officialHtml, variantHtml);
+  if (joinedRevision) {
+    return joinedRevision;
   }
+
   const bounds = resolveVariantChangeBounds(blockOfficialHtml, variant);
   if (!bounds) {
     return null;
