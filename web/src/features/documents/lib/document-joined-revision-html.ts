@@ -123,11 +123,6 @@ export function buildJoinedDocumentRevisionHtml(
   officialHtml: string,
   variantHtml: string,
 ): string | null {
-  const plainRevision = buildJoinedPlainTextRevisionHtml(officialHtml, variantHtml);
-  if (plainRevision) {
-    return plainRevision;
-  }
-
   if (!variantDiffersFromOfficial(officialHtml, variantHtml)) {
     return null;
   }
@@ -136,6 +131,15 @@ export function buildJoinedDocumentRevisionHtml(
   const variantBlocks = parseDocumentHtmlToBlocks(variantHtml);
   if (variantBlocks.length === 0) {
     return null;
+  }
+
+  // Character-precise plain diff only for single-block docs (e.g. OB tail edit).
+  // Multi-block insert/delete/list edits need block-aligned revision markup.
+  if (officialBlocks.length === 1 && variantBlocks.length === 1) {
+    const plainRevision = buildJoinedPlainTextRevisionHtml(officialHtml, variantHtml);
+    if (plainRevision) {
+      return plainRevision;
+    }
   }
 
   const ops = alignDocumentBlocksByPlain(officialBlocks, variantBlocks);

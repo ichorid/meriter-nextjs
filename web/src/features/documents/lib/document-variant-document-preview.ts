@@ -1,7 +1,7 @@
 import { groupBlocksBySection } from '@/features/documents/lib/document-canvas-shared';
 import { buildJoinedHtmlFromPatches } from '@/features/documents/lib/document-proposal-joined-html';
 import { isInsertBlocksPatch } from '@/features/documents/lib/document-proposal-patch-utils';
-import { buildJoinedPlainTextRevisionHtml } from '@/features/documents/lib/document-joined-plain-revision-html';
+import { buildJoinedDocumentRevisionHtml } from '@/features/documents/lib/document-joined-revision-html';
 import {
   joinDocumentBlocksToHtml,
   joinDocumentWithBlockOverride,
@@ -85,7 +85,7 @@ export function buildDocumentVariantRevisionMarkupHtml(
   const officialHtml = joinDocumentBlocksToHtml(sections);
   const variantHtml = buildProposedDocumentHtml(sections, variant, blockId, blockOfficialHtml);
 
-  const joinedRevision = buildJoinedPlainTextRevisionHtml(officialHtml, variantHtml);
+  const joinedRevision = buildJoinedDocumentRevisionHtml(officialHtml, variantHtml);
   if (joinedRevision) {
     return joinedRevision;
   }
