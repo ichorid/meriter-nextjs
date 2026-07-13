@@ -63,9 +63,10 @@ ENV CI=true
 # Copy built artifacts and production node_modules (from pnpm deploy)
 COPY --from=builder --chown=nestjs:nodejs /out ./
 
-# Install production dependencies
-RUN pnpm install --prod && \
-    rm -f package.json.root pnpm-workspace.yaml pnpm-lock.yaml
+# node_modules are built in the builder stage with --frozen-lockfile.
+# Do not run pnpm install here: without the lockfile semver can bump transitive
+# deps (sanitize-html → htmlparser2@12 ESM) and crash Nest at runtime (ERR_REQUIRE_ESM).
+RUN rm -f package.json.root pnpm-workspace.yaml pnpm-lock.yaml 2>/dev/null || true
 
 USER nestjs
 EXPOSE 8002
