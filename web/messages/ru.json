@@ -1238,7 +1238,6 @@
                 "railTitle": "Предложения",
                 "railSubtitle": "{count} активных веток",
                 "mobileProposalsCta": "Предложения по правкам ({count})",
-                "railBlockChip": "Предложения · {count}",
                 "previewOfficialTitle": "Исходный вариант",
                 "previewVariantTitle": "Предложение: {name}",
                 "previewProposedByLabel": "Предложил(а):",

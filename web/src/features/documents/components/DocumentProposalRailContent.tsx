@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { DocumentBlockProposalsPanel } from '@/features/documents/components/DocumentBlockProposalsPanel';
 import { DocumentProposeComposer } from '@/features/documents/components/DocumentProposeComposer';
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { documentLiveQueryOptions } from '@/features/documents/hooks/useDocumentLiveSync';
+import { type DocBlock } from '@/features/documents/lib/document-canvas-shared';
 import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
 
@@ -14,6 +15,24 @@ export interface DocumentProposalRailContentProps {
   sections: unknown;
   className?: string;
   onDismissProposalsSheet?: () => void;
+}
+
+function blockWaveMeta(
+  block: DocBlock | null | undefined,
+  votingDurationHours: number,
+): { waveActive: boolean; waveEndsAtMs: number | null } {
+  if (!block) {
+    return { waveActive: false, waveEndsAtMs: null };
+  }
+  const waveStartMs = block.currentWaveStartedAt
+    ? new Date(block.currentWaveStartedAt).getTime()
+    : null;
+  const waveEndsAtMs =
+    waveStartMs != null && !Number.isNaN(waveStartMs)
+      ? waveStartMs + votingDurationHours * 3_600_000
+      : null;
+  const waveActive = waveEndsAtMs != null && waveEndsAtMs > Date.now();
+  return { waveActive, waveEndsAtMs };
 }
 
 /** Shared body for desktop proposal rail and mobile proposals sheet. */
@@ -30,25 +49,6 @@ export function DocumentProposalRailContent({
   );
 
   const threads = threadsQuery.data?.threads ?? [];
-  const focusedBlock = focus.focusedBlockId ? focus.getBlock(focus.focusedBlockId) : null;
-  const focusedThread = focus.focusedBlockId
-    ? threads.find((thread) => thread.blockId === focus.focusedBlockId)
-    : undefined;
-
-  const waveMeta = useMemo(() => {
-    if (!focusedBlock) {
-      return { waveActive: false, waveEndsAtMs: null as number | null };
-    }
-    const waveStartMs = focusedBlock.currentWaveStartedAt
-      ? new Date(focusedBlock.currentWaveStartedAt).getTime()
-      : null;
-    const waveEndsAtMs =
-      waveStartMs != null && !Number.isNaN(waveStartMs)
-        ? waveStartMs + focus.votingDurationHours * 3_600_000
-        : null;
-    const waveActive = waveEndsAtMs != null && waveEndsAtMs > Date.now();
-    return { waveActive, waveEndsAtMs };
-  }, [focusedBlock, focus.votingDurationHours]);
 
   useEffect(() => {
     if (!focus.focusedBlockId && threads.length > 0) {
@@ -87,59 +87,54 @@ export function DocumentProposalRailContent({
         />
       ) : null}
 
-      {threads.length > 1
-        ? threads.map((thread) => {
-            const block = focus.getBlock(thread.blockId);
-            if (!block) {
-              return null;
-            }
-            const isActive = focus.focusedBlockId === thread.blockId;
-            return (
-              <button
-                key={thread.blockId}
-                type="button"
-                className={cn(
-                  'w-full rounded-lg border px-3 py-2 text-left transition-colors',
-                  isActive
-                    ? 'border-primary/50 bg-primary/10'
-                    : 'border-stitch-border bg-stitch-elevated/40 hover:bg-stitch-elevated',
-                )}
-                onClick={() => focus.setFocusedBlockId(thread.blockId)}
-              >
-                <p className="text-xs font-medium text-base-content/80">
-                  {tGdocs('railBlockChip', { count: thread.variants.length })}
-                </p>
-                <p className="mt-0.5 text-[10px] text-base-content/50">
-                  {thread.waveOpen ? tGdocs('waveOpen') : tGdocs('waveIdle')}
-                </p>
-              </button>
-            );
-          })
-        : null}
+      {threads.map((thread, index) => {
+        const block = focus.getBlock(thread.blockId);
+        if (!block) {
+          return null;
+        }
+        const { waveActive, waveEndsAtMs } = blockWaveMeta(block, focus.votingDurationHours);
+        const showThreadContext = threads.length > 1 && Boolean(thread.officialExcerpt?.trim());
 
-      {focusedBlock ? (
-        <DocumentBlockProposalsPanel
-          documentId={focus.documentId}
-          sections={sections}
-          block={focusedBlock}
-          threadVariants={focusedThread?.variants}
-          threadWaveOpen={focusedThread?.waveOpen}
-          docMode={focus.docMode}
-          docAllowDownvotes={focus.docAllowDownvotes}
-          canManageDocument={focus.canManageDocument}
-          community={focus.community}
-          votingDurationHours={focus.votingDurationHours}
-          waveActive={waveMeta.waveActive}
-          waveEndsAtMs={waveMeta.waveEndsAtMs}
-          userId={focus.userId}
-          addToast={focus.addToast}
-          t={focus.t}
-          layout="compact"
-          onDismissProposalsSheet={onDismissProposalsSheet}
-        />
-      ) : (
+        return (
+          <section
+            key={thread.threadId}
+            className={cn(index > 0 && 'border-t border-stitch-border pt-4')}
+            aria-label={thread.officialExcerpt || undefined}
+          >
+            {showThreadContext ? (
+              <p
+                className="mb-2 line-clamp-2 px-0.5 text-[11px] leading-snug text-base-content/55"
+                title={thread.officialExcerpt}
+              >
+                {thread.officialExcerpt}
+              </p>
+            ) : null}
+            <DocumentBlockProposalsPanel
+              documentId={focus.documentId}
+              sections={sections}
+              block={block}
+              threadVariants={thread.variants}
+              threadWaveOpen={thread.waveOpen}
+              docMode={focus.docMode}
+              docAllowDownvotes={focus.docAllowDownvotes}
+              canManageDocument={focus.canManageDocument}
+              community={focus.community}
+              votingDurationHours={focus.votingDurationHours}
+              waveActive={waveActive}
+              waveEndsAtMs={waveEndsAtMs}
+              userId={focus.userId}
+              addToast={focus.addToast}
+              t={focus.t}
+              layout="compact"
+              onDismissProposalsSheet={onDismissProposalsSheet}
+            />
+          </section>
+        );
+      })}
+
+      {!threadsQuery.isLoading && threads.length === 0 && !focus.selectedRange ? (
         <p className="px-2 text-center text-xs text-base-content/50">{tGdocs('selectBlock')}</p>
-      )}
+      ) : null}
     </div>
   );
 }

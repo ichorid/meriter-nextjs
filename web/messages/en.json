@@ -1238,7 +1238,6 @@
                 "railTitle": "Proposals",
                 "railSubtitle": "{count} active threads",
                 "mobileProposalsCta": "Edit proposals ({count})",
-                "railBlockChip": "Proposals · {count}",
                 "previewOfficialTitle": "Original version",
                 "previewVariantTitle": "Proposal by {name}",
                 "previewProposedByLabel": "Proposed by",
