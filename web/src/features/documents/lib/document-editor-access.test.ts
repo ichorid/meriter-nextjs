@@ -38,6 +38,16 @@ describe('resolveCanManageCollaborativeDocument', () => {
     ).toBe(true);
   });
 
+  it('grants manage when userRoleInCommunity is superadmin', () => {
+    expect(
+      resolveCanManageCollaborativeDocument({
+        user: { id: 'u1' },
+        community: null,
+        userRoleInCommunity: 'superadmin',
+      }),
+    ).toBe(true);
+  });
+
   it('denies manage for participant without admin signals', () => {
     expect(
       resolveCanManageCollaborativeDocument({

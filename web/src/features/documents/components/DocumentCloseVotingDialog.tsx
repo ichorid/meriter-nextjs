@@ -122,7 +122,7 @@ export function DocumentCloseVotingDialog() {
         }
       }}
     >
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-h-[min(90vh,720px)] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('closeVotingDialogTitle')}</DialogTitle>
         </DialogHeader>
@@ -205,8 +205,8 @@ export function DocumentCloseVotingDialog() {
               <span className="min-w-0 flex-1 overflow-hidden">
                 <span className="block font-medium">{tCanvas('originalVariant')}</span>
                 {block?.officialContent?.trim() ? (
-                  <span className="mt-0.5 block truncate text-xs text-base-content/55">
-                    {variantExcerpt(block.officialContent)}
+                  <span className="mt-0.5 block line-clamp-2 text-xs leading-relaxed text-base-content/55">
+                    {variantExcerpt(block.officialContent, 160)}
                   </span>
                 ) : null}
               </span>
@@ -231,8 +231,8 @@ export function DocumentCloseVotingDialog() {
                   />
                   <span className="min-w-0 flex-1 overflow-hidden">
                     <span className="block font-medium">{t('statusOpen')}</span>
-                    <span className="mt-0.5 block truncate text-xs text-base-content/55">
-                      {t('rating', { rating: v.rating ?? 0 })} · {variantExcerpt(v.content)}
+                    <span className="mt-0.5 block line-clamp-2 text-xs leading-relaxed text-base-content/55">
+                      {t('rating', { rating: v.rating ?? 0 })} · {variantExcerpt(v.content, 160)}
                     </span>
                   </span>
                 </label>

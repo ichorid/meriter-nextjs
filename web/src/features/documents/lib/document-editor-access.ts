@@ -40,6 +40,9 @@ export function resolveCanManageCollaborativeDocument(input: {
   if (isPlatformSuperadmin(input.user)) {
     return true;
   }
+  if (input.userRoleInCommunity === 'superadmin') {
+    return true;
+  }
   if (input.community?.isAdmin === true) {
     return true;
   }

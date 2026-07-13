@@ -1047,20 +1047,32 @@ export const communitiesRouter = router({
         });
       }
       if (input.userId === ctx.user.id) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Cannot promote yourself this way',
-        });
+        const actor = await ctx.userService.getUserById(ctx.user.id);
+        if (actor?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Cannot promote yourself this way',
+          });
+        }
       }
       const targetRole = await ctx.userCommunityRoleService.getRole(
         input.userId,
         input.communityId,
       );
-      if (!targetRole || targetRole.role !== 'participant') {
+      const targetUser = await ctx.userService.getUserById(input.userId);
+      if (targetRole?.role === 'lead') {
         throw new TRPCError({
           code: 'BAD_REQUEST',
-          message: 'Only participants can be promoted to lead',
+          message: 'User is already a community lead',
         });
+      }
+      if (!targetRole || targetRole.role !== 'participant') {
+        if (targetUser?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+          throw new TRPCError({
+            code: 'BAD_REQUEST',
+            message: 'Only participants can be promoted to lead',
+          });
+        }
       }
       await ctx.userCommunityRoleService.setRole(
         input.userId,

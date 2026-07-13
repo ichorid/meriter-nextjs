@@ -364,6 +364,13 @@ export class PermissionService {
     if (doc.createdBy === userId) {
       return true;
     }
+    const isCommunityAdmin = await this.communityService.isUserAdmin(
+      doc.communityId,
+      userId,
+    );
+    if (isCommunityAdmin) {
+      return true;
+    }
     return this.permissionRuleEngine.canPerformAction(
       userId,
       doc.communityId,

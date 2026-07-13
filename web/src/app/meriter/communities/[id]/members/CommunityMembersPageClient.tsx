@@ -55,7 +55,11 @@ import {
 } from '@/components/ui/shadcn/dialog';
 import { trpc } from '@/lib/trpc/client';
 import { sanitizeMeriterInternalPath } from '@/lib/utils/safe-meriter-path';
-import { communityAllowsLeadManagement } from '@/lib/community/community-lead-management';
+import {
+    canActorManageCommunityLeads,
+    canPromoteMemberToCommunityLead,
+    isPlatformSuperadminUser,
+} from '@/lib/community/community-lead-actions';
 import { splitMembersByAdminRole } from '@/lib/community/split-members-by-admin-role';
 import {
     CommunityDemoteSelfLeadDialog,
@@ -113,7 +117,8 @@ export function CommunityMembersPageClient({
     const { mutate: removeMember, isPending: isRemoving } = useRemoveCommunityMember(communityId);
     const leaveCommunity = useLeaveCommunity(communityId);
     // Check if user is admin (superadmin or lead of this community)
-    const isAdmin = community?.isAdmin;
+    const isPlatformSuperadmin = isPlatformSuperadminUser(user);
+    const isAdmin = Boolean(community?.isAdmin) || isPlatformSuperadmin;
 
     // Determine if we should show role chip and hide team info
     const isMarathonOrFutureVision = community?.typeTag === 'marathon-of-good' || community?.typeTag === 'future-vision';
@@ -152,9 +157,11 @@ export function CommunityMembersPageClient({
         community != null &&
         (!community.typeTag || !INVITE_BLOCKED_TYPE_TAGS.has(community.typeTag));
 
-    const leadManagementAllowed =
-        !!isAdmin && communityAllowsLeadManagement(community?.typeTag);
-    const isPlatformSuperadmin = user?.globalRole === 'superadmin';
+    const canManageLeads = canActorManageCommunityLeads({
+        user,
+        isCommunityAdmin: Boolean(community?.isAdmin),
+        communityTypeTag: community?.typeTag,
+    });
 
     const createInviteMutation = trpc.communities.createCommunityInviteLink.useMutation({
         onSuccess: async (data) => {
@@ -325,7 +332,7 @@ export function CommunityMembersPageClient({
                             />
                         </div>
                     ) : null}
-                    {(leadManagementAllowed || isPlatformSuperadmin) &&
+                    {canManageLeads &&
                         member.id === user?.id &&
                         member.role === 'lead' && (
                             <button
@@ -367,9 +374,9 @@ export function CommunityMembersPageClient({
                                 <ShieldOff className="h-4 w-4" />
                             </button>
                         )}
-                    {(leadManagementAllowed || isPlatformSuperadmin) &&
-                        member.id !== user?.id &&
-                        member.role === 'participant' && (
+                    {canManageLeads &&
+                        canPromoteMemberToCommunityLead(member) &&
+                        (member.id !== user?.id || isPlatformSuperadmin) && (
                             <button
                                 type="button"
                                 onClick={(e) => {
