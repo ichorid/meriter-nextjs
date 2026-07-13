@@ -15,7 +15,7 @@ describe('resolveDocumentEditorAccess', () => {
     });
   });
 
-  it('gives member participants canvas propose when documentCreators is members', () => {
+  it('gives member participants propose access (unified editor, not lead manage)', () => {
     expect(
       resolveDocumentEditorAccess({
         userId: 'u1',

@@ -1296,6 +1296,7 @@
                 "persistModeLabel": "How to save edits",
                 "persistModePropose": "Proposals",
                 "persistModeOfficial": "Edit",
+                "persistModeOfficialLeadOnly": "Only the community lead can edit official text directly",
                 "pinBlock": "Pin",
                 "unpinBlock": "Unpin",
                 "pinSelectTextHint": "Select text in the document",

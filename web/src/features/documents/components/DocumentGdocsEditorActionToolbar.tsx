@@ -34,69 +34,82 @@ export function DocumentGdocsEditorActionToolbar({
 }: DocumentGdocsEditorActionToolbarProps) {
   const tGdocs = useTranslations('pages.documents.gdocs');
 
+  const persistModeToggle = (
+    <div
+      className="inline-flex shrink-0 rounded-lg border border-base-300/60 bg-base-100/80 p-0.5 dark:bg-base-100/10"
+      role="group"
+      aria-label={tGdocs('persistModeLabel')}
+    >
+      <button
+        type="button"
+        className={cn(
+          'whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors sm:px-3',
+          effectivePersistMode === 'propose'
+            ? 'bg-primary text-primary-foreground shadow-sm'
+            : 'text-base-content/70 hover:bg-base-300/50',
+        )}
+        onClick={() => onPersistModeChange('propose')}
+        disabled={!canManageDocument && effectivePersistMode === 'propose'}
+        aria-pressed={effectivePersistMode === 'propose'}
+      >
+        {tGdocs('persistModePropose')}
+      </button>
+      <button
+        type="button"
+        className={cn(
+          'whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors sm:px-3',
+          effectivePersistMode === 'official'
+            ? 'bg-primary text-primary-foreground shadow-sm'
+            : canManageDocument
+              ? 'text-base-content/70 hover:bg-base-300/50'
+              : 'cursor-not-allowed text-base-content/35',
+        )}
+        onClick={() => {
+          if (canManageDocument) {
+            onPersistModeChange('official');
+          }
+        }}
+        disabled={!canManageDocument}
+        aria-pressed={effectivePersistMode === 'official'}
+        title={canManageDocument ? undefined : tGdocs('persistModeOfficialLeadOnly')}
+      >
+        {tGdocs('persistModeOfficial')}
+      </button>
+    </div>
+  );
+
   return (
     <>
+      {persistModeToggle}
       {canManageDocument ? (
-        <>
-          <div
-            className="inline-flex shrink-0 rounded-lg border border-base-300/60 bg-base-100/80 p-0.5 dark:bg-base-100/10"
-            role="group"
-            aria-label={tGdocs('persistModeLabel')}
-          >
-            <button
-              type="button"
-              className={cn(
-                'whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors sm:px-3',
-                effectivePersistMode === 'propose'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-base-content/70 hover:bg-base-300/50',
-              )}
-              onClick={() => onPersistModeChange('propose')}
-            >
-              {tGdocs('persistModePropose')}
-            </button>
-            <button
-              type="button"
-              className={cn(
-                'whitespace-nowrap rounded-md px-2 py-1.5 text-xs font-medium transition-colors sm:px-3',
-                effectivePersistMode === 'official'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-base-content/70 hover:bg-base-300/50',
-              )}
-              onClick={() => onPersistModeChange('official')}
-            >
-              {tGdocs('persistModeOfficial')}
-            </button>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant={pinToolbarAction === 'unlock' ? 'default' : 'outline'}
-            className={cn(
-              'h-8 shrink-0 gap-1 whitespace-nowrap rounded-lg px-2 text-xs sm:px-3',
-              pinToolbarAction === 'unlock' && 'bg-primary hover:bg-primary/90',
-            )}
-            disabled={isSaving || !hasTextSelection || !pinToolbarAction}
-            onClick={onPinClick}
-            title={
-              hasTextSelection
-                ? tGdocs('pinBlockHint', {
-                    defaultMessage: 'Закрепить или открепить выделенный фрагмент',
-                  })
-                : tGdocs('pinSelectTextHint', {
-                    defaultMessage: 'Выделите фрагмент в тексте',
-                  })
-            }
-          >
-            <Pin
-              size={14}
-              className={cn('shrink-0', pinToolbarAction === 'unlock' && 'fill-current')}
-            />
-            {pinToolbarAction === 'unlock'
-              ? tGdocs('unpinBlock', { defaultMessage: 'Открепить' })
-              : tGdocs('pinBlock', { defaultMessage: 'Закрепить' })}
-          </Button>
-        </>
+        <Button
+          type="button"
+          size="sm"
+          variant={pinToolbarAction === 'unlock' ? 'default' : 'outline'}
+          className={cn(
+            'h-8 shrink-0 gap-1 whitespace-nowrap rounded-lg px-2 text-xs sm:px-3',
+            pinToolbarAction === 'unlock' && 'bg-primary hover:bg-primary/90',
+          )}
+          disabled={isSaving || !hasTextSelection || !pinToolbarAction}
+          onClick={onPinClick}
+          title={
+            hasTextSelection
+              ? tGdocs('pinBlockHint', {
+                  defaultMessage: 'Закрепить или открепить выделенный фрагмент',
+                })
+              : tGdocs('pinSelectTextHint', {
+                  defaultMessage: 'Выделите фрагмент в тексте',
+                })
+          }
+        >
+          <Pin
+            size={14}
+            className={cn('shrink-0', pinToolbarAction === 'unlock' && 'fill-current')}
+          />
+          {pinToolbarAction === 'unlock'
+            ? tGdocs('unpinBlock', { defaultMessage: 'Открепить' })
+            : tGdocs('pinBlock', { defaultMessage: 'Закрепить' })}
+        </Button>
       ) : null}
       <Button
         type="button"

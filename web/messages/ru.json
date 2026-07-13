@@ -1296,6 +1296,7 @@
                 "persistModeLabel": "Как сохранять правки",
                 "persistModePropose": "Предложения",
                 "persistModeOfficial": "Правка",
+                "persistModeOfficialLeadOnly": "Прямое редактирование официального текста доступно только лиду сообщества",
                 "pinBlock": "Закрепить",
                 "unpinBlock": "Открепить",
                 "pinSelectTextHint": "Выделите фрагмент в тексте",

@@ -294,7 +294,7 @@ export function CommunityDocumentDetailPageClient({
                     onOpenSettings={() => setSettingsOpen(true)}
                   />
 
-                  {canUseGdocsEditor ? (
+                  {canUseGdocsEditor || canProposeDocumentVariants ? (
                     <DocumentGdocsUnifiedEditor
                       documentId={doc.id}
                       sections={doc.sections}
