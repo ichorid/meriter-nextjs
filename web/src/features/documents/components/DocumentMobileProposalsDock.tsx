@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { DocumentProposalRailContent } from '@/features/documents/components/DocumentProposalRailContent';
 import { useDocumentCanvasFocus } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { documentLiveQueryOptions } from '@/features/documents/hooks/useDocumentLiveSync';
+import { collapseRailThreadsByBlock } from '@/features/documents/lib/document-proposal-rail-threads';
 import { countActiveProposalVariants } from '@/features/documents/lib/document-proposal-utils';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { trpc } from '@/lib/trpc/client';
@@ -45,7 +46,10 @@ export function DocumentMobileProposalsDock({ sections }: DocumentMobileProposal
     { ...documentLiveQueryOptions(), enabled: Boolean(documentId && isMobile) },
   );
 
-  const threadCount = threadsQuery.data?.threads.length ?? 0;
+  const threadCount = useMemo(
+    () => collapseRailThreadsByBlock(threadsQuery.data?.threads ?? []).length,
+    [threadsQuery.data?.threads],
+  );
   const proposalCount = useMemo(() => {
     const variants = (threadsQuery.data?.threads ?? []).flatMap((thread) => thread.variants);
     return countActiveProposalVariants(variants);

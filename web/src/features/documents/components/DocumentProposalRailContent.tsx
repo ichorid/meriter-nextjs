@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2 } from 'lucide-react';
 import { DocumentBlockProposalsPanel } from '@/features/documents/components/DocumentBlockProposalsPanel';
@@ -8,6 +8,7 @@ import { DocumentProposeComposer } from '@/features/documents/components/Documen
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { documentLiveQueryOptions } from '@/features/documents/hooks/useDocumentLiveSync';
 import { type DocBlock } from '@/features/documents/lib/document-canvas-shared';
+import { collapseRailThreadsByBlock } from '@/features/documents/lib/document-proposal-rail-threads';
 import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
 
@@ -49,12 +50,13 @@ export function DocumentProposalRailContent({
   );
 
   const threads = threadsQuery.data?.threads ?? [];
+  const railThreads = useMemo(() => collapseRailThreadsByBlock(threads), [threads]);
 
   useEffect(() => {
-    if (!focus.focusedBlockId && threads.length > 0) {
-      focus.setFocusedBlockId(threads[0]!.blockId);
+    if (!focus.focusedBlockId && railThreads.length > 0) {
+      focus.setFocusedBlockId(railThreads[0]!.blockId);
     }
-  }, [focus, threads]);
+  }, [focus, railThreads]);
 
   useEffect(() => {
     if (!focus.focusedBlockId) {
@@ -87,17 +89,17 @@ export function DocumentProposalRailContent({
         />
       ) : null}
 
-      {threads.map((thread, index) => {
+      {railThreads.map((thread, index) => {
         const block = focus.getBlock(thread.blockId);
         if (!block) {
           return null;
         }
         const { waveActive, waveEndsAtMs } = blockWaveMeta(block, focus.votingDurationHours);
-        const showThreadContext = threads.length > 1 && Boolean(thread.officialExcerpt?.trim());
+        const showThreadContext = railThreads.length > 1 && Boolean(thread.officialExcerpt?.trim());
 
         return (
           <section
-            key={thread.threadId}
+            key={thread.blockId}
             className={cn(index > 0 && 'border-t border-stitch-border pt-4')}
             aria-label={thread.officialExcerpt || undefined}
           >
@@ -132,7 +134,7 @@ export function DocumentProposalRailContent({
         );
       })}
 
-      {!threadsQuery.isLoading && threads.length === 0 && !focus.selectedRange ? (
+      {!threadsQuery.isLoading && railThreads.length === 0 && !focus.selectedRange ? (
         <p className="px-2 text-center text-xs text-base-content/50">{tGdocs('selectBlock')}</p>
       ) : null}
     </div>

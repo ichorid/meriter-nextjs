@@ -1,9 +1,11 @@
 'use client';
 
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { DocumentProposalRailContent } from '@/features/documents/components/DocumentProposalRailContent';
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { documentLiveQueryOptions } from '@/features/documents/hooks/useDocumentLiveSync';
+import { collapseRailThreadsByBlock } from '@/features/documents/lib/document-proposal-rail-threads';
 import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
 
@@ -20,7 +22,10 @@ export function DocumentProposalRail({ sections, className }: DocumentProposalRa
     documentLiveQueryOptions(),
   );
 
-  const threadCount = threadsQuery.data?.threads.length ?? 0;
+  const threadCount = useMemo(
+    () => collapseRailThreadsByBlock(threadsQuery.data?.threads ?? []).length,
+    [threadsQuery.data?.threads],
+  );
 
   return (
     <aside
