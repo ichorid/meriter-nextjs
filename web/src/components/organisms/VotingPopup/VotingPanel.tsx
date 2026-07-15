@@ -93,6 +93,10 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     const enableCommentImageUploads = features.commentImageUploads;
     const isFutureVision = community?.typeTag === 'future-vision';
     const allowDownvote = community?.votingSettings?.allowNegativeVoting !== false;
+    const effectiveAllowDownvote =
+        documentVoteTarget != null
+            ? allowDownvote && documentAllowDownvotes
+            : allowDownvote;
 
     // Direction is determined by the sign of amount
     const isPositive = amount >= 0;
@@ -383,7 +387,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             setAmount(0);
             return;
         }
-        if (!hideQuota && !allowDownvote && value.startsWith('-')) {
+        if (!hideQuota && !effectiveAllowDownvote && value.startsWith('-')) {
             setInputValue('');
             setInputSign('');
             setAmount(0);
@@ -415,7 +419,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         // Parse number (handles negative values correctly)
         const numValue = Number(value);
         if (!isNaN(numValue) && cleanValue !== '' && cleanValue !== '0') {
-            if (!hideQuota && !allowDownvote && numValue < 0) {
+            if (!hideQuota && !effectiveAllowDownvote && numValue < 0) {
                 setInputValue('');
                 setInputSign('');
                 setAmount(0);
@@ -432,13 +436,13 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             // For upvotes, use maxAvailableMerits (which is maxPlus, correctly calculated based on voting mode)
             // For downvotes, use wallet only
             const maxByMerits = isPositive ? maxAvailableMerits : walletBalance;
-            const minByMerits = (!hideQuota && !allowDownvote) ? 0 : -maxAvailableMerits;
+            const minByMerits = (!hideQuota && !effectiveAllowDownvote) ? 0 : -maxAvailableMerits;
             
             // Use maxAvailableMerits for upvotes, maxMinus for downvotes
             const maxLimit = isPositive 
                 ? maxAvailableMerits // For upvotes, use maxAvailableMerits (maxPlus from VotingPopup)
                 : (maxMinus > 0 ? Math.min(maxMinus, maxByMerits) : maxByMerits);
-            const minLimit = (!hideQuota && !allowDownvote)
+            const minLimit = (!hideQuota && !effectiveAllowDownvote)
                 ? 0
                 : (maxMinus > 0 ? Math.max(-maxMinus, minByMerits) : minByMerits);
             
@@ -458,7 +462,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     setAmount(0);
                     return;
                 }
-                if (!hideQuota && !allowDownvote && isNegative) {
+                if (!hideQuota && !effectiveAllowDownvote && isNegative) {
                     setInputValue('');
                     setInputSign('');
                     setAmount(0);
@@ -473,11 +477,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     // For upvotes, use maxAvailableMerits (which is maxPlus, correctly calculated based on voting mode)
                     // For downvotes, use wallet only
                     const maxByMerits = isPositive ? maxAvailableMerits : walletBalance;
-                    const minByMerits = (!hideQuota && !allowDownvote) ? 0 : -maxAvailableMerits;
+                    const minByMerits = (!hideQuota && !effectiveAllowDownvote) ? 0 : -maxAvailableMerits;
                     const maxLimit = isPositive 
                         ? maxAvailableMerits // For upvotes, use maxAvailableMerits (maxPlus from VotingPopup)
                         : (maxMinus > 0 ? Math.min(maxMinus, maxByMerits) : maxByMerits);
-                    const minLimit = (!hideQuota && !allowDownvote)
+                    const minLimit = (!hideQuota && !effectiveAllowDownvote)
                         ? 0
                         : (maxMinus > 0 ? Math.max(-maxMinus, minByMerits) : minByMerits);
                     const clampedValue = Math.max(minLimit, Math.min(maxLimit, partialValue));
@@ -543,7 +547,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             return;
         }
 
-        if (!allowDownvote) {
+        if (!effectiveAllowDownvote) {
             const newAmount = Math.max(0, amount - 1);
             setAmount(newAmount);
             setInputValue(Math.abs(newAmount).toString());
@@ -729,7 +733,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                 onClick={handleDecrease}
                                 disabled={
                                     // Disable if:
-                                    (!hideQuota && !allowDownvote && amount <= 0) ||
+                                    (!hideQuota && !effectiveAllowDownvote && amount <= 0) ||
                                     // 1. Amount is 0 and no wallet balance (can't go negative)
                                     // 2. Amount is negative and already at minimum (-maxMinus or -walletBalance)
                                     (amount === 0 && walletBalance === 0) ||

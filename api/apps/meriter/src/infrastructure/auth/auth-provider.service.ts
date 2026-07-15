@@ -751,6 +751,8 @@ export class AuthProviderService {
       throw new Error('Failed to create or update user');
     }
 
+    await this.userService.linkIdentity(user.id, 'email', email);
+
     await this.userService.ensureUserInBaseCommunities(user.id);
 
     const jwtSecret = this.configService.getOrThrow('jwt').secret;

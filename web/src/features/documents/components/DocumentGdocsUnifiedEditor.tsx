@@ -468,7 +468,8 @@ export function DocumentGdocsUnifiedEditor({
   });
 
   const lockBlockMutation = trpc.documents.updateBlock.useMutation({
-    onSuccess: async (_data, variables) => {
+    onSuccess: async (data, variables) => {
+      expectedUpdatedAtRef.current = data.document.updatedAt;
       setPendingBlockLocks(null);
       await utils.documents.getById.invalidate({ id: documentId });
       focus.addToast(
@@ -494,22 +495,6 @@ export function DocumentGdocsUnifiedEditor({
       return;
     }
 
-    const locksCleared =
-      !pendingBlockLocks.proposalsLocked && pendingBlockLocks.lockedRanges.length === 0;
-
-    if (locksCleared) {
-      const result = await syncMutation.mutateAsync({
-        documentId,
-        html: htmlRef.current,
-        expectedUpdatedAt: expectedUpdatedAtRef.current
-          ? new Date(expectedUpdatedAtRef.current)
-          : undefined,
-      });
-      expectedUpdatedAtRef.current = result.document.updatedAt;
-      setPendingBlockLocks(null);
-      return;
-    }
-
     await lockBlockMutation.mutateAsync({
       documentId,
       blockId: primaryBlock.id,
@@ -524,7 +509,6 @@ export function DocumentGdocsUnifiedEditor({
     lockBlockMutation,
     pendingBlockLocks,
     primaryBlock,
-    syncMutation,
   ]);
 
   const isSaving = syncMutation.isPending || proposeMutation.isPending || lockBlockMutation.isPending;

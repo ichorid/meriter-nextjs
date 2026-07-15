@@ -172,19 +172,30 @@ export class DocumentStructureService {
     if (input.order !== undefined) {
       located.block.order = input.order;
     }
-    if (input.proposalsLocked !== undefined) {
-      located.block.proposalsLocked = input.proposalsLocked;
-    }
     const locksChanged = input.lockedRanges !== undefined;
+    const locksCleared =
+      input.proposalsLocked === false &&
+      input.lockedRanges !== undefined &&
+      input.lockedRanges.length === 0;
+
     if (locksChanged) {
-      located.block.lockedRanges = input.lockedRanges;
-      const splitRows = splitSectionBlockForLockedRanges(
-        located.section.blocks as Parameters<typeof splitSectionBlockForLockedRanges>[0],
-        blockId,
-      );
-      if (splitRows.length !== located.section.blocks.length) {
-        located.section.blocks = splitRows as BlockEmbedded[];
+      if (locksCleared) {
+        for (const block of located.section.blocks) {
+          block.proposalsLocked = false;
+          block.lockedRanges = [];
+        }
+      } else {
+        located.block.lockedRanges = input.lockedRanges;
+        const splitRows = splitSectionBlockForLockedRanges(
+          located.section.blocks as Parameters<typeof splitSectionBlockForLockedRanges>[0],
+          blockId,
+        );
+        if (splitRows.length !== located.section.blocks.length) {
+          located.section.blocks = splitRows as BlockEmbedded[];
+        }
       }
+    } else if (input.proposalsLocked !== undefined) {
+      located.block.proposalsLocked = input.proposalsLocked;
     }
     const updated = await this.persistSections(documentId, sections, doc, input.expectedUpdatedAt);
     if (locksChanged || input.proposalsLocked !== undefined) {
@@ -286,6 +297,12 @@ export class DocumentStructureService {
         currentWaveStartedAt: b.currentWaveStartedAt,
         editHistory: Array.isArray(b.editHistory) ? [...b.editHistory] : [],
         proposalsLocked: b.proposalsLocked === true,
+        lockedRanges: Array.isArray(b.lockedRanges)
+          ? b.lockedRanges.map((r) => ({
+              rangeStart: r.rangeStart,
+              rangeEnd: r.rangeEnd,
+            }))
+          : [],
       })),
     }));
   }

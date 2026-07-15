@@ -20,11 +20,15 @@ export function LinkedProvidersSection() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [telegramWidgetFailed, setTelegramWidgetFailed] = useState(false);
 
-  const hasEmail = linked.includes('email');
+  const hasEmail =
+    linked.includes('email') || user?.authProvider === 'email';
   const hasTelegram = linked.includes('telegram');
-  const botUsername = runtimeConfig?.botUsername ?? null;
+  const botUsername = runtimeConfig?.botUsername?.trim() ?? '';
   const telegramEnabled = runtimeConfig?.oauth?.telegram ?? false;
+  const showTelegramLinkWidget =
+    !hasTelegram && telegramEnabled && Boolean(botUsername) && !telegramWidgetFailed;
 
   const sendLinkEmail = async () => {
     setError(null);
@@ -57,7 +61,10 @@ export function LinkedProvidersSection() {
         <span>Email</span>
         {hasEmail ? (
           <span className="inline-flex items-center gap-1 text-primary">
-            <Check className="h-4 w-4" /> привязан
+            <Check className="h-4 w-4" />
+            {user?.authProvider === 'email' && !linked.includes('email')
+              ? 'вход через email'
+              : 'привязан'}
           </span>
         ) : (
           <span className="inline-flex items-center gap-1 text-muted-foreground">
@@ -100,7 +107,15 @@ export function LinkedProvidersSection() {
         )}
       </div>
 
-      {!hasTelegram && telegramEnabled && botUsername && (
+      {!hasTelegram && telegramEnabled && !showTelegramLinkWidget ? (
+        <p className="text-sm text-muted-foreground">
+          {botUsername
+            ? 'Telegram недоступен на этом окружении.'
+            : 'Telegram не настроен для этого окружения.'}
+        </p>
+      ) : null}
+
+      {showTelegramLinkWidget ? (
         <TelegramLoginWidget
           botUsername={botUsername}
           linkMode
@@ -109,8 +124,9 @@ export function LinkedProvidersSection() {
             setMessage('Telegram привязан.');
           }}
           onError={(msg) => setError(msg)}
+          onLoadFailed={() => setTelegramWidgetFailed(true)}
         />
-      )}
+      ) : null}
 
       {message && <p className="text-sm text-primary">{message}</p>}
       {error && <p className="text-sm text-destructive">{error}</p>}

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 export interface DocumentBlockGovernanceToolbarProps {
   documentId: string;
   blockId: string;
+  canManageDocument?: boolean;
   waveActive?: boolean;
   showCloseVoting?: boolean;
   onCloseVotingSuccess?: () => void;
@@ -20,6 +21,7 @@ export interface DocumentBlockGovernanceToolbarProps {
 export function DocumentBlockGovernanceToolbar({
   documentId,
   blockId,
+  canManageDocument = false,
   waveActive = false,
   showCloseVoting = false,
   onCloseVotingSuccess,
@@ -50,25 +52,29 @@ export function DocumentBlockGovernanceToolbar({
         <History size={14} />
         {t('history')}
       </Button>
-      <Button
-        type="button"
-        variant={variant}
-        size="sm"
-        className={buttonClass}
-        onClick={() => focus.openAdminDialog({ kind: 'adminOverride', blockId })}
-      >
-        {t('editor.adminOverride')}
-      </Button>
-      {showCloseVoting && waveActive ? (
-        <Button
-          type="button"
-          variant={variant}
-          size="sm"
-          className={buttonClass}
-          onClick={() => focus.openAdminDialog({ kind: 'closeVoting', blockId })}
-        >
-          {t('closeVotingNow')}
-        </Button>
+      {canManageDocument ? (
+        <>
+          <Button
+            type="button"
+            variant={variant}
+            size="sm"
+            className={buttonClass}
+            onClick={() => focus.openAdminDialog({ kind: 'adminOverride', blockId })}
+          >
+            {t('editor.adminOverride')}
+          </Button>
+          {showCloseVoting && waveActive ? (
+            <Button
+              type="button"
+              variant={variant}
+              size="sm"
+              className={buttonClass}
+              onClick={() => focus.openAdminDialog({ kind: 'closeVoting', blockId })}
+            >
+              {t('closeVotingNow')}
+            </Button>
+          ) : null}
+        </>
       ) : null}
     </div>
   );

@@ -27,7 +27,9 @@ export function TelegramLoginWidget({
   onLoadFailed,
 }: TelegramLoginWidgetProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [widgetUnavailable, setWidgetUnavailable] = useState(false);
   const containerId = `meriter-telegram-login-${useId().replace(/:/g, '')}`;
+  const normalizedBotUsername = botUsername?.trim().replace(/^@/, '') ?? '';
 
   useEffect(() => {
     window.onTelegramAuth = async (user) => {
@@ -64,7 +66,7 @@ export function TelegramLoginWidget({
   }, [disabled, isSubmitting, linkMode, onError, onSuccess]);
 
   useEffect(() => {
-    if (disabled || !botUsername) {
+    if (disabled || !normalizedBotUsername) {
       return;
     }
 
@@ -73,22 +75,45 @@ export function TelegramLoginWidget({
       return;
     }
 
+    setWidgetUnavailable(false);
+
     const script = document.createElement('script');
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
     script.async = true;
-    script.setAttribute('data-telegram-login', botUsername.replace(/^@/, ''));
+    script.setAttribute('data-telegram-login', normalizedBotUsername);
     script.setAttribute('data-size', 'large');
     script.setAttribute('data-radius', '8');
     script.setAttribute('data-request-access', 'write');
     script.setAttribute('data-onauth', 'onTelegramAuth(user)');
     script.onerror = () => {
+      setWidgetUnavailable(true);
       onLoadFailed?.();
     };
     container.appendChild(script);
-  }, [botUsername, containerId, disabled, onLoadFailed]);
 
-  if (!botUsername) {
+    const observer = new MutationObserver(() => {
+      const text = container.textContent?.trim() ?? '';
+      if (/bot domain invalid/i.test(text)) {
+        setWidgetUnavailable(true);
+      }
+    });
+    observer.observe(container, { childList: true, subtree: true, characterData: true });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [normalizedBotUsername, containerId, disabled, onLoadFailed]);
+
+  if (!normalizedBotUsername) {
     return null;
+  }
+
+  if (widgetUnavailable) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        Telegram недоступен на этом окружении. Настройте домен бота в BotFather для локальной разработки.
+      </p>
+    );
   }
 
   return (

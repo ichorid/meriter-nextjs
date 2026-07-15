@@ -24,6 +24,7 @@ export function DocumentCanvasMobileSheet() {
   const block = blockId && focus ? focus.getBlock(blockId) : null;
   const proposalsLocked = block?.proposalsLocked === true;
   const canProposeDocumentVariants = focus?.canProposeDocumentVariants ?? false;
+  const canViewBlockHistory = Boolean(focus?.userId);
   const canProposeVariant =
     canProposeDocumentVariants && (!proposalsLocked || canManageDocument);
 
@@ -54,7 +55,7 @@ export function DocumentCanvasMobileSheet() {
   const hasBlockMenuContent =
     mobileSheet.kind === 'blockMenu' &&
     !!blockId &&
-    (canProposeVariant || proposalsLocked || canManageDocument);
+    (canProposeVariant || proposalsLocked || canManageDocument || canViewBlockHistory);
 
   const hasSheetContent =
     (mobileSheet.kind === 'propose' && !!blockId) || hasBlockMenuContent;
@@ -119,20 +120,22 @@ export function DocumentCanvasMobileSheet() {
           ) : proposalsLocked ? (
             <p className="text-sm text-base-content/55">{tCanvas('proposalsLockedHint')}</p>
           ) : null}
+          {canViewBlockHistory ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 justify-start gap-2 rounded-lg"
+              onClick={() => {
+                closeMobileSheet();
+                openAdminDialog({ kind: 'history', blockId });
+              }}
+            >
+              <History size={16} />
+              {t('history')}
+            </Button>
+          ) : null}
           {canManageDocument ? (
             <>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 justify-start gap-2 rounded-lg"
-                onClick={() => {
-                  closeMobileSheet();
-                  openAdminDialog({ kind: 'history', blockId });
-                }}
-              >
-                <History size={16} />
-                {t('history')}
-              </Button>
               <Button
                 type="button"
                 variant="outline"

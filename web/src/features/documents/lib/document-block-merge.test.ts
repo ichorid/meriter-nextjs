@@ -48,4 +48,31 @@ describe('mergeRangeIntoBlockHtmlWithRevisionMarks', () => {
     expect(html).toContain('Keep this');
     expect(html).toContain(' tail');
   });
+
+  it('marks only the edited phrase inside one paragraph of a multi-paragraph block', () => {
+    const official =
+      '<p>First paragraph stays intact.</p><p>Middle with Тест прямой правки inside.</p><p>Last paragraph untouched.</p>';
+    const plain = blockHtmlToPlainText(official);
+    const start = plain.indexOf('Тест');
+    const end = plain.indexOf('правки') + 'правки'.length;
+    const html = mergeRangeIntoBlockHtmlWithRevisionMarks(official, start, end, '');
+    expect(html).toContain('<p>First paragraph stays intact.</p>');
+    expect(html).toContain('<p>Last paragraph untouched.</p>');
+    expect(html).toContain(`<del class="${DOC_REVISION_DELETE_CLASS}">`);
+    expect(html).toContain('Тест прямой правки');
+    expect(html).not.toMatch(/<del[^>]*>[\s\S]*First paragraph[\s\S]*<\/del>/);
+    expect(html).not.toMatch(/<del[^>]*>[\s\S]*Last paragraph[\s\S]*<\/del>/);
+  });
+
+  it('keeps a single paragraph wrapper when highlighting an in-paragraph edit', () => {
+    const official =
+      '<p>Line one with context. Тест прямой правки. Line two continues.</p>';
+    const plain = blockHtmlToPlainText(official);
+    const start = plain.indexOf('Тест');
+    const end = plain.indexOf('правки') + 'правки'.length;
+    const html = mergeRangeIntoBlockHtmlWithRevisionMarks(official, start, end, '');
+    expect(html.match(/<p\b/g)?.length).toBe(1);
+    expect(html).toContain('Line one with context.');
+    expect(html).toContain('Line two continues.');
+  });
 });

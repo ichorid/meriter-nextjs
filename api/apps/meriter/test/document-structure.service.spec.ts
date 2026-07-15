@@ -159,6 +159,60 @@ describe('DocumentStructureService', () => {
     );
   });
 
+  it('clears locks on all blocks in section when fully unpinned', async () => {
+    mockDoc([
+      {
+        id: 's1',
+        title: 'Section',
+        order: 0,
+        blocks: [
+          {
+            id: 'b1',
+            order: 0,
+            blockType: 'paragraph',
+            officialContent: 'Locked part',
+            proposalsLocked: true,
+            lockedRanges: [{ rangeStart: 0, rangeEnd: 6 }],
+          },
+          {
+            id: 'b1-split',
+            order: 1,
+            blockType: 'paragraph',
+            officialContent: 'Unlocked part',
+            proposalsLocked: false,
+            lockedRanges: [],
+          },
+        ],
+      },
+    ]);
+
+    await service.updateBlock(actorUserId, documentId, 'b1', {
+      proposalsLocked: false,
+      lockedRanges: [],
+    });
+
+    expect(documentService.updateSections).toHaveBeenCalledWith(
+      documentId,
+      expect.arrayContaining([
+        expect.objectContaining({
+          blocks: [
+            expect.objectContaining({
+              id: 'b1',
+              proposalsLocked: false,
+              lockedRanges: [],
+            }),
+            expect.objectContaining({
+              id: 'b1-split',
+              proposalsLocked: false,
+              lockedRanges: [],
+            }),
+          ],
+        }),
+      ]),
+      expect.anything(),
+    );
+  });
+
   it('reorders blocks within a section', async () => {
     mockDoc(baseDoc.sections);
 

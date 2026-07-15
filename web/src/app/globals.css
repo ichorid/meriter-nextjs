@@ -1203,4 +1203,9 @@ ol.document-rich-content > li::before {
     bottom: calc(4rem + env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
     z-index: 35 !important;
   }
+
+  /* Document page: proposals dock sits above bottom nav — lift FAB higher */
+  [data-document-page] #guidewell-widget-host {
+    bottom: calc(4.5rem + 6px + 3.25rem + env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
+  }
 }

@@ -2,7 +2,7 @@
  * Collaborative document v3 E2E: append without official mutation, voting-thread merge, parallel threads.
  */
 import { TestSetupHelper } from './helpers/test-setup.helper';
-import { trpcMutation, trpcQuery } from './helpers/trpc-test-helper';
+import { trpcMutation, trpcMutationWithError, trpcQuery } from './helpers/trpc-test-helper';
 import { getModelToken } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { uid } from 'uid';
@@ -450,5 +450,31 @@ describe('Collaborative document v3 E2E', () => {
       .join('');
     expect(joined).toContain('Middle A');
     expect(joined).toContain('Middle B');
+  });
+
+  it('rejects quota when voting for own document variant', async () => {
+    const { documentId, blockIds } = await seedDocumentWithBlocks([
+      '<p>Vote on own variant test.</p>',
+    ]);
+    const block1 = blockIds[0]!;
+
+    (global as { testUserId?: string }).testUserId = aliceId;
+    const proposed = await trpcMutation(app, 'documentVariants.propose', {
+      documentId,
+      blockId: block1,
+      content: '<p>Vote on own variant test CHANGED.</p>',
+    });
+
+    (global as { testUserId?: string }).testUserId = aliceId;
+    const voteResult = await trpcMutationWithError(app, 'votes.createWithComment', {
+      targetType: 'document-variant',
+      targetId: proposed.variant.id,
+      quotaAmount: 2,
+      walletAmount: 0,
+      direction: 'up',
+      comment: 'Self support',
+    });
+
+    expect(voteResult.error?.message).toMatch(/Quota cannot be used when voting for your own document variant/i);
   });
 });

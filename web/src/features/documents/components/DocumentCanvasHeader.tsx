@@ -58,6 +58,9 @@ export function DocumentCanvasHeader({
         <Badge variant="outline" className="rounded-md px-1.5 py-0 font-normal text-[11px]">
           {mode === 'auto' ? t('settings.modeAuto') : t('settings.modeManual')}
         </Badge>
+        <span className="text-base-content/50">
+          {mode === 'auto' ? t('metaModeAuto') : t('metaModeManual')}
+        </span>
         <span>{t('metaVotingHours', { hours: votingDurationHours })}</span>
         <span>{t('metaVariantCost', { cost: variantCost })}</span>
         {updatedAt ? (

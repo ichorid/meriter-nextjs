@@ -48,7 +48,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
   const { user } = useAuth();
-  const { data, isLoading } = useProject(projectId);
+  const { data, isLoading, isError } = useProject(projectId);
   const { data: membersData } = useProjectMembers(projectId, { limit: 100 });
   const leaveProject = useLeaveProject();
 
@@ -89,7 +89,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   /** MVP: collaborative UI is OB-only; project description doc link hidden. */
   const descriptionDocumentHref = undefined;
 
-  if (isLoading || !data) {
+  if (isLoading || isError || !data) {
     return (
       <AdaptiveLayout
         communityId={projectId}
@@ -117,7 +117,11 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
       >
         <div className="max-w-4xl mx-auto p-4">
           <p className="text-base-content/70">
-            {isLoading ? tCommon('loading') : t('projectNotFound')}
+            {isLoading
+              ? tCommon('loading')
+              : isError
+                ? tCommon('error')
+                : t('projectNotFound')}
           </p>
           {!isLoading && (
             <Button variant="ghost" size="sm" className="mt-2" onClick={() => router.push('/meriter/projects')}>

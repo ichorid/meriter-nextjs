@@ -185,6 +185,15 @@ export class CreateVoteUseCase {
         ) {
           throw new BadRequestException('Voting for this document block wave has ended');
         }
+        if (
+          input.targetType === 'document-variant' &&
+          documentVoteCtx.variant?.proposedBy === userId &&
+          requestedQuotaEarly > 0
+        ) {
+          throw new BadRequestException(
+            'Quota cannot be used when voting for your own document variant',
+          );
+        }
       }
     
       const isTicketPublication = publicationDoc?.postType === 'ticket';

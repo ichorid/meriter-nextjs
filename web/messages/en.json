@@ -1094,6 +1094,8 @@
                 "applyMode": "Apply mode",
                 "modeManual": "Manual",
                 "modeAuto": "Automatic",
+                "modeManualHelp": "After a wave closes, the lead confirms the winner with «Apply winner».",
+                "modeAutoHelp": "After a wave closes, the winning variant is applied to the official text automatically.",
                 "votingDurationHours": "Voting duration (hours)",
                 "variantCost": "Variant cost (merits)",
                 "variantCostHelp": "Charged when submitting a variant and burned.",
@@ -1106,6 +1108,8 @@
                 "invalidVariantCost": "Variant cost must be zero or greater"
             },
             "metaVotingHours": "Voting: {hours} h",
+            "metaModeManual": "Winner is applied manually by the lead",
+            "metaModeAuto": "Winner is applied automatically after the wave",
             "metaVariantCost": "Variant: {cost} merits",
             "metaUpdated": "Updated {date}",
             "structure": {
@@ -1275,6 +1279,9 @@
                 "liveVariantProposed": "Someone submitted a new proposal",
                 "liveVoteCast": "A new vote was cast on a proposal",
                 "liveDocumentUpdated": "The official document text was updated",
+                "officialUpdateBanner": "The official document text was updated",
+                "officialUpdateRefresh": "Refresh",
+                "officialUpdateDismiss": "Dismiss",
                 "liveWaveClosed": "Voting on a block was closed",
                 "liveLocksChanged": "An administrator changed pinned text",
                 "leadEditorDirtyHint": "Unsaved changes — click Save",

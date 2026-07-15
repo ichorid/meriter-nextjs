@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw, X } from 'lucide-react';
+import { Button } from '@/components/ui/shadcn/button';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,6 +61,8 @@ export function CommunityDocumentDetailPageClient({
   const t = useTranslations('pages.documents');
   const addToast = useToastStore((s) => s.addToast);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [officialUpdateBanner, setOfficialUpdateBanner] = useState(false);
+  const utils = trpc.useUtils();
   const { user, isLoading: authLoading } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id ?? '');
   const { data: community } = useCommunity(communityId);
@@ -88,7 +91,7 @@ export function CommunityDocumentDetailPageClient({
         return;
       }
       if (event.type === 'document.updated' || event.type === 'variant.applied') {
-        addToast(t('gdocs.liveDocumentUpdated'), 'info');
+        setOfficialUpdateBanner(true);
         return;
       }
       if (event.type === 'wave.closed') {
@@ -101,6 +104,11 @@ export function CommunityDocumentDetailPageClient({
     },
     [addToast, t],
   );
+
+  const refreshOfficialDocument = useCallback(async () => {
+    await utils.documents.getById.invalidate({ id: documentId });
+    setOfficialUpdateBanner(false);
+  }, [documentId, utils.documents.getById]);
 
   useDocumentLiveSync({
     documentId,
@@ -260,7 +268,7 @@ export function CommunityDocumentDetailPageClient({
       myId={user.id}
       stickyHeader={pageHeader}
     >
-      <div className="relative w-full">
+      <div className="relative w-full" data-document-page>
         {canManageDocument ? (
           <DocumentSettingsDialog
             open={settingsOpen}
@@ -289,6 +297,36 @@ export function CommunityDocumentDetailPageClient({
         >
           <DocumentCanvasFocusProvider {...focusProps}>
             <>
+              {officialUpdateBanner ? (
+                <div
+                  role="status"
+                  className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-base-content"
+                >
+                  <span>{t('gdocs.officialUpdateBanner')}</span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-8 gap-1 rounded-lg text-xs"
+                      onClick={() => void refreshOfficialDocument()}
+                    >
+                      <RefreshCw size={14} />
+                      {t('gdocs.officialUpdateRefresh')}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 rounded-lg p-0"
+                      aria-label={t('gdocs.officialUpdateDismiss')}
+                      onClick={() => setOfficialUpdateBanner(false)}
+                    >
+                      <X size={14} />
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               <div className="grid w-full grid-cols-1 gap-4 pb-20 max-lg:pb-24 lg:grid-cols-[minmax(0,1fr)_min(280px,32%)] lg:items-start lg:pb-0">
                 <DocumentCanvas fullWidth>
                   <DocumentCanvasHeader

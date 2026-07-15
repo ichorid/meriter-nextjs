@@ -16,14 +16,51 @@ function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;');
 }
 
-function normalizeRangeBounds(
-  plainLength: number,
-  start: number,
-  end: number,
-): { rangeStart: number; rangeEnd: number } {
-  const rangeStart = Math.max(0, Math.min(plainLength, Math.floor(start)));
-  const rangeEnd = Math.max(0, Math.min(plainLength, Math.floor(end)));
-  return { rangeStart, rangeEnd: Math.max(rangeStart, rangeEnd) };
+type BlockParagraphSegment = {
+  html: string;
+  plainStart: number;
+  plainEnd: number;
+};
+
+/** Map top-level block elements to plain-text offsets within one block's HTML. */
+function parseBlockParagraphSegments(officialHtml: string): BlockParagraphSegment[] {
+  const trimmed = officialHtml.trim();
+  const blockRe = /<(p|h[1-6]|li)\b[^>]*>[\s\S]*?<\/\1>/gi;
+  const parts = [...trimmed.matchAll(blockRe)].map((match) => match[0]);
+  if (parts.length === 0) {
+    const plain = blockHtmlToPlainText(officialHtml);
+    return [{ html: trimmed, plainStart: 0, plainEnd: plain.length }];
+  }
+  const segments: BlockParagraphSegment[] = [];
+  let plainStart = 0;
+  for (let index = 0; index < parts.length; index += 1) {
+    const segPlain = blockHtmlToPlainText(parts[index] ?? '');
+    const plainEnd = plainStart + segPlain.length;
+    segments.push({ html: parts[index] ?? '', plainStart, plainEnd });
+    plainStart = plainEnd + (index < parts.length - 1 ? 1 : 0);
+  }
+  return segments;
+}
+
+function applyRevisionMarksWithinSegmentHtml(
+  segmentHtml: string,
+  rangeStart: number,
+  rangeEnd: number,
+  replacementHtml: string,
+): string {
+  const plain = blockHtmlToPlainText(segmentHtml);
+  const before = plain.slice(0, rangeStart);
+  const after = plain.slice(rangeEnd);
+  const beforeHtml = before ? escapeHtml(before).replace(/\n/g, '<br>') : '';
+  const afterHtml = after ? escapeHtml(after).replace(/\n/g, '<br>') : '';
+  const trimmed = segmentHtml.trim();
+  const wrapperMatch = trimmed.match(/^<(p|h[1-6]|li)\b([^>]*)>/i);
+  if (wrapperMatch) {
+    const tag = wrapperMatch[1] ?? 'p';
+    const attrs = wrapperMatch[2] ?? '';
+    return `<${tag}${attrs}>${beforeHtml}${replacementHtml}${afterHtml}</${tag}>`;
+  }
+  return `${beforeHtml}${replacementHtml}${afterHtml}`;
 }
 
 function plainMergeToHtml(
@@ -37,19 +74,40 @@ function plainMergeToHtml(
   const trimmed = officialHtml.trim();
   const singleParagraph =
     /^<p[^>]*>[\s\S]*<\/p>$/i.test(trimmed) && !trimmed.includes('</p><');
+  const hasRevisionMarkup =
+    replacementHtml.includes('<del') || replacementHtml.includes('<ins');
   if (singleParagraph) {
-    const hasRevisionMarkup =
-      replacementHtml.includes('<del') || replacementHtml.includes('<ins');
     if (hasRevisionMarkup) {
-      const before = plain.slice(0, rangeStart);
-      const after = plain.slice(rangeEnd);
-      const beforeHtml = before ? escapeHtml(before).replace(/\n/g, '<br>') : '';
-      const afterHtml = after ? escapeHtml(after).replace(/\n/g, '<br>') : '';
-      return `<p>${beforeHtml}${replacementHtml}${afterHtml}</p>`;
+      return applyRevisionMarksWithinSegmentHtml(
+        officialHtml,
+        rangeStart,
+        rangeEnd,
+        replacementHtml,
+      );
     }
     const inner = mergedPlain.split('\n').map((line) => escapeHtml(line)).join('<br>');
     return `<p>${inner}</p>`;
   }
+
+  const segments = parseBlockParagraphSegments(officialHtml);
+  if (segments.length > 1 && hasRevisionMarkup) {
+    return segments
+      .map((segment) => {
+        if (rangeEnd <= segment.plainStart || rangeStart >= segment.plainEnd) {
+          return segment.html;
+        }
+        const localStart = Math.max(0, rangeStart - segment.plainStart);
+        const localEnd = Math.min(segment.plainEnd - segment.plainStart, rangeEnd - segment.plainStart);
+        return applyRevisionMarksWithinSegmentHtml(
+          segment.html,
+          localStart,
+          localEnd,
+          replacementHtml,
+        );
+      })
+      .join('');
+  }
+
   const before = plain.slice(0, rangeStart);
   const after = plain.slice(rangeEnd);
   const repPlain = blockHtmlToPlainText(replacementHtml);
@@ -57,6 +115,16 @@ function plainMergeToHtml(
     segment.length === 0 ? '' : `<p>${escapeHtml(segment).replace(/\n/g, '<br>')}</p>`;
   const parts = [wrap(before), replacementHtml || wrap(repPlain), wrap(after)].filter(Boolean);
   return parts.join('');
+}
+
+function normalizeRangeBounds(
+  plainLength: number,
+  start: number,
+  end: number,
+): { rangeStart: number; rangeEnd: number } {
+  const rangeStart = Math.max(0, Math.min(plainLength, Math.floor(start)));
+  const rangeEnd = Math.max(0, Math.min(plainLength, Math.floor(end)));
+  return { rangeStart, rangeEnd: Math.max(rangeStart, rangeEnd) };
 }
 
 /** Merge proposed fragment into block official HTML (aligned with API mergeRangeIntoBlockHtml). */

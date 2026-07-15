@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/shadcn/dialog';
+import { DocumentBlockGovernanceToolbar } from '@/features/documents/components/DocumentBlockGovernanceToolbar';
 import { DocumentProposalVariantCard } from '@/features/documents/components/DocumentProposalVariantCard';
 import { DocumentProposalVariantRating } from '@/features/documents/components/DocumentProposalVariantRating';
 import { DocumentVariantSuggestion } from '@/features/documents/components/DocumentVariantSuggestion';
@@ -445,6 +446,15 @@ export function DocumentBlockProposalsPanel({
           </div>
         </div>
       ) : null}
+
+      <DocumentBlockGovernanceToolbar
+        documentId={documentId}
+        blockId={block.id}
+        canManageDocument={canManageDocument}
+        waveActive={waveActiveEffective}
+        showCloseVoting
+        variant="ghost"
+      />
 
       <ul
         className={cn(

@@ -8,6 +8,7 @@ import { useTickets } from '@/hooks/api/useTickets';
 import { TicketCard } from './TicketCard';
 import { Button } from '@/components/ui/shadcn/button';
 import type { TicketStatus } from '@meriter/shared-types';
+import { cn } from '@/lib/utils';
 import { projectEmptyStateClass } from './project-surface';
 
 interface TicketListProps {
@@ -39,7 +40,7 @@ export function TicketList({
     clearedHighlightRef.current = false;
   }, [highlightTicketId]);
 
-  const { data: tickets, isLoading } = useTickets(projectId, {
+  const { data: tickets, isLoading, isError } = useTickets(projectId, {
     postType: 'ticket',
     ticketStatus: statusFilter === 'all' ? undefined : statusFilter,
   });
@@ -69,6 +70,12 @@ export function TicketList({
 
   if (isLoading) {
     return <p className="text-sm text-base-content/60">{tCommon('loading')}</p>;
+  }
+
+  if (isError) {
+    return (
+      <p className="text-sm text-error">{tCommon('error')}</p>
+    );
   }
 
   if (list.length === 0) {
