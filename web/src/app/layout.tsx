@@ -38,7 +38,7 @@ export default async function RootLayout({
   const guidewellConfig = parseGuidewellConfig(process.env);
 
   return (
-    <html lang={locale} translate="no" className="notranslate" suppressHydrationWarning>
+    <html lang={locale} translate="no" className="notranslate" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{

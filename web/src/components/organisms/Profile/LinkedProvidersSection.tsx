@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { BrandFormControl } from '@/components/ui';
 import { TelegramLoginWidget } from '@/components/TelegramLoginWidget';
-import { Check, X } from 'lucide-react';
+import { TELEGRAM_LOGIN_ENABLED } from '@/lib/constants/login-methods';
 
 export function LinkedProvidersSection() {
   const { user } = useAuth();
@@ -26,7 +26,7 @@ export function LinkedProvidersSection() {
     linked.includes('email') || user?.authProvider === 'email';
   const hasTelegram = linked.includes('telegram');
   const botUsername = runtimeConfig?.botUsername?.trim() ?? '';
-  const telegramEnabled = runtimeConfig?.oauth?.telegram ?? false;
+  const telegramEnabled = TELEGRAM_LOGIN_ENABLED && (runtimeConfig?.oauth?.telegram ?? false);
   const showTelegramLinkWidget =
     !hasTelegram && telegramEnabled && Boolean(botUsername) && !telegramWidgetFailed;
 

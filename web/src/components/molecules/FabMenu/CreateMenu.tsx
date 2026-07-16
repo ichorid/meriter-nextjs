@@ -41,6 +41,7 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({
     const [floatingPos, setFloatingPos] = useState({ top: 0, left: 0 });
     const triggerWrapRef = useRef<HTMLDivElement>(null);
     const panelRef = useRef<HTMLDivElement>(null);
+    const openedAtRef = useRef(0);
 
     const hasActivePopup = activeVotingTarget !== null || activeWithdrawTarget !== null || activeModal !== null;
 
@@ -108,41 +109,52 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({
         };
     }, [isOpen, updateFloatingPosition, canCreate, isFutureVision, canCreateProjects, reason]);
 
+    const navigateTo = useCallback(
+        (path: string) => {
+            setIsOpen(false);
+            router.push(path);
+        },
+        [router],
+    );
+
     const handleCreatePost = (e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
         if (!canCreate) {
             addToast(reason || t('noPermission'), 'info');
             setIsOpen(false);
             return;
         }
-        router.push(`/meriter/communities/${communityId}/create`);
-        setIsOpen(false);
+        navigateTo(`/meriter/communities/${communityId}/create`);
     };
 
     const handleCreatePoll = (e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
         if (!canCreate) {
             addToast(reason || t('noPermission'), 'info');
             setIsOpen(false);
             return;
         }
-        router.push(`/meriter/communities/${communityId}/create-poll`);
-        setIsOpen(false);
+        navigateTo(`/meriter/communities/${communityId}/create-poll`);
     };
 
     const handleCreateProject = (e: React.MouseEvent) => {
+        e.preventDefault();
         e.stopPropagation();
         if (!canCreate) {
             addToast(reason || t('noPermission'), 'info');
             setIsOpen(false);
             return;
         }
-        router.push(`/meriter/communities/${communityId}/create?postType=project`);
-        setIsOpen(false);
+        navigateTo(`/meriter/communities/${communityId}/create?postType=project`);
     };
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
+            if (Date.now() - openedAtRef.current < 150) {
+                return;
+            }
             const target = event.target as Node;
             if (triggerWrapRef.current?.contains(target) || panelRef.current?.contains(target)) {
                 return;
@@ -151,13 +163,11 @@ export const CreateMenu: React.FC<CreateMenuProps> = ({
         };
 
         if (isOpen) {
-            const timeoutId = setTimeout(() => {
-                document.addEventListener('mousedown', handleClickOutside);
-            }, 200);
+            openedAtRef.current = Date.now();
+            document.addEventListener('click', handleClickOutside, true);
 
             return () => {
-                clearTimeout(timeoutId);
-                document.removeEventListener('mousedown', handleClickOutside);
+                document.removeEventListener('click', handleClickOutside, true);
             };
         }
 

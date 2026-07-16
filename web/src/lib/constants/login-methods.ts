@@ -1,7 +1,11 @@
 /**
  * Product policy: expose only email magic-link sign-in in the login UI.
  * Test-auth mode keeps all methods for automated/manual QA.
+ *
+ * Telegram login/link is disabled (regulatory requirement).
  */
+export const TELEGRAM_LOGIN_ENABLED = false;
+
 export const EMAIL_ONLY_LOGIN = {
     enabledProviders: [] as string[],
     authnEnabled: false,
@@ -9,13 +13,13 @@ export const EMAIL_ONLY_LOGIN = {
     phoneEnabled: false,
 } as const;
 
-export function resolveLoginProviders(oauth?: { telegram?: boolean }): string[] {
-  return oauth?.telegram ? ['telegram'] : [];
+export function resolveLoginProviders(_oauth?: { telegram?: boolean }): string[] {
+  return [];
 }
 
 export function isTelegramLoginEnabled(
-  oauth: { telegram?: boolean } | undefined,
-  botUsername: string | null | undefined,
+  _oauth: { telegram?: boolean } | undefined,
+  _botUsername: string | null | undefined,
 ): boolean {
-  return Boolean(oauth?.telegram && botUsername?.trim());
+  return TELEGRAM_LOGIN_ENABLED;
 }

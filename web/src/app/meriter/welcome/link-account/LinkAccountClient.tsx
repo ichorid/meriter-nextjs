@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { BrandFormControl } from '@/components/ui';
 import { TelegramLoginWidget } from '@/components/TelegramLoginWidget';
-import { Loader2 } from 'lucide-react';
+import { TELEGRAM_LOGIN_ENABLED } from '@/lib/constants/login-methods';
 
 function hasProvider(linked: string[] | undefined, provider: string): boolean {
   return linked?.includes(provider) ?? false;
@@ -30,7 +30,7 @@ export function LinkAccountClient() {
   const hasEmail = hasProvider(linked, 'email');
   const hasTelegram = hasProvider(linked, 'telegram');
   const botUsername = runtimeConfig?.botUsername ?? null;
-  const telegramOAuthEnabled = runtimeConfig?.oauth?.telegram ?? false;
+  const telegramOAuthEnabled = TELEGRAM_LOGIN_ENABLED && (runtimeConfig?.oauth?.telegram ?? false);
 
   useEffect(() => {
     if (!isLoading && !user) {

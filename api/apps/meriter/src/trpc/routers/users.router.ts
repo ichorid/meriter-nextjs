@@ -90,6 +90,7 @@ export const usersRouter = router({
         name: c.name ?? 'Community',
         description: c.description ?? '',
         isProject: Boolean(c.isProject),
+        typeTag: c.typeTag,
       }));
     }),
 

@@ -42,15 +42,13 @@ describe('LoginForm', () => {
     expect(getByText('login.welcome')).toBeInTheDocument();
   });
 
-  it('shows Telegram widget when botUsername and telegram provider are enabled', () => {
+  it('does not render Telegram widget while Telegram login is disabled by policy', () => {
     const { container } = renderWithProviders(
       <LoginForm botUsername="meriter_dev1_bot" enabledProviders={['telegram']} emailEnabled />,
     );
 
-    expect(isTelegramLoginEnabled({ telegram: true }, 'meriter_dev1_bot')).toBe(true);
-    const widgetScript = container.querySelector('script[data-telegram-login]');
-    expect(widgetScript).toBeInTheDocument();
-    expect(widgetScript?.getAttribute('data-telegram-login')).toBe('meriter_dev1_bot');
+    expect(isTelegramLoginEnabled({ telegram: true }, 'meriter_dev1_bot')).toBe(false);
+    expect(container.querySelector('script[data-telegram-login]')).not.toBeInTheDocument();
   });
 
   it('does not render Telegram widget without botUsername', () => {
@@ -62,15 +60,12 @@ describe('LoginForm', () => {
     expect(container.querySelector('script[data-telegram-login]')).not.toBeInTheDocument();
   });
 
-  it('shows fallback message when Telegram widget script fails to load', async () => {
-    const { container, findByText } = renderWithProviders(
+  it('does not show Telegram fallback when widget is disabled by policy', async () => {
+    const { container, queryByText } = renderWithProviders(
       <LoginForm botUsername="meriter_dev1_bot" enabledProviders={['telegram']} emailEnabled />,
     );
 
-    const script = container.querySelector('script[data-telegram-login]');
-    expect(script).toBeInTheDocument();
-    script?.dispatchEvent(new Event('error'));
-
-    expect(await findByText('login.telegramWidgetUnavailable')).toBeInTheDocument();
+    expect(container.querySelector('script[data-telegram-login]')).not.toBeInTheDocument();
+    expect(queryByText('login.telegramWidgetUnavailable')).not.toBeInTheDocument();
   });
 });
