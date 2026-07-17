@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { BrandFormControl } from '@/components/ui';
 import { TelegramLoginWidget } from '@/components/TelegramLoginWidget';
+import { Check, X } from 'lucide-react';
 import { TELEGRAM_LOGIN_ENABLED } from '@/lib/constants/login-methods';
 
 export function LinkedProvidersSection() {

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/shadcn/button';
 import { Input } from '@/components/ui/shadcn/input';
 import { BrandFormControl } from '@/components/ui';
 import { TelegramLoginWidget } from '@/components/TelegramLoginWidget';
+import { Loader2 } from 'lucide-react';
 import { TELEGRAM_LOGIN_ENABLED } from '@/lib/constants/login-methods';
 
 function hasProvider(linked: string[] | undefined, provider: string): boolean {
