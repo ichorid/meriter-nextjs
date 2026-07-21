@@ -38,6 +38,14 @@ export function resolveMeritHistoryLineDescription(row: RowSlice): MeritHistoryL
     return { kind: 'i18n', messageKey: 'welcome_merits' };
   }
 
+  if (rt === 'document_variant_apply') {
+    const incoming = row.type === 'deposit';
+    return {
+      kind: 'i18n',
+      messageKey: incoming ? 'document_variant_apply' : 'document_variant_apply_debit',
+    };
+  }
+
   if (rt === 'project_topup') {
     const donation = desc.includes('donation');
     return {

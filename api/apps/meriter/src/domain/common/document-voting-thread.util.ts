@@ -103,3 +103,43 @@ export function buildSegmentsFromDocument(
   }
   return buildBlockPlainSegments(rows).segments;
 }
+
+type ThreadTimingFields = {
+  proposalsCloseAt?: Date;
+  createdAt?: Date;
+};
+
+export function resolveProposalsCloseAt(
+  thread: ThreadTimingFields,
+  votingDurationHours: number,
+): Date {
+  if (thread.proposalsCloseAt) {
+    return thread.proposalsCloseAt instanceof Date
+      ? thread.proposalsCloseAt
+      : new Date(thread.proposalsCloseAt);
+  }
+  const createdAt = thread.createdAt ? new Date(thread.createdAt) : new Date();
+  return new Date(createdAt.getTime() + votingDurationHours * 3600 * 1000);
+}
+
+export function isProposalsWindowOpen(
+  thread: ThreadTimingFields,
+  votingDurationHours: number,
+  now: Date = new Date(),
+): boolean {
+  return now.getTime() < resolveProposalsCloseAt(thread, votingDurationHours).getTime();
+}
+
+export function isThreadWaveOpen(
+  thread: { waveEndsAt: Date; status?: 'open' | 'closed' },
+  now: Date = new Date(),
+): boolean {
+  if (thread.status === 'closed') {
+    return false;
+  }
+  const endsAt =
+    thread.waveEndsAt instanceof Date
+      ? thread.waveEndsAt.getTime()
+      : new Date(thread.waveEndsAt).getTime();
+  return now.getTime() <= endsAt;
+}

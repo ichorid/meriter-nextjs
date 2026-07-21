@@ -15,6 +15,7 @@ import {
   canAffordVariantProposal,
   computeVariantProposalFeeSplit,
   isEmptyTipTapHtml,
+  mapDocumentProposeErrorMessage,
 } from '@/features/documents/lib/document-canvas-shared';
 import {
   referencesForPropose,
@@ -74,6 +75,7 @@ export function DocumentProposeComposer({
     addToast,
   } = focus;
 
+  const tGdocs = useTranslations('pages.documents.gdocs');
   const proposeMutation = trpc.documentVariants.propose.useMutation({
     onSuccess: async (result) => {
       proposalBodyRef.current = '';
@@ -83,7 +85,8 @@ export function DocumentProposeComposer({
       await refetchDocumentProposalCaches(utils, documentId, result.variant.blockId);
       onSuccess?.();
     },
-    onError: (err) => addToast(err.message, 'error'),
+    onError: (err) =>
+      addToast(mapDocumentProposeErrorMessage(err.message, tGdocs), 'error'),
   });
 
   const canAfford = useMemo(

@@ -31,6 +31,10 @@ export class DocumentVotingThreadSchemaClass {
   @Prop({ required: true })
   waveEndsAt!: Date;
 
+  /** Fixed deadline for new proposals in this thread (never extended on merge). */
+  @Prop()
+  proposalsCloseAt?: Date;
+
   @Prop()
   createdAt?: Date;
 

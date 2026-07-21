@@ -7,7 +7,7 @@ import { DocumentBlockProposalsPanel } from '@/features/documents/components/Doc
 import { DocumentProposeComposer } from '@/features/documents/components/DocumentProposeComposer';
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
 import { documentLiveQueryOptions } from '@/features/documents/hooks/useDocumentLiveSync';
-import { type DocBlock } from '@/features/documents/lib/document-canvas-shared';
+import { type DocBlock, parseIsoDateMs } from '@/features/documents/lib/document-canvas-shared';
 import { collapseRailThreadsByBlock } from '@/features/documents/lib/document-proposal-rail-threads';
 import { trpc } from '@/lib/trpc/client';
 import { cn } from '@/lib/utils';
@@ -21,9 +21,32 @@ export interface DocumentProposalRailContentProps {
 function blockWaveMeta(
   block: DocBlock | null | undefined,
   votingDurationHours: number,
-): { waveActive: boolean; waveEndsAtMs: number | null } {
+  thread?: {
+    waveOpen?: boolean;
+    waveEndsAt?: string | null;
+    proposalsCloseAt?: string | null;
+    proposalsOpen?: boolean;
+  },
+): {
+  waveActive: boolean;
+  waveEndsAtMs: number | null;
+  proposalsCloseAtMs: number | null;
+  proposalsOpen: boolean;
+} {
+  const threadWaveEndsAtMs = parseIsoDateMs(thread?.waveEndsAt);
+  const proposalsCloseAtMs = parseIsoDateMs(thread?.proposalsCloseAt);
+  if (threadWaveEndsAtMs != null) {
+    return {
+      waveActive: thread?.waveOpen ?? threadWaveEndsAtMs > Date.now(),
+      waveEndsAtMs: threadWaveEndsAtMs,
+      proposalsCloseAtMs,
+      proposalsOpen: thread?.proposalsOpen ?? (proposalsCloseAtMs != null
+        ? proposalsCloseAtMs > Date.now()
+        : thread?.waveOpen ?? false),
+    };
+  }
   if (!block) {
-    return { waveActive: false, waveEndsAtMs: null };
+    return { waveActive: false, waveEndsAtMs: null, proposalsCloseAtMs: null, proposalsOpen: true };
   }
   const waveStartMs = block.currentWaveStartedAt
     ? new Date(block.currentWaveStartedAt).getTime()
@@ -33,7 +56,12 @@ function blockWaveMeta(
       ? waveStartMs + votingDurationHours * 3_600_000
       : null;
   const waveActive = waveEndsAtMs != null && waveEndsAtMs > Date.now();
-  return { waveActive, waveEndsAtMs };
+  return {
+    waveActive,
+    waveEndsAtMs,
+    proposalsCloseAtMs: waveEndsAtMs,
+    proposalsOpen: waveActive,
+  };
 }
 
 /** Shared body for desktop proposal rail and mobile proposals sheet. */
@@ -94,7 +122,11 @@ export function DocumentProposalRailContent({
         if (!block) {
           return null;
         }
-        const { waveActive, waveEndsAtMs } = blockWaveMeta(block, focus.votingDurationHours);
+        const { waveActive, waveEndsAtMs, proposalsCloseAtMs, proposalsOpen } = blockWaveMeta(
+          block,
+          focus.votingDurationHours,
+          thread,
+        );
         const showThreadContext = railThreads.length > 1 && Boolean(thread.officialExcerpt?.trim());
 
         return (
@@ -124,6 +156,8 @@ export function DocumentProposalRailContent({
               votingDurationHours={focus.votingDurationHours}
               waveActive={waveActive}
               waveEndsAtMs={waveEndsAtMs}
+              proposalsCloseAtMs={proposalsCloseAtMs}
+              proposalsOpen={proposalsOpen}
               userId={focus.userId}
               addToast={focus.addToast}
               t={focus.t}

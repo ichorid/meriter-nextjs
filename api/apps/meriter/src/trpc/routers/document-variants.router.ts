@@ -8,6 +8,11 @@ import { TRPCError } from '@trpc/server';
 import { router, protectedProcedure } from '../trpc';
 import { buildOfficialBlockVoteTargetId } from '../../domain/common/document-official-vote.util';
 import { filterDocumentBlockPanelVotes } from '../../domain/common/document-block-panel-votes.util';
+import {
+  isProposalsWindowOpen,
+  isThreadWaveOpen,
+  resolveProposalsCloseAt,
+} from '../../domain/common/document-voting-thread.util';
 
 const ReferenceSchema = z.object({
   id: z.string().optional(),
@@ -63,9 +68,14 @@ export const documentVariantsRouter = router({
           blockId: string;
           officialExcerpt: string;
           waveOpen: boolean;
+          waveEndsAt: string | null;
+          proposalsCloseAt: string | null;
+          proposalsOpen: boolean;
           variants: typeof active;
         }
       >();
+
+      const votingDurationHours = doc.votingDurationHours ?? 48;
 
       for (const variant of active) {
         const threadKey = variant.votingThreadId ?? variant.blockId;
@@ -83,13 +93,21 @@ export const documentVariantsRouter = router({
             ? openThreads.find((t) => t.id === variant.votingThreadId)
             : undefined;
           const waveOpen = threadMeta
-            ? new Date(threadMeta.waveEndsAt).getTime() > Date.now()
+            ? isThreadWaveOpen(threadMeta)
             : ctx.documentService.isDocumentBlockVotingOpen(doc, variant.blockId);
+          const proposalsCloseAt = threadMeta
+            ? resolveProposalsCloseAt(threadMeta, votingDurationHours)
+            : null;
           threads.set(threadKey, {
             threadId: threadKey,
             blockId: variant.blockId,
             officialExcerpt: excerpt,
             waveOpen,
+            waveEndsAt: threadMeta?.waveEndsAt?.toISOString?.() ?? null,
+            proposalsCloseAt: proposalsCloseAt?.toISOString?.() ?? null,
+            proposalsOpen: threadMeta
+              ? isProposalsWindowOpen(threadMeta, votingDurationHours)
+              : waveOpen,
             variants: [variant],
           });
         }

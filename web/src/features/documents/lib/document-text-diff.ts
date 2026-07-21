@@ -31,6 +31,13 @@ function tokenizeWords(text: string): string[] {
   return text.split(/\s+/).filter(Boolean);
 }
 
+export function buildPlainTextWordDiff(
+  official: string,
+  variant: string,
+): RevisionToken[] | null {
+  return diffWordTokens(official, variant);
+}
+
 function diffWordTokens(official: string, variant: string): RevisionToken[] | null {
   if (!variant.trim()) {
     if (!official.trim()) return null;

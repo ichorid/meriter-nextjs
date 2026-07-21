@@ -589,6 +589,43 @@ export class DocumentService {
     return Date.now() <= endMs;
   }
 
+  /** Thread-aware wave open check; falls back to block anchor timer when no open thread applies. */
+  async isDocumentBlockWaveOpen(
+    doc: MeriterDocumentSchemaClass,
+    blockId: string,
+  ): Promise<boolean> {
+    const openThreads = await this.documentPersistence.findOpenVotingThreads(doc.id);
+    const now = Date.now();
+    for (const thread of openThreads) {
+      const affectsBlock =
+        thread.anchorBlockId === blockId ||
+        thread.ranges.some((range) => range.blockId === blockId);
+      if (!affectsBlock) {
+        continue;
+      }
+      if (new Date(thread.waveEndsAt).getTime() > now) {
+        return true;
+      }
+    }
+    return this.isDocumentBlockVotingOpen(doc, blockId);
+  }
+
+  async isDocumentVariantVotingOpen(
+    doc: MeriterDocumentSchemaClass,
+    variant: { blockId: string; votingThreadId?: string | null },
+  ): Promise<boolean> {
+    if (variant.votingThreadId) {
+      const thread = await this.documentPersistence.findVotingThreadById(
+        variant.votingThreadId,
+      );
+      if (thread?.status === 'open') {
+        return new Date(thread.waveEndsAt).getTime() > Date.now();
+      }
+      return false;
+    }
+    return this.isDocumentBlockWaveOpen(doc, variant.blockId);
+  }
+
   /** Append §19 editHistory entry before mutating `officialContent`. */
   appendBlockEditHistory(
     block: Record<string, unknown>,

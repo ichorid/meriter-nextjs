@@ -142,6 +142,8 @@ export interface DocumentBlockVariantRecord {
   rating: number;
   appliedAt?: Date;
   appliedBy?: string;
+  payoutAmount?: number;
+  payoutAt?: Date;
   costPaid: number;
   deleted: boolean;
   deletedAt?: Date;
@@ -176,6 +178,7 @@ export type DocumentVotingThreadRecord = {
   anchorBlockId: string;
   ranges: Array<{ blockId: string; rangeStart: number; rangeEnd: number }>;
   waveEndsAt: Date;
+  proposalsCloseAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 };
@@ -270,6 +273,8 @@ export interface DocumentPersistencePort {
 
   findOpenVotingThreads(documentId: string): Promise<DocumentVotingThreadRecord[]>;
 
+  findVotingThreadById(threadId: string): Promise<DocumentVotingThreadRecord | null>;
+
   insertVotingThread(
     input: InsertDocumentVotingThreadInput,
   ): Promise<DocumentVotingThreadRecord>;
@@ -311,6 +316,13 @@ export interface DocumentPersistencePort {
     appliedBy: string,
     session?: DocumentPersistenceSession,
   ): Promise<void>;
+
+  recordVariantApplyPayout(
+    variantId: string,
+    payoutAmount: number,
+    payoutAt: Date,
+    session?: DocumentPersistenceSession,
+  ): Promise<boolean>;
 
   softDeleteVariant(variantId: string): Promise<void>;
 

@@ -1,13 +1,10 @@
 import { expandDeletionRangeStart } from '@/features/documents/lib/document-plain-range';
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
 import {
-  DOC_REVISION_DELETE_CLASS,
-  DOC_REVISION_INSERT_CLASS,
-} from '@/features/documents/lib/document-revision-styles';
-import {
   resolveVariantChangeBounds,
   type VariantPreviewInput,
 } from '@/features/documents/lib/document-variant-preview';
+import { buildWordLevelRevisionReplacementHtml } from '@/features/documents/lib/document-word-revision-markup';
 
 function escapeHtml(text: string): string {
   return text
@@ -176,14 +173,8 @@ export function mergeRangeIntoBlockHtmlWithRevisionMarks(
     normalized.rangeEnd,
   );
   const deleted = plain.slice(rs, re);
-  const delPart = deleted
-    ? `<del class="${DOC_REVISION_DELETE_CLASS}">${escapeHtml(deleted).replace(/\n/g, '<br>')}</del>`
-    : '';
-  const insPart = normalized.proposedText.trim()
-    ? `<ins class="${DOC_REVISION_INSERT_CLASS}">${normalized.proposedText}</ins>`
-    : '';
-  const replacementHtml =
-    delPart && insPart ? `${delPart}${insPart}` : insPart || delPart;
+  const insertedPlain = blockHtmlToPlainText(normalized.proposedText);
+  const replacementHtml = buildWordLevelRevisionReplacementHtml(deleted, insertedPlain);
   const mergedPlain =
     plain.slice(0, rs) + blockHtmlToPlainText(normalized.proposedText) + plain.slice(re);
   if (!officialHtml?.trim()) {

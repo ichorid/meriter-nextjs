@@ -92,6 +92,8 @@ export interface DocumentBlockProposalsPanelProps {
   votingDurationHours: number;
   waveActive: boolean;
   waveEndsAtMs: number | null;
+  proposalsCloseAtMs?: number | null;
+  proposalsOpen?: boolean;
   userId: string;
   addToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
   t: DocTranslate;
@@ -113,6 +115,8 @@ export function DocumentBlockProposalsPanel({
   community,
   waveActive,
   waveEndsAtMs,
+  proposalsCloseAtMs = null,
+  proposalsOpen = true,
   userId,
   addToast,
   t,
@@ -172,6 +176,11 @@ export function DocumentBlockProposalsPanel({
 
   const waveCountdown =
     waveActiveEffective && waveEndsAtMs != null ? formatWaveRemaining(waveEndsAtMs) : '';
+  const proposalsCountdown =
+    proposalsCloseAtMs != null && proposalsOpen
+      ? formatWaveRemaining(proposalsCloseAtMs)
+      : '';
+  const proposalsClosed = proposalsOpen === false;
 
   const reasonKey = officialReasonLabelKey(block.officialContentReason);
   const communityId = community?.id ?? '';
@@ -417,33 +426,47 @@ export function DocumentBlockProposalsPanel({
 
   return (
     <div className="mt-4 space-y-3 rounded-xl border border-base-300/40 bg-base-200/30 p-3">
-      {waveActiveEffective ? (
-        <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-xs font-medium text-primary">{tCanvas('votingOpen')}</p>
-              {waveCountdown ? (
-                <p className="mt-0.5 text-[11px] text-base-content/65">
-                  {t('waveEndsIn', { time: waveCountdown })}
+      {waveActiveEffective || proposalsClosed ? (
+        <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 space-y-2">
+          {waveActiveEffective ? (
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs font-medium text-primary">{tCanvas('votingOpen')}</p>
+                {waveCountdown ? (
+                  <p className="mt-0.5 text-[11px] text-base-content/65">
+                    {t('waveEndsIn', { time: waveCountdown })}
+                  </p>
+                ) : null}
+                <p className="mt-0.5 text-[10px] text-base-content/50">
+                  {tGdocs('waveExtendsHint')}
                 </p>
+              </div>
+              {canManageDocument ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-7 shrink-0 rounded-lg px-2 text-[11px]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    dismissProposalsSheet();
+                    focus?.openAdminDialog({ kind: 'closeVoting', blockId: block.id });
+                  }}
+                >
+                  {t('closeVotingNow')}
+                </Button>
               ) : null}
             </div>
-            {canManageDocument ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="h-7 shrink-0 rounded-lg px-2 text-[11px]"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  dismissProposalsSheet();
-                  focus?.openAdminDialog({ kind: 'closeVoting', blockId: block.id });
-                }}
-              >
-                {t('closeVotingNow')}
-              </Button>
-            ) : null}
-          </div>
+          ) : null}
+          {proposalsClosed ? (
+            <Badge variant="secondary" className="text-[10px] font-medium">
+              {tGdocs('proposalsWindowClosedBadge')}
+            </Badge>
+          ) : proposalsCountdown ? (
+            <p className="text-[11px] text-base-content/65">
+              {tGdocs('proposalsAcceptUntil', { time: proposalsCountdown })}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

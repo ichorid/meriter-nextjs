@@ -3,6 +3,9 @@ export type DocumentProposalRailThread<T extends { id: string } = { id: string }
   blockId: string;
   officialExcerpt: string;
   waveOpen: boolean;
+  waveEndsAt?: string | null;
+  proposalsCloseAt?: string | null;
+  proposalsOpen?: boolean;
   variants: T[];
 };
 
@@ -33,6 +36,15 @@ export function collapseRailThreadsByBlock<T extends { id: string }>(
       }
     }
     existing.waveOpen = existing.waveOpen || thread.waveOpen;
+    existing.proposalsOpen = (existing.proposalsOpen ?? false) || (thread.proposalsOpen ?? false);
+    const existingWaveMs = existing.waveEndsAt ? Date.parse(existing.waveEndsAt) : NaN;
+    const threadWaveMs = thread.waveEndsAt ? Date.parse(thread.waveEndsAt) : NaN;
+    if (!Number.isNaN(threadWaveMs) && (Number.isNaN(existingWaveMs) || threadWaveMs > existingWaveMs)) {
+      existing.waveEndsAt = thread.waveEndsAt;
+    }
+    if (!existing.proposalsCloseAt && thread.proposalsCloseAt) {
+      existing.proposalsCloseAt = thread.proposalsCloseAt;
+    }
     if (!existing.officialExcerpt.trim() && thread.officialExcerpt.trim()) {
       existing.officialExcerpt = thread.officialExcerpt;
     }

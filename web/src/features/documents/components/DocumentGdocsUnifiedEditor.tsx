@@ -46,6 +46,7 @@ import {
   canAffordVariantProposal,
   computeVariantProposalFeeSplit,
   isEmptyTipTapHtml,
+  mapDocumentProposeErrorMessage,
   MAX_VARIANT_HTML_LENGTH,
 } from '@/features/documents/lib/document-canvas-shared';
 import { useDocumentCanvasFocusRequired } from '@/features/documents/context/DocumentCanvasFocusContext';
@@ -464,7 +465,8 @@ export function DocumentGdocsUnifiedEditor({
       }
       onSynced?.();
     },
-    onError: (err) => focus.addToast(err.message, 'error'),
+    onError: (err) =>
+      focus.addToast(mapDocumentProposeErrorMessage(err.message, tGdocs), 'error'),
   });
 
   const lockBlockMutation = trpc.documents.updateBlock.useMutation({

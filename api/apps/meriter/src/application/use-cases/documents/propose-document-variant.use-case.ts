@@ -53,6 +53,7 @@ import {
   blockIdForGlobalRange,
   buildSegmentsFromDocument,
   globalRangesOverlap,
+  isProposalsWindowOpen,
   proposalGlobalRanges,
   variantGlobalRanges,
 } from '../../../domain/common/document-voting-thread.util';
@@ -176,12 +177,10 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     const waveAnchorId = threadResolution.anchorBlockId;
     const blockAfter = this.deps.documentService.findBlock(doc, waveAnchorId);
     const needsWaveStart = !blockAfter?.currentWaveStartedAt;
-    if (needsWaveStart || threadResolution.extendWave) {
+    if (needsWaveStart) {
       await this.deps.documentService.updateDocumentBlock(doc.id, waveAnchorId, (b) => {
         b.currentWaveStartedAt = now;
-        if (needsWaveStart) {
-          b.officialRating = 0;
-        }
+        b.officialRating = 0;
       });
     }
 
@@ -316,6 +315,9 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
       const threadId = open.votingThreadId ?? open.id;
       const openThreads = await this.deps.documentPersistence.findOpenVotingThreads(doc.id);
       const thread = openThreads.find((t) => t.id === threadId);
+      if (thread && !isProposalsWindowOpen(thread, hours, now)) {
+        throw new BadRequestException('PROPOSALS_WINDOW_CLOSED');
+      }
       const waveEndsAt = new Date(
         Math.max(
           (thread?.waveEndsAt ?? now).getTime(),
@@ -359,6 +361,9 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
         rangeEnd: r.rangeEnd,
       }));
       if (globalRangesOverlap(proposalRanges, threadRanges)) {
+        if (!isProposalsWindowOpen(thread, hours, now)) {
+          throw new BadRequestException('PROPOSALS_WINDOW_CLOSED');
+        }
         const waveEndsAt = new Date(
           Math.max(thread.waveEndsAt.getTime(), now.getTime() + extendMs),
         );
@@ -387,6 +392,7 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
     }
 
     const threadId = uid();
+    const proposalsCloseAt = new Date(now.getTime() + extendMs);
     await this.deps.documentPersistence.insertVotingThread({
       id: threadId,
       documentId: doc.id,
@@ -397,7 +403,8 @@ export class ProposeDocumentVariantUseCase implements ProposeDocumentVariantPort
         rangeStart: r.rangeStart,
         rangeEnd: r.rangeEnd,
       })),
-      waveEndsAt: new Date(now.getTime() + extendMs),
+      waveEndsAt: proposalsCloseAt,
+      proposalsCloseAt,
     });
 
     return {

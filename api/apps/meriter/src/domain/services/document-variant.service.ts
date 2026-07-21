@@ -30,6 +30,8 @@ import { DocumentLiveUpdatesService } from './document-live-updates.service';
 import { DocumentService } from './document.service';
 import { NotificationService } from './notification.service';
 import { PermissionService } from './permission.service';
+import { WalletService } from './wallet.service';
+import { WalletContextResolverService } from './wallet-context-resolver.service';
 import { MERITER_DOCUMENT_AUTO_APPLY_USER_ID } from '../common/constants/meriter-actors.constant';
 import { sanitizeDocumentHtml } from '../../common/utils/sanitize-document-html';
 import { blockHtmlToPlainText } from '../common/document-plain-text.util';
@@ -79,6 +81,8 @@ export class DocumentVariantService {
     @Inject(PROPOSE_DOCUMENT_VARIANT_PORT)
     private readonly proposeDocumentVariantUseCase: ProposeDocumentVariantPort,
     private readonly documentLiveUpdates: DocumentLiveUpdatesService,
+    private readonly walletService: WalletService,
+    private readonly walletContextResolver: WalletContextResolverService,
   ) {}
 
   async listByBlock(documentId: string, blockId: string): Promise<DocumentBlockVariantSchemaClass[]> {
@@ -863,6 +867,7 @@ export class DocumentVariantService {
     }
 
     await this.documentPersistence.markVariantApplied(v.id, now, actorUserId);
+    await this.settleVariantApplyPayout(v, workingDoc);
     await this.documentService.mirrorOfficialTextToCommunityIfApplicable(workingDoc.id);
 
     const community = await this.communityService.getCommunity(workingDoc.communityId);
@@ -1042,6 +1047,7 @@ export class DocumentVariantService {
     );
 
     await this.documentPersistence.markVariantApplied(v.id, now, actorUserId);
+    await this.settleVariantApplyPayout(v, doc);
 
     const updatedDoc = await this.documentService.getById(doc.id);
     const updatedBlock = updatedDoc
@@ -1385,8 +1391,91 @@ export class DocumentVariantService {
     });
   }
 
+  private async settleVariantApplyPayout(
+    v: DocumentBlockVariantSchemaClass,
+    doc: MeriterDocumentSchemaClass,
+  ): Promise<void> {
+    const fresh = await this.documentPersistence.findVariantById(v.id);
+    if (!fresh?.proposedBy || fresh.payoutAt != null) {
+      return;
+    }
+
+    const rating = fresh.rating ?? 0;
+    const payoutAt = new Date();
+
+    if (rating === 0) {
+      await this.documentPersistence.recordVariantApplyPayout(v.id, 0, payoutAt);
+      return;
+    }
+
+    const community = await this.communityService.getCommunity(doc.communityId);
+    if (!community) {
+      this.logger.warn(
+        `Skipping variant apply payout ${v.id}: community ${doc.communityId} not found`,
+      );
+      return;
+    }
+
+    const walletCommunityId =
+      await this.walletContextResolver.resolvePersonalWalletCommunityId(community, 'voting');
+    const currency = community.settings?.currencyNames ?? {
+      singular: 'merit',
+      plural: 'merits',
+      genitive: 'merits',
+    };
+    const absAmount = Math.abs(rating);
+
+    try {
+      if (rating > 0) {
+        await this.walletService.addTransaction(
+          fresh.proposedBy,
+          walletCommunityId,
+          'credit',
+          absAmount,
+          'personal',
+          'document_variant_apply',
+          v.id,
+          currency,
+          `Document variant apply payout ${v.id}`,
+        );
+      } else {
+        await this.walletService.addTransaction(
+          fresh.proposedBy,
+          walletCommunityId,
+          'debit',
+          absAmount,
+          'personal',
+          'document_variant_apply',
+          v.id,
+          currency,
+          `Document variant apply debit ${v.id}`,
+          undefined,
+          { allowNegativeBalance: true },
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `Failed wallet payout for applied variant ${v.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return;
+    }
+
+    const recorded = await this.documentPersistence.recordVariantApplyPayout(
+      v.id,
+      rating,
+      payoutAt,
+    );
+    if (!recorded) {
+      this.logger.warn(
+        `Variant apply payout recorded in wallet but variant ${v.id} already has payoutAt`,
+      );
+    }
+  }
+
   private async notifyVariantApplied(
-    variant: { id: string; proposedBy: string; blockId: string },
+    variant: { id: string; proposedBy: string; blockId: string; rating?: number },
     doc: MeriterDocumentSchemaClass,
     community: Community,
   ): Promise<void> {
@@ -1394,13 +1483,23 @@ export class DocumentVariantService {
       return;
     }
     const title = doc.title?.trim() || 'Document';
+    const rating = variant.rating ?? 0;
+    const payoutSuffix =
+      rating > 0
+        ? ` You received ${rating} merits.`
+        : rating < 0
+          ? ` ${Math.abs(rating)} merits were deducted from your wallet.`
+          : '';
     await this.notificationService.createNotification({
       userId: variant.proposedBy,
       type: 'document_variant_applied',
       source: 'system',
-      metadata: this.buildDocumentNotificationMetadata(doc, community, variant.blockId),
+      metadata: {
+        ...this.buildDocumentNotificationMetadata(doc, community, variant.blockId),
+        payoutAmount: rating,
+      },
       title: 'Your variant is now official',
-      message: `Your proposed text was applied as the official text of "${title}".`,
+      message: `Your proposed text was applied as the official text of "${title}".${payoutSuffix}`,
     });
   }
 

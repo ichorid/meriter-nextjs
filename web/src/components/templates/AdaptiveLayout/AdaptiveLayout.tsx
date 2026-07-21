@@ -84,6 +84,8 @@ export interface AdaptiveLayoutProps {
   stickyHeader?: React.ReactNode;
   /** Custom tabs for mobile bottom navigation */
   bottomNavTabs?: any[];
+  /** Replaces default community sidebar on desktop (lg+). */
+  leftSidebarOverride?: React.ReactNode;
 }
 
 /**
@@ -105,6 +107,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   setActiveWithdrawPost = () => { },
   stickyHeader,
   bottomNavTabs,
+  leftSidebarOverride,
 }) => {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -185,7 +188,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       <div className="appBody">
         {/* Left Nav */}
         <aside className="leftNav hidden lg:block">
-          <VerticalSidebar isExpanded={true} />
+          {leftSidebarOverride ?? <VerticalSidebar isExpanded={true} />}
         </aside>
 
         {/* Main scroll container */}

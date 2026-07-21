@@ -27,6 +27,7 @@ const REFERENCE_TYPES = {
     'vote',
     'comment_vote',
     'document_variant_vote',
+    'document_variant_apply',
     'project_appreciation',
     'telegram_vote_mirror',
   ] as const,

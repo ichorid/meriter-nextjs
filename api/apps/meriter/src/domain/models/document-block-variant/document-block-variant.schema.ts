@@ -151,6 +151,13 @@ export class DocumentBlockVariantSchemaClass {
   @Prop()
   appliedBy?: string;
 
+  /** Net rating credited/debited to proposer on apply (audit + idempotency guard). */
+  @Prop()
+  payoutAmount?: number;
+
+  @Prop()
+  payoutAt?: Date;
+
   @Prop({ default: 0 })
   costPaid!: number;
 

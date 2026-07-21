@@ -325,6 +325,13 @@ export class DocumentPersistenceAdapter implements DocumentPersistencePort {
     return docs.map((doc) => mapDocumentBlockVariantToRecord(doc as DocumentBlockVariantRecord));
   }
 
+  async findVotingThreadById(
+    threadId: string,
+  ): Promise<DocumentVotingThreadRecord | null> {
+    const doc = await this.votingThreadModel.findOne({ id: threadId }).lean().exec();
+    return doc ? (doc as DocumentVotingThreadRecord) : null;
+  }
+
   async findOpenVotingThreads(
     documentId: string,
   ): Promise<DocumentVotingThreadRecord[]> {
@@ -429,6 +436,26 @@ export class DocumentPersistenceAdapter implements DocumentPersistencePort {
       },
       sessionOpts(session),
     );
+  }
+
+  async recordVariantApplyPayout(
+    variantId: string,
+    payoutAmount: number,
+    payoutAt: Date,
+    session?: DocumentPersistenceSession,
+  ): Promise<boolean> {
+    const result = await this.variantModel.updateOne(
+      { id: variantId, payoutAt: { $exists: false } },
+      {
+        $set: {
+          payoutAmount,
+          payoutAt,
+          updatedAt: new Date(),
+        },
+      },
+      sessionOpts(session),
+    );
+    return result.modifiedCount > 0;
   }
 
   async softDeleteVariant(variantId: string): Promise<void> {

@@ -77,6 +77,8 @@ describe('DocumentVariantService auto-apply stale handling', () => {
       { finalizeBlock: jest.fn(), finalizeThread: jest.fn(), execute: jest.fn() } as never,
       { execute: jest.fn() } as never,
       { publish: jest.fn() } as never,
+      { addTransaction: jest.fn().mockResolvedValue({}) } as never,
+      { resolvePersonalWalletCommunityId: jest.fn().mockResolvedValue('community-1') } as never,
     );
   });
 

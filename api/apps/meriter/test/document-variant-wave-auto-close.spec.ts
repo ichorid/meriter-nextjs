@@ -90,6 +90,8 @@ describe('DocumentVariantService wave auto-close', () => {
       { finalizeBlock: jest.fn(), execute: jest.fn() } as never,
       { execute: jest.fn() } as never,
       { publish: jest.fn() } as never,
+      { addTransaction: jest.fn().mockResolvedValue({}) } as never,
+      { resolvePersonalWalletCommunityId: jest.fn().mockResolvedValue('community-1') } as never,
     );
   });
 

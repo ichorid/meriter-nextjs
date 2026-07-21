@@ -26,7 +26,7 @@ export function DocumentCanvasMobileSheet() {
   const canProposeDocumentVariants = focus?.canProposeDocumentVariants ?? false;
   const canViewBlockHistory = Boolean(focus?.userId);
   const canProposeVariant =
-    canProposeDocumentVariants && (!proposalsLocked || canManageDocument);
+    canProposeDocumentVariants && canProposeInThread && (!proposalsLocked || canManageDocument);
 
   const sheetNeedsVariants =
     isMobile &&
@@ -39,18 +39,23 @@ export function DocumentCanvasMobileSheet() {
     { documentId, blockId },
     { enabled: sheetNeedsVariants },
   );
+  const threadsQuery = trpc.documentVariants.listByDocument.useQuery(
+    { documentId },
+    { enabled: sheetNeedsVariants && !!documentId },
+  );
   const variants = variantsQuery.data ?? [];
-  const waveStartMs = block?.currentWaveStartedAt
-    ? new Date(block.currentWaveStartedAt).getTime()
-    : null;
-  const waveEndsAtMs =
-    waveStartMs != null && !Number.isNaN(waveStartMs)
-      ? waveStartMs + votingDurationHours * 3_600_000
+  const threadForBlock = threadsQuery.data?.threads.find((thread) => thread.blockId === blockId);
+  const waveEndsAtMs = threadForBlock?.waveEndsAt
+    ? Date.parse(threadForBlock.waveEndsAt)
+    : block?.currentWaveStartedAt
+      ? new Date(block.currentWaveStartedAt).getTime() + votingDurationHours * 3_600_000
       : null;
+  const proposalsOpen = threadForBlock?.proposalsOpen ?? true;
   const waveActive =
     waveEndsAtMs != null &&
     waveEndsAtMs > Date.now() &&
     variants.some((v) => v.status === 'open');
+  const canProposeInThread = proposalsOpen && !proposalsLocked;
 
   const hasBlockMenuContent =
     mobileSheet.kind === 'blockMenu' &&

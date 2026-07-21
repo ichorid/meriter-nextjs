@@ -127,6 +127,7 @@ export class WalletService {
     currency: { singular: string; plural: string; genitive: string },
     description?: string,
     session?: WalletPersistenceSession,
+    options?: { allowNegativeBalance?: boolean },
   ): Promise<Wallet> {
     let wallet = await this.getWallet(userId, communityId);
     const isNewWallet = !wallet;
@@ -141,6 +142,8 @@ export class WalletService {
 
     if (type === 'credit') {
       wallet.add(amount);
+    } else if (options?.allowNegativeBalance) {
+      wallet.deductAllowNegative(amount);
     } else {
       wallet.deduct(amount);
     }

@@ -1,13 +1,33 @@
 'use client';
 
+import { Fragment } from 'react';
 import { DocumentRichContent } from '@/features/documents/components/DocumentRichContent';
 import type { VariantDisplayPreview } from '@/features/documents/lib/document-variant-preview';
+import type { RevisionToken } from '@/features/documents/lib/document-text-diff';
 import { cn } from '@/lib/utils';
 
 const insertClass =
   'rounded-sm bg-primary/25 px-0.5 font-semibold text-base-content no-underline ring-1 ring-inset ring-primary/40';
 const deleteClass =
   'rounded-sm bg-error/30 px-1 font-medium text-error line-through decoration-error decoration-2';
+
+function InlineRevisionTokens({ tokens }: { tokens: RevisionToken[] }) {
+  return (
+    <p className="whitespace-pre-wrap break-words leading-relaxed">
+      {tokens.map((token, index) => (
+        <Fragment key={`${index}-${token.kind}-${token.value}`}>
+          {token.kind === 'same' ? (
+            <span className="text-base-content/50">{token.value}</span>
+          ) : token.kind === 'delete' ? (
+            <del className={deleteClass}>{token.value}</del>
+          ) : (
+            <ins className={insertClass}>{token.value}</ins>
+          )}{' '}
+        </Fragment>
+      ))}
+    </p>
+  );
+}
 
 export interface DocumentVariantContextPreviewProps {
   preview: VariantDisplayPreview;
@@ -23,6 +43,9 @@ export function DocumentVariantContextPreview({
   return (
     <div className={cn('space-y-1 text-sm leading-relaxed', className)}>
       {preview.segments.map((segment, index) => {
+        if (segment.kind === 'inline') {
+          return <InlineRevisionTokens key={`inline-${index}`} tokens={segment.tokens} />;
+        }
         if (segment.kind === 'context') {
           return (
             <p

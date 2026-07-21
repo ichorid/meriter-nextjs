@@ -1,3 +1,4 @@
+import type { MeriterBlockType } from '@/features/documents/types/document-block';
 import { mergeRangeIntoBlockHtmlWithRevisionMarks } from '@/features/documents/lib/document-block-merge';
 import { buildJoinedPlainTextRevisionHtml } from '@/features/documents/lib/document-joined-plain-revision-html';
 import {
@@ -87,6 +88,61 @@ function renderDeletedBlock(officialHtml: string): string {
   return mergeRangeIntoBlockHtmlWithRevisionMarks(officialHtml, 0, plain.length, '');
 }
 
+function renderModifiedBlockPair(
+  officialHtml: string,
+  variantHtml: string,
+  blockType: MeriterBlockType,
+): { blockType: MeriterBlockType; officialContent: string } {
+  const bounds = findPlainTextChangeBounds(
+    blockHtmlToPlainText(officialHtml),
+    blockHtmlToPlainText(variantHtml),
+  );
+  if (!bounds) {
+    return { blockType, officialContent: variantHtml };
+  }
+  return {
+    blockType,
+    officialContent: mergeRangeIntoBlockHtmlWithRevisionMarks(
+      officialHtml,
+      bounds.rangeStart,
+      bounds.rangeEnd,
+      bounds.proposedText,
+    ),
+  };
+}
+
+function renderAlignedOps(
+  ops: BlockAlignOp[],
+): Array<{ blockType: MeriterBlockType; officialContent: string }> {
+  const result: Array<{ blockType: MeriterBlockType; officialContent: string }> = [];
+  for (let index = 0; index < ops.length; index += 1) {
+    const op = ops[index]!;
+    const next = ops[index + 1];
+    if (op.op === 'delete' && next?.op === 'insert' && op.official.blockType === next.variant.blockType) {
+      const blockType = next.variant.blockType;
+      if (blockType !== 'list-bullet' && blockType !== 'list-numbered') {
+        result.push(
+          renderModifiedBlockPair(
+            op.official.officialContent,
+            next.variant.officialContent,
+            blockType,
+          ),
+        );
+        index += 1;
+        continue;
+      }
+    }
+    const html = renderAlignedBlock(op);
+    if (!html) {
+      continue;
+    }
+    const blockType =
+      op.op === 'delete' ? op.official.blockType : op.variant.blockType;
+    result.push({ blockType, officialContent: html });
+  }
+  return result;
+}
+
 function renderAlignedBlock(op: BlockAlignOp): string {
   if (op.op === 'insert') {
     return wrapBlockAsInsert(op.variant.officialContent);
@@ -143,15 +199,7 @@ export function buildJoinedDocumentRevisionHtml(
   }
 
   const ops = alignDocumentBlocksByPlain(officialBlocks, variantBlocks);
-  const joinable = ops.flatMap((op) => {
-    const html = renderAlignedBlock(op);
-    if (!html) {
-      return [];
-    }
-    const blockType =
-      op.op === 'delete' ? op.official.blockType : op.variant.blockType;
-    return [{ blockType, officialContent: html }];
-  });
+  const joinable = renderAlignedOps(ops).filter((entry) => entry.officialContent);
   if (joinable.length === 0) {
     return null;
   }

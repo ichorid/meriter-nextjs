@@ -178,10 +178,21 @@ export class CreateVoteUseCase {
           throw new BadRequestException('Collaborative documents are disabled in this community');
         }
         if (
-          !deps.documentService.isDocumentBlockVotingOpen(
+          input.targetType === 'document-variant' &&
+          documentVoteCtx.variant &&
+          !(await deps.documentService.isDocumentVariantVotingOpen(
+            documentVoteCtx.doc,
+            documentVoteCtx.variant,
+          ))
+        ) {
+          throw new BadRequestException('Voting for this document block wave has ended');
+        }
+        if (
+          input.targetType === 'document-block-official' &&
+          !(await deps.documentService.isDocumentBlockWaveOpen(
             documentVoteCtx.doc,
             documentVoteCtx.blockId,
-          )
+          ))
         ) {
           throw new BadRequestException('Voting for this document block wave has ended');
         }

@@ -33,6 +33,7 @@ import { DocumentProposalRail } from '@/features/documents/components/DocumentPr
 import { DocumentMobileProposalsDock } from '@/features/documents/components/DocumentMobileProposalsDock';
 import { DocumentCanvasMobileSheet } from '@/features/documents/components/DocumentCanvasMobileSheet';
 import { DocumentBlockAdminDialogs } from '@/features/documents/components/DocumentBlockAdminDialogs';
+import { DocumentTocSidebar } from '@/features/documents/components/DocumentTocSidebar';
 import type { DocTranslate } from '@/features/documents/lib/document-canvas-shared';
 import {
   documentLiveQueryOptions,
@@ -267,6 +268,14 @@ export function CommunityDocumentDetailPageClient({
       communityId={communityId}
       myId={user.id}
       stickyHeader={pageHeader}
+      leftSidebarOverride={
+        <DocumentTocSidebar
+          communityId={communityId}
+          documentId={doc.id}
+          documentTitle={doc.title ?? t('listTitle')}
+          sections={doc.sections}
+        />
+      }
     >
       <div className="relative w-full" data-document-page>
         {canManageDocument ? (

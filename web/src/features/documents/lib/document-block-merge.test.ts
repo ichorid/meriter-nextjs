@@ -40,11 +40,8 @@ describe('mergeRangeIntoBlockHtmlWithRevisionMarks', () => {
       end,
       'replacement',
     );
-    expect(html).toMatch(
-      new RegExp(
-        `<del class="${DOC_REVISION_DELETE_CLASS}">original</del><ins class="doc-revision-ins">replacement</ins>`,
-      ),
-    );
+    expect(html).toContain(`<del class="${DOC_REVISION_DELETE_CLASS}">original</del>`);
+    expect(html).toContain(`<ins class="doc-revision-ins">replacement</ins>`);
     expect(html).toContain('Keep this');
     expect(html).toContain(' tail');
   });

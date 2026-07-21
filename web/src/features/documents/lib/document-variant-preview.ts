@@ -1,4 +1,8 @@
 import { blockHtmlToPlainText, headPlainSnippet, tailPlainSnippet } from '@/features/documents/lib/document-plain-text';
+import {
+  buildPlainTextWordDiff,
+  type RevisionToken,
+} from '@/features/documents/lib/document-text-diff';
 
 export const VARIANT_PREVIEW_CONTEXT_CHARS = 72;
 
@@ -11,7 +15,8 @@ export type VariantChangeBounds = {
 export type VariantPreviewSegment =
   | { kind: 'context'; text: string; position: 'before' | 'after' | 'prevBlock' | 'nextBlock' }
   | { kind: 'delete'; text: string }
-  | { kind: 'insert'; html: string };
+  | { kind: 'insert'; html: string }
+  | { kind: 'inline'; tokens: RevisionToken[] };
 
 export type VariantDisplayPreview = {
   segments: VariantPreviewSegment[];
@@ -137,56 +142,108 @@ export function buildVariantDisplayPreview(
 
   const segments: VariantPreviewSegment[] = [];
 
-  if (rangeStart === 0 && options?.prevBlockHtml?.trim()) {
-    const prevPlain = blockHtmlToPlainText(options.prevBlockHtml);
-    if (prevPlain) {
-      segments.push({
-        kind: 'context',
-        position: 'prevBlock',
-        text: tailPlainSnippet(prevPlain, contextChars),
-      });
-    }
-  } else {
-    const before = officialPlain.slice(0, rangeStart);
-    if (before.trim()) {
-      segments.push({
-        kind: 'context',
-        position: 'before',
-        text: tailPlainSnippet(before, contextChars),
-      });
-    }
-  }
-
   const deleted = officialPlain.slice(rangeStart, rangeEnd);
-  if (deleted.trim()) {
-    segments.push({ kind: 'delete', text: deleted });
-  }
-
-  const insertHtml =
+  const insertPlain = blockHtmlToPlainText(
     variant.proposedText != null && variant.rangeStart != null
       ? variant.proposedText
-      : plainInsertToHtml(proposedText);
-  if (insertHtml.trim() || proposedText.trim()) {
-    segments.push({ kind: 'insert', html: insertHtml || plainInsertToHtml(proposedText) });
-  }
+      : plainInsertToHtml(proposedText),
+  );
+  const wordTokens = buildPlainTextWordDiff(deleted, insertPlain);
+  const hasGranularDiff =
+    wordTokens != null &&
+    wordTokens.some((t) => t.kind !== 'same') &&
+    deleted.length > 0 &&
+    insertPlain.length > 0;
 
-  if (rangeEnd >= officialPlain.length && options?.nextBlockHtml?.trim()) {
-    const nextPlain = blockHtmlToPlainText(options.nextBlockHtml);
-    if (nextPlain) {
-      segments.push({
-        kind: 'context',
-        position: 'nextBlock',
-        text: headPlainSnippet(nextPlain, contextChars),
-      });
+  if (hasGranularDiff && wordTokens) {
+    const inlineTokens: RevisionToken[] = [];
+    if (rangeStart === 0 && options?.prevBlockHtml?.trim()) {
+      const prevPlain = blockHtmlToPlainText(options.prevBlockHtml);
+      if (prevPlain) {
+        inlineTokens.push({
+          kind: 'same',
+          value: `…${tailPlainSnippet(prevPlain, contextChars)} `,
+        });
+      }
+    } else {
+      const before = officialPlain.slice(0, rangeStart);
+      if (before.trim()) {
+        inlineTokens.push({
+          kind: 'same',
+          value: tailPlainSnippet(before, contextChars),
+        });
+      }
     }
+    inlineTokens.push(...wordTokens);
+    if (rangeEnd >= officialPlain.length && options?.nextBlockHtml?.trim()) {
+      const nextPlain = blockHtmlToPlainText(options.nextBlockHtml);
+      if (nextPlain) {
+        inlineTokens.push({
+          kind: 'same',
+          value: ` ${headPlainSnippet(nextPlain, contextChars)}…`,
+        });
+      }
+    } else {
+      const after = officialPlain.slice(rangeEnd);
+      if (after.trim()) {
+        inlineTokens.push({
+          kind: 'same',
+          value: headPlainSnippet(after, contextChars),
+        });
+      }
+    }
+    segments.push({ kind: 'inline', tokens: inlineTokens });
   } else {
-    const after = officialPlain.slice(rangeEnd);
-    if (after.trim()) {
-      segments.push({
-        kind: 'context',
-        position: 'after',
-        text: headPlainSnippet(after, contextChars),
-      });
+    if (rangeStart === 0 && options?.prevBlockHtml?.trim()) {
+      const prevPlain = blockHtmlToPlainText(options.prevBlockHtml);
+      if (prevPlain) {
+        segments.push({
+          kind: 'context',
+          position: 'prevBlock',
+          text: tailPlainSnippet(prevPlain, contextChars),
+        });
+      }
+    } else {
+      const before = officialPlain.slice(0, rangeStart);
+      if (before.trim()) {
+        segments.push({
+          kind: 'context',
+          position: 'before',
+          text: tailPlainSnippet(before, contextChars),
+        });
+      }
+    }
+
+    if (deleted.trim()) {
+      segments.push({ kind: 'delete', text: deleted });
+    }
+
+    const insertHtml =
+      variant.proposedText != null && variant.rangeStart != null
+        ? variant.proposedText
+        : plainInsertToHtml(proposedText);
+    if (insertHtml.trim() || proposedText.trim()) {
+      segments.push({ kind: 'insert', html: insertHtml || plainInsertToHtml(proposedText) });
+    }
+
+    if (rangeEnd >= officialPlain.length && options?.nextBlockHtml?.trim()) {
+      const nextPlain = blockHtmlToPlainText(options.nextBlockHtml);
+      if (nextPlain) {
+        segments.push({
+          kind: 'context',
+          position: 'nextBlock',
+          text: headPlainSnippet(nextPlain, contextChars),
+        });
+      }
+    } else {
+      const after = officialPlain.slice(rangeEnd);
+      if (after.trim()) {
+        segments.push({
+          kind: 'context',
+          position: 'after',
+          text: headPlainSnippet(after, contextChars),
+        });
+      }
     }
   }
 

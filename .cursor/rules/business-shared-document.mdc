@@ -56,9 +56,11 @@ Also: `applyOfficialVotingWinner` (keep official text, close wave), `applyAdminO
 
 ## Voting waves and cron
 
-- **Voting threads (v3):** `document_voting_threads` + variant `votingThreadId`. Overlapping global plain ranges **merge** into the same open thread and **extend** `waveEndsAt` / anchor wave (~`votingDurationHours`). Non-overlapping ranges → parallel threads. Rail groups by `threadId`.
-- **Wave anchor:** first `proposeVariant` on a block sets `currentWaveStartedAt` and resets `officialRating`.
-- **Open window:** `now <= start + document.votingDurationHours` (per-document hours after bootstrap).
+- **Voting threads (v3):** `document_voting_threads` + variant `votingThreadId`. Overlapping global plain ranges **merge** into the same open thread and **extend** `waveEndsAt` (~`votingDurationHours`). Non-overlapping ranges → parallel threads. Rail groups by `threadId`.
+- **`proposalsCloseAt` (per thread):** set at thread creation to `createdAt + document.votingDurationHours` (same hours as voting). **Never extended** on merge — new proposals rejected after this deadline with `PROPOSALS_WINDOW_CLOSED`. While `now < proposalsCloseAt`, merge can extend `waveEndsAt`, so voting can run up to ~**2×** duration without an explicit cap. Legacy threads without the field: fallback `createdAt + hours` in code.
+- **Wave anchor:** first `proposeVariant` on a block sets `currentWaveStartedAt` and resets `officialRating`. On **merge into existing thread**, `currentWaveStartedAt` is **not** reset (only first wave start).
+- **Open window (legacy blocks without thread):** `now <= start + document.votingDurationHours`.
+- **Voting open (threaded):** source of truth is `thread.waveEndsAt` (extended by merge).
 - **Finalize:** `finalizeExpiredWaveOnBlock` — rank open variants vs block `officialRating`; positive winner → `closed-winner`; else all `closed-not-winner`; Mongo lock per block.
 - **Cron:** `DocumentWaveCronService` `*/5 * * * *` → `runPeriodicWaveSweep()`.
 - **On propose:** pre-finalize elapsed waves on that block.
@@ -68,8 +70,9 @@ Also: `applyOfficialVotingWinner` (keep official text, close wave), `applyAdminO
 ## Economics
 
 - **Propose:** fee `document_variant_proposal` (quota/wallet → global burn).
+- **Vote:** comment **required** for document targets in **all** communities. Votes burn from voter quota/wallet; net rating accumulates on `document_block_variants.rating`.
+- **Apply payout:** when a variant transitions to `applied`, credit/debit proposer **`proposedBy`** net **`rating`** on personal wallet in document community context (`WalletContextResolverService`, `'voting'`). `referenceType: 'document_variant_apply'` in Merit History. Positive rating → credit; negative (admin apply only) → debit with balance allowed to go negative; zero → no transaction. Idempotency: `payoutAmount` + `payoutAt` on variant; skip if `payoutAt` set.
 - **Max variant body:** 5000 chars after sanitize.
-- **Vote:** comment **required** for document targets in **all** communities.
 
 ---
 
@@ -122,6 +125,8 @@ Up to 10 links: `url` (http/https, ≤2000), `summary` (≤280, required), optio
 - **Apply:** merge `proposedText` into block `officialContent`; **stale** if `officialTextHashAtPropose` ≠ current → UI confirm + `confirmStale: true` on `applyVotingWinner`.
 - **Structure:** auto-parse HTML (`p`, `h1–h3`, each `li`, `blockquote`); stable `blockId` mapping on re-parse; cut–paste via lead editor sync; removed blocks → open variants `withdrawn`.
 - **Desktop:** proposals **rail** (`documentVariants.listByDocument` threads); **mobile:** highlights + existing bottom sheet.
+- **Desktop document page:** optional **TOC sidebar** (`DocumentTocSidebar` via `AdaptiveLayout.leftSidebarOverride`) — back, document title, section/heading anchors with scroll-spy; replaces main nav rail on `lg+` only.
+- **Revision highlights:** «Подсветить правки» uses **word-level diff** inside stored variant ranges (not whole-block strike-through for single-word edits).
 - **DnD reorder:** not in UI; cut–paste in editor only.
 
 ## Document structure (API — hidden from participant UI)

@@ -77,6 +77,22 @@ export function formatWaveRemaining(endsAtMs: number): string {
   return `${minutes}м`;
 }
 
+export function parseIsoDateMs(value: string | null | undefined): number | null {
+  if (!value) return null;
+  return parseDateMs(value);
+}
+
+/** Map backend propose error codes to localized user messages. */
+export function mapDocumentProposeErrorMessage(
+  message: string,
+  tGdocs: DocTranslate,
+): string {
+  if (message === 'PROPOSALS_WINDOW_CLOSED') {
+    return tGdocs('proposalsWindowClosed');
+  }
+  return message;
+}
+
 export function officialReasonLabelKey(
   reason: OfficialContentReason | undefined,
 ): 'officialReasonInitial' | 'officialReasonVote' | 'officialReasonAdmin' | null {

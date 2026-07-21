@@ -1,6 +1,10 @@
 import { expandDeletionRangeStart } from '@/features/documents/lib/document-plain-range';
 import { blockHtmlToPlainText } from '@/features/documents/lib/document-plain-text';
-import type { RevisionToken, StructuredRevision } from '@/features/documents/lib/document-text-diff';
+import {
+  buildPlainTextWordDiff,
+  type RevisionToken,
+  type StructuredRevision,
+} from '@/features/documents/lib/document-text-diff';
 
 /** Character-level revision on joined document plain text (Google Docs style). */
 export function buildPlainTextRangeRevision(
@@ -21,15 +25,20 @@ export function buildPlainTextRangeRevision(
   const deleted = plain.slice(start, end);
   const after = plain.slice(end);
 
+  const wordTokens = buildPlainTextWordDiff(deleted, insertText);
   const tokens: RevisionToken[] = [];
   if (before) {
     tokens.push({ kind: 'same', value: before });
   }
-  if (deleted) {
-    tokens.push({ kind: 'delete', value: deleted });
-  }
-  if (insertText) {
-    tokens.push({ kind: 'insert', value: insertText });
+  if (wordTokens && wordTokens.some((t) => t.kind !== 'same')) {
+    tokens.push(...wordTokens);
+  } else {
+    if (deleted) {
+      tokens.push({ kind: 'delete', value: deleted });
+    }
+    if (insertText) {
+      tokens.push({ kind: 'insert', value: insertText });
+    }
   }
   if (after) {
     tokens.push({ kind: 'same', value: after });
