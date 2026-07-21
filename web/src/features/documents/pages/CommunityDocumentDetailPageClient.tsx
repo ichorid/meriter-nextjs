@@ -34,6 +34,7 @@ import { DocumentMobileProposalsDock } from '@/features/documents/components/Doc
 import { DocumentCanvasMobileSheet } from '@/features/documents/components/DocumentCanvasMobileSheet';
 import { DocumentBlockAdminDialogs } from '@/features/documents/components/DocumentBlockAdminDialogs';
 import { DocumentTocSidebar } from '@/features/documents/components/DocumentTocSidebar';
+import { scrollToDocumentBlockAnchor } from '@/features/documents/lib/document-toc-scroll';
 import type { DocTranslate } from '@/features/documents/lib/document-canvas-shared';
 import {
   documentLiveQueryOptions,
@@ -125,10 +126,7 @@ export function CommunityDocumentDetailPageClient({
     const blockId = hash.slice('#block-'.length);
     if (!blockId) return;
     const timer = window.setTimeout(() => {
-      document.getElementById(`block-${blockId}`)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      });
+      scrollToDocumentBlockAnchor(`block-${blockId}`, docQuery.data.sections);
     }, 150);
     return () => window.clearTimeout(timer);
   }, [docQuery.data?.sections, docQuery.dataUpdatedAt]);

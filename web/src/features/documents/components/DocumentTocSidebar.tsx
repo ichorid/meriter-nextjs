@@ -12,6 +12,10 @@ import {
   buildDocumentTocEntries,
   type DocumentTocEntry,
 } from '@/features/documents/lib/document-toc';
+import {
+  resolveActiveDocumentTocAnchor,
+  scrollToDocumentBlockAnchor,
+} from '@/features/documents/lib/document-toc-scroll';
 import { cn } from '@/lib/utils';
 
 export interface DocumentTocSidebarProps {
@@ -22,12 +26,8 @@ export interface DocumentTocSidebarProps {
   sections: unknown;
 }
 
-function scrollToAnchor(anchorId: string) {
-  const target = document.getElementById(anchorId);
-  if (!target) {
-    return;
-  }
-  target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+function scrollToAnchor(anchorId: string, sections: unknown) {
+  scrollToDocumentBlockAnchor(anchorId, sections);
 }
 
 function tocIndentClass(level: DocumentTocEntry['level']): string {
@@ -59,6 +59,23 @@ export function DocumentTocSidebar({
       return;
     }
 
+    const mainWrap = document.querySelector('.mainWrap') as HTMLElement | null;
+    const prose = document.querySelector('.gdocs-editor-surface .ProseMirror');
+
+    if (prose && mainWrap) {
+      const syncActiveFromScroll = () => {
+        const probeTop = mainWrap.getBoundingClientRect().top + 96;
+        const active = resolveActiveDocumentTocAnchor(entries, liveSections, probeTop);
+        if (active) {
+          setActiveAnchorId(active);
+        }
+      };
+
+      syncActiveFromScroll();
+      mainWrap.addEventListener('scroll', syncActiveFromScroll, { passive: true });
+      return () => mainWrap.removeEventListener('scroll', syncActiveFromScroll);
+    }
+
     const observer = new IntersectionObserver(
       (observed) => {
         const visible = observed
@@ -70,7 +87,7 @@ export function DocumentTocSidebar({
         }
       },
       {
-        root: document.querySelector('.mainWrap') ?? null,
+        root: mainWrap,
         rootMargin: '-20% 0px -65% 0px',
         threshold: [0, 0.25, 0.5, 1],
       },
@@ -84,12 +101,15 @@ export function DocumentTocSidebar({
     }
 
     return () => observer.disconnect();
-  }, [entries]);
+  }, [entries, liveSections]);
 
-  const handleNavigate = useCallback((entry: DocumentTocEntry) => {
-    setActiveAnchorId(entry.anchorId);
-    scrollToAnchor(entry.anchorId);
-  }, []);
+  const handleNavigate = useCallback(
+    (entry: DocumentTocEntry) => {
+      setActiveAnchorId(entry.anchorId);
+      scrollToAnchor(entry.anchorId, liveSections);
+    },
+    [liveSections],
+  );
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-stitch-sidebar px-3 py-4 text-stitch-text">
