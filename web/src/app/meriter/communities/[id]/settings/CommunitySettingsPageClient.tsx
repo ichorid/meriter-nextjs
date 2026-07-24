@@ -8,6 +8,7 @@ import { CommunityRulesEditor } from '@/features/communities/components/Communit
 import { CommentSettingsSection } from '@/features/communities/components/CommentSettingsSection';
 import { CommunityDocumentsSettingsSection } from '@/features/communities/components/CommunityDocumentsSettingsSection';
 import { CommunityEventsSettingsSection } from '@/features/communities/components/CommunityEventsSettingsSection';
+import { CommunityYougileSettingsSection } from '@/features/communities/components/CommunityYougileSettingsSection';
 import { TappalkaSettingsForm } from '@/features/communities/components/TappalkaSettingsForm';
 import { InvestingSettingsForm } from '@/features/communities/components/InvestingSettingsForm';
 import { AdaptiveLayout } from '@/components/templates/AdaptiveLayout';
@@ -306,6 +307,12 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                         >
                             {t('tabs.tappalka')}
                         </TabsTrigger>
+                        <TabsTrigger
+                            value="yougile"
+                            className="data-[state=active]:bg-base-100 data-[state=active]:text-brand-primary rounded-lg"
+                        >
+                            {t('tabs.yougile')}
+                        </TabsTrigger>
                     </TabsList>
                     <TabsContent value="general" className="mt-6">
                         <CommunityForm communityId={communityId} />
@@ -349,6 +356,9 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
                             community={community}
                             onSave={handleTappalkaSave}
                         />
+                    </TabsContent>
+                    <TabsContent value="yougile" className="mt-6">
+                        <CommunityYougileSettingsSection communityId={communityId} />
                     </TabsContent>
                 </Tabs>
             </div>

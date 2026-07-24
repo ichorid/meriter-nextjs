@@ -49,6 +49,7 @@ export const NotificationTypeSchema = z.enum([
   'document_variant_won',
   'document_variant_applied',
   'document_block_admin_override',
+  'yougile_task_published',
 ]);
 
 export type NotificationType = z.infer<typeof NotificationTypeSchema>;

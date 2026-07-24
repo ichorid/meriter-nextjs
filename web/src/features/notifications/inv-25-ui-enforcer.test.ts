@@ -7,10 +7,10 @@ import {
 } from './routing-matrix';
 import { getNotificationRoutingRow } from './get-notification-routing-row';
 
-/** inv-25 Phase 7 — UI routes all 47 types through NOTIFICATION_ROUTING_MATRIX. */
+/** inv-25 Phase 7 — UI routes all 48 types through NOTIFICATION_ROUTING_MATRIX. */
 describe('notification routing inv-25 UI enforcer', () => {
   it('matrix indexes every NotificationTypeSchema literal', () => {
-    expect(NOTIFICATION_ROUTING_MATRIX).toHaveLength(47);
+    expect(NOTIFICATION_ROUTING_MATRIX).toHaveLength(48);
     for (const type of NotificationTypeSchema.options) {
       expect(NOTIFICATION_ROUTING_BY_TYPE[type]).toBeDefined();
       expect(getNotificationRoutingRow(type).type).toBe(type);

@@ -25,6 +25,7 @@ import { meritTransferRouter } from './routers/merit-transfer.router';
 import { eventsRouter } from './routers/events.router';
 import { documentsRouter } from './routers/documents.router';
 import { documentVariantsRouter } from './routers/document-variants.router';
+import { yougileRouter } from './routers/yougile.router';
 
 /**
  * Main tRPC router combining all sub-routers
@@ -57,6 +58,7 @@ export const appRouter = router({
   events: eventsRouter,
   documents: documentsRouter,
   documentVariants: documentVariantsRouter,
+  yougile: yougileRouter,
 });
 
 export type AppRouter = typeof appRouter;

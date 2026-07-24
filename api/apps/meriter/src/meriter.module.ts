@@ -17,6 +17,7 @@ import { PostClosingCronModule } from './domain/services/post-closing-cron.modul
 import { DocumentWaveCronModule } from './domain/services/document-wave-cron.module';
 import { CommonServicesModule } from './common/services/common-services.module';
 import { TgBotsModule } from './infrastructure/telegram';
+import { YougileModule } from './infrastructure/yougile/yougile.module';
 import { SentryInterceptor } from './common/interceptors/sentry.interceptor';
 
 // Import the new domain module
@@ -59,6 +60,7 @@ import { AdaptersModule } from './adapters/adapters.module';
     // TgBotsModule is always registered, but TgBotsService checks TELEGRAM_BOT_ENABLED flag internally
     // This allows the module to be available but the service methods will return early if disabled
     TgBotsModule,
+    YougileModule,
     TrpcModule, // tRPC for type-safe API
   ],
   controllers: [MeriterController],

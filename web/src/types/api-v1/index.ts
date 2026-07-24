@@ -258,7 +258,8 @@ export type NotificationType =
     | "document_variant_not_selected"
     | "document_variant_won"
     | "document_variant_applied"
-    | "document_block_admin_override";
+    | "document_block_admin_override"
+    | "yougile_task_published";
 
 export interface Notification {
     id: string;

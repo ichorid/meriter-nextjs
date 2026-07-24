@@ -8,7 +8,7 @@ import {
   NOTIFICATION_ROUTING_MATRIX,
 } from './routing-matrix';
 
-/** Legacy api-v1-only type outside the 47-type NotificationRoutingSchema. */
+/** Legacy api-v1-only type outside the 48-type NotificationRoutingSchema. */
 const LEGACY_INVITE_ROUTING_ROW: NotificationRoutingRow = {
   type: 'team_invitation',
   subtitleKey: 'message.default',
@@ -21,7 +21,7 @@ function isCanonicalNotificationType(type: ApiNotificationType): type is Canonic
   return type !== 'invite';
 }
 
-/** Resolves the inv-25 routing row for a notification type (47 exhaustive rows). */
+/** Resolves the inv-25 routing row for a notification type (48 exhaustive rows). */
 export function getNotificationRoutingRow(type: ApiNotificationType): NotificationRoutingRow {
   if (type === 'invite') {
     return LEGACY_INVITE_ROUTING_ROW;
@@ -38,9 +38,9 @@ export function getNotificationRoutingRow(type: ApiNotificationType): Notificati
 
 /** Runtime guard: matrix covers every parsed routing row type. */
 export function assertNotificationRoutingExhaustive(): void {
-  if (NOTIFICATION_ROUTING_MATRIX.length !== 47) {
+  if (NOTIFICATION_ROUTING_MATRIX.length !== 48) {
     throw new Error(
-      `Expected 47 notification routing rows, got ${NOTIFICATION_ROUTING_MATRIX.length}`,
+      `Expected 48 notification routing rows, got ${NOTIFICATION_ROUTING_MATRIX.length}`,
     );
   }
 }

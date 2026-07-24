@@ -62,6 +62,7 @@ import { DocumentLiveUpdatesService } from '../domain/services/document-live-upd
 import { PermissionRuleEngine } from '../domain/services/permission-rule-engine.service';
 import { resolveMeriterProductFromRequest } from '../domain/common/constants/product.constants';
 import { SeedCommunityWebDevUseCase } from '../application/use-cases/dev/seed-community-web-dev.use-case';
+import type { ManageYougileIntegrationUseCase } from '../application/use-cases/integrations/manage-yougile-integration.use-case';
 
 export interface CreateContextOptions {
   req: any;
@@ -126,6 +127,7 @@ export interface CreateContextOptions {
   cookieManager: CookieManager;
   authenticationService: JwtVerificationService;
   seedCommunityWebDevUseCase: SeedCommunityWebDevUseCase;
+  manageYougile: ManageYougileIntegrationUseCase;
 }
 
 /**
@@ -199,6 +201,7 @@ export async function createContext(opts: CreateContextOptions) {
     pollCastService,
     authenticationService,
     seedCommunityWebDevUseCase,
+    manageYougile,
   } = opts;
 
   const logger = new Logger('tRPC-Context');
@@ -319,6 +322,7 @@ export async function createContext(opts: CreateContextOptions) {
     configService,
     cookieManager,
     seedCommunityWebDevUseCase,
+    manageYougile,
   };
 }
 

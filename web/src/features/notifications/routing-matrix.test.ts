@@ -7,10 +7,10 @@ import { NotificationRoutingSchema } from '@meriter/shared-types/schemas/notific
 
 /** Track B — inv-25 Phase 1 web parity gate vs NotificationsClient subtitle/link matrix. */
 describe('notification routing matrix (Track B)', () => {
-  it('exports 47 routing rows validated by NotificationRoutingSchema', () => {
-    expect(NOTIFICATION_ROUTING_ROWS).toHaveLength(47);
+  it('exports 48 routing rows validated by NotificationRoutingSchema', () => {
+    expect(NOTIFICATION_ROUTING_ROWS).toHaveLength(48);
     expect(() => NotificationRoutingSchema.parse(NOTIFICATION_ROUTING_ROWS)).not.toThrow();
-    expect(NOTIFICATION_ROUTING_MATRIX).toHaveLength(47);
+    expect(NOTIFICATION_ROUTING_MATRIX).toHaveLength(48);
   });
 
   it('matches NotificationsClient legacy subtitle/link matrix', () => {
