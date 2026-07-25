@@ -1,6 +1,6 @@
 # TG Merit Polls Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Merit-weighted polls (за/против, wallet-first, public cast feed) surfaced in the Telegram mini app (`community-web`) with bot announcements.
 
@@ -91,13 +91,13 @@ Deep link: `startapp=poll:{pollId}` → mini app route `/c/{communityId}/polls/{
 
 **Interfaces:** Produces the shared contracts above; Tasks 2–3 consume them.
 
-- [ ] **Step 1:** Write failing e2e tests: down cast is wallet-only + burns + increments `amountDown`; quota rejected when `quotaAllowed: false`, accepted for `up` when `true`; multiple casts accumulate; `getCasts` requires community membership and returns enriched rows + casters summary; `pollCreation: 'admin'` blocks plain member.
-- [ ] **Step 2:** Run tests, verify failures (`pnpm --filter @meriter/api test -- polls`).
-- [ ] **Step 3:** Implement shared-types + mongoose schema changes.
-- [ ] **Step 4:** Implement cast use-case direction/source rules (server-side split: up → quota-first only if quotaAllowed else wallet-only; down → wallet-only). Update option aggregates (`amountUp`/`amountDown`, `amount` = net; legacy fallback `amountUp ?? amount`).
-- [ ] **Step 5:** Implement `getCasts` (paginated, user enrichment via existing user service pattern, casters aggregate) + `getResults` breakdown + `pollCreation` gate.
-- [ ] **Step 6:** Mirror procedures in `community-app.router.ts` (delegate to same use-cases; auth = community JWT, membership checks as in neighboring procedures).
-- [ ] **Step 7:** Tests pass; `pnpm lint; pnpm lint:fix`; commit `feat(api): poll cast direction, wallet-first source, public cast feed`.
+- [x] **Step 1:** Write failing e2e tests: down cast is wallet-only + burns + increments `amountDown`; quota rejected when `quotaAllowed: false`, accepted for `up` when `true`; multiple casts accumulate; `getCasts` requires community membership and returns enriched rows + casters summary; `pollCreation: 'admin'` blocks plain member.
+- [x] **Step 2:** Run tests, verify failures (`pnpm --filter @meriter/api test -- polls`).
+- [x] **Step 3:** Implement shared-types + mongoose schema changes.
+- [x] **Step 4:** Implement cast use-case direction/source rules (server-side split: up → quota-first only if quotaAllowed else wallet-only; down → wallet-only). Update option aggregates (`amountUp`/`amountDown`, `amount` = net; legacy fallback `amountUp ?? amount`).
+- [x] **Step 5:** Implement `getCasts` (paginated, user enrichment via existing user service pattern, casters aggregate) + `getResults` breakdown + `pollCreation` gate.
+- [x] **Step 6:** Mirror procedures in `community-app.router.ts` (delegate to same use-cases; auth = community JWT, membership checks as in neighboring procedures).
+- [x] **Step 7:** Tests pass; `pnpm lint; pnpm lint:fix`; commit `feat(api): poll cast direction, wallet-first source, public cast feed`.
 
 ### Task 2: Mini app — «Голосования» tab in community-web
 
@@ -111,11 +111,11 @@ Deep link: `startapp=poll:{pollId}` → mini app route `/c/{communityId}/polls/{
 
 **Interfaces:** Consumes Task 1 `community` tRPC `polls.*` procedures and view schemas.
 
-- [ ] **Step 1:** List page: active polls (countdown to `expiresAt`) + finished below, following existing feed page patterns/styling.
-- [ ] **Step 2:** Poll card: option rows with за/против/итог progress bars; amount presets 1/3/5/10 + custom input; «За»/«Против» buttons; user balance; my casts per option (`getMyCasts`); hide quota UI unless `settings.quotaAllowed`.
-- [ ] **Step 3:** «Кто голосовал» block: paginated cast feed + top casters.
-- [ ] **Step 4:** Create page gated by `pollCreation` (+ `quotaAllowed` toggle), nav tab, deep link boot.
-- [ ] **Step 5:** `pnpm lint; pnpm lint:fix`; build community-web; commit `feat(community-web): merit polls tab`.
+- [x] **Step 1:** List page: active polls (countdown to `expiresAt`) + finished below, following existing feed page patterns/styling.
+- [x] **Step 2:** Poll card: option rows with за/против/итог progress bars; amount presets 1/3/5/10 + custom input; «За»/«Против» buttons; user balance; my casts per option (`getMyCasts`); hide quota UI unless `settings.quotaAllowed`.
+- [x] **Step 3:** «Кто голосовал» block: paginated cast feed + top casters.
+- [x] **Step 4:** Create page gated by `pollCreation` (+ `quotaAllowed` toggle), nav tab, deep link boot.
+- [x] **Step 5:** `pnpm lint; pnpm lint:fix`; build community-web; commit `feat(community-web): merit polls tab`.
 
 ### Task 3: Bot — announce, /polls, expiry results cron
 
@@ -128,14 +128,15 @@ Deep link: `startapp=poll:{pollId}` → mini app route `/c/{communityId}/polls/{
 
 **Interfaces:** Consumes Task 1 fields (`resultsAnnouncedAt`, `amountUp`/`amountDown`).
 
-- [ ] **Step 1:** Announce on create (only when community has `telegramChatId`, not frozen; guard by same product-mode flag as publication mirror).
-- [ ] **Step 2:** `/polls` command with routing like `/balance`.
-- [ ] **Step 3:** Results cron + unit tests.
-- [ ] **Step 4:** `pnpm lint; pnpm lint:fix`; tests; commit `feat(api): telegram poll announcements and results`.
+- [x] **Step 1:** Announce on create (only when community has `telegramChatId`, not frozen; guard by same product-mode flag as publication mirror).
+- [x] **Step 2:** `/polls` command with routing like `/balance`.
+- [x] **Step 3:** Results cron + unit tests.
+- [x] **Step 4:** `pnpm lint; pnpm lint:fix`; tests; commit `feat(api): telegram poll announcements and results`.
 
 ### Task 4: Verification & docs
 
-- [ ] Slop clean (no console.log, no dead code, no redundant comments).
-- [ ] `pnpm lint; pnpm lint:fix; pnpm test; pnpm build` from repo root — all green.
-- [ ] Bump `api/package.json` and `web`-affected package versions (`community-web/package.json`, `libs/shared-types/package.json`) per semver.
-- [ ] Update `.cursor/rules/business-content.mdc` (poll section: direction, quotaAllowed, getCasts, pollCreation) and `business-merits.mdc` poll cast row.
+- [x] Slop clean (no console.log, no dead code, no redundant comments).
+- [x] `pnpm lint; pnpm lint:fix; pnpm test; pnpm build` from repo root — all green.
+- [x] Bump `api/package.json` and `web`-affected package versions (`community-web/package.json`, `libs/shared-types/package.json`) per semver.
+- [x] Update `.cursor/rules/business-content.mdc` (poll section: direction, quotaAllowed, getCasts, pollCreation) and `business-merits.mdc` poll cast row.
+
