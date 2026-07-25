@@ -2367,8 +2367,71 @@ describe('TelegramBotOrchestrator (integration)', () => {
     expect(pending).toBeNull();
   });
 
-  it('finishOnboarding blocked when lead has frozen community with different chat id', async () => {
-    await seedLegacyLinkedCommunity({ frozen: true, name: 'Frozen Lead Community' });
+  it('startOnboarding reminds about frozen lead community then continues wizard', async () => {
+    const { communityId } = await seedLegacyLinkedCommunity({
+      frozen: true,
+      name: 'Frozen Lead Community',
+    });
+    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+
+    // New group with a different title → no auto-relink; onboarding starts.
+    await webhookController.handleWebhook(botUsername, {
+      update_id: 9004,
+      my_chat_member: {
+        chat: {
+          id: Number(migratedSupergroupChatId),
+          type: 'supergroup',
+          title: 'Brand New Group',
+        },
+        from: { id: Number(tgUserId), is_bot: false, first_name: 'TG', last_name: 'Lead' },
+        date: Math.floor(Date.now() / 1000),
+        old_chat_member: {
+          user: { id: 1, is_bot: true, first_name: 'Meriter' },
+          status: 'left',
+        },
+        new_chat_member: {
+          user: { id: 1, is_bot: true, first_name: 'Meriter' },
+          status: 'member',
+        },
+      },
+    } as TelegramTypes.Update);
+
+    expect(tgSendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tgChatId: tgUserId,
+        text: expect.stringContaining('Frozen Lead Community'),
+      }),
+    );
+    expect(tgSendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tgChatId: tgUserId,
+        text: expect.stringContaining(`relink:${communityId}`),
+      }),
+    );
+    expect(tgSendSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tgChatId: tgUserId,
+        text: expect.stringContaining('Как называется ваше сообщество'),
+      }),
+    );
+
+    const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
+    expect(pending?.action).toBe('onboarding_name');
+    expect((pending?.payload as { telegramChatId?: string } | undefined)?.telegramChatId).toBe(
+      migratedSupergroupChatId,
+    );
+
+    // Frozen community stays frozen / not auto-relinked when titles differ.
+    const frozen = await communityModel.findOne({ id: communityId }).lean();
+    expect(frozen?.telegramFrozenAt).toBeTruthy();
+    expect(frozen?.telegramChatId).toBe(legacyGroupChatId);
+  });
+
+  it('finishOnboarding creates new community when lead has frozen community with different chat id', async () => {
+    const { communityId: frozenId } = await seedLegacyLinkedCommunity({
+      frozen: true,
+      name: 'Frozen Lead Community',
+    });
     const now = new Date();
     await pendingModel.create({
       id: uid(),
@@ -2389,13 +2452,16 @@ describe('TelegramBotOrchestrator (integration)', () => {
       updatedAt: now,
     });
 
-    const tgSendSpy = jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    jest.spyOn(tgBotsService, 'tgSend').mockResolvedValue(true);
+    jest.spyOn(tgBotsService, 'tgSendMessage').mockResolvedValue(101);
+    jest.spyOn(tgBotsService, 'tgPinChatMessage').mockResolvedValue(true);
+    jest.spyOn(tgBotsService, 'syncTelegramChatAdministrators').mockResolvedValue(undefined);
     const beforeCount = await communityModel.countDocuments({});
 
     await webhookController.handleWebhook(botUsername, {
-      update_id: 9004,
+      update_id: 9005,
       callback_query: {
-        id: 'cb-onboard-relink-block',
+        id: 'cb-onboard-finish-despite-frozen',
         from: { id: Number(tgUserId), is_bot: false, first_name: 'TG' },
         message: {
           message_id: 1,
@@ -2406,13 +2472,18 @@ describe('TelegramBotOrchestrator (integration)', () => {
       },
     } as TelegramTypes.Update);
 
-    expect(await communityModel.countDocuments({})).toBe(beforeCount);
-    expect(tgSendSpy).toHaveBeenCalledWith(
-      expect.objectContaining({
-        tgChatId: tgUserId,
-        text: expect.stringContaining('Frozen Lead Community'),
-      }),
-    );
+    expect(await communityModel.countDocuments({})).toBe(beforeCount + 1);
+
+    const created = await communityModel.findOne({ name: 'Duplicate Community' }).lean();
+    expect(created?.telegramChatId).toBe(migratedSupergroupChatId);
+    expect(created?.telegramFrozenAt).toBeUndefined();
+
+    const stillFrozen = await communityModel.findOne({ id: frozenId }).lean();
+    expect(stillFrozen?.telegramFrozenAt).toBeTruthy();
+    expect(stillFrozen?.telegramChatId).toBe(legacyGroupChatId);
+
+    const pending = await pendingModel.findOne({ telegramUserId: tgUserId }).lean();
+    expect(pending).toBeNull();
   });
 
   it('message_reaction finds anchor by communityId when stored chat id differs', async () => {

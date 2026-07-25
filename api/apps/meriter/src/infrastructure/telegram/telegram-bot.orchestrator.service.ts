@@ -323,6 +323,26 @@ export class TelegramBotOrchestratorService {
     chatTitle?: string,
   ): Promise<void> {
     await this.clearPending(String(initiatorTgId));
+
+    // Non-blocking reminder: lead already has a frozen community on another chat.
+    // Creation of a new community still proceeds; relink is optional.
+    const initiator = await this.ensureTelegramUser(String(initiatorTgId), {});
+    if (initiator) {
+      const frozenLeadMismatch = await this.findFrozenLeadCommunityChatMismatch(
+        initiator.id,
+        telegramChatId,
+      );
+      if (frozenLeadMismatch) {
+        await this.tgBots.tgSend({
+          tgChatId: initiatorTgId,
+          text: TG_MSG.onboardingRelinkFrozenLead(
+            frozenLeadMismatch.name,
+            frozenLeadMismatch.id,
+          ),
+        });
+      }
+    }
+
     await this.savePending(String(initiatorTgId), 'onboarding_name', {
       telegramChatId,
       chatTitle,
@@ -1692,21 +1712,6 @@ export class TelegramBotOrchestratorService {
     await this.clearPending(tgUserId);
     const initiator = await this.ensureTelegramUser(tgUserId, {});
     if (!initiator) {
-      return;
-    }
-
-    const frozenLeadMismatch = await this.findFrozenLeadCommunityChatMismatch(
-      initiator.id,
-      payload.telegramChatId,
-    );
-    if (frozenLeadMismatch) {
-      await this.tgBots.tgSend({
-        tgChatId: tgUserId,
-        text: TG_MSG.onboardingRelinkFrozenLead(
-          frozenLeadMismatch.name,
-          frozenLeadMismatch.id,
-        ),
-      });
       return;
     }
 
