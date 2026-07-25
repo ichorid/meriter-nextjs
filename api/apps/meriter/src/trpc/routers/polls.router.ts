@@ -1,12 +1,108 @@
 import { z } from 'zod';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreatePollDtoSchema, UpdatePollDtoSchema, CreatePollCastDtoSchema, IdInputSchema } from '@meriter/shared-types';
+import {
+  CreatePollDtoSchema,
+  UpdatePollDtoSchema,
+  CreatePollCastDtoSchema,
+  IdInputSchema,
+  type PollCastView,
+  type PollCasterSummary,
+} from '@meriter/shared-types';
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
+import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
 import { createCreatePollUseCase } from '../../application/use-cases/polls/create-poll.use-case';
 import { createCastPollUseCase } from '../../application/use-cases/polls/cast-poll.use-case';
+
+const CASTERS_SUMMARY_LIMIT = 20;
+
+/** Community polls list; mounted as both `getByCommunity` (web) and `listByCommunity` (mini app). */
+const listByCommunityProcedure = publicProcedure
+  .input(z.object({
+    communityId: z.string(),
+    page: z.number().int().min(1).optional(),
+    pageSize: z.number().int().min(1).max(100).optional(),
+    limit: z.number().int().min(1).max(100).optional(),
+    skip: z.number().int().min(0).optional(),
+  }))
+  .query(async ({ ctx, input }) => {
+    // Return empty array for future-vision communities
+    const community = await ctx.communityService.getCommunity(input.communityId);
+    if (!community) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Community not found',
+      });
+    }
+
+    if (community?.typeTag === 'future-vision') {
+      return {
+        data: [],
+        total: 0,
+        skip: 0,
+        limit: 20,
+      };
+    }
+
+    const pagination = PaginationHelper.parseOptions({
+      page: input.page,
+      pageSize: input.pageSize,
+      limit: input.limit,
+    });
+    const skip = PaginationHelper.getSkip(pagination);
+
+    const polls = await ctx.pollService.getPollsByCommunity(
+      input.communityId,
+      pagination.limit || 20,
+      skip,
+    );
+
+    // Enrich polls with user and community data
+    const userIds = Array.from(
+      new Set(polls.map((p) => p.toSnapshot().authorId).filter(Boolean)),
+    );
+    const communityIds = Array.from(
+      new Set(polls.map((p) => p.toSnapshot().communityId).filter(Boolean)),
+    );
+
+    const [usersMap, communitiesMap] = await Promise.all([
+      ctx.userEnrichmentService.batchFetchUsers(userIds),
+      ctx.communityEnrichmentService.batchFetchCommunities(communityIds),
+    ]);
+
+    const enrichedPolls = polls.map((poll) =>
+      EntityMappers.mapPollToApi(poll, usersMap, communitiesMap),
+    );
+
+    // Batch calculate permissions for all polls (only if there are polls)
+    if (enrichedPolls.length > 0) {
+      const pollIds = enrichedPolls.map((poll) => poll.id);
+      const permissionsMap = await Promise.all(
+        pollIds.map((pollId) =>
+          ctx.permissionsHelperService.calculatePollPermissions(ctx.user?.id || null, pollId)
+        )
+      );
+
+      // Add permissions to each poll
+      enrichedPolls.forEach((poll, index) => {
+        poll.permissions = permissionsMap[index];
+      });
+    }
+
+    // Get total count
+    const total = await ctx.connection.db
+      ?.collection('polls')
+      .countDocuments({ communityId: input.communityId })
+      || polls.length;
+
+    return PaginationHelper.createResult(
+      enrichedPolls,
+      total,
+      pagination,
+    );
+  });
 
 export const pollsRouter = router({
   /**
@@ -216,89 +312,84 @@ export const pollsRouter = router({
   /**
    * Get polls by community ID
    */
-  getByCommunity: publicProcedure
+  getByCommunity: listByCommunityProcedure,
+
+  /**
+   * Mini-app alias for getByCommunity (shared contract name).
+   */
+  listByCommunity: listByCommunityProcedure,
+
+  /**
+   * Public cast feed for a poll (visible to community members only).
+   */
+  getCasts: protectedProcedure
     .input(z.object({
-      communityId: z.string(),
-      page: z.number().int().min(1).optional(),
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
+      pollId: z.string(),
+      optionId: z.string().optional(),
       skip: z.number().int().min(0).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
     }))
     .query(async ({ ctx, input }) => {
-      // Return empty array for future-vision communities
-      const community = await ctx.communityService.getCommunity(input.communityId);
-      if (!community) {
+      const poll = await ctx.pollService.getPoll(input.pollId);
+      if (!poll) {
         throw new TRPCError({
           code: 'NOT_FOUND',
-          message: 'Community not found',
+          message: 'Poll not found',
         });
       }
-      
-      if (community?.typeTag === 'future-vision') {
-        return {
-          data: [],
-          total: 0,
-          skip: 0,
-          limit: 20,
-        };
+      const snapshot = poll.toSnapshot();
+
+      const role = await ctx.userCommunityRoleService.getRole(
+        ctx.user.id,
+        snapshot.communityId,
+      );
+      if (!role) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You must be a member of this community to view poll casts',
+        });
       }
 
-      const pagination = PaginationHelper.parseOptions({
-        page: input.page,
-        pageSize: input.pageSize,
-        limit: input.limit,
-      });
-      const skip = PaginationHelper.getSkip(pagination);
-
-      const polls = await ctx.pollService.getPollsByCommunity(
-        input.communityId,
-        pagination.limit || 20,
-        skip,
-      );
-
-      // Enrich polls with user and community data
-      const userIds = Array.from(
-        new Set(polls.map((p) => p.toSnapshot().authorId).filter(Boolean)),
-      );
-      const communityIds = Array.from(
-        new Set(polls.map((p) => p.toSnapshot().communityId).filter(Boolean)),
-      );
-
-      const [usersMap, communitiesMap] = await Promise.all([
-        ctx.userEnrichmentService.batchFetchUsers(userIds),
-        ctx.communityEnrichmentService.batchFetchCommunities(communityIds),
+      const [{ items, total }, casterTotals] = await Promise.all([
+        ctx.pollCastService.getCastsPaginated({
+          pollId: input.pollId,
+          optionId: input.optionId,
+          skip: input.skip ?? 0,
+          limit: input.limit ?? 20,
+        }),
+        ctx.pollCastService.getCastersSummary(input.pollId, CASTERS_SUMMARY_LIMIT),
       ]);
 
-      const enrichedPolls = polls.map((poll) =>
-        EntityMappers.mapPollToApi(poll, usersMap, communitiesMap),
+      const userIds = Array.from(
+        new Set([...items.map((c) => c.userId), ...casterTotals.map((c) => c.userId)]),
       );
+      const usersMap = await ctx.userEnrichmentService.batchFetchUsers(userIds);
+      const optionTextById = new Map(snapshot.options.map((o) => [o.id, o.text]));
 
-      // Batch calculate permissions for all polls (only if there are polls)
-      if (enrichedPolls.length > 0) {
-        const pollIds = enrichedPolls.map((poll) => poll.id);
-        const permissionsMap = await Promise.all(
-          pollIds.map((pollId) => 
-            ctx.permissionsHelperService.calculatePollPermissions(ctx.user?.id || null, pollId)
-          )
-        );
+      const userFields = (userId: string): { userDisplayName: string; avatarUrl?: string } => {
+        const formatted = UserFormatter.formatUserForApi(usersMap.get(userId), userId);
+        return { userDisplayName: formatted.name, avatarUrl: formatted.photoUrl };
+      };
 
-        // Add permissions to each poll
-        enrichedPolls.forEach((poll, index) => {
-          poll.permissions = permissionsMap[index];
-        });
-      }
+      const castViews: PollCastView[] = items.map((cast) => ({
+        id: cast.id,
+        userId: cast.userId,
+        ...userFields(cast.userId),
+        optionId: cast.optionId,
+        optionText: optionTextById.get(cast.optionId) ?? '',
+        amount: cast.amountQuota + cast.amountWallet,
+        direction: cast.direction ?? 'up',
+        createdAt: new Date(cast.createdAt).toISOString(),
+      }));
 
-      // Get total count
-      const total = await ctx.connection.db
-        ?.collection('polls')
-        .countDocuments({ communityId: input.communityId })
-        || polls.length;
+      const casters: PollCasterSummary[] = casterTotals.map((caster) => ({
+        userId: caster.userId,
+        ...userFields(caster.userId),
+        totalUp: caster.totalUp,
+        totalDown: caster.totalDown,
+      }));
 
-      return PaginationHelper.createResult(
-        enrichedPolls,
-        total,
-        pagination,
-      );
+      return { items: castViews, total, casters };
     }),
 
   /**

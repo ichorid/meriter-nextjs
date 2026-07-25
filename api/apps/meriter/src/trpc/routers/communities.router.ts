@@ -104,6 +104,7 @@ export const communitiesRouter = router({
             community.settings?.commentMode ??
             (community.settings?.tappalkaOnlyMode ? 'neutralOnly' : 'all'),
           eventCreation: community.settings?.eventCreation ?? 'members',
+          pollCreation: community.settings?.pollCreation ?? 'members',
           telegramModerationEnabled:
             community.settings?.telegramModerationEnabled ?? false,
         },

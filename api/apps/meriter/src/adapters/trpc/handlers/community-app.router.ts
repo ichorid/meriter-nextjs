@@ -149,10 +149,12 @@ export const communityAppRouter = router({
   polls: pickProceduresRouter(pollsRouter, [
     'getById',
     'getByCommunity',
+    'listByCommunity',
     'create',
     'update',
     'delete',
     'cast',
+    'getCasts',
     'getResults',
     'getMyCasts',
   ]),

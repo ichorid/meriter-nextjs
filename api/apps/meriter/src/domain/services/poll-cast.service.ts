@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PollCastRepository } from '../models/poll/poll-cast.repository';
-import type { PollCast } from '../models/poll/poll-cast.schema';
+import type { PollCast, PollCastDirection } from '../models/poll/poll-cast.schema';
 import { PollCastedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
 import {
@@ -27,10 +27,11 @@ export class PollCastService {
     quotaAmount: number,
     walletAmount: number,
     communityId: string,
+    direction: PollCastDirection = 'up',
   ): Promise<PollCast> {
     const totalAmount = quotaAmount + walletAmount;
     this.logger.log(
-      `Creating poll cast: poll=${pollId}, user=${userId}, option=${optionId}, quota=${quotaAmount}, wallet=${walletAmount}, total=${totalAmount}`,
+      `Creating poll cast: poll=${pollId}, user=${userId}, option=${optionId}, quota=${quotaAmount}, wallet=${walletAmount}, total=${totalAmount}, direction=${direction}`,
     );
 
     const poll = await this.pollPersistence.findById(pollId);
@@ -65,6 +66,7 @@ export class PollCastService {
       optionId,
       amountQuota: quotaAmount,
       amountWallet: walletAmount,
+      direction,
       communityId,
       createdAt: new Date(),
     });
@@ -79,14 +81,37 @@ export class PollCastService {
     return this.pollCastRepository.findByPollAndUser(pollId, userId);
   }
 
-  async getPollResults(
-    pollId: string,
-  ): Promise<Array<{ optionId: string; totalAmount: number; castCount: number }>> {
+  async getPollResults(pollId: string): Promise<
+    Array<{
+      optionId: string;
+      totalAmount: number;
+      castCount: number;
+      amountUp: number;
+      amountDown: number;
+      amount: number;
+    }>
+  > {
     return this.pollCastRepository.aggregateByOption(pollId);
   }
 
   async getAllCasts(pollId: string): Promise<PollCast[]> {
     return this.pollCastRepository.findByPoll(pollId);
+  }
+
+  async getCastsPaginated(query: {
+    pollId: string;
+    optionId?: string;
+    skip: number;
+    limit: number;
+  }): Promise<{ items: PollCast[]; total: number }> {
+    return this.pollCastRepository.findByPollPaginated(query);
+  }
+
+  async getCastersSummary(
+    pollId: string,
+    limit: number = 20,
+  ): Promise<Array<{ userId: string; totalUp: number; totalDown: number }>> {
+    return this.pollCastRepository.aggregateCastersByPoll(pollId, limit);
   }
 
   async castPoll(

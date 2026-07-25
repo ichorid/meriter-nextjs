@@ -149,6 +149,7 @@ export interface UpdateCommunityDto {
     tappalkaOnlyMode?: boolean;
     commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
     eventCreation?: 'admin' | 'members';
+    pollCreation?: 'admin' | 'members';
     documentsMode?: 'off' | 'visionOrDescriptionOnly' | 'all';
     documentCreators?: 'admins' | 'members';
     documentVariantCost?: number | null;
@@ -907,6 +908,9 @@ export class CommunityService {
       }
       if (dto.settings.eventCreation !== undefined) {
         settingsUpdate['settings.eventCreation'] = dto.settings.eventCreation;
+      }
+      if (dto.settings.pollCreation !== undefined) {
+        settingsUpdate['settings.pollCreation'] = dto.settings.pollCreation;
       }
       if (dto.settings.documentsMode !== undefined) {
         settingsUpdate['settings.documentsMode'] = dto.settings.documentsMode;

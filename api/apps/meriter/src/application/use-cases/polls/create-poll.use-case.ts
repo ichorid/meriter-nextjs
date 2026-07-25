@@ -41,6 +41,19 @@ export class CreatePollUseCase {
       });
     }
 
+    if ((community.settings?.pollCreation ?? 'members') === 'admin') {
+      const isAdmin = await this.ctx.communityService.isUserAdmin(
+        input.communityId,
+        this.ctx.user.id,
+      );
+      if (!isAdmin) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only community administrators can create polls',
+        });
+      }
+    }
+
     const pollCost = community.settings?.pollCost ?? 1;
 
     if (pollCost > 0) {

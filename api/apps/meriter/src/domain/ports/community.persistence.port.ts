@@ -34,6 +34,7 @@ export interface CommunitySettings {
   tappalkaOnlyMode?: boolean;
   commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
   eventCreation?: 'admin' | 'members';
+  pollCreation?: 'admin' | 'members';
   documentsMode?: 'off' | 'visionOrDescriptionOnly' | 'all';
   documentCreators?: 'admins' | 'members';
   documentVariantCost?: number | null;

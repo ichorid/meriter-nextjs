@@ -17,7 +17,11 @@ export interface PollOption {
   id: string;
   text: string;
   votes: number;
+  /** Net amount (amountUp - amountDown); can be negative. */
   amount: number;
+  /** Legacy docs may lack these; readers use amountUp ?? amount, amountDown ?? 0. */
+  amountUp?: number;
+  amountDown?: number;
   casterCount: number;
 }
 
@@ -25,6 +29,10 @@ export interface PollMetrics {
   totalCasts: number;
   casterCount: number;
   totalAmount: number;
+}
+
+export interface PollSettings {
+  quotaAllowed: boolean;
 }
 
 export interface Poll {
@@ -37,6 +45,8 @@ export interface Poll {
   expiresAt: Date;
   isActive: boolean;
   metrics: PollMetrics;
+  settings?: PollSettings;
+  resultsAnnouncedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -64,6 +74,8 @@ export class PollSchemaClass implements Poll {
       text: String,
       votes: Number,
       amount: Number,
+      amountUp: Number,
+      amountDown: Number,
       casterCount: Number,
     }],
     required: true,
@@ -75,6 +87,17 @@ export class PollSchemaClass implements Poll {
 
   @Prop({ default: true })
   isActive!: boolean;
+
+  @Prop({
+    type: {
+      quotaAllowed: { type: Boolean, default: false },
+    },
+    default: { quotaAllowed: false },
+  })
+  settings?: PollSettings;
+
+  @Prop({ type: Date })
+  resultsAnnouncedAt?: Date;
 
   @Prop({
     type: {
