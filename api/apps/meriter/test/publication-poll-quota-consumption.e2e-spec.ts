@@ -417,6 +417,12 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
     it('should deduct wallet merits when creating a poll', async () => {
       (global as any).testUserId = testUserId;
 
+      // Fee applies only outside Telegram-linked communities.
+      await communityModel.updateOne(
+        { id: testCommunityId },
+        { $unset: { telegramChatId: '' }, $set: { 'settings.pollCost': 1 } },
+      );
+
       // Add global wallet balance for poll creation fee
       await walletService.addTransaction(
         testUserId,
@@ -489,6 +495,12 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
 
     it('should reject poll creation when wallet balance is insufficient', async () => {
       (global as any).testUserId = testUserId;
+
+      // Fee applies only outside Telegram-linked communities.
+      await communityModel.updateOne(
+        { id: testCommunityId },
+        { $unset: { telegramChatId: '' }, $set: { 'settings.pollCost': 1 } },
+      );
 
       // Ensure global wallet has no balance
       const wallet = await walletService.getWallet(testUserId, GLOBAL_COMMUNITY_ID);

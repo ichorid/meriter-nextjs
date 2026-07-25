@@ -404,6 +404,12 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
       (global as any).testUserId = testLeadId;
       (global as any).testUserGlobalRole = 'participant';
 
+      // Fee applies only outside Telegram-linked communities.
+      await communityModel.updateOne(
+        { id: testCommunityId },
+        { $unset: { telegramChatId: '' } },
+      );
+
       // Add global wallet balance for poll fee payment
       await walletService.addTransaction(
         testLeadId,
@@ -544,6 +550,12 @@ describe('Community Post/Poll Cost Configuration (e2e)', () => {
     it('should reject poll creation when wallet balance is insufficient for configured cost', async () => {
       (global as any).testUserId = testLeadId;
       (global as any).testUserGlobalRole = 'participant';
+
+      // Fee applies only outside Telegram-linked communities.
+      await communityModel.updateOne(
+        { id: testCommunityId },
+        { $unset: { telegramChatId: '' } },
+      );
 
       // Set pollCost to 15 (more than daily quota of 10)
       await trpcMutation(app, 'communities.update', {
