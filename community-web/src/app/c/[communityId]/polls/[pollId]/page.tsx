@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { AuthGate } from '@/components/shell';
@@ -7,6 +8,7 @@ import { CommunityShell } from '@/components/community-shell';
 import { PollCastFeed } from '@/components/polls/poll-cast-feed';
 import { PollCastPanel } from '@/components/polls/poll-cast-panel';
 import { PollCountdown } from '@/components/polls/poll-countdown';
+import { PollManagePanel } from '@/components/polls/poll-manage-panel';
 import { isPollFinished, type PollView } from '@/components/polls/poll-types';
 import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
@@ -20,6 +22,7 @@ function PollDetailInner({
   pollId: string;
 }) {
   const router = useRouter();
+  const [editing, setEditing] = useState(false);
   const pollQuery = trpc.polls.getById.useQuery({ id: pollId });
   const poll = pollQuery.data as PollView | undefined;
 
@@ -74,9 +77,18 @@ function PollDetailInner({
               </p>
             </header>
 
-            <PollCastPanel poll={poll} communityId={communityId} />
+            <PollManagePanel
+              poll={poll}
+              communityId={communityId}
+              onEditingChange={setEditing}
+            />
 
-            <PollCastFeed pollId={poll.id} />
+            {!editing && (
+              <>
+                <PollCastPanel poll={poll} communityId={communityId} />
+                <PollCastFeed pollId={poll.id} />
+              </>
+            )}
           </>
         )}
       </div>
