@@ -12,6 +12,7 @@ import { CommunityService } from '../../domain/services/community.service';
 import { UserCommunityRoleService } from '../../domain/services/user-community-role.service';
 import { WalletService } from '../../domain/services/wallet.service';
 import { PublicationService } from '../../domain/services/publication.service';
+import { PollService } from '../../domain/services/poll.service';
 import { PermissionService } from '../../domain/services/permission.service';
 import { VoteService } from '../../domain/services/vote.service';
 import { UserService } from '../../domain/services/user.service';
@@ -79,6 +80,7 @@ import {
   voteAmountButtonLabels,
   buildDmCommunityPickerKeyboard,
   telegramDmCommandLabel,
+  buildActivePollsListMessage,
   type CommunityUsageRulesInput,
 } from './telegram-messages.ru';
 import { buildTelegramGuideMessage } from './telegram-guide.ru';
@@ -129,7 +131,7 @@ const LEAD_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const PENDING_TTL_MS = 15 * 60 * 1000;
 const FUTURE_VISION_MAX_LENGTH = 10000;
 const BOT_CMD_REGEX =
-  /^\/(баланс|balance|участники|members|help|справка|settings|настройки|guide|гайд|linkandpin|link)(?:@\w+)?(?:\s+(.*))?$/i;
+  /^\/(баланс|balance|участники|members|help|справка|settings|настройки|guide|гайд|linkandpin|link|polls|голосования)(?:@\w+)?(?:\s+(.*))?$/i;
 const GROUP_START_CMD_REGEX = /^\/start(?:@\w+)?(?:\s|$)/i;
 
 type BotCommandContext = {
@@ -195,6 +197,7 @@ export class TelegramBotOrchestratorService {
     private readonly userCommunityRoleService: UserCommunityRoleService,
     private readonly walletService: WalletService,
     private readonly publicationService: PublicationService,
+    private readonly pollService: PollService,
     private readonly permissionService: PermissionService,
     private readonly voteService: VoteService,
     private readonly userService: UserService,
@@ -958,6 +961,34 @@ export class TelegramBotOrchestratorService {
             lines.push(TG_MSG.memberLine(label, wallets[i], pct));
           }
           return lines.join('\n');
+        });
+        break;
+      }
+      case 'polls':
+      case 'голосования': {
+        const delivery = resolveTelegramCommandDelivery(
+          community.settings?.telegramCommandRouting,
+          'polls',
+        );
+        await this.deliverRoutedCommand(ctx, delivery, async () => {
+          const polls = await this.pollService.getPollsByCommunity(community.id, 20, 0);
+          const activePolls = polls.filter((poll) => poll.isCurrentlyActive());
+          const botUsername = this.configService.get('bot')?.username?.replace(/^@/, '').trim();
+          return buildActivePollsListMessage(
+            community.name,
+            activePolls.map((poll) => ({
+              pollId: poll.getId,
+              question: poll.getQuestion,
+              expiresAt: poll.getExpiresAt,
+              options: poll.getOptions.map((option) => ({
+                text: option.getText,
+                amount: option.getAmount,
+                amountUp: option.getAmountUp,
+                amountDown: option.getAmountDown,
+              })),
+            })),
+            botUsername,
+          );
         });
         break;
       }

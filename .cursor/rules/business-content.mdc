@@ -81,14 +81,20 @@ Conceptually similar to base post (content with time limit, no publication `metr
 | Field | Description |
 |-------|-------------|
 | question | Poll question text |
-| options | List of voting options |
+| options | List of voting options; each option carries `amountUp`, `amountDown`, `amount` (net = up − down, may be negative). Legacy readers: `amountUp ?? amount`, `amountDown ?? 0` |
 | expiresAt | Voting close time (required in schema) |
+| settings.quotaAllowed | Default **false** — casts are wallet-only; when `true`, up-casts use quota-first → wallet |
+| resultsAnnouncedAt | Set by the Telegram results cron after итоги are posted (also stamped for chat-less/frozen/non-MVP communities to prevent reprocessing) |
 
-### Poll Voting
-- Poll creation uses `settings.pollCost` (community-level cost)
-- Poll voting spends user merits by vote amount (wallet/quota rules apply)
-- Vote weight = amount of merits spent
-- After expiresAt, new votes are NOT accepted
+### Poll Voting (casts)
+- Poll creation uses `settings.pollCost` (community-level cost, global wallet, burn). Who may create: **`settings.pollCreation`** (`admin` | `members`, default `members`) — enforced in `CreatePollUseCase`.
+- `polls.cast` accepts `direction: 'up' | 'down'` (default `'up'`); vote weight = merits spent; multiple casts per user allowed (amounts accumulate).
+- **Up**: wallet-only unless `poll.settings.quotaAllowed === true` (then quota-first → wallet; server re-splits, client split ignored).
+- **Down**: wallet-only ALWAYS (quota rejected); voter's merits **burn**; option `amountDown` grows, net `amount` may go negative.
+- After expiresAt (or `isActive: false`), new casts are NOT accepted.
+- **Cast visibility**: `polls.getCasts({ pollId, optionId?, skip, limit })` — member-only paginated feed (`PollCastView[]`: user, option, amount, direction, time) + `casters` top-20 aggregate (`PollCasterSummary`). `polls.getResults` rows include `amountUp` / `amountDown` / `amount` (net).
+- **Mini app**: `community-app.router` exposes the `polls.*` namespace for `community-web` («Голосования» tab at `/c/{id}/polls`; deep link `startapp=poll:{pollId}`).
+- **Telegram bot** (`telegram_mvp` mode): announce on create (inline button «Открыть голосование»), `/polls` group command, results cron every 10 min posts итоги and stamps `resultsAnnouncedAt`.
 
 ---
 

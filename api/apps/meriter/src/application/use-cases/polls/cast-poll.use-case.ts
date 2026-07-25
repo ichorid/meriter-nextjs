@@ -44,7 +44,9 @@ const DEFAULT_CURRENCY = {
 
 /**
  * BC-07 inv-01/inv-02: poll cast orchestration.
- * inv-02: quota consumed first (up to remaining daily cap), remainder from wallet.
+ * Source rules (client quota/wallet split is ignored):
+ * - up: wallet-only unless poll.settings.quotaAllowed, then quota-first with wallet remainder.
+ * - down: wallet-only always; merits burn (debited, credited nowhere).
  * inv-01: wallet portion debited via WalletService (global or resolved community wallet).
  */
 export class CastPollUseCase {
@@ -86,6 +88,7 @@ export class CastPollUseCase {
     const requestedQuotaAmount = input.data.quotaAmount ?? 0;
     const requestedWalletAmount = input.data.walletAmount ?? 0;
     const totalAmount = requestedQuotaAmount + requestedWalletAmount;
+    const direction = input.data.direction ?? 'up';
 
     if (totalAmount <= 0) {
       throw new TRPCError({
@@ -94,28 +97,35 @@ export class CastPollUseCase {
       });
     }
 
-    const userRole = await this.ctx.permissionService.getUserRoleInCommunity(
-      this.ctx.user.id,
-      communityId,
-    );
-    const effectiveMeritSettings = this.ctx.communityService.getEffectiveMeritSettings(community);
-    const quotaRecipients = effectiveMeritSettings?.quotaRecipients ?? [];
-    const canUseQuotaByRole = userRole ? quotaRecipients.includes(userRole) : true;
-    const quotaEnabled = effectiveMeritSettings?.quotaEnabled !== false;
-    const canUseQuota = quotaEnabled && canUseQuotaByRole;
+    // Quota participates only for up casts on polls that explicitly allow it;
+    // down casts are wallet-only always.
+    const quotaAllowedByPoll =
+      direction === 'up' && (snapshot.settings?.quotaAllowed ?? false);
 
     let quotaAmount = 0;
-    if (canUseQuota) {
-      if (!this.ctx.connection.db) {
-        throw new Error('Database connection not available');
-      }
-      const remainingQuota = await this.getRemainingQuota.forPublicationCreate({
-        userId: this.ctx.user.id,
+    if (quotaAllowedByPoll) {
+      const userRole = await this.ctx.permissionService.getUserRoleInCommunity(
+        this.ctx.user.id,
         communityId,
-        community: community as CommunityQuotaContext,
-        db: this.ctx.connection.db,
-      });
-      quotaAmount = Math.min(totalAmount, remainingQuota);
+      );
+      const effectiveMeritSettings = this.ctx.communityService.getEffectiveMeritSettings(community);
+      const quotaRecipients = effectiveMeritSettings?.quotaRecipients ?? [];
+      const canUseQuotaByRole = userRole ? quotaRecipients.includes(userRole) : true;
+      const quotaEnabled = effectiveMeritSettings?.quotaEnabled !== false;
+      const canUseQuota = quotaEnabled && canUseQuotaByRole;
+
+      if (canUseQuota) {
+        if (!this.ctx.connection.db) {
+          throw new Error('Database connection not available');
+        }
+        const remainingQuota = await this.getRemainingQuota.forPublicationCreate({
+          userId: this.ctx.user.id,
+          communityId,
+          community: community as CommunityQuotaContext,
+          db: this.ctx.connection.db,
+        });
+        quotaAmount = Math.min(totalAmount, remainingQuota);
+      }
     }
     const walletAmount = totalAmount - quotaAmount;
 
@@ -176,6 +186,7 @@ export class CastPollUseCase {
       quotaAmount,
       walletAmount,
       communityId,
+      direction,
     );
 
     await this.ctx.pollService.updatePollForCast(
@@ -184,6 +195,7 @@ export class CastPollUseCase {
       totalAmount,
       isNewCaster,
       isNewCasterForOption,
+      direction,
     );
 
     const updatedWallet =

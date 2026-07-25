@@ -7,7 +7,11 @@ export interface PollOptionSnapshot {
   id: string;
   text: string;
   votes: number;
+  /** Net amount (amountUp - amountDown); can be negative. */
   amount: number;
+  /** Legacy docs may lack these; readers use amountUp ?? amount, amountDown ?? 0. */
+  amountUp?: number;
+  amountDown?: number;
   casterCount: number;
 }
 
@@ -15,6 +19,10 @@ export interface PollMetricsSnapshot {
   totalCasts: number;
   casterCount: number;
   totalAmount: number;
+}
+
+export interface PollSettingsSnapshot {
+  quotaAllowed: boolean;
 }
 
 export interface PollSnapshot {
@@ -27,6 +35,8 @@ export interface PollSnapshot {
   expiresAt: Date;
   isActive: boolean;
   metrics: PollMetricsSnapshot;
+  settings?: PollSettingsSnapshot;
+  resultsAnnouncedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }

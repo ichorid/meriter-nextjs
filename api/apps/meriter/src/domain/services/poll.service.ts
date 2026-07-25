@@ -37,6 +37,7 @@ export class PollService {
       dto.description,
       dto.options,
       expiresAt,
+      dto.settings,
     );
 
     await this.pollPersistence.insertPoll(poll.toSnapshot());
@@ -83,12 +84,51 @@ export class PollService {
     return docs.map((doc) => Poll.fromSnapshot(doc as any));
   }
 
-  async getPollResults(pollId: string): Promise<Array<{ optionId: string; totalAmount: number }>> {
+  async getPollResults(pollId: string): Promise<
+    Array<{
+      optionId: string;
+      totalAmount: number;
+      castCount: number;
+      amountUp: number;
+      amountDown: number;
+      amount: number;
+    }>
+  > {
     return this.pollCastRepository.aggregateByOption(pollId);
   }
 
   async getUserCasts(pollId: string, userId: string) {
     return this.pollCastRepository.findByPollAndUser(pollId, userId);
+  }
+
+  /** Polls past deadline whose results were never announced (bot results cron). */
+  async getExpiredUnannouncedPolls(limit: number = 50): Promise<Poll[]> {
+    const docs = await this.pollPersistence.findByFilter(
+      {
+        expiresAt: { $lt: new Date() },
+        $or: [
+          { resultsAnnouncedAt: null },
+          { resultsAnnouncedAt: { $exists: false } },
+        ],
+      },
+      limit,
+      0,
+    );
+    return docs.map((doc) => Poll.fromSnapshot(doc));
+  }
+
+  /** Deactivate (if still active) and stamp resultsAnnouncedAt so the cron never reprocesses. */
+  async finalizePollResultsAnnouncement(pollId: string): Promise<void> {
+    const doc = await this.pollPersistence.findById(pollId);
+    if (!doc) {
+      return;
+    }
+    const poll = Poll.fromSnapshot(doc);
+    if (poll.getIsActive) {
+      poll.expire();
+    }
+    poll.markResultsAnnounced();
+    await this.pollPersistence.updateSnapshot(poll.getId, poll.toSnapshot());
   }
 
   async expirePoll(pollId: string): Promise<Poll | null> {
@@ -114,6 +154,7 @@ export class PollService {
     amount: number,
     isNewCaster: boolean,
     isNewCasterForOption: boolean,
+    direction: 'up' | 'down' = 'up',
   ): Promise<Poll> {
     const doc = await this.pollPersistence.findById(pollId);
     if (!doc) {
@@ -121,10 +162,12 @@ export class PollService {
     }
 
     const poll = Poll.fromSnapshot(doc as any);
-    poll.addCast(optionId, amount, isNewCaster, isNewCasterForOption);
+    poll.addCast(optionId, amount, isNewCaster, isNewCasterForOption, direction);
     await this.pollPersistence.updateSnapshot(poll.getId, poll.toSnapshot());
 
-    this.logger.log(`Poll updated for cast: poll=${pollId}, option=${optionId}, amount=${amount}`);
+    this.logger.log(
+      `Poll updated for cast: poll=${pollId}, option=${optionId}, amount=${amount}, direction=${direction}`,
+    );
 
     return poll;
   }
@@ -198,6 +241,8 @@ export class PollService {
           text: opt.text,
           votes: existingOption?.getVotes || 0,
           amount: existingOption?.getAmount || 0,
+          amountUp: existingOption?.getAmountUp || 0,
+          amountDown: existingOption?.getAmountDown || 0,
           casterCount: existingOption?.getCasterCount || 0,
         };
       });

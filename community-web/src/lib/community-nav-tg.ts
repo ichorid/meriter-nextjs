@@ -1,7 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
-import { Clock, User, Users } from 'lucide-react';
+import { Clock, User, Users, Vote } from 'lucide-react';
 
-export type TgCommunityTabId = 'me' | 'members' | 'history';
+export type TgCommunityTabId = 'me' | 'members' | 'polls' | 'history';
 
 export type TgCommunityTab = {
   id: TgCommunityTabId;
@@ -29,6 +29,13 @@ export function buildTgCommunityTabs(communityId: string): TgCommunityTab[] {
       icon: Users,
     },
     {
+      id: 'polls',
+      href: `${base}/polls`,
+      label: 'Голосования',
+      shortLabel: 'Голосования',
+      icon: Vote,
+    },
+    {
       id: 'history',
       href: `${base}/merit-history`,
       label: 'История',
@@ -41,6 +48,7 @@ export function buildTgCommunityTabs(communityId: string): TgCommunityTab[] {
 export function resolveTgActiveTab(pathname: string, communityId: string): TgCommunityTabId {
   const base = `/c/${communityId}`;
   if (pathname.startsWith(`${base}/members`)) return 'members';
+  if (pathname.startsWith(`${base}/polls`)) return 'polls';
   if (pathname.startsWith(`${base}/merit-history`)) return 'history';
   if (pathname.startsWith(`${base}/posts/`)) return 'me';
   return 'me';

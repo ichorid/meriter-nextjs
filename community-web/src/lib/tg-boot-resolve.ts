@@ -26,6 +26,7 @@ export async function resolveTelegramBootContext(input: {
   devCommunityId?: string | null;
   fetchByTelegramChatId: (chatId: string) => Promise<TelegramChatLookup>;
   listForTelegramUser: () => Promise<TelegramCommunityOption[]>;
+  fetchPollCommunityId?: (pollId: string) => Promise<string | null>;
 }): Promise<TgBootResolution> {
   const startParam = input.startParam?.trim() || null;
   const chatId = input.chatId?.trim() || null;
@@ -39,6 +40,27 @@ export async function resolveTelegramBootContext(input: {
       }
       if (byChat?.communityId) {
         return { type: 'redirect', path: `/c/${byChat.communityId}/posts/${postId}` };
+      }
+    }
+  }
+
+  if (startParam?.startsWith('poll:')) {
+    const pollId = startParam.slice('poll:'.length).trim();
+    if (pollId) {
+      if (chatId) {
+        const byChat = await input.fetchByTelegramChatId(chatId);
+        if (byChat?.isFrozen) {
+          return { type: 'frozen' };
+        }
+        if (byChat?.communityId) {
+          return { type: 'redirect', path: `/c/${byChat.communityId}/polls/${pollId}` };
+        }
+      }
+      // Bot deep links (t.me/{bot}?startapp=poll:{id}) open without group chat context —
+      // resolve the community from the poll itself.
+      const pollCommunityId = (await input.fetchPollCommunityId?.(pollId)) ?? null;
+      if (pollCommunityId) {
+        return { type: 'redirect', path: `/c/${pollCommunityId}/polls/${pollId}` };
       }
     }
   }

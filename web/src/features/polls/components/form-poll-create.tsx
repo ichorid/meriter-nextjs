@@ -22,6 +22,7 @@ import {
     SelectValue,
 } from '@/components/ui/shadcn/select';
 import { BrandFormControl } from '@/components/ui/BrandFormControl';
+import { Switch } from '@/components/ui/shadcn/switch';
 import { cn } from '@/lib/utils';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { Plus, Trash2 } from 'lucide-react';
@@ -107,6 +108,7 @@ export const FormPollCreate = ({
     );
     const [timeValue, setTimeValue] = useState(initialTime.value);
     const [timeUnit, setTimeUnit] = useState<"minutes" | "hours" | "days">(initialTime.unit);
+    const [quotaAllowed, setQuotaAllowed] = useState(initialData?.settings?.quotaAllowed ?? false);
     const [selectedWallet, setSelectedWallet] = useState(communityId || initialData?.communityId || "");
     const [isCreating, setIsCreating] = useState(false);
     const [error, setError] = useState("");
@@ -225,8 +227,6 @@ export const FormPollCreate = ({
                 communityId: selectedWallet,
             };
 
-            console.log('📊 Creating poll with payload:', payload);
-
             let poll;
             if (isEditMode && pollId) {
                 // Update existing poll
@@ -234,11 +234,12 @@ export const FormPollCreate = ({
                     id: pollId,
                     data: payload,
                 });
-                console.log('📊 Poll update response:', poll);
             } else {
-                // Create new poll
-                poll = await createPoll.mutateAsync(payload);
-                console.log('📊 Poll creation response:', poll);
+                // Create new poll (quota participation is fixed at creation)
+                poll = await createPoll.mutateAsync({
+                    ...payload,
+                    settings: { quotaAllowed },
+                });
             }
 
             safeHapticFeedback('success', isInTelegram);
@@ -259,7 +260,7 @@ export const FormPollCreate = ({
                 }
             }
         }
-    }, [title, description, options, timeValue, timeUnit, selectedWallet, isInTelegram, t, onSuccess, isEditMode, pollId, updatePoll]);
+    }, [title, description, options, timeValue, timeUnit, quotaAllowed, selectedWallet, isInTelegram, t, onSuccess, isEditMode, pollId, updatePoll]);
 
     // Telegram MainButton integration
     useEffect(() => {
@@ -498,6 +499,25 @@ export const FormPollCreate = ({
                     </div>
                 </div>
             </BrandFormControl>
+
+            {/* Quota Participation Section (fixed at creation) */}
+            {!isEditMode && (
+                <div className="flex items-start justify-between gap-3">
+                    <div>
+                        <p className="text-sm font-semibold text-brand-text-primary dark:text-base-content">
+                            {t('quotaAllowedLabel')}
+                        </p>
+                        <p className="text-xs text-brand-text-muted dark:text-base-content/60 mt-0.5">
+                            {t('quotaAllowedHint')}
+                        </p>
+                    </div>
+                    <Switch
+                        checked={quotaAllowed}
+                        onCheckedChange={setQuotaAllowed}
+                        disabled={isCreating}
+                    />
+                </div>
+            )}
 
             {/* Error Alert */}
             {error && (

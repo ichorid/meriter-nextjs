@@ -84,6 +84,8 @@ export interface CommunitySettings {
   commentMode?: 'all' | 'neutralOnly' | 'weightedOnly';
   /** Who may create event posts (`postType === 'event'`). Default: admin/lead only. */
   eventCreation?: 'admin' | 'members';
+  /** Who may create polls. Default: any member. */
+  pollCreation?: 'admin' | 'members';
   /** Collaborative documents: off | OB+description only | all (custom docs + tab). */
   documentsMode?: 'off' | 'visionOrDescriptionOnly' | 'all';
   documentCreators?: 'admins' | 'members';
@@ -461,6 +463,7 @@ export class CommunitySchemaClass implements Community {
         default: 'all',
       },
       eventCreation: { type: String, enum: ['admin', 'members'], default: 'admin' },
+      pollCreation: { type: String, enum: ['admin', 'members'], default: 'members' },
       documentsMode: {
         type: String,
         enum: ['off', 'visionOrDescriptionOnly', 'all'],

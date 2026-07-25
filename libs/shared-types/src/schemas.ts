@@ -218,6 +218,8 @@ export const CommunitySettingsSchema = z.object({
   distributeAllByContractOnClose: z.boolean().default(true),
   /** Who may create event posts in this community/project. */
   eventCreation: z.enum(["admin", "members"]).default("admin"),
+  /** Who may create polls in this community/project. */
+  pollCreation: z.enum(["admin", "members"]).default("members"),
   /** Collaborative documents hub mode (OB/description/custom docs). */
   documentsMode: z
     .enum(["off", "visionOrDescriptionOnly", "all"])
@@ -300,7 +302,11 @@ export const PollOptionSchema = z.object({
   id: z.string(),
   text: z.string().min(1).max(200),
   votes: z.number().int().min(0),
-  amount: z.number().int().min(0),
+  /** Net amount (amountUp - amountDown); can be negative. */
+  amount: z.number().int(),
+  /** Legacy options may lack these fields; readers use amountUp ?? amount, amountDown ?? 0. */
+  amountUp: z.number().default(0),
+  amountDown: z.number().default(0),
   casterCount: z.number().int().min(0),
 });
 
@@ -570,6 +576,28 @@ export const VoteSchema = PolymorphicReferenceSchema.merge(TimestampsSchema)
       "At least one of amountQuota or amountWallet must be greater than zero",
   });
 
+/** Enriched poll cast row for the public cast feed (polls.getCasts). */
+export const PollCastViewSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  userDisplayName: z.string(),
+  avatarUrl: z.string().optional(),
+  optionId: z.string(),
+  optionText: z.string(),
+  amount: z.number(), // amountQuota + amountWallet
+  direction: z.enum(["up", "down"]),
+  createdAt: z.string(),
+});
+
+/** Per-user aggregate for the "top casters" block (polls.getCasts). */
+export const PollCasterSummarySchema = z.object({
+  userId: z.string(),
+  userDisplayName: z.string(),
+  avatarUrl: z.string().optional(),
+  totalUp: z.number(),
+  totalDown: z.number(),
+});
+
 export const PollSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   communityId: z.string(),
   authorId: z.string(),
@@ -579,6 +607,11 @@ export const PollSchema = IdentifiableSchema.merge(TimestampsSchema).extend({
   expiresAt: z.string().datetime(),
   isActive: z.boolean().default(true),
   metrics: PollMetricsSchema,
+  settings: z
+    .object({ quotaAllowed: z.boolean().default(false) })
+    .default({ quotaAllowed: false }),
+  /** Set when poll results were announced (e.g. Telegram bot cron). */
+  resultsAnnouncedAt: z.string().datetime().optional(),
   permissions: ResourcePermissionsSchema.optional(),
 });
 
@@ -589,6 +622,7 @@ export const PollCastSchema = IdentifiableSchema.merge(TimestampsSchema)
     userId: z.string(),
     amountQuota: z.number().int().min(0).default(0),
     amountWallet: z.number().int().min(0).default(0),
+    direction: z.enum(["up", "down"]).default("up"),
     communityId: z.string(), // Added for consistency
   })
   .refine((data) => data.amountQuota > 0 || data.amountWallet > 0, {
@@ -753,6 +787,7 @@ export const CreatePollDtoSchema = z.object({
     )
     .min(2),
   expiresAt: z.string().datetime(),
+  settings: z.object({ quotaAllowed: z.boolean().optional() }).optional(),
   quotaAmount: z.number().int().min(0).optional(), // Deprecated: poll creation now uses wallet merits only
   walletAmount: z.number().int().min(0).optional(), // Deprecated: server charges wallet based on pollCost
 });
@@ -777,6 +812,7 @@ export const CreatePollCastDtoSchema = z
     optionId: z.string(), // Changed from optionIndex to optionId
     quotaAmount: z.number().int().min(0).optional(),
     walletAmount: z.number().int().min(0).optional(),
+    direction: z.enum(["up", "down"]).optional().default("up"),
   })
   .refine(
     (data) => {
@@ -831,6 +867,7 @@ export const UpdateCommunityDtoSchema = z.object({
     tappalkaOnlyMode: z.boolean().optional(),
     commentMode: z.enum(['all', 'neutralOnly', 'weightedOnly']).optional(),
     eventCreation: z.enum(['admin', 'members']).optional(),
+    pollCreation: z.enum(['admin', 'members']).optional(),
     documentsMode: z.enum(['off', 'visionOrDescriptionOnly', 'all']).optional(),
     documentCreators: z.enum(['admins', 'members']).optional(),
     documentVariantCost: z.number().int().min(0).nullable().optional(),
@@ -1234,6 +1271,8 @@ export type Comment = z.infer<typeof CommentSchema>;
 export type Vote = z.infer<typeof VoteSchema>;
 export type Poll = z.infer<typeof PollSchema>;
 export type PollCast = z.infer<typeof PollCastSchema>;
+export type PollCastView = z.infer<typeof PollCastViewSchema>;
+export type PollCasterSummary = z.infer<typeof PollCasterSummarySchema>;
 export type Wallet = z.infer<typeof WalletSchema>;
 export type Transaction = z.infer<typeof TransactionSchema>;
 

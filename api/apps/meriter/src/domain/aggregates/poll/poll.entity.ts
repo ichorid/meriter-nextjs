@@ -1,5 +1,11 @@
 import { uid } from 'uid';
 
+export type PollCastDirection = 'up' | 'down';
+
+export interface PollSettings {
+  quotaAllowed: boolean;
+}
+
 export class PollOption {
   private constructor(
     public readonly id: string,
@@ -7,13 +13,26 @@ export class PollOption {
     public readonly votes: number,
     public readonly amount: number,
     public readonly casterCount: number,
+    public readonly amountUp: number,
+    public readonly amountDown: number,
   ) {}
 
-  static create(id: string, text: string, votes: number = 0, amount: number = 0, casterCount: number = 0): PollOption {
+  static create(
+    id: string,
+    text: string,
+    votes: number = 0,
+    amount: number = 0,
+    casterCount: number = 0,
+    amountUp?: number,
+    amountDown?: number,
+  ): PollOption {
     if (!text || text.trim().length === 0) {
       throw new Error('Poll option text cannot be empty');
     }
-    return new PollOption(id, text.trim(), votes, amount, casterCount);
+    // Legacy options carry only `amount`; treat it as all-up.
+    const up = amountUp ?? amount;
+    const down = amountDown ?? 0;
+    return new PollOption(id, text.trim(), votes, amount, casterCount, up, down);
   }
 
   equals(other: PollOption): boolean {
@@ -26,6 +45,8 @@ export class PollOption {
       text: this.text,
       votes: this.votes,
       amount: this.amount,
+      amountUp: this.amountUp,
+      amountDown: this.amountDown,
       casterCount: this.casterCount,
     };
   }
@@ -47,6 +68,14 @@ export class PollOption {
     return this.amount;
   }
 
+  get getAmountUp(): number {
+    return this.amountUp;
+  }
+
+  get getAmountDown(): number {
+    return this.amountDown;
+  }
+
   get getCasterCount(): number {
     return this.casterCount;
   }
@@ -63,6 +92,8 @@ export interface PollSnapshot {
     text: string;
     votes: number;
     amount: number;
+    amountUp?: number;
+    amountDown?: number;
     casterCount: number;
   }>;
   expiresAt: Date;
@@ -72,6 +103,8 @@ export interface PollSnapshot {
     casterCount: number;
     totalAmount: number;
   };
+  settings?: PollSettings;
+  resultsAnnouncedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -87,6 +120,8 @@ export class Poll {
     private readonly expiresAt: Date,
     private isActive: boolean,
     private metrics: { totalCasts: number; casterCount: number; totalAmount: number },
+    private readonly settings: PollSettings,
+    private resultsAnnouncedAt: Date | undefined,
     private readonly createdAt: Date,
     private updatedAt: Date,
   ) {}
@@ -97,18 +132,18 @@ export class Poll {
     question: string,
     description: string | undefined,
     options: Array<{ id?: string; text: string }>,
-    expiresAt: Date
+    expiresAt: Date,
+    settings?: Partial<PollSettings>,
   ): Poll {
     if (options.length < 2) {
       throw new Error('Poll must have at least 2 options');
     }
-    
-    
+
     // Generate IDs for options that don't have them
-    const pollOptions = options.map(opt => 
+    const pollOptions = options.map(opt =>
       PollOption.create(opt.id || uid(), opt.text, 0, 0, 0)
     );
-    
+
     return new Poll(
       uid(),
       communityId,
@@ -119,16 +154,26 @@ export class Poll {
       expiresAt,
       true,
       { totalCasts: 0, casterCount: 0, totalAmount: 0 },
+      { quotaAllowed: settings?.quotaAllowed ?? false },
+      undefined,
       new Date(),
       new Date(),
     );
   }
 
   static fromSnapshot(snapshot: PollSnapshot): Poll {
-    const options = snapshot.options.map(opt => 
-      PollOption.create(opt.id, opt.text, opt.votes, opt.amount, opt.casterCount)
+    const options = snapshot.options.map(opt =>
+      PollOption.create(
+        opt.id,
+        opt.text,
+        opt.votes,
+        opt.amount,
+        opt.casterCount,
+        opt.amountUp,
+        opt.amountDown,
+      )
     );
-    
+
     // Ensure metrics are properly initialized with defaults if missing or invalid
     const metrics = snapshot.metrics || { totalCasts: 0, casterCount: 0, totalAmount: 0 };
     const safeMetrics = {
@@ -136,7 +181,7 @@ export class Poll {
       casterCount: typeof metrics.casterCount === 'number' && !isNaN(metrics.casterCount) ? metrics.casterCount : 0,
       totalAmount: typeof metrics.totalAmount === 'number' && !isNaN(metrics.totalAmount) ? metrics.totalAmount : 0,
     };
-    
+
     return new Poll(
       snapshot.id,
       snapshot.communityId,
@@ -147,6 +192,8 @@ export class Poll {
       snapshot.expiresAt,
       snapshot.isActive,
       safeMetrics,
+      { quotaAllowed: snapshot.settings?.quotaAllowed ?? false },
+      snapshot.resultsAnnouncedAt,
       snapshot.createdAt,
       snapshot.updatedAt,
     );
@@ -178,7 +225,18 @@ export class Poll {
     this.updatedAt = new Date();
   }
 
-  addCast(optionId: string, amount: number, isNewCaster: boolean, isNewCasterForOption: boolean): void {
+  markResultsAnnounced(at: Date = new Date()): void {
+    this.resultsAnnouncedAt = at;
+    this.updatedAt = new Date();
+  }
+
+  addCast(
+    optionId: string,
+    amount: number,
+    isNewCaster: boolean,
+    isNewCasterForOption: boolean,
+    direction: PollCastDirection = 'up',
+  ): void {
     if (!this.isCurrentlyActive()) {
       throw new Error('Cannot cast on inactive or expired poll');
     }
@@ -189,19 +247,25 @@ export class Poll {
     }
 
     const option = this.options[optionIndex];
-    
+
     // Ensure option values are numbers
     const currentVotes = typeof option.getVotes === 'number' && !isNaN(option.getVotes) ? option.getVotes : 0;
-    const currentAmount = typeof option.getAmount === 'number' && !isNaN(option.getAmount) ? option.getAmount : 0;
+    const currentAmountUp = typeof option.getAmountUp === 'number' && !isNaN(option.getAmountUp) ? option.getAmountUp : 0;
+    const currentAmountDown = typeof option.getAmountDown === 'number' && !isNaN(option.getAmountDown) ? option.getAmountDown : 0;
     const currentCasterCount = typeof option.getCasterCount === 'number' && !isNaN(option.getCasterCount) ? option.getCasterCount : 0;
-    
+
+    const newAmountUp = direction === 'up' ? currentAmountUp + amount : currentAmountUp;
+    const newAmountDown = direction === 'down' ? currentAmountDown + amount : currentAmountDown;
+
     // Option casterCount = unique users who voted for this option (repeat vote by same user does not increase)
     const updatedOption = PollOption.create(
       option.getId,
       option.getText,
-      currentVotes + amount,
-      currentAmount + amount,
-      currentCasterCount + (isNewCasterForOption ? 1 : 0)
+      direction === 'up' ? currentVotes + amount : currentVotes,
+      newAmountUp - newAmountDown,
+      currentCasterCount + (isNewCasterForOption ? 1 : 0),
+      newAmountUp,
+      newAmountDown,
     );
 
     // Replace option in array
@@ -215,7 +279,7 @@ export class Poll {
     const currentTotalAmount = typeof this.metrics.totalAmount === 'number' && !isNaN(this.metrics.totalAmount) ? this.metrics.totalAmount : 0;
     const currentCasterCountMetric = typeof this.metrics.casterCount === 'number' && !isNaN(this.metrics.casterCount) ? this.metrics.casterCount : 0;
 
-    // Update metrics
+    // Update metrics (totalAmount = total merits spent, both directions)
     this.metrics.totalCasts = currentTotalCasts + 1;
     this.metrics.totalAmount = currentTotalAmount + amount;
     if (isNewCaster) {
@@ -263,6 +327,14 @@ export class Poll {
     return this.metrics;
   }
 
+  get getSettings(): PollSettings {
+    return this.settings;
+  }
+
+  get getResultsAnnouncedAt(): Date | undefined {
+    return this.resultsAnnouncedAt;
+  }
+
   // Serialization
   toSnapshot(): PollSnapshot {
     return {
@@ -275,6 +347,8 @@ export class Poll {
       expiresAt: this.expiresAt,
       isActive: this.isActive,
       metrics: this.metrics,
+      settings: this.settings,
+      resultsAnnouncedAt: this.resultsAnnouncedAt,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };

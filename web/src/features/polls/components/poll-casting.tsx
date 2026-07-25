@@ -58,14 +58,15 @@ export const PollCasting = ({
     const { data: userRoles = [] } = useUserRoles(user?.id || '');
     const { data: community } = useCommunity(communityId || '');
 
-    // Check if user can use quota (participants/leads/superadmin)
+    // Check if user can use quota (poll must allow it + participants/leads/superadmin)
     const canUseQuota = useMemo(() => {
+        if (pollData.quotaAllowed !== true) return false;
         if (!user?.id || !communityId || !community) return false;
         if (user.globalRole === 'superadmin') return true;
         if (community.typeTag === 'future-vision') return false; // Future vision doesn't use quota
         const role = userRoles.find(r => r.communityId === communityId);
         return role && ['participant', 'lead', 'superadmin'].includes(role.role);
-    }, [user?.id, user?.globalRole, userRoles, communityId, community]);
+    }, [pollData.quotaAllowed, user?.id, user?.globalRole, userRoles, communityId, community]);
 
     // Calculate max amount (quota + wallet)
     const maxAmount = canUseQuota ? quotaRemaining + balance : balance;
@@ -269,7 +270,7 @@ export const PollCasting = ({
                             className="w-full h-10 px-3 rounded-lg border border-input bg-background text-base transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
                         />
                         <p className="mt-1.5 text-xs text-base-content/60">
-                            {t('available')}: <span className="font-semibold">{formatMerits(quotaRemaining + balance)}</span> {t('merits')}
+                            {t('available')}: <span className="font-semibold">{formatMerits(maxAmount)}</span> {t('merits')}
                             {canUseQuota && community?.meritSettings?.quotaEnabled !== false && (
                                 <>
                                     , {t('fromWhich')} {quotaRemaining} – {t('quota')}

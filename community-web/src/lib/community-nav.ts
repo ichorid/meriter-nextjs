@@ -8,12 +8,14 @@ import {
   Settings,
   Shield,
   Users,
+  Vote,
 } from 'lucide-react';
 
 export type CommunityTabId =
   | 'feed'
   | 'members'
   | 'projects'
+  | 'polls'
   | 'documents'
   | 'events'
   | 'merit-history'
@@ -64,6 +66,13 @@ const TAB_DEFINITIONS: Omit<CommunityTab, 'href'>[] = [
     placement: 'primary',
   },
   {
+    id: 'polls',
+    label: 'Голосования',
+    shortLabel: 'Голосования',
+    icon: Vote,
+    placement: 'more',
+  },
+  {
     id: 'documents',
     label: 'Документы',
     shortLabel: 'Документы',
@@ -94,6 +103,7 @@ const TAB_DEFINITIONS: Omit<CommunityTab, 'href'>[] = [
 ];
 
 const MORE_TAB_IDS = new Set<CommunityTabId>([
+  'polls',
   'documents',
   'events',
   'moderation',
