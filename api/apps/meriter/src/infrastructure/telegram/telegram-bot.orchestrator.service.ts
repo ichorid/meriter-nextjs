@@ -1719,6 +1719,9 @@ export class TelegramBotOrchestratorService {
       currencyNames: { singular: 'заслуга', plural: 'заслуги', genitive: 'заслуг' },
       dailyEmission: payload.quotaEnabled ? (payload.dailyEmission ?? 5) : 0,
       postCost: payload.postCost ?? 0,
+      // Free by default in TG MVP (merits live in the local team wallet).
+      pollCost: 0,
+      pollCreation: 'members',
       allowWithdraw: false,
       documentsMode: platformIntegration ? 'visionOrDescriptionOnly' : 'off',
       telegramPlatformIntegration: platformIntegration,

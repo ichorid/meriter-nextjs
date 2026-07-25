@@ -337,12 +337,12 @@ describe('telegram group welcome copy', () => {
 describe('telegram poll copy', () => {
   const expiresAt = new Date('2026-07-30T18:30:00Z');
 
-  it('buildPollMiniAppUrl builds startapp=poll deep link', () => {
+  it('buildPollMiniAppUrl builds startapp=poll_ deep link (no colon)', () => {
     expect(buildPollMiniAppUrl('@meriter_bot', 'poll-1')).toBe(
-      'https://t.me/meriter_bot?startapp=poll:poll-1',
+      'https://t.me/meriter_bot?startapp=poll_poll-1',
     );
     expect(buildPollMiniAppUrl('meriter_bot', 'poll-1')).toBe(
-      'https://t.me/meriter_bot?startapp=poll:poll-1',
+      'https://t.me/meriter_bot?startapp=poll_poll-1',
     );
   });
 
@@ -350,7 +350,7 @@ describe('telegram poll copy', () => {
     const keyboard = buildPollOpenKeyboard('meriter_bot', 'poll-1');
     expect(keyboard.inline_keyboard[0][0]).toEqual({
       text: TG_POLL_OPEN_BUTTON_LABEL,
-      url: 'https://t.me/meriter_bot?startapp=poll:poll-1',
+      url: 'https://t.me/meriter_bot?startapp=poll_poll-1',
     });
   });
 
@@ -394,7 +394,7 @@ describe('telegram poll copy', () => {
     expect(text).toContain('До 30.07.2026 21:30 (МСК)');
     expect(text).toContain('• Море: 7');
     expect(text).toContain('• Горы: -2');
-    expect(text).toContain('Открыть: https://t.me/meriter_bot?startapp=poll:poll-1');
+    expect(text).toContain('Открыть: https://t.me/meriter_bot?startapp=poll_poll-1');
   });
 
   it('active polls list has an empty state', () => {

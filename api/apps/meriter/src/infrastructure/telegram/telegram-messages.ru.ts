@@ -1044,10 +1044,13 @@ export type TelegramPollSummary = {
 
 export const TG_POLL_OPEN_BUTTON_LABEL = 'Открыть голосование';
 
-/** Mini-app deep link to a poll card: startapp=poll:{pollId}. */
+/**
+ * Mini-app deep link to a poll card.
+ * Telegram startapp allows only A-Z a-z 0-9 _ - (no colon) — use poll_{id}.
+ */
 export function buildPollMiniAppUrl(botUsername: string, pollId: string): string {
   const clean = botUsername.replace(/^@/, '').trim();
-  return `https://t.me/${clean}?startapp=poll:${pollId}`;
+  return `https://t.me/${clean}?startapp=poll_${pollId.trim()}`;
 }
 
 export function buildPollOpenKeyboard(

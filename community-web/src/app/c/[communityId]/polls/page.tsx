@@ -9,7 +9,6 @@ import { useCommunityId } from '@/lib/use-route-params';
 import { trpc } from '@/lib/trpc/client';
 
 function PollsListInner({ communityId }: { communityId: string }) {
-  const communityQuery = trpc.communities.getById.useQuery({ id: communityId });
   const pollsQuery = trpc.polls.listByCommunity.useQuery({
     communityId,
     pageSize: 100,
@@ -19,23 +18,17 @@ function PollsListInner({ communityId }: { communityId: string }) {
   const active = polls.filter((poll) => !isPollFinished(poll));
   const finished = polls.filter((poll) => isPollFinished(poll));
 
-  const isLead = communityQuery.data?.isAdmin === true;
-  const pollCreation = communityQuery.data?.settings?.pollCreation ?? 'members';
-  const canCreate = pollCreation === 'members' || isLead;
-
   return (
     <CommunityShell communityId={communityId} active="polls" tgActive="polls">
       <div className="space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-extrabold tracking-tight">Голосования</h1>
-          {canCreate && (
-            <Link
-              href={`/c/${communityId}/polls/create`}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
-            >
-              Создать
-            </Link>
-          )}
+          <Link
+            href={`/c/${communityId}/polls/create`}
+            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white"
+          >
+            Создать
+          </Link>
         </div>
 
         {pollsQuery.isLoading && (

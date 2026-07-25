@@ -69,7 +69,9 @@ export default function TelegramBootPage() {
           authResult.telegramChatId || parseTelegramChatIdFromInitData(initData);
 
         const isContentDeepLink =
-          startParam?.startsWith('post:') || startParam?.startsWith('poll:');
+          startParam?.startsWith('post:') ||
+          startParam?.startsWith('poll_') ||
+          startParam?.startsWith('poll:');
 
         if (authResult.communityId && !isContentDeepLink) {
           if (chatId) {

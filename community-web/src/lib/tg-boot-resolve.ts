@@ -44,8 +44,14 @@ export async function resolveTelegramBootContext(input: {
     }
   }
 
-  if (startParam?.startsWith('poll:')) {
-    const pollId = startParam.slice('poll:'.length).trim();
+  // Telegram startapp charset: A-Za-z0-9_- only. Prefer poll_{id}; accept legacy poll: if present.
+  const pollPrefix = startParam?.startsWith('poll_')
+    ? 'poll_'
+    : startParam?.startsWith('poll:')
+      ? 'poll:'
+      : null;
+  if (pollPrefix) {
+    const pollId = startParam!.slice(pollPrefix.length).trim();
     if (pollId) {
       if (chatId) {
         const byChat = await input.fetchByTelegramChatId(chatId);
@@ -56,8 +62,7 @@ export async function resolveTelegramBootContext(input: {
           return { type: 'redirect', path: `/c/${byChat.communityId}/polls/${pollId}` };
         }
       }
-      // Bot deep links (t.me/{bot}?startapp=poll:{id}) open without group chat context —
-      // resolve the community from the poll itself.
+      // Bot deep links open without group chat context — resolve community from the poll.
       const pollCommunityId = (await input.fetchPollCommunityId?.(pollId)) ?? null;
       if (pollCommunityId) {
         return { type: 'redirect', path: `/c/${pollCommunityId}/polls/${pollId}` };
@@ -65,7 +70,12 @@ export async function resolveTelegramBootContext(input: {
     }
   }
 
-  if (startParam && !startParam.includes(':')) {
+  // Community id deep link — exclude content prefixes (poll_ / legacy poll: / post:).
+  if (
+    startParam &&
+    !startParam.includes(':') &&
+    !startParam.startsWith('poll_')
+  ) {
     return { type: 'redirect', path: `/c/${startParam}/me` };
   }
 

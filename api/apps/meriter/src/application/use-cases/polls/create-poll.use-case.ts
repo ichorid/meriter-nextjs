@@ -41,7 +41,11 @@ export class CreatePollUseCase {
       });
     }
 
-    if ((community.settings?.pollCreation ?? 'members') === 'admin') {
+    // Telegram MVP: any member can create polls. Full Meriter respects pollCreation setting.
+    if (
+      !community.telegramChatId &&
+      (community.settings?.pollCreation ?? 'members') === 'admin'
+    ) {
       const isAdmin = await this.ctx.communityService.isUserAdmin(
         input.communityId,
         this.ctx.user.id,
@@ -54,7 +58,11 @@ export class CreatePollUseCase {
       }
     }
 
-    const pollCost = community.settings?.pollCost ?? 1;
+    // Telegram MVP: poll creation is free (merits are spent on casts from the local wallet).
+    // Full Meriter hubs still charge pollCost from the global wallet.
+    const pollCost = community.telegramChatId
+      ? 0
+      : (community.settings?.pollCost ?? 1);
 
     if (pollCost > 0) {
       const wallet = await this.ctx.walletService.getWallet(

@@ -87,7 +87,7 @@ describe('TelegramPollResultsCron', () => {
     expect(call.text).toContain('• Горы: -2 (за 1, против 3)');
     expect(call.text).toContain('Участников: 3 · голосов: 5');
     expect(call.reply_markup.inline_keyboard[0][0].url).toBe(
-      'https://t.me/meriter_bot?startapp=poll:poll-1',
+      'https://t.me/meriter_bot?startapp=poll_poll-1',
     );
     expect(finalizePollResultsAnnouncement).toHaveBeenCalledWith('poll-1');
   });
