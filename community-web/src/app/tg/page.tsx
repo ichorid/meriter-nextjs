@@ -68,7 +68,10 @@ export default function TelegramBootPage() {
         const chatId =
           authResult.telegramChatId || parseTelegramChatIdFromInitData(initData);
 
-        if (authResult.communityId && !startParam?.startsWith('post:')) {
+        const isContentDeepLink =
+          startParam?.startsWith('post:') || startParam?.startsWith('poll:');
+
+        if (authResult.communityId && !isContentDeepLink) {
           if (chatId) {
             const byChat = await utils.communities.getByTelegramChatId.fetch({
               telegramChatId: chatId,
@@ -90,6 +93,14 @@ export default function TelegramBootPage() {
           fetchByTelegramChatId: async (id) =>
             utils.communities.getByTelegramChatId.fetch({ telegramChatId: id }),
           listForTelegramUser: () => utils.communities.listForTelegramUser.fetch(),
+          fetchPollCommunityId: async (pollId) => {
+            try {
+              const poll = await utils.polls.getById.fetch({ id: pollId });
+              return poll?.communityId ?? null;
+            } catch {
+              return null;
+            }
+          },
         });
 
         if (resolution.type === 'frozen') {
