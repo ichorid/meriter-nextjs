@@ -1,6 +1,6 @@
-/** Delivery target for /balance, /members, /help, /link in Telegram groups. */
+/** Delivery target for /balance, /members, /help, /link, /polls in Telegram groups. */
 
-export type TelegramRoutableCommand = 'balance' | 'members' | 'help' | 'link';
+export type TelegramRoutableCommand = 'balance' | 'members' | 'help' | 'link' | 'polls';
 
 export type TelegramCommandDelivery = {
   destination: 'group' | 'dm';
@@ -17,6 +17,7 @@ export const TELEGRAM_ROUTABLE_COMMANDS: TelegramRoutableCommand[] = [
   'members',
   'help',
   'link',
+  'polls',
 ];
 
 export const DEFAULT_TELEGRAM_COMMAND_DELIVERY: TelegramCommandDelivery = {
@@ -72,7 +73,9 @@ export function formatTelegramCommandDeliveryLabel(
         ? '/members'
         : cmd === 'help'
           ? '/help'
-          : '/link';
+          : cmd === 'polls'
+            ? '/polls'
+            : '/link';
   if (delivery.destination === 'dm') {
     return `${prefix}: личка`;
   }
@@ -96,6 +99,7 @@ export function commandRoutingFromOnboardingPreset(
     members: { ...delivery },
     help: { ...delivery },
     link: { ...delivery },
+    polls: { ...delivery },
   };
 }
 

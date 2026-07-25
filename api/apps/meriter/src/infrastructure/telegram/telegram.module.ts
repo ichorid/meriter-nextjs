@@ -23,6 +23,8 @@ import { TelegramWebhookController } from './telegram-webhook.controller';
 import { TelegramBotOrchestratorService } from './telegram-bot.orchestrator.service';
 import { TelegramCommunityChatResolver } from './telegram-community-chat.resolver';
 import { TelegramPublicationMirrorHandler } from './telegram-publication-mirror.handler';
+import { TelegramPollAnnounceHandler } from './telegram-poll-announce.handler';
+import { TelegramPollResultsCron } from './telegram-poll-results.cron';
 import { TelegramMeritTransferGroupNotifier } from './telegram-merit-transfer-group-notifier.service';
 import { MERIT_TRANSFER_GROUP_NOTIFY_PORT } from '../../domain/ports/merit-transfer-group-notify.port';
 
@@ -52,6 +54,8 @@ import { MERIT_TRANSFER_GROUP_NOTIFY_PORT } from '../../domain/ports/merit-trans
     TelegramCommunityChatResolver,
     TelegramBotOrchestratorService,
     TelegramPublicationMirrorHandler,
+    TelegramPollAnnounceHandler,
+    TelegramPollResultsCron,
     TelegramMeritTransferGroupNotifier,
     {
       provide: MERIT_TRANSFER_GROUP_NOTIFY_PORT,

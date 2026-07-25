@@ -101,6 +101,36 @@ export class PollService {
     return this.pollCastRepository.findByPollAndUser(pollId, userId);
   }
 
+  /** Polls past deadline whose results were never announced (bot results cron). */
+  async getExpiredUnannouncedPolls(limit: number = 50): Promise<Poll[]> {
+    const docs = await this.pollPersistence.findByFilter(
+      {
+        expiresAt: { $lt: new Date() },
+        $or: [
+          { resultsAnnouncedAt: null },
+          { resultsAnnouncedAt: { $exists: false } },
+        ],
+      },
+      limit,
+      0,
+    );
+    return docs.map((doc) => Poll.fromSnapshot(doc));
+  }
+
+  /** Deactivate (if still active) and stamp resultsAnnouncedAt so the cron never reprocesses. */
+  async finalizePollResultsAnnouncement(pollId: string): Promise<void> {
+    const doc = await this.pollPersistence.findById(pollId);
+    if (!doc) {
+      return;
+    }
+    const poll = Poll.fromSnapshot(doc);
+    if (poll.getIsActive) {
+      poll.expire();
+    }
+    poll.markResultsAnnounced();
+    await this.pollPersistence.updateSnapshot(poll.getId, poll.toSnapshot());
+  }
+
   async expirePoll(pollId: string): Promise<Poll | null> {
     const doc = await this.pollPersistence.findById(pollId);
     if (!doc) {

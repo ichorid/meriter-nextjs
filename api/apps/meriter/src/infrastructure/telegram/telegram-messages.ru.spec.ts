@@ -19,6 +19,13 @@ import {
   mapTelegramUserFacingError,
   TG_BOT_OPEN_BUTTON_LABELS,
   TG_MSG,
+  buildPollMiniAppUrl,
+  buildPollOpenKeyboard,
+  buildPollAnnouncementMessage,
+  buildActivePollsListMessage,
+  buildPollResultsMessage,
+  formatPollDeadlineMsk,
+  TG_POLL_OPEN_BUTTON_LABEL,
 } from './telegram-messages.ru';
 
 describe('telegram group welcome copy', () => {
@@ -324,6 +331,108 @@ describe('telegram group welcome copy', () => {
     const text = getOnboardingPrompt('onboarding_vote_panel', {});
     expect(text).toContain('Если да — участники голосуют кнопками');
     expect(text).toContain('Если нет — реакциями 👍❤️👎');
+  });
+});
+
+describe('telegram poll copy', () => {
+  const expiresAt = new Date('2026-07-30T18:30:00Z');
+
+  it('buildPollMiniAppUrl builds startapp=poll deep link', () => {
+    expect(buildPollMiniAppUrl('@meriter_bot', 'poll-1')).toBe(
+      'https://t.me/meriter_bot?startapp=poll:poll-1',
+    );
+    expect(buildPollMiniAppUrl('meriter_bot', 'poll-1')).toBe(
+      'https://t.me/meriter_bot?startapp=poll:poll-1',
+    );
+  });
+
+  it('buildPollOpenKeyboard uses url button with «Открыть голосование» label', () => {
+    const keyboard = buildPollOpenKeyboard('meriter_bot', 'poll-1');
+    expect(keyboard.inline_keyboard[0][0]).toEqual({
+      text: TG_POLL_OPEN_BUTTON_LABEL,
+      url: 'https://t.me/meriter_bot?startapp=poll:poll-1',
+    });
+  });
+
+  it('formatPollDeadlineMsk renders Moscow time with МСК suffix', () => {
+    expect(formatPollDeadlineMsk(expiresAt)).toBe('30.07.2026 21:30 (МСК)');
+  });
+
+  it('announcement lists question, numbered options, and deadline', () => {
+    const text = buildPollAnnouncementMessage({
+      question: 'Куда едем летом?',
+      options: [{ text: 'Море' }, { text: 'Горы' }],
+      expiresAt,
+    });
+    expect(text).toContain('📊 Новое голосование');
+    expect(text).toContain('Куда едем летом?');
+    expect(text).toContain('1. Море');
+    expect(text).toContain('2. Горы');
+    expect(text).toContain('до 30.07.2026 21:30 (МСК)');
+    expect(text).toContain('заслугами');
+    expect(text).not.toContain('мерит');
+  });
+
+  it('active polls list shows deadlines, net totals, and deep links', () => {
+    const text = buildActivePollsListMessage(
+      'Команда',
+      [
+        {
+          pollId: 'poll-1',
+          question: 'Куда едем?',
+          expiresAt,
+          options: [
+            { text: 'Море', amount: 7, amountUp: 8, amountDown: 1 },
+            { text: 'Горы', amount: -2, amountUp: 1, amountDown: 3 },
+          ],
+        },
+      ],
+      'meriter_bot',
+    );
+    expect(text).toContain('Активные голосования в «Команда»:');
+    expect(text).toContain('1. Куда едем?');
+    expect(text).toContain('До 30.07.2026 21:30 (МСК)');
+    expect(text).toContain('• Море: 7');
+    expect(text).toContain('• Горы: -2');
+    expect(text).toContain('Открыть: https://t.me/meriter_bot?startapp=poll:poll-1');
+  });
+
+  it('active polls list has an empty state', () => {
+    expect(buildActivePollsListMessage('Команда', [], 'meriter_bot')).toBe(
+      'В «Команда» сейчас нет активных голосований.',
+    );
+  });
+
+  it('results message shows leader, per-option за/против, and participants', () => {
+    const text = buildPollResultsMessage({
+      question: 'Куда едем?',
+      options: [
+        { text: 'Море', amount: 7, amountUp: 8, amountDown: 1 },
+        { text: 'Горы', amount: -2, amountUp: 1, amountDown: 3 },
+      ],
+      casterCount: 3,
+      totalCasts: 5,
+    });
+    expect(text).toContain('📊 Голосование завершено');
+    expect(text).toContain('Лидирует: «Море» (7 заслуг)');
+    expect(text).toContain('• Море: 7 (за 8, против 1)');
+    expect(text).toContain('• Горы: -2 (за 1, против 3)');
+    expect(text).toContain('Участников: 3 · голосов: 5');
+    expect(text).not.toContain('мерит');
+  });
+
+  it('results message omits leader line when nobody voted', () => {
+    const text = buildPollResultsMessage({
+      question: 'Куда едем?',
+      options: [
+        { text: 'Море', amount: 0, amountUp: 0, amountDown: 0 },
+        { text: 'Горы', amount: 0, amountUp: 0, amountDown: 0 },
+      ],
+      casterCount: 0,
+      totalCasts: 0,
+    });
+    expect(text).not.toContain('Лидирует');
+    expect(text).toContain('Участников: 0 · голосов: 0');
   });
 });
 

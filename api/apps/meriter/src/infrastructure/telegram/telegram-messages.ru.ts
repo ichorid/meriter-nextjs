@@ -153,7 +153,7 @@ export function buildSettingsLeadSummary(community: CommunitySettingsSnapshotInp
   const newMemberWelcome =
     community.settings?.telegramNewMemberWelcomeEnabled !== false ? 'вкл' : 'выкл';
   const routing = community.settings?.telegramCommandRouting;
-  const routeLines = (['balance', 'members', 'help', 'link'] as TelegramRoutableCommand[])
+  const routeLines = (['balance', 'members', 'help', 'link', 'polls'] as TelegramRoutableCommand[])
     .map((cmd) => {
       const d = resolveTelegramCommandDelivery(routing, cmd);
       return `• ${formatTelegramCommandDeliveryLabel(cmd, d)}`;
@@ -265,6 +265,7 @@ export function buildSettingsEditKeyboard(
       ],
       [cmdRow('balance'), cmdRow('members')],
       [cmdRow('help'), cmdRow('link')],
+      [cmdRow('polls')],
     ],
   };
 }
@@ -1024,6 +1025,118 @@ export function buildVoteAmountGroupMentionMessage(
       },
     ],
   };
+}
+
+export type TelegramPollOptionSummary = {
+  text: string;
+  /** Net amount (за − против); can be negative. */
+  amount: number;
+  amountUp: number;
+  amountDown: number;
+};
+
+export type TelegramPollSummary = {
+  pollId: string;
+  question: string;
+  expiresAt: Date;
+  options: TelegramPollOptionSummary[];
+};
+
+export const TG_POLL_OPEN_BUTTON_LABEL = 'Открыть голосование';
+
+/** Mini-app deep link to a poll card: startapp=poll:{pollId}. */
+export function buildPollMiniAppUrl(botUsername: string, pollId: string): string {
+  const clean = botUsername.replace(/^@/, '').trim();
+  return `https://t.me/${clean}?startapp=poll:${pollId}`;
+}
+
+export function buildPollOpenKeyboard(
+  botUsername: string,
+  pollId: string,
+): TelegramInlineReplyMarkup {
+  return {
+    inline_keyboard: [
+      [{ text: TG_POLL_OPEN_BUTTON_LABEL, url: buildPollMiniAppUrl(botUsername, pollId) }],
+    ],
+  };
+}
+
+export function formatPollDeadlineMsk(date: Date): string {
+  const formatted = new Intl.DateTimeFormat('ru-RU', {
+    timeZone: 'Europe/Moscow',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
+  return `${formatted.replace(', ', ' ')} (МСК)`;
+}
+
+export function buildPollAnnouncementMessage(input: {
+  question: string;
+  options: Array<{ text: string }>;
+  expiresAt: Date;
+}): string {
+  const optionLines = input.options
+    .map((option, index) => `${index + 1}. ${option.text}`)
+    .join('\n');
+  return (
+    `📊 Новое голосование\n\n` +
+    `${input.question}\n\n` +
+    `Варианты:\n${optionLines}\n\n` +
+    `Голосуйте заслугами до ${formatPollDeadlineMsk(input.expiresAt)} в мини-приложении.`
+  );
+}
+
+export function buildActivePollsListMessage(
+  communityName: string,
+  polls: TelegramPollSummary[],
+  botUsername?: string,
+): string {
+  if (polls.length === 0) {
+    return `В «${communityName}» сейчас нет активных голосований.`;
+  }
+  const blocks = polls.map((poll, index) => {
+    const optionLines = poll.options
+      .map((option) => `• ${option.text}: ${option.amount}`)
+      .join('\n');
+    const link = botUsername
+      ? `\nОткрыть: ${buildPollMiniAppUrl(botUsername, poll.pollId)}`
+      : '';
+    return (
+      `${index + 1}. ${poll.question}\n` +
+      `До ${formatPollDeadlineMsk(poll.expiresAt)}\n` +
+      `${optionLines}${link}`
+    );
+  });
+  return `Активные голосования в «${communityName}»:\n\n${blocks.join('\n\n')}`;
+}
+
+export function buildPollResultsMessage(input: {
+  question: string;
+  options: TelegramPollOptionSummary[];
+  casterCount: number;
+  totalCasts: number;
+}): string {
+  const leader = [...input.options].sort((a, b) => b.amount - a.amount)[0];
+  const leaderLine =
+    leader && input.totalCasts > 0
+      ? `Лидирует: «${leader.text}» (${leader.amount} заслуг)\n\n`
+      : '';
+  const optionLines = input.options
+    .map(
+      (option) =>
+        `• ${option.text}: ${option.amount} (за ${option.amountUp}, против ${option.amountDown})`,
+    )
+    .join('\n');
+  return (
+    `📊 Голосование завершено\n\n` +
+    `${input.question}\n\n` +
+    leaderLine +
+    `Итоги по вариантам:\n${optionLines}\n\n` +
+    `Участников: ${input.casterCount} · голосов: ${input.totalCasts}`
+  );
 }
 
 export function meritTransferGroupMessage(
