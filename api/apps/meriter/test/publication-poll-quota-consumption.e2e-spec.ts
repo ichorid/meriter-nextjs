@@ -590,6 +590,8 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
           { id: '2', text: 'Option 2' },
         ],
         expiresAt: expiresAt.toISOString(),
+        // Quota participates in casts only when the poll opts in (default is wallet-only)
+        settings: { quotaAllowed: true },
       });
 
       const pollId = createdPoll.id;
@@ -714,6 +716,8 @@ describe('Publication and Poll Quota Consumption (e2e)', () => {
           { id: '2', text: 'Option 2' },
         ],
         expiresAt: expiresAt.toISOString(),
+        // Quota participates in casts only when the poll opts in (default is wallet-only)
+        settings: { quotaAllowed: true },
       });
 
       const pollId = createdPoll.id;
