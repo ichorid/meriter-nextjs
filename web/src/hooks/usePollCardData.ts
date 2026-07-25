@@ -34,6 +34,7 @@ export function usePollCardData(pollId: string | undefined) {
       expiresAt: poll.expiresAt,
       totalCasts: poll.metrics?.totalCasts || 0,
       communityId: poll.communityId,
+      quotaAllowed: poll.settings?.quotaAllowed ?? false,
     };
 
     // Extract user cast summary from pollResults if available

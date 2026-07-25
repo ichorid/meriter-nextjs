@@ -785,6 +785,8 @@
         "communityFallback": "Community",
         "duration": "Poll Duration",
         "durationLabel": "How long will the poll be available",
+        "quotaAllowedLabel": "Allow voting with daily merits",
+        "quotaAllowedHint": "When off, casts are paid from accumulated merits only",
         "minutes": "minutes",
         "hours": "hours",
         "days": "days",

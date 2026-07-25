@@ -10,6 +10,8 @@ export interface IPollData {
     createdAt: Date | string;
     totalCasts: number;
     communityId: string;
+    /** Poll-level setting: quota participates in casts only when true (server enforces). */
+    quotaAllowed?: boolean;
 }
 
 export interface IPollOption {
