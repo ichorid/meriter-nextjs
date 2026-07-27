@@ -1,0 +1,69 @@
+name: Grant Superadmin (dev)
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: 'User email (email authProvider authId)'
+        required: true
+        type: string
+
+jobs:
+  grant:
+    name: Grant superadmin on dev MongoDB
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Grant superadmin role
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          EMAIL: ${{ inputs.email }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+
+          ssh "deploy@${VPS_HOST}" bash -s "$EMAIL" <<'REMOTE'
+          set -euo pipefail
+          EMAIL="$1"
+          SAFE_EMAIL=${EMAIL//\'/\\\'}
+
+          cd /opt/meriter
+          docker exec meriter-mongodb bash -lc "
+            mongosh --quiet meriter \
+              -u \"\$MONGO_INITDB_ROOT_USERNAME\" \
+              -p \"\$MONGO_INITDB_ROOT_PASSWORD\" \
+              --authenticationDatabase admin \
+              --eval \"
+                const email = '${SAFE_EMAIL}';
+                let user = db.users.findOne({ authProvider: 'email', authId: email });
+                if (!user) {
+                  const ident = db.user_auth_identities.findOne({ provider: 'email', authId: email });
+                  if (ident) user = db.users.findOne({ id: ident.userId });
+                }
+                if (!user) {
+                  print('USER_NOT_FOUND: ' + email);
+                  quit(1);
+                }
+                const r = db.users.updateOne(
+                  { id: user.id },
+                  { \\\$set: { globalRole: 'superadmin', updatedAt: new Date() } }
+                );
+                printjson({
+                  matched: r.matchedCount,
+                  modified: r.modifiedCount,
+                  userId: user.id,
+                  email: email,
+                });
+                printjson(db.users.findOne(
+                  { id: user.id },
+                  { id: 1, displayName: 1, globalRole: 1, authProvider: 1, authId: 1 }
+                ));
+              \"
+          "
+          REMOTE
