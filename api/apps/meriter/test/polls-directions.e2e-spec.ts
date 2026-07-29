@@ -329,13 +329,26 @@ describe('Polls E2E (directions, quotaAllowed, getCasts, pollCreation)', () => {
     expect(feed.casters[0].totalUp).toBe(4);
     expect(feed.casters[0].totalDown).toBe(2);
 
-    // optionId filter
+    // optionId filter scopes feed and casters
     const filtered = await trpcQuery(app, 'polls.getCasts', {
       pollId: poll.id,
       optionId: optionA,
     });
     expect(filtered.total).toBe(1);
     expect(filtered.items[0].optionId).toBe(optionA);
+    expect(filtered.casters).toHaveLength(1);
+    expect(filtered.casters[0].userId).toBe(voter);
+    expect(filtered.casters[0].totalUp).toBe(4);
+    expect(filtered.casters[0].totalDown).toBe(0);
+
+    const filteredB = await trpcQuery(app, 'polls.getCasts', {
+      pollId: poll.id,
+      optionId: optionB,
+    });
+    expect(filteredB.total).toBe(1);
+    expect(filteredB.casters).toHaveLength(1);
+    expect(filteredB.casters[0].totalUp).toBe(0);
+    expect(filteredB.casters[0].totalDown).toBe(2);
   });
 
   it("pollCreation 'admin' blocks plain members but allows lead", async () => {

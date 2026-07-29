@@ -357,7 +357,11 @@ export const pollsRouter = router({
           skip: input.skip ?? 0,
           limit: input.limit ?? 20,
         }),
-        ctx.pollCastService.getCastersSummary(input.pollId, CASTERS_SUMMARY_LIMIT),
+        ctx.pollCastService.getCastersSummary(
+          input.pollId,
+          CASTERS_SUMMARY_LIMIT,
+          input.optionId,
+        ),
       ]);
 
       const userIds = Array.from(

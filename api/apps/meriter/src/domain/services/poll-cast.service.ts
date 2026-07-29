@@ -110,8 +110,9 @@ export class PollCastService {
   async getCastersSummary(
     pollId: string,
     limit: number = 20,
+    optionId?: string,
   ): Promise<Array<{ userId: string; totalUp: number; totalDown: number }>> {
-    return this.pollCastRepository.aggregateCastersByPoll(pollId, limit);
+    return this.pollCastRepository.aggregateCastersByPoll(pollId, limit, optionId);
   }
 
   async castPoll(

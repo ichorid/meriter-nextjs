@@ -36,14 +36,19 @@ export class PollCastPersistenceAdapter {
     return { items, total };
   }
 
-  /** Per-user up/down totals across the whole poll, sorted by activity. */
+  /** Per-user up/down totals for a poll (option-scoped when optionId set), sorted by activity. */
   async aggregateCastersByPoll(
     pollId: string,
     limit: number,
+    optionId?: string,
   ): Promise<Array<{ userId: string; totalUp: number; totalDown: number }>> {
+    const match: Record<string, unknown> = { pollId };
+    if (optionId) {
+      match.optionId = optionId;
+    }
     return this.model
       .aggregate([
-        { $match: { pollId } },
+        { $match: match },
         {
           $project: {
             userId: 1,

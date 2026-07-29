@@ -1122,11 +1122,17 @@ export function buildPollResultsMessage(input: {
   casterCount: number;
   totalCasts: number;
 }): string {
-  const leader = [...input.options].sort((a, b) => b.amount - a.amount)[0];
-  const leaderLine =
-    leader && input.totalCasts > 0
-      ? `Лидирует: «${leader.text}» (${leader.amount} заслуг)\n\n`
-      : '';
+  let winnerLine = '';
+  if (input.totalCasts > 0 && input.options.length > 0) {
+    const maxAmount = Math.max(...input.options.map((o) => o.amount));
+    const winners = input.options.filter((o) => o.amount === maxAmount);
+    if (winners.length === 1) {
+      winnerLine = `Победитель: «${winners[0].text}» (${winners[0].amount} заслуг)\n\n`;
+    } else if (winners.length > 1) {
+      const names = winners.map((w) => `«${w.text}»`).join(', ');
+      winnerLine = `Победители: ${names} (по ${maxAmount} заслуг)\n\n`;
+    }
+  }
   const optionLines = input.options
     .map(
       (option) =>
@@ -1136,7 +1142,7 @@ export function buildPollResultsMessage(input: {
   return (
     `📊 Голосование завершено\n\n` +
     `${input.question}\n\n` +
-    leaderLine +
+    winnerLine +
     `Итоги по вариантам:\n${optionLines}\n\n` +
     `Участников: ${input.casterCount} · голосов: ${input.totalCasts}`
   );

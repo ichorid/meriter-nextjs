@@ -5,6 +5,7 @@ import { trpc } from '@/lib/trpc/client';
 import { hapticError, hapticSuccess } from '@/lib/telegram-env';
 import { PollAmountPicker } from './poll-amount-picker';
 import { PollOptionBars } from './poll-option-bars';
+import { PollOptionVoters } from './poll-option-voters';
 import {
   isPollFinished,
   optionDown,
@@ -129,13 +130,13 @@ export function PollCastPanel({
             <li key={opt.id}>
               <button
                 type="button"
-                disabled={!canCast || castMutation.isPending}
+                disabled={castMutation.isPending}
                 onClick={() => setSelectedOptionId(selected ? null : opt.id)}
                 className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${
                   selected
                     ? 'border-primary bg-primary/10'
                     : 'border-stitch-border hover:border-primary/50'
-                } ${!canCast ? 'cursor-default opacity-80' : ''}`}
+                }`}
               >
                 <div className="mb-2 flex items-start justify-between gap-2 text-sm">
                   <span className="font-medium">{opt.text}</span>
@@ -150,6 +151,9 @@ export function PollCastPanel({
                 </div>
                 <PollOptionBars option={opt} maxAbsValue={maxAbsValue} />
               </button>
+              {selected && (
+                <PollOptionVoters pollId={poll.id} optionId={opt.id} />
+              )}
             </li>
           );
         })}

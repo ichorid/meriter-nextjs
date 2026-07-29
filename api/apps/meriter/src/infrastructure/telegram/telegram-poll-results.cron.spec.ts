@@ -83,7 +83,7 @@ describe('TelegramPollResultsCron', () => {
     const call = tgSendMessage.mock.calls[0][0];
     expect(call.chat_id).toBe('-100123');
     expect(call.text).toContain('Голосование завершено');
-    expect(call.text).toContain('Лидирует: «Море» (7 заслуг)');
+    expect(call.text).toContain('Победитель: «Море» (7 заслуг)');
     expect(call.text).toContain('• Горы: -2 (за 1, против 3)');
     expect(call.text).toContain('Участников: 3 · голосов: 5');
     expect(call.reply_markup.inline_keyboard[0][0].url).toBe(

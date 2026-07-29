@@ -403,7 +403,7 @@ describe('telegram poll copy', () => {
     );
   });
 
-  it('results message shows leader, per-option за/против, and participants', () => {
+  it('results message shows winner, per-option за/против, and participants', () => {
     const text = buildPollResultsMessage({
       question: 'Куда едем?',
       options: [
@@ -414,14 +414,29 @@ describe('telegram poll copy', () => {
       totalCasts: 5,
     });
     expect(text).toContain('📊 Голосование завершено');
-    expect(text).toContain('Лидирует: «Море» (7 заслуг)');
+    expect(text).toContain('Победитель: «Море» (7 заслуг)');
     expect(text).toContain('• Море: 7 (за 8, против 1)');
     expect(text).toContain('• Горы: -2 (за 1, против 3)');
     expect(text).toContain('Участников: 3 · голосов: 5');
     expect(text).not.toContain('мерит');
   });
 
-  it('results message omits leader line when nobody voted', () => {
+  it('results message lists all tied winners', () => {
+    const text = buildPollResultsMessage({
+      question: 'Куда едем?',
+      options: [
+        { text: 'Море', amount: 5, amountUp: 5, amountDown: 0 },
+        { text: 'Горы', amount: 5, amountUp: 6, amountDown: 1 },
+        { text: 'Лес', amount: 2, amountUp: 2, amountDown: 0 },
+      ],
+      casterCount: 4,
+      totalCasts: 6,
+    });
+    expect(text).toContain('Победители: «Море», «Горы» (по 5 заслуг)');
+    expect(text).not.toContain('Победитель:');
+  });
+
+  it('results message omits winner line when nobody voted', () => {
     const text = buildPollResultsMessage({
       question: 'Куда едем?',
       options: [
@@ -431,7 +446,8 @@ describe('telegram poll copy', () => {
       casterCount: 0,
       totalCasts: 0,
     });
-    expect(text).not.toContain('Лидирует');
+    expect(text).not.toContain('Победитель');
+    expect(text).not.toContain('Победители');
     expect(text).toContain('Участников: 0 · голосов: 0');
   });
 });

@@ -92,7 +92,7 @@ Conceptually similar to base post (content with time limit, no publication `metr
 - **Up**: wallet-only unless `poll.settings.quotaAllowed === true` (then quota-first → wallet; server re-splits, client split ignored).
 - **Down**: wallet-only ALWAYS (quota rejected); voter's merits **burn**; option `amountDown` grows, net `amount` may go negative.
 - After expiresAt (or `isActive: false`), new casts are NOT accepted.
-- **Cast visibility**: `polls.getCasts({ pollId, optionId?, skip, limit })` — member-only paginated feed (`PollCastView[]`: user, option, amount, direction, time) + `casters` top-20 aggregate (`PollCasterSummary`). `polls.getResults` rows include `amountUp` / `amountDown` / `amount` (net).
+- **Cast visibility**: `polls.getCasts({ pollId, optionId?, skip, limit })` — member-only paginated feed (`PollCastView[]`: user, option, amount, direction, time) + `casters` top-20 aggregate (`PollCasterSummary`). When `optionId` is set, both the feed and `casters` are scoped to that option. `polls.getResults` rows include `amountUp` / `amountDown` / `amount` (net).
 - **Mini app**: `community-app.router` exposes the `polls.*` namespace for `community-web` («Голосования» tab at `/c/{id}/polls`; deep link `startapp=poll:{pollId}`).
 - **Telegram bot** (`telegram_mvp` mode): announce on create (inline button «Открыть голосование»), `/polls` group command, results cron every 10 min posts итоги and stamps `resultsAnnouncedAt`.
 
