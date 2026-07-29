@@ -21,6 +21,17 @@ env:
   IMAGE_NAME_BASE: ${{ github.repository }}-base
 
 jobs:
+  check-shell-eol:
+    name: Check shell scripts use LF
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Reject CRLF / newline-stripped shell scripts
+        run: bash scripts/ci/check-shell-lf.sh
+
   build-base:
     name: Build base image (hash-tagged)
     runs-on: ubuntu-latest
@@ -218,6 +229,7 @@ jobs:
     name: Build and push ${{ matrix.component }} image
     runs-on: ubuntu-latest
     needs:
+      - check-shell-eol
       - determine-target
       - build-base
     strategy:
@@ -342,6 +354,7 @@ jobs:
     name: Deploy to dev server
     runs-on: ubuntu-latest
     needs:
+      - check-shell-eol
       - determine-target
       - test-unit
       - test-e2e
@@ -368,6 +381,7 @@ jobs:
     name: Deploy to stage server
     runs-on: ubuntu-latest
     needs:
+      - check-shell-eol
       - determine-target
       - test-unit
       - test-e2e
@@ -389,6 +403,7 @@ jobs:
     name: Deploy to production server
     runs-on: ubuntu-latest
     needs:
+      - check-shell-eol
       - determine-target
       - test-unit
       - test-e2e

@@ -39,6 +39,13 @@ runs:
       run: |
         mkdir -p ~/.ssh
         ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+    # Normalize LF on the runner before scp so a Windows-corrupted working tree
+    # cannot land on the VPS. Then re-check integrity.
+    - name: Normalize and verify shell script line endings
+      shell: bash
+      run: |
+        set -euo pipefail
+        bash scripts/ci/check-shell-lf.sh --fix
     # Stack definition on the VPS must match the repo (compose, init scripts, Caddy).
     # Image pull alone does not update docker-compose.yml or mongodb-init/.
     # Use scp (not rsync): ubuntu-latest runners may not ship rsync.
@@ -68,5 +75,6 @@ runs:
         BOT_TOKEN: ${{ inputs.bot-token }}
       run: |
         set -euo pipefail
-        ssh "deploy@${VPS_HOST}" "cd /opt/meriter && export COMMIT_SHA='${COMMIT_SHA}' USE_DEV_IMAGE_TAGS='${USE_DEV_IMAGE_TAGS}' BOT_TOKEN='${BOT_TOKEN}' && bash deploy.sh"
+        # Integrity gate on VPS: zero-newline or lingering CR must not reach bash/shebang.
+        ssh "deploy@${VPS_HOST}" "cd /opt/meriter && lines=\$(wc -l < deploy.sh | tr -d '[:space:]') && test \"\${lines:-0}\" -gt 0 && ! grep -q \$'\\r' deploy.sh && export COMMIT_SHA='${COMMIT_SHA}' USE_DEV_IMAGE_TAGS='${USE_DEV_IMAGE_TAGS}' BOT_TOKEN='${BOT_TOKEN}' && bash deploy.sh"
 

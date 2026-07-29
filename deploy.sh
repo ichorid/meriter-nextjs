@@ -1,11 +1,29 @@
 #!/usr/bin/env bash
 
-cd "$(dirname "$0")"
+# Refuse corrupt copies before anything else.
+# Zero-newline files: bash treats a leading #! line as a comment for the WHOLE file
+# (silent no-op); executing via shebang + /usr/bin/env can infinite-loop. Callers
+# (CI/VPS) must also reject such files before invoking this script.
+_deploy_self="${BASH_SOURCE[0]:-$0}"
+_deploy_lines="$(wc -l < "$_deploy_self" | tr -d '[:space:]')"
+if [ "${_deploy_lines:-0}" -eq 0 ]; then
+  echo "[deploy] FATAL: $_deploy_self has no newlines (corrupt copy). Refusing to run." >&2
+  exit 2
+fi
+
+cd "$(dirname "$_deploy_self")"
 
 # Strip CRLF from shell scripts (Windows checkouts / manual uploads) before strict mode.
 for _f in "$0" scripts/vps/*.sh scripts/docker/*.sh; do
   if [ -f "$_f" ] && grep -q $'\r' "$_f" 2>/dev/null; then
     sed -i 's/\r$//' "$_f"
+  fi
+done
+
+for _f in "$0" scripts/vps/*.sh scripts/docker/*.sh; do
+  if [ -f "$_f" ] && grep -q $'\r' "$_f" 2>/dev/null; then
+    echo "[deploy] FATAL: $_f still contains CR after strip. Refusing to run." >&2
+    exit 2
   fi
 done
 
