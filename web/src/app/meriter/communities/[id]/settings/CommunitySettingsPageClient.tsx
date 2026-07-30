@@ -41,8 +41,13 @@ export function CommunitySettingsPageClient({ communityId }: CommunitySettingsPa
     useEffect(() => {
         if (focusFutureVisionText) {
             setActiveTab('general');
+            return;
         }
-    }, [focusFutureVisionText]);
+        const tab = searchParams.get('tab');
+        if (tab === 'yougile' || tab === 'general' || tab === 'documents' || tab === 'events' || tab === 'rules' || tab === 'comments' || tab === 'investing' || tab === 'tappalka') {
+            setActiveTab(tab);
+        }
+    }, [focusFutureVisionText, searchParams]);
 
     // Check if user is superadmin
     const isSuperadmin = user?.globalRole === 'superadmin';
