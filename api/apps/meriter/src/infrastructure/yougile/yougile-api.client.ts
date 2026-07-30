@@ -3,6 +3,8 @@ import type {
   YougileApiPort,
   YougileBoard,
   YougileColumn,
+  YougileCompany,
+  YougileCredentials,
   YougileEmployee,
   YougileProject,
   YougileTask,
@@ -35,6 +37,34 @@ export class YougileApiClient implements YougileApiPort {
   private readonly baseUrl =
     process.env.YOUGILE_API_BASE_URL || DEFAULT_BASE_URL;
 
+  private async publicRequest<T>(
+    method: 'POST',
+    path: string,
+    body: unknown,
+  ): Promise<T> {
+    const res = await fetch(`${this.baseUrl}${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      let detail = '';
+      try {
+        const errBody = (await res.json()) as { error?: string; message?: string };
+        detail = errBody.error || errBody.message || '';
+      } catch {
+        // non-JSON error body
+      }
+      throw new YougileApiError(
+        `YouGile API ${method} ${path} failed: ${res.status} ${detail}`.trim(),
+        res.status,
+      );
+    }
+
+    return (await res.json()) as T;
+  }
+
   private async request<T>(
     apiKey: string,
     method: 'GET' | 'POST' | 'PUT',
@@ -65,6 +95,37 @@ export class YougileApiClient implements YougileApiPort {
     }
 
     return (await res.json()) as T;
+  }
+
+  async listCompanies(credentials: YougileCredentials): Promise<YougileCompany[]> {
+    const res = await this.publicRequest<PagedResponse<YougileCompany>>(
+      'POST',
+      '/auth/companies?limit=1000',
+      {
+        login: credentials.login,
+        password: credentials.password,
+      },
+    );
+    return res.content ?? [];
+  }
+
+  async createApiKey(
+    credentials: YougileCredentials,
+    companyId: string,
+  ): Promise<string> {
+    const res = await this.publicRequest<{ key: string }>(
+      'POST',
+      '/auth/keys',
+      {
+        login: credentials.login,
+        password: credentials.password,
+        companyId,
+      },
+    );
+    if (!res.key) {
+      throw new YougileApiError('YouGile API key response missing key field');
+    }
+    return res.key;
   }
 
   async verifyApiKey(apiKey: string): Promise<void> {

@@ -30,13 +30,36 @@ export const yougileRouter = router({
     .input(
       z.object({
         communityId: z.string(),
-        apiKey: z.string().min(10).max(200),
+        login: z.string().email().max(320),
+        password: z.string().min(1).max(200),
+        companyId: z.string().min(1).max(100),
       }),
     )
     .mutation(async ({ ctx, input }) =>
       ctx.manageYougile.connect(
         input.communityId,
-        input.apiKey.trim(),
+        {
+          login: input.login.trim(),
+          password: input.password,
+          companyId: input.companyId,
+        },
+        actor(ctx),
+      ),
+    ),
+
+  discoverCompanies: protectedProcedure
+    .input(
+      z.object({
+        communityId: z.string(),
+        login: z.string().email().max(320),
+        password: z.string().min(1).max(200),
+      }),
+    )
+    .mutation(async ({ ctx, input }) =>
+      ctx.manageYougile.discoverCompanies(
+        input.communityId,
+        input.login.trim(),
+        input.password,
         actor(ctx),
       ),
     ),

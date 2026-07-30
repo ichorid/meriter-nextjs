@@ -50,6 +50,39 @@ export type YougileImportResult = {
   skipped: number;
 };
 
+export type YougileCompanyView = {
+  id: string;
+  name: string;
+  isAdmin: boolean;
+};
+
+export type YougileConnectInput = {
+  login: string;
+  password: string;
+  companyId: string;
+};
+
+function normalizeLogin(login: string): string {
+  return login.trim().toLowerCase();
+}
+
+function mapYougileAuthError(err: unknown): never {
+  const status =
+    err instanceof Error && 'status' in err
+      ? (err as { status?: number }).status
+      : undefined;
+  if (status === 401 || status === 403) {
+    throw new TRPCError({
+      code: 'UNAUTHORIZED',
+      message: 'YouGile rejected the login or password',
+    });
+  }
+  throw new TRPCError({
+    code: 'BAD_REQUEST',
+    message: 'YouGile authentication failed',
+  });
+}
+
 export type YougileDashboardView = {
   tasksProcessed: number;
   postsCreated: number;
@@ -101,7 +134,8 @@ function toStatusView(
 
 /**
  * Lead-facing management of the YouGile integration for one community.
- * The API key is stored server-side only; responses expose a masked suffix.
+ * Connect uses YouGile login/password once to issue an API key; only the key
+ * is stored server-side. Responses expose a masked suffix.
  */
 export class ManageYougileIntegrationUseCase {
   constructor(private readonly deps: ManageYougileIntegrationDeps) {}
@@ -147,26 +181,90 @@ export class ManageYougileIntegrationUseCase {
     return toStatusView(integration);
   }
 
+  async discoverCompanies(
+    communityId: string,
+    login: string,
+    password: string,
+    actor: YougileActor,
+  ): Promise<YougileCompanyView[]> {
+    await this.assertAdmin(communityId, actor);
+
+    let companies: YougileCompanyView[];
+    try {
+      companies = await this.deps.yougileApi.listCompanies({
+        login: normalizeLogin(login),
+        password,
+      });
+    } catch (err) {
+      mapYougileAuthError(err);
+    }
+
+    if (companies.length === 0) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'No YouGile companies found for this account',
+      });
+    }
+
+    return companies;
+  }
+
   async connect(
     communityId: string,
-    apiKey: string,
+    input: YougileConnectInput,
     actor: YougileActor,
   ): Promise<YougileStatusView> {
     await this.assertAdmin(communityId, actor);
+
+    const credentials = {
+      login: normalizeLogin(input.login),
+      password: input.password,
+    };
+
+    let companies: YougileCompanyView[];
+    try {
+      companies = await this.deps.yougileApi.listCompanies(credentials);
+    } catch (err) {
+      mapYougileAuthError(err);
+    }
+
+    const company = companies.find((entry) => entry.id === input.companyId);
+    if (!company) {
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'Selected YouGile company is not available for this account',
+      });
+    }
+    if (!company.isAdmin) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message:
+          'YouGile company admin rights are required to connect the integration',
+      });
+    }
+
+    let apiKey: string;
+    try {
+      apiKey = await this.deps.yougileApi.createApiKey(
+        credentials,
+        input.companyId,
+      );
+    } catch (err) {
+      mapYougileAuthError(err);
+    }
 
     try {
       await this.deps.yougileApi.verifyApiKey(apiKey);
     } catch {
       throw new TRPCError({
         code: 'BAD_REQUEST',
-        message: 'YouGile rejected the API key',
+        message: 'YouGile issued a key but rejected it on verification',
       });
     }
 
     const existing =
       await this.deps.integrationPersistence.findByCommunityId(communityId);
     if (existing) {
-      // Re-connect with a new key: drop the old subscription, config stays.
       if (existing.webhookId) {
         await this.deps.yougileApi.disableWebhook(
           existing.apiKey,

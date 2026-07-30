@@ -36,11 +36,31 @@ export interface YougileEmployee {
   realName?: string;
 }
 
+export interface YougileCompany {
+  id: string;
+  name: string;
+  isAdmin: boolean;
+}
+
+export interface YougileCredentials {
+  login: string;
+  password: string;
+}
+
 /**
  * Thin client for YouGile REST API v2 (cloud). Bearer company API key.
  * Implemented in infrastructure/yougile/yougile-api.client.ts.
  */
 export interface YougileApiPort {
+  /** List companies the account can access (login/password are not persisted). */
+  listCompanies(credentials: YougileCredentials): Promise<YougileCompany[]>;
+
+  /** Issue a company API key via POST /auth/keys (password used once, not stored). */
+  createApiKey(
+    credentials: YougileCredentials,
+    companyId: string,
+  ): Promise<string>;
+
   /** Cheap authenticated call to validate an API key. Throws on invalid key. */
   verifyApiKey(apiKey: string): Promise<void>;
 

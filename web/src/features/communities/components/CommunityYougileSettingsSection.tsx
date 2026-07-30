@@ -72,8 +72,13 @@ export function CommunityYougileSettingsSection({
   const addToast = useToastStore((state) => state.addToast);
   const utils = trpc.useUtils();
 
-  const [apiKey, setApiKey] = useState('');
+  const [login, setLogin] = useState('');
+  const [password, setPassword] = useState('');
   const [connectError, setConnectError] = useState<string | null>(null);
+  const [discoveredCompanies, setDiscoveredCompanies] = useState<
+    Array<{ id: string; name: string; isAdmin: boolean }> | null
+  >(null);
+  const [selectedCompanyId, setSelectedCompanyId] = useState('');
   const [selectedBoardId, setSelectedBoardId] = useState('');
   const [selectedColumnId, setSelectedColumnId] = useState('');
   const [isEditing, setIsEditing] = useState(false);
@@ -109,24 +114,77 @@ export function CommunityYougileSettingsSection({
     }
   }, [status?.boardId, status?.columnId]);
 
+  const adminCompanies = useMemo(
+    () => (discoveredCompanies ?? []).filter((company) => company.isAdmin),
+    [discoveredCompanies],
+  );
+
+  useEffect(() => {
+    if (adminCompanies.length === 1) {
+      setSelectedCompanyId(adminCompanies[0]!.id);
+    }
+  }, [adminCompanies]);
+
+  const mapConnectError = (message: string): string => {
+    if (message === 'YouGile rejected the login or password') {
+      return t('connectCredentialsRejected');
+    }
+    if (
+      message ===
+      'YouGile company admin rights are required to connect the integration'
+    ) {
+      return t('connectAdminRequired');
+    }
+    if (message === 'No YouGile companies found for this account') {
+      return t('connectNoCompanies');
+    }
+    return message;
+  };
+
   const invalidateStatus = async () => {
     await utils.yougile.getStatus.invalidate({ communityId });
   };
 
   const connectMutation = trpc.yougile.connect.useMutation({
     onSuccess: async () => {
-      setApiKey('');
+      setLogin('');
+      setPassword('');
+      setDiscoveredCompanies(null);
+      setSelectedCompanyId('');
       setConnectError(null);
       await invalidateStatus();
       addToast(t('connectSuccess'), 'success');
     },
     onError: (error) => {
       const message = extractErrorMessage(error, t('connectError'));
-      if (message === 'YouGile rejected the API key') {
-        setConnectError(t('connectApiKeyRejected'));
-      } else {
-        setConnectError(message);
+      setConnectError(mapConnectError(message));
+    },
+  });
+
+  const discoverMutation = trpc.yougile.discoverCompanies.useMutation({
+    onSuccess: (companies) => {
+      setConnectError(null);
+      setDiscoveredCompanies(companies);
+      const admins = companies.filter((company) => company.isAdmin);
+      if (admins.length === 0) {
+        setConnectError(t('connectNoAdminCompanies'));
+        return;
       }
+      if (admins.length === 1) {
+        const companyId = admins[0]!.id;
+        setSelectedCompanyId(companyId);
+        connectMutation.mutate({
+          communityId,
+          login: login.trim(),
+          password,
+          companyId,
+        });
+        return;
+      }
+    },
+    onError: (error) => {
+      const message = extractErrorMessage(error, t('connectError'));
+      setConnectError(mapConnectError(message));
     },
   });
 
@@ -182,14 +240,41 @@ export function CommunityYougileSettingsSection({
     return t(`eventStatus.${eventStatus}`);
   };
 
-  const handleConnect = () => {
-    const trimmed = apiKey.trim();
-    if (trimmed.length < 10) {
+  const handleSignIn = () => {
+    const trimmedLogin = login.trim();
+    if (!trimmedLogin || !password) {
       setConnectError(t('connectError'));
       return;
     }
     setConnectError(null);
-    connectMutation.mutate({ communityId, apiKey: trimmed });
+    setDiscoveredCompanies(null);
+    setSelectedCompanyId('');
+    discoverMutation.mutate({
+      communityId,
+      login: trimmedLogin,
+      password,
+    });
+  };
+
+  const handleConnect = () => {
+    const trimmedLogin = login.trim();
+    if (!trimmedLogin || !password || !selectedCompanyId) {
+      setConnectError(t('connectError'));
+      return;
+    }
+    setConnectError(null);
+    connectMutation.mutate({
+      communityId,
+      login: trimmedLogin,
+      password,
+      companyId: selectedCompanyId,
+    });
+  };
+
+  const resetSignIn = () => {
+    setDiscoveredCompanies(null);
+    setSelectedCompanyId('');
+    setConnectError(null);
   };
 
   const handleConfigure = () => {
@@ -213,6 +298,7 @@ export function CommunityYougileSettingsSection({
   };
 
   const isBusy =
+    discoverMutation.isPending ||
     connectMutation.isPending ||
     configureMutation.isPending ||
     disconnectMutation.isPending ||
@@ -246,27 +332,99 @@ export function CommunityYougileSettingsSection({
 
         {!status?.connected ? (
           <div className="space-y-4">
-            <BrandFormControl label={t('apiKeyLabel')} error={connectError ?? undefined}>
+            <p className="max-w-md text-sm text-brand-text-secondary">{t('passwordNotice')}</p>
+
+            <BrandFormControl label={t('loginLabel')} error={connectError ?? undefined}>
               <Input
-                type="password"
-                autoComplete="off"
+                type="email"
+                autoComplete="username"
                 className="h-11 max-w-md rounded-xl"
-                placeholder={t('apiKeyPlaceholder')}
-                value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
+                placeholder={t('loginPlaceholder')}
+                value={login}
+                onChange={(event) => {
+                  setLogin(event.target.value);
+                  resetSignIn();
+                }}
                 disabled={isBusy}
               />
             </BrandFormControl>
-            <div className="flex justify-end">
+
+            <BrandFormControl label={t('passwordLabel')}>
+              <Input
+                type="password"
+                autoComplete="current-password"
+                className="h-11 max-w-md rounded-xl"
+                placeholder={t('passwordPlaceholder')}
+                value={password}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  resetSignIn();
+                }}
+                disabled={isBusy}
+              />
+            </BrandFormControl>
+
+            {discoveredCompanies && adminCompanies.length > 0 ? (
+              <BrandFormControl label={t('companyLabel')}>
+                <Select
+                  value={selectedCompanyId || undefined}
+                  onValueChange={setSelectedCompanyId}
+                  disabled={isBusy}
+                >
+                  <SelectTrigger className="h-11 w-full max-w-md rounded-xl">
+                    <SelectValue placeholder={t('companyPlaceholder')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {adminCompanies.map((company) => (
+                      <SelectItem key={company.id} value={company.id}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </BrandFormControl>
+            ) : null}
+
+            <div className="flex justify-end gap-2">
+              {discoveredCompanies && adminCompanies.length > 0 ? (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={resetSignIn}
+                  disabled={isBusy}
+                  className="rounded-xl"
+                >
+                  {t('cancelEdit')}
+                </Button>
+              ) : null}
               <Button
                 variant="default"
                 size="lg"
-                onClick={handleConnect}
-                disabled={isBusy || apiKey.trim().length < 10}
+                onClick={
+                  discoveredCompanies && adminCompanies.length > 0
+                    ? handleConnect
+                    : handleSignIn
+                }
+                disabled={
+                  isBusy ||
+                  !login.trim() ||
+                  !password ||
+                  (discoveredCompanies !== null &&
+                    adminCompanies.length > 0 &&
+                    !selectedCompanyId)
+                }
                 className="rounded-xl active:scale-[0.98]"
               >
-                {connectMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                {connectMutation.isPending ? t('connecting') : t('connect')}
+                {(discoverMutation.isPending || connectMutation.isPending) && (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                )}
+                {discoverMutation.isPending
+                  ? t('signingIn')
+                  : connectMutation.isPending
+                    ? t('connecting')
+                    : discoveredCompanies && adminCompanies.length > 0
+                      ? t('connect')
+                      : t('signIn')}
               </Button>
             </div>
           </div>

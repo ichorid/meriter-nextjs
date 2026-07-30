@@ -6,7 +6,7 @@
 
 ## Concept
 
-- A community **lead** (or superadmin) connects a YouGile company to a community: enters the company **API key**, picks a **board** and a **done column**, enables the integration.
+- A community **lead** (or superadmin) connects a YouGile company to a community: signs in with **YouGile admin email/password** (password is used once to issue an API key via `POST /auth/keys`, never stored), picks a **company**, then selects a **board** and **done column**, and enables the integration.
 - Meriter creates a YouGile webhook subscription (`task-moved`, filter `location = columnId`).
 - On event: the task is **re-fetched via the YouGile API** (webhooks carry no HMAC signature — trust = secret URL token + API re-check), the first assignee is mapped to a Meriter user **by email** (`UserService.getUserByAuthId('email', normalized)`), and a text post «Выполнена задача: …» is created on their behalf. Post content ends with a deep link to the task (`https://ru.yougile.com/team/?task={id}`).
 - Post is created with `checkPermissions: false, processPostCost: false, skipTelegramMirror: true` — no fee, merits only via votes (A2 product decision).
@@ -39,13 +39,13 @@
 
 ## tRPC API (`yougile`)
 
-All `protectedProcedure`, lead-or-superadmin enforced in the use case: `getStatus`, `getDashboard`, `connect` (validates key via YouGile), `getBoards`, `getColumns`, `configure` (creates webhook subscription, `enabled: true`), `importDone` (retro-import, limit ≤ 25), `disconnect` (disables subscription via PUT `{deleted: true}`, deletes the integration).
+All `protectedProcedure`, lead-or-superadmin enforced in the use case: `getStatus`, `getDashboard`, `discoverCompanies` (login/password → company list, credentials not stored), `connect` (issues API key via YouGile auth, stores key only), `getBoards`, `getColumns`, `configure` (creates webhook subscription, `enabled: true`), `importDone` (retro-import, limit ≤ 25), `disconnect` (disables subscription via PUT `{deleted: true}`, deletes the integration).
 
 Router: `trpc/routers/yougile.router.ts`; the assembled `ManageYougileIntegrationUseCase` is exposed through tRPC context as `manageYougile` (provided by `MANAGE_YOUGILE_INTEGRATION_USE_CASE` in `yougile.module.ts`).
 
 ## Web UI
 
-Tab «YouGile» in `/meriter/communities/[id]/settings` — `web/src/features/communities/components/CommunityYougileSettingsSection.tsx`: connect (API key) → pick board/column → enable; active state shows masked key, config, mini-dashboard (stat cards + top performers via `getDashboard`), the «Импортировать выполненные задачи» retro-import button (`importDone`), and recent event log (post_created / user_not_found / no_assignee / column_mismatch / duplicate / error).
+Tab «YouGile» in `/meriter/communities/[id]/settings` — `web/src/features/communities/components/CommunityYougileSettingsSection.tsx`: **Sign in to YouGile** (email/password → company picker) → pick board/column → enable; active state shows masked key, config, mini-dashboard (stat cards + top performers via `getDashboard`), the «Импортировать выполненные задачи» retro-import button (`importDone`), and recent event log (post_created / user_not_found / no_assignee / column_mismatch / duplicate / error).
 
 ## Known limitations (MVP)
 
