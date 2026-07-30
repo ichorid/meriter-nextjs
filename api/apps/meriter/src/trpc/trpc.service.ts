@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
@@ -66,6 +66,8 @@ import { communityAppRouter } from '../adapters/trpc/handlers/community-app.rout
 import type { CommunityAppRouter } from '../adapters/trpc/handlers/community-app.router';
 import { JwtVerificationService } from '../common/services/authentication.service';
 import { SeedCommunityWebDevUseCase } from '../application/use-cases/dev/seed-community-web-dev.use-case';
+import { MANAGE_YOUGILE_INTEGRATION_USE_CASE } from '../infrastructure/yougile/yougile.tokens';
+import type { ManageYougileIntegrationUseCase } from '../application/use-cases/integrations/manage-yougile-integration.use-case';
 
 @Injectable()
 export class TrpcService {
@@ -130,6 +132,8 @@ export class TrpcService {
     private cookieManager: CookieManager,
     private authenticationService: JwtVerificationService,
     private seedCommunityWebDevUseCase: SeedCommunityWebDevUseCase,
+    @Inject(MANAGE_YOUGILE_INTEGRATION_USE_CASE)
+    private manageYougile: ManageYougileIntegrationUseCase,
   ) {}
 
   getRouter(): AppRouter {
@@ -204,6 +208,7 @@ export class TrpcService {
       cookieManager: this.cookieManager,
       authenticationService: this.authenticationService,
       seedCommunityWebDevUseCase: this.seedCommunityWebDevUseCase,
+      manageYougile: this.manageYougile,
     });
   }
 }

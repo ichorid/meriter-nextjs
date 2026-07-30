@@ -641,6 +641,15 @@ export class NotificationService {
         return undefined;
       }
 
+      case 'yougile_task_published': {
+        const communityId = metadata?.communityId as string | undefined;
+        const publicationId = metadata?.publicationId as string | undefined;
+        if (communityId && publicationId) {
+          return `/meriter/communities/${communityId}?post=${publicationId}`;
+        }
+        return undefined;
+      }
+
       case 'system': {
         const noticeKind = metadata?.noticeKind as string | undefined;
         const cid = metadata?.communityId as string | undefined;

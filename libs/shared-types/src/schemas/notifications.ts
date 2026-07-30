@@ -20,11 +20,11 @@ export const NotificationRoutingRowSchema = z.object({
 export type NotificationRoutingRow = z.infer<typeof NotificationRoutingRowSchema>;
 
 /**
- * Phase 1 stub: exactly 47 rows, one per NotificationTypeSchema literal (inv-25 gate).
+ * Phase 1 stub: exactly 48 rows, one per NotificationTypeSchema literal (inv-25 gate).
  */
 export const NotificationRoutingSchema = z
   .array(NotificationRoutingRowSchema)
-  .length(47)
+  .length(48)
   .superRefine((rows, ctx) => {
     const types = rows.map((row) => row.type);
     if (new Set(types).size !== types.length) {

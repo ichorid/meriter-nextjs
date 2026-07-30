@@ -1,6 +1,10 @@
 {
   "name": "@meriter/api",
+<<<<<<< HEAD
   "version": "0.68.2",
+=======
+  "version": "0.69.1",
+>>>>>>> feature/yougile-integration
   "description": "",
   "author": "",
   "private": true,

@@ -187,6 +187,10 @@ export const NOTIFICATION_CLIENT_LEGACY_MATRIX: Record<
     subtitleKey: 'structured.documentVariant',
     linkPattern: 'community.document.block',
   },
+  yougile_task_published: {
+    subtitleKey: 'message.default',
+    linkPattern: 'community.post',
+  },
 };
 
 /** Canonical routing rows — Phase 1 stub aligned to legacy client matrix. */

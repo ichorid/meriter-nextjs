@@ -1,0 +1,55 @@
+# YouGile Integration (variant A2)
+
+> One-way integration: YouGile task moved to the configured "done" column → auto-post in a Meriter community on behalf of the task assignee. Merits come from community votes on the post (no direct emission).
+
+---
+
+## Concept
+
+- A community **lead** (or superadmin) connects a YouGile company to a community: signs in with **YouGile admin email/password** (password is used once to issue an API key via `POST /auth/keys`, never stored), picks a **company**, then selects a **board** and **done column**, and enables the integration.
+- Meriter creates a YouGile webhook subscription (`task-moved`, filter `location = columnId`).
+- On event: the task is **re-fetched via the YouGile API** (webhooks carry no HMAC signature — trust = secret URL token + API re-check), the first assignee is mapped to a Meriter user **by email** (`UserService.getUserByAuthId('email', normalized)`), and a text post «Выполнена задача: …» is created on their behalf. Post content ends with a deep link to the task (`https://ru.yougile.com/team/?task={id}`).
+- Post is created with `checkPermissions: false, processPostCost: false, skipTelegramMirror: true` — no fee, merits only via votes (A2 product decision).
+- Default post target = the community the integration is attached to (`targetCommunityId` fallback).
+- **Feedback loop** (best-effort side effects after the post exists, never roll back the post):
+  - Meriter notification to the assignee — type **`yougile_task_published`** (metadata `communityId`/`publicationId`; web routing `message.default` + `community.post`).
+  - Reply into the **YouGile task chat** (`POST /chats/{taskId}/messages`) with a link to the post.
+- **Retro-import**: `yougile.importDone` runs the same pipeline for tasks already in the done column (`ProcessYougileTaskDoneUseCase.executeTrusted` — no webhook secret, caller already authorized; idempotency claims make re-runs safe). Limit ≤ 25 per call to respect the 50 req/min YouGile budget.
+- **Dashboard**: `yougile.getDashboard` aggregates processed events + publications (`metrics.score`, `lifetimeCredits`) into tasksProcessed / postsCreated / totalScore / totalEarned / top-5 performers.
+
+## Data model
+
+| Collection | Schema | Purpose |
+|---|---|---|
+| `yougile_integrations` | `domain/models/yougile/yougile-integration.schema.ts` | One per community (`communityId` unique): apiKey, webhookSecret, webhookId, board/column ids + titles, targetCommunityId, enabled, capped `eventLog` (20 entries) |
+| `yougile_processed_events` | `yougile-processed-event.schema.ts` | Idempotency: unique `(integrationId, taskId)`; claim finalized only when a post was created, otherwise released (so the task can be re-processed after e.g. email linking) |
+
+**API key is a secret**: stored in the integration document, never returned to clients (only masked suffix `••••1234` via `getStatus`). Not in `community.settings`.
+
+## Backend layout
+
+| Piece | Path |
+|---|---|
+| Webhook ingress | `infrastructure/yougile/yougile-webhook.controller.ts` — `POST /api/yougile/hooks/:integrationId/:secret`, immediate 200, async processing (Telegram webhook pattern) |
+| YouGile REST client | `infrastructure/yougile/yougile-api.client.ts` implements `domain/ports/yougile-api.port.ts` (base URL env `YOUGILE_API_BASE_URL`, default `https://ru.yougile.com/api-v2`) |
+| Persistence | `domain/ports/yougile-integration.persistence.port.ts` + `infrastructure/persistence/yougile-integration.persistence.adapter.ts` |
+| Event processing | `application/use-cases/integrations/process-yougile-task-done.use-case.ts` |
+| Management | `application/use-cases/integrations/manage-yougile-integration.use-case.ts` (lead/superadmin gate inside) |
+| Composition | `infrastructure/yougile/yougile.module.ts` (self-contained: own schemas/providers; wired into `meriter.module.ts` and `trpc.module.ts`) |
+
+## tRPC API (`yougile`)
+
+All `protectedProcedure`, lead-or-superadmin enforced in the use case: `getStatus`, `getDashboard`, `discoverCompanies` (login/password → company list, credentials not stored), `connect` (issues API key via YouGile auth, stores key only), `getBoards`, `getColumns`, `configure` (creates webhook subscription, `enabled: true`), `importDone` (retro-import, limit ≤ 25), `disconnect` (disables subscription via PUT `{deleted: true}`, deletes the integration).
+
+Router: `trpc/routers/yougile.router.ts`; the assembled `ManageYougileIntegrationUseCase` is exposed through tRPC context as `manageYougile` (provided by `MANAGE_YOUGILE_INTEGRATION_USE_CASE` in `yougile.module.ts`).
+
+## Web UI
+
+Tab «YouGile» in `/meriter/communities/[id]/settings` — `web/src/features/communities/components/CommunityYougileSettingsSection.tsx`: **Sign in to YouGile** (email/password → company picker) → pick board/column → enable; active state shows masked key, config, mini-dashboard (stat cards + top performers via `getDashboard`), the «Импортировать выполненные задачи» retro-import button (`importDone`), and recent event log (post_created / user_not_found / no_assignee / column_mismatch / duplicate / error).
+
+## Known limitations (MVP)
+
+- User mapping is **email-only**; no manual YouGile-employee ↔ Meriter-user binding yet. Unmapped assignees are logged (`user_not_found`) and visible to the lead in the event log.
+- Cloud YouGile only (self-hosted would need a different base URL).
+- No outgoing sync (variant B) and no rate-limit queue (50 req/min is enough for MVP volumes).
+- Webhook payload shape is not documented by YouGile; only the task id is extracted (`extractTaskId`), everything else is re-fetched.
