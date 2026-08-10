@@ -136,7 +136,7 @@ MERITER_PRODUCT_MODE=telegram_mvp
 TELEGRAM_BOT_ENABLED=true
 BOT_TOKEN=...
 BOT_USERNAME=meriter_bot
-DOMAIN=meriter.pro
+DOMAIN=dobro.meriter.pro
 JWT_SECRET=...
 MONGO_URL=...
 ```
@@ -158,7 +158,7 @@ TELEGRAM_BOT_ENABLED=false          # webhook не обрабатывается
 BOT_TOKEN=...                       # всё равно нужен для Login Widget
 BOT_USERNAME=meriter_bot
 COMMUNITY_WEB_BASE_URL=https://community-dobro.meriter.pro
-DOMAIN=meriter.pro
+DOMAIN=dobro.meriter.pro
 COMMUNITY_DOMAIN=community-dobro.meriter.pro
 JWT_SECRET=...
 MONGO_URL=...
@@ -207,7 +207,7 @@ docker compose run --rm bot-webhook-init
 
 ```env
 # === Общее ===
-DOMAIN=meriter.pro
+DOMAIN=dobro.meriter.pro
 COMMUNITY_DOMAIN=community-dobro.meriter.pro
 JWT_SECRET=<openssl rand -base64 32>
 MONGO_ADMIN_PASSWORD=<strong>
