@@ -19,10 +19,10 @@ Related temp parse (may be deleted after ship): `_qa-parse-temp.md`.
 | 15.3 | **Done (wave 2)** | Demote → members refetch |
 | 15.5 | **Done (wave 2)** | Expandable proposal rationale |
 | 3.6–3.8 | **Done (wave 2)** | Checklist tabs → Правила / Майнинг |
+| 5.13 | **Done (C2)** | Future-visions load-more accumulates pages |
+| 10.7 | **Done (C4 thin)** | Propose forward UI for `typeTag=team` participants + checklist note |
 | 6.6 / 15.7 | Open (C) | Diff highlight shifts / whole paragraph |
-| 5.13 | Open (C) | Future-visions infinite scroll restore |
 | 11.14 (part) | Open (C) | Search does not include projects |
-| 10.7 | Open (C) | Propose forward missing / UI |
 
 ---
 
@@ -30,13 +30,16 @@ Related temp parse (may be deleted after ship): `_qa-parse-temp.md`.
 
 **Done (wave 2):** search in sidebar + top bar; magic-link «Рассылки/Promotions» hint; tappalka recycle banner; poll copy (casts vs merits).
 
-**Still open (discuss as C / product):**
-- Post-login onboarding / hub explainers
-- Persistent merits balance in chrome
-- Notifications for P2P merit transfers
-- Tickets: attachment / free comments / reassignment
-- Event post: real comments
-- Lead direct-edit while voting is open — product rule
+**Still open (product / larger epics — not in C2/C4):**
+- C1 Diff highlight (documents) — high editor regression risk
+- C3 Projects in search — visibility rules needed
+- C5 Post-login onboarding / hub explainers
+- C6 Persistent merits balance in chrome
+- C7 Notifications for P2P merit transfers
+- C8 Tickets: attachment / free comments / reassignment
+- C9 Event post: real comments
+- C10 Lead direct-edit while voting is open — product rule
+- C4 expand: proposeForward beyond `typeTag=team` (needs product)
 
 ---
 

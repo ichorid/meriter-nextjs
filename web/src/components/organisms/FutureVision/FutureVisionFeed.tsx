@@ -19,6 +19,10 @@ import { documentSectionsSearchPlainText } from '@/features/documents/lib/docume
 
 const FV_TAG_QUERY = 'fvTag';
 
+function futureVisionItemKey(item: FutureVisionItem): string {
+  return item.publicationId ?? item.communityId;
+}
+
 export function FutureVisionFeed() {
   const t = useTranslations('common');
   const tValues = useTranslations('valuesRubricator');
@@ -33,36 +37,57 @@ export function FutureVisionFeed() {
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [localSearchQuery, setLocalSearchQuery] = useState('');
+  const [accumulatedItems, setAccumulatedItems] = useState<FutureVisionItem[]>([]);
 
   const { sections } = usePlatformValueRubricatorSections();
 
-  const { data, isLoading } = useFutureVisions({
+  const { data, isLoading, isFetching } = useFutureVisions({
     page,
     pageSize: 20,
     tags: selectedTags.length > 0 ? selectedTags : undefined,
     sort,
   });
 
-  const rawItems = (data?.items ?? []) as FutureVisionItem[];
+  useEffect(() => {
+    setPage(1);
+    setAccumulatedItems([]);
+  }, [selectedTags, sort]);
+
+  useEffect(() => {
+    const pageItems = (data?.items ?? []) as FutureVisionItem[];
+    if (!data) {
+      return;
+    }
+    if (page === 1) {
+      setAccumulatedItems(pageItems);
+      return;
+    }
+    setAccumulatedItems((prev) => {
+      const seen = new Set(prev.map(futureVisionItemKey));
+      const appended = pageItems.filter((item) => !seen.has(futureVisionItemKey(item)));
+      return appended.length === 0 ? prev : [...prev, ...appended];
+    });
+  }, [data, page]);
+
   const items = useMemo(() => {
-    if (!searchQuery.trim()) return rawItems;
+    if (!searchQuery.trim()) return accumulatedItems;
     const q = searchQuery.trim().toLowerCase();
-    return rawItems.filter(
+    return accumulatedItems.filter(
       (item) =>
         item.name.toLowerCase().includes(q) ||
         (item.futureVisionText?.toLowerCase().includes(q) ?? false) ||
         documentSectionsSearchPlainText(item.futureVisionDocumentSections).includes(q),
     );
-  }, [rawItems, searchQuery]);
+  }, [accumulatedItems, searchQuery]);
   const total = data?.total ?? 0;
-  const pageSize = data?.pageSize ?? 20;
-  const hasMore = page * pageSize < total;
+  const hasMore = accumulatedItems.length < total;
+  const showInitialLoading = isLoading && page === 1 && accumulatedItems.length === 0;
 
   const tagsFromItems = useMemo(() => {
     const set = new Set<string>();
-    rawItems.forEach((item) => item.futureVisionTags?.forEach((tag) => set.add(tag)));
+    accumulatedItems.forEach((item) => item.futureVisionTags?.forEach((tag) => set.add(tag)));
     return Array.from(set).sort();
-  }, [rawItems]);
+  }, [accumulatedItems]);
 
   const decree809ForPanel = sections.decree809;
   const adminExtrasForPanel = useMemo(() => {
@@ -205,7 +230,7 @@ export function FutureVisionFeed() {
         )}
       </div>
 
-      {isLoading ? (
+      {showInitialLoading ? (
         <p className="text-muted-foreground">{t('loading')}</p>
       ) : items.length === 0 ? (
         <p className="text-muted-foreground">{t('noFutureVisionsYet')}</p>
@@ -221,10 +246,11 @@ export function FutureVisionFeed() {
           {hasMore && (
             <button
               type="button"
-              className="text-primary hover:underline"
+              className="text-primary hover:underline disabled:opacity-50"
+              disabled={isFetching}
               onClick={() => setPage((p) => p + 1)}
             >
-              {t('loadMore')}
+              {isFetching ? t('loading') : t('loadMore')}
             </button>
           )}
         </>

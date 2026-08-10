@@ -187,17 +187,24 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     return role?.role === 'lead';
   }, [communityId, user?.id, user?.globalRole, userRoles]);
 
-  // Check if post is forwardable (admin/superadmin only, not poll, not already forwarded)
+  // Lead/superadmin: direct forward. Participant: proposeForward only from typeTag === 'team'.
   const canForward = useMemo(() => {
-    if (!communityId || !community) return false;
-    // Only admins (leads) and superadmins can forward
-    if (!isLead) return false;
-    const postType = (publication as any).postType || 'basic';
-    if (postType === 'poll') return false;
-    const forwardStatus = (publication as any).forwardStatus;
+    if (!communityId || !community || !user?.id) return false;
+    const postType = (publication as { postType?: string }).postType || 'basic';
+    if (postType === 'poll' || postType === 'event') return false;
+    const forwardStatus = (publication as { forwardStatus?: string }).forwardStatus;
     if (forwardStatus === 'forwarded') return false;
-    return true;
-  }, [communityId, community, publication, isLead]);
+
+    if (isLead) {
+      return true;
+    }
+
+    // Participant propose path (API: source typeTag must be 'team')
+    if (community.typeTag !== 'team') return false;
+    if (forwardStatus === 'pending') return false;
+    const role = userRoles.find((r) => r.communityId === communityId);
+    return role?.role === 'participant';
+  }, [communityId, community, publication, isLead, user?.id, userRoles]);
 
   // Check if post is pending forward approval
   const isPendingForward = useMemo(() => {
@@ -538,7 +545,13 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
               }
             }}
             className="rounded-xl active:scale-[0.98] p-1.5 h-auto min-h-0"
-            title={isLead && isPendingForward ? t('headerTooltips.reviewForward') : t('headerTooltips.forwardPost')}
+            title={
+              isLead && isPendingForward
+                ? t('headerTooltips.reviewForward')
+                : isLead
+                  ? t('headerTooltips.forwardPost')
+                  : t('headerTooltips.proposeForward')
+            }
           >
             {isLead && isPendingForward ? <Eye size={16} /> : <Send size={16} />}
           </Button>

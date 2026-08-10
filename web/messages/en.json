@@ -569,6 +569,7 @@
             "closePost": "Close post",
             "reviewForward": "Review forward proposal",
             "forwardPost": "Forward post",
+            "proposeForward": "Propose forward",
             "viewDetails": "View details"
         },
         "totalVotes": "Total votes",
