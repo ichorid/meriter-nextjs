@@ -32,7 +32,7 @@ COMMUNITY_WEB_BASE_URL=https://community-dobro.meriter.pro
 # DEFAULT_TELEGRAM_COMMUNITY_ID=<uuid>   # optional dev/pilot
 JWT_SECRET=<strong secret>
 MONGO_URL=...
-DOMAIN=meriter.pro
+DOMAIN=dobro.meriter.pro
 ```
 
 ### community-web
@@ -46,7 +46,7 @@ NEXT_PUBLIC_DEFAULT_COMMUNITY_ID=  # dev only
 ### Caddy
 
 ```env
-DOMAIN=meriter.pro
+DOMAIN=dobro.meriter.pro
 COMMUNITY_DOMAIN=community-dobro.meriter.pro
 ```
 
