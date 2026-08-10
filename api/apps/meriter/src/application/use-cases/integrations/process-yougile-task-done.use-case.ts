@@ -243,7 +243,7 @@ export class ProcessYougileTaskDoneUseCase {
     targetCommunityId: string;
     publicationId: string;
   }): Promise<void> {
-    const postUrl = `${this.deps.appUrl}/meriter/communities/${args.targetCommunityId}?post=${args.publicationId}`;
+    const postUrl = `${this.deps.appUrl}/meriter/communities/${args.targetCommunityId}/posts/${args.publicationId}`;
 
     try {
       await this.deps.notificationService.createNotification({

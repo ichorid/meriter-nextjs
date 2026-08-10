@@ -155,7 +155,7 @@ export function LoginForm({
 
     // Helper function to construct redirect URL
     const buildRedirectUrl = (): string => {
-        return returnTo || "/meriter/profile";
+        return safeMeriterReturnPath(returnTo) ?? "/meriter/profile";
     };
 
     // Handle fake authentication

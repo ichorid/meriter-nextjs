@@ -44,7 +44,7 @@ describe('NotificationService.buildRedirectUrl', () => {
           },
         }),
       ),
-    ).toBe('/meriter/communities/birzha-1?post=pub-2');
+    ).toBe('/meriter/communities/birzha-1/posts/pub-2');
   });
 
   it('project_distributed uses project page', () => {
@@ -69,7 +69,7 @@ describe('NotificationService.buildRedirectUrl', () => {
           },
         }),
       ),
-    ).toBe('/meriter/communities/fv-1?post=pub-ob');
+    ).toBe('/meriter/communities/fv-1/posts/pub-ob');
   });
 
   it('ob_vote_join_offer falls back to futureVisionCommunityId', () => {
@@ -83,7 +83,7 @@ describe('NotificationService.buildRedirectUrl', () => {
           },
         }),
       ),
-    ).toBe('/meriter/communities/fv-2?post=pub-x');
+    ).toBe('/meriter/communities/fv-2/posts/pub-x');
   });
 
   it('team_join_request uses members path when only communityId', () => {

@@ -5,6 +5,7 @@ import {
   VotableMetricsSchema,
   PolymorphicReferenceSchema,
   CurrencySchema,
+  NonNegativeMeritAmountSchema,
 } from "./base-schemas";
 import {
   IMPACT_AREAS,
@@ -745,8 +746,8 @@ export const UpdateCommentDtoSchema = z.object({
 });
 
 export const CreateVoteDtoSchema = PolymorphicReferenceSchema.extend({
-  quotaAmount: z.number().int().min(0).optional(),
-  walletAmount: z.number().int().min(0).optional(),
+  quotaAmount: NonNegativeMeritAmountSchema.optional(),
+  walletAmount: NonNegativeMeritAmountSchema.optional(),
   attachedCommentId: z.string().optional(),
 }).refine(
   (data) => {
@@ -762,8 +763,8 @@ export const CreateVoteDtoSchema = PolymorphicReferenceSchema.extend({
 // Target-less vote DTO for routes where target is implied by the URL (e.g., comments/:id/votes)
 export const CreateTargetlessVoteDtoSchema = z
   .object({
-    quotaAmount: z.number().int().min(0).optional(),
-    walletAmount: z.number().int().min(0).optional(),
+    quotaAmount: NonNegativeMeritAmountSchema.optional(),
+    walletAmount: NonNegativeMeritAmountSchema.optional(),
     attachedCommentId: z.string().optional(),
   })
   .refine(
@@ -1035,8 +1036,8 @@ export const VoteWithCommentDtoSchema = z.object({
     .enum(["publication", "comment", "vote", "document-variant", "document-block-official"])
     .optional(),
   targetId: z.string().optional(),
-  quotaAmount: z.number().int().min(0).optional(),
-  walletAmount: z.number().int().min(0).optional(),
+  quotaAmount: NonNegativeMeritAmountSchema.optional(),
+  walletAmount: NonNegativeMeritAmountSchema.optional(),
   comment: z.string().optional(),
   direction: z.enum(["up", "down"]).optional(),
   images: z.array(z.string().url()).optional(),

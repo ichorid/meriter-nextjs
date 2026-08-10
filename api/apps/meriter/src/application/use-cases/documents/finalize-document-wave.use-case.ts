@@ -270,7 +270,9 @@ export class FinalizeDocumentWaveUseCase implements FinalizeDocumentWavePort {
     const officialRating = block?.officialRating ?? 0;
     const topVariant = openVariants[0]!;
     const topVariantRating = topVariant?.rating ?? 0;
+    // No positive variant → keep official (even if officialRating is negative/zero).
     const officialWins =
+      topVariantRating <= 0 ||
       officialRating > topVariantRating ||
       (officialRating === topVariantRating && officialRating > 0);
 

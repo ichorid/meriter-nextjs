@@ -256,7 +256,7 @@ export function TicketPostPanel({
     <div className={cn(projectPanelInsetClass, 'mb-4 space-y-3 p-4')}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <TicketStatusBadge status={status} className={projectMutedBadgeClass} />
+          <TicketStatusBadge status={status} />
           {communityIsProject && (
             <Button variant="outline" size="sm" className="h-8 rounded-lg" asChild>
               <Link href={routes.project(communityId)}>{t('backToProject')}</Link>

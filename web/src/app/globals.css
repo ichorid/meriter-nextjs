@@ -1200,12 +1200,12 @@ ol.document-rich-content > li::before {
 /* Guidewell help FAB — sit above mobile bottom nav (h-16 + safe area) */
 @media (max-width: 1023px) {
   #guidewell-widget-host {
-    bottom: calc(4rem + env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
-    z-index: 35 !important;
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 45 !important;
   }
 
   /* Document page: proposals dock sits above bottom nav — lift FAB higher */
   [data-document-page] #guidewell-widget-host {
-    bottom: calc(4.5rem + 6px + 3.25rem + env(safe-area-inset-bottom, 0px) + 0.75rem) !important;
+    bottom: calc(5.5rem + 6px + 3.25rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 }

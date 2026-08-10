@@ -20,6 +20,20 @@ export interface AmountStepperProps {
   inputClassName?: string;
 }
 
+function roundToStep(value: number, step: number): number {
+  const factor = 1 / step;
+  return Math.round(value * factor) / factor;
+}
+
+function parseAmountInput(raw: string, step: number): number | null {
+  const normalized = raw.replace(",", ".").trim();
+  if (normalized === "") return null;
+  if (!/^\d*\.?\d{0,1}$/.test(normalized)) return null;
+  const num = Number.parseFloat(normalized);
+  if (Number.isNaN(num)) return null;
+  return roundToStep(num, step);
+}
+
 /**
  * Number input with minus/plus buttons (like in VotingPanel).
  * Use instead of plain type="number" for amount fields.
@@ -47,40 +61,52 @@ export const AmountStepper = React.forwardRef<HTMLInputElement, AmountStepperPro
       setInputValue(value.toString());
     }, [value]);
 
-    const clampedValue = Math.max(min, Math.min(max, value));
+    const clampedValue = Math.max(min, Math.min(max, roundToStep(value, step)));
     const displayValue = value === 0 && inputValue === "" ? "" : inputValue;
 
+    const commitAmount = (num: number) => {
+      const next = Math.max(min, Math.min(max, roundToStep(num, step)));
+      setInputValue(next.toString());
+      onChange(next);
+    };
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const raw = e.target.value;
-      const digitsOnly = raw.replace(/\D/g, "");
-      if (digitsOnly === "") {
+      const raw = e.target.value.replace(",", ".");
+      if (raw === "") {
         setInputValue("");
         onChange(min);
         return;
       }
-      const num = parseInt(digitsOnly, 10);
-      if (!Number.isNaN(num)) {
-        const next = Math.max(min, Math.min(max, num));
-        setInputValue(next.toString());
+      if (!/^\d*\.?\d{0,1}$/.test(raw)) {
+        return;
+      }
+      setInputValue(raw);
+      if (raw.endsWith(".")) {
+        return;
+      }
+      const parsed = parseAmountInput(raw, step);
+      if (parsed != null) {
+        const next = Math.max(min, Math.min(max, roundToStep(parsed, step)));
         onChange(next);
       }
     };
 
     const handleBlur = () => {
-      setInputValue(clampedValue.toString());
-      onChange(clampedValue);
+      const parsed = parseAmountInput(inputValue, step);
+      if (parsed == null) {
+        setInputValue(clampedValue.toString());
+        onChange(clampedValue);
+        return;
+      }
+      commitAmount(parsed);
     };
 
     const handleDecrease = () => {
-      const next = Math.max(min, value - step);
-      setInputValue(next.toString());
-      onChange(next);
+      commitAmount(value - step);
     };
 
     const handleIncrease = () => {
-      const next = Math.min(max, value + step);
-      setInputValue(next.toString());
-      onChange(next);
+      commitAmount(value + step);
     };
 
     const canDecrease = value > min && !disabled;
@@ -103,7 +129,7 @@ export const AmountStepper = React.forwardRef<HTMLInputElement, AmountStepperPro
           ref={ref}
           id={id}
           type="text"
-          inputMode="numeric"
+          inputMode="decimal"
           value={displayValue}
           onChange={handleInputChange}
           onBlur={handleBlur}

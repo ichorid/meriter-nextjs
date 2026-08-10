@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { keepPreviousData } from '@tanstack/react-query';
 import { trpc } from '@/lib/trpc/client';
 
 export type MyInvestmentsSort = 'date' | 'amount' | 'earnings';
@@ -32,12 +33,19 @@ export function useMyInvestments(
     }>
   >([]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [sort, filter]);
+
   const { data, isLoading, isFetching } = trpc.users.myInvestments.useQuery(
     {
       sort,
       filter,
       page,
       limit: PAGE_SIZE,
+    },
+    {
+      placeholderData: keepPreviousData,
     },
   );
 
@@ -57,7 +65,6 @@ export function useMyInvestments(
 
   const resetPage = useCallback(() => {
     setPage(1);
-    setAccumulatedItems([]);
   }, []);
 
   const fetchNextPage = useCallback(() => {

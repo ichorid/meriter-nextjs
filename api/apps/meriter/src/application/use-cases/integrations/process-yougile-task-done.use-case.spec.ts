@@ -240,7 +240,7 @@ describe('ProcessYougileTaskDoneUseCase', () => {
       'task-1',
       expect.objectContaining({
         text: expect.stringContaining(
-          'https://app.test/meriter/communities/community-1?post=pub-1',
+          'https://app.test/meriter/communities/community-1/posts/pub-1',
         ),
         label: 'Meriter',
       }),

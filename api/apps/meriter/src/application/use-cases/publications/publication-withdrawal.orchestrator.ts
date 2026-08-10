@@ -128,6 +128,9 @@ export async function autoWithdrawPublicationBalanceBeforeDelete(
   if (community?.settings?.allowWithdraw === false) {
     return 0;
   }
+  if (community?.typeTag === 'future-vision') {
+    return 0;
+  }
 
   await processPublicationWithdrawal(
     beneficiaryId,

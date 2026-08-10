@@ -166,7 +166,7 @@ export function TicketCard({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1 space-y-2">
             <div className="flex flex-wrap items-center gap-2">
-              <TicketStatusBadge status={status} className={projectMutedBadgeClass} />
+              <TicketStatusBadge status={status} />
               {ticket.title && <span className="font-medium text-base-content">{ticket.title}</span>}
             </div>
             <p className="text-sm text-base-content/70 line-clamp-2">

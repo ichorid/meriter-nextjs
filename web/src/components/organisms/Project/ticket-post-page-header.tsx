@@ -97,10 +97,7 @@ export function TicketPostPageHeaderBlock({
         <Badge variant="default" className="rounded-full border-transparent font-semibold">
           {t('postTypeBadgeTicket')}
         </Badge>
-        <TicketStatusBadge
-          status={ticketStatus}
-          className="border-emerald-500/35 bg-emerald-600/15 font-medium text-emerald-800 dark:border-emerald-400/30 dark:bg-emerald-500/15 dark:text-emerald-100"
-        />
+        <TicketStatusBadge status={ticketStatus} />
       </div>
 
       {title ? (

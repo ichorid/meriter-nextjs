@@ -116,7 +116,7 @@ export class SearchUseCase {
           title: pub.title || 'Untitled Publication',
           description: pub.description || pub.content,
           createdAt: pub.createdAt?.toISOString() || new Date().toISOString(),
-          url: `/meriter/communities/${pub.communityId}/publications/${pub.id}`,
+          url: `/meriter/communities/${pub.communityId}/posts/${pub.id}`,
           author: author
             ? {
                 id: author.id,

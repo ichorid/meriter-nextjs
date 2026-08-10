@@ -817,7 +817,7 @@
         "you": "Вы",
         "points": "баллов",
         "casters": "голосующих",
-        "castersWithCount": "{count, plural, one {# голосующий} few {# голосующих} many {# голосующих} other {# голосующих}}",
+        "castersWithCount": "{count, plural, one {проголосовали # раз} few {проголосовали # раза} many {проголосовали # раз} other {проголосовали # раз}}",
         "thankers": "голосующих",
         "amountLabel": "Количество заслуг:",
         "merits": "заслуг",

@@ -817,7 +817,7 @@
         "you": "You",
         "points": "points",
         "casters": "casters",
-        "castersWithCount": "{count, plural, one {# caster} other {# casters}}",
+        "castersWithCount": "{count, plural, one {# vote cast} other {# votes cast}}",
         "thankers": "casters",
         "amountLabel": "Amount (merits):",
         "merits": "merits",

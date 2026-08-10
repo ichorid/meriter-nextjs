@@ -383,7 +383,7 @@ export class NotificationService {
         if (!resolvedPublicationId) {
           return undefined;
         }
-        return `/meriter/communities/${communityId}?post=${resolvedPublicationId}`;
+        return `/meriter/communities/${communityId}/posts/${resolvedPublicationId}`;
       }
 
       case 'vote': {
@@ -391,7 +391,7 @@ export class NotificationService {
         const communityId = metadata?.communityId;
         const publicationId = metadata?.publicationId;
         if (communityId && publicationId) {
-          return `/meriter/communities/${communityId}?post=${publicationId}`;
+          return `/meriter/communities/${communityId}/posts/${publicationId}`;
         }
         if (communityId) {
           return `/meriter/communities/${communityId}/members`;
@@ -443,9 +443,9 @@ export class NotificationService {
           return undefined;
         }
 
-        let url = `/meriter/communities/${communityId}?post=${publicationId}`;
+        let url = `/meriter/communities/${communityId}/posts/${publicationId}`;
         if (targetType === 'vote' && targetId) {
-          url += `&highlight=${targetId}`;
+          url += `?highlight=${targetId}`;
         }
         return url;
       }
@@ -457,9 +457,9 @@ export class NotificationService {
           return undefined;
         }
 
-        let url = `/meriter/communities/${communityId}?post=${publicationId}`;
+        let url = `/meriter/communities/${communityId}/posts/${publicationId}`;
         if (commentId) {
-          url += `&highlight=${commentId}`;
+          url += `?highlight=${commentId}`;
         }
 
         return url;
@@ -489,7 +489,7 @@ export class NotificationService {
         const communityId = metadata?.communityId;
         const postId = metadata?.postId;
         if (communityId && postId) {
-          return `/meriter/communities/${communityId}?post=${postId}`;
+          return `/meriter/communities/${communityId}/posts/${postId}`;
         }
         return undefined;
       }
@@ -498,7 +498,7 @@ export class NotificationService {
         const communityId = metadata?.communityId;
         const postId = metadata?.postId;
         if (communityId && postId) {
-          return `/meriter/communities/${communityId}?post=${postId}`;
+          return `/meriter/communities/${communityId}/posts/${postId}`;
         }
         return undefined;
       }
@@ -523,7 +523,7 @@ export class NotificationService {
         const birzhaCommunityId = metadata?.birzhaCommunityId as string | undefined;
         const publicationId = metadata?.publicationId as string | undefined;
         if (birzhaCommunityId && publicationId) {
-          return `/meriter/communities/${birzhaCommunityId}?post=${publicationId}`;
+          return `/meriter/communities/${birzhaCommunityId}/posts/${publicationId}`;
         }
         return undefined;
       }
@@ -545,7 +545,7 @@ export class NotificationService {
         const communityId = metadata?.communityId as string | undefined;
         const postId = metadata?.postId as string | undefined;
         if (communityId && postId) {
-          return `/meriter/communities/${communityId}?post=${postId}`;
+          return `/meriter/communities/${communityId}/posts/${postId}`;
         }
         return undefined;
       }
@@ -555,7 +555,7 @@ export class NotificationService {
         const communityId = metadata?.communityId as string | undefined;
         const postId = metadata?.postId as string | undefined;
         if (communityId && postId) {
-          return `/meriter/communities/${communityId}?post=${postId}`;
+          return `/meriter/communities/${communityId}/posts/${postId}`;
         }
         return undefined;
       }
@@ -566,7 +566,7 @@ export class NotificationService {
           (metadata?.futureVisionCommunityId as string | undefined);
         const publicationId = metadata?.publicationId as string | undefined;
         if (publicationCommunityId && publicationId) {
-          return `/meriter/communities/${publicationCommunityId}?post=${publicationId}`;
+          return `/meriter/communities/${publicationCommunityId}/posts/${publicationId}`;
         }
         return undefined;
       }
@@ -603,7 +603,7 @@ export class NotificationService {
         const communityId = metadata?.communityId as string | undefined;
         const publicationId = metadata?.publicationId as string | undefined;
         if (communityId && publicationId) {
-          return `/meriter/communities/${communityId}?post=${publicationId}`;
+          return `/meriter/communities/${communityId}/posts/${publicationId}`;
         }
         return undefined;
       }
@@ -614,9 +614,7 @@ export class NotificationService {
         const publicationId = metadata?.publicationId as string | undefined;
         const isProject = metadata?.inviteTargetIsProject === true;
         if (communityId && publicationId) {
-          return isProject
-            ? `/meriter/projects/${communityId}?post=${publicationId}`
-            : `/meriter/communities/${communityId}?post=${publicationId}`;
+          return `/meriter/communities/${communityId}/posts/${publicationId}`;
         }
         if (communityId) {
           return isProject
@@ -645,7 +643,7 @@ export class NotificationService {
         const communityId = metadata?.communityId as string | undefined;
         const publicationId = metadata?.publicationId as string | undefined;
         if (communityId && publicationId) {
-          return `/meriter/communities/${communityId}?post=${publicationId}`;
+          return `/meriter/communities/${communityId}/posts/${publicationId}`;
         }
         return undefined;
       }

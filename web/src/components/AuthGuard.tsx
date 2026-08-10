@@ -55,9 +55,11 @@ export function AuthGuard({
   useEffect(() => {
     if (authError) {
       addToast(resolveApiErrorToastMessage(authError), 'error');
-      router.push('/meriter/login');
+      const currentPath = window.location.pathname + window.location.search;
+      const returnTo = encodeURIComponent(currentPath);
+      router.push(`${redirectTo}?returnTo=${returnTo}`);
     }
-  }, [authError, addToast, router]);
+  }, [authError, addToast, redirectTo, router]);
   
   // Show loading state
   if (isLoading || !hasChecked) {

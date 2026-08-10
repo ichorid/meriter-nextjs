@@ -239,6 +239,14 @@ export class CreateVoteUseCase {
       if (requestedTotalAmount < 0) {
         throw new BadRequestException('Vote amount cannot be negative');
       }
+
+      if (
+        input.targetType === 'document-variant' &&
+        documentVoteCtx?.variant?.proposedBy === userId &&
+        requestedTotalAmount > 0
+      ) {
+        throw new BadRequestException('You cannot vote on your own document variant');
+      }
     
       if (isTicketPublication && requestedTotalAmount > 0) {
         const allowTicketMerits =

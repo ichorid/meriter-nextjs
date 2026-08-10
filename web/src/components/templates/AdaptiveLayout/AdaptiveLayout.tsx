@@ -56,7 +56,7 @@ const ScrollToTopButton: React.FC = () => {
     <button
       onClick={handleScrollToTop}
       className={cn(
-        'fixed bottom-20 right-10 z-50 rounded-full p-2.5 transition-all active:scale-95 lg:bottom-6 lg:right-3',
+        'fixed bottom-24 right-24 z-50 rounded-full p-2.5 transition-all active:scale-95 lg:bottom-6 lg:right-3',
         sc
           ? 'bg-stitch-surface2 text-stitch-text shadow-lg hover:bg-stitch-elevated'
           : 'bg-base-200 shadow-lg hover:bg-base-300',

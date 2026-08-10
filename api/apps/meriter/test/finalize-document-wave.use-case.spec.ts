@@ -146,6 +146,26 @@ describe('FinalizeDocumentWaveUseCase', () => {
       expect(wonCalls).toHaveLength(0);
     });
 
+    it('keeps official when all variants have zero or negative rating', async () => {
+      deps.documentPersistence.findOpenVariants.mockResolvedValue([
+        { ...winnerVariant, rating: -1 },
+        { ...loserVariant, rating: -5 },
+      ]);
+      deps.documentService.findBlock.mockReturnValue({ ...block, officialRating: -10 });
+
+      await useCase.finalizeBlock(documentId, blockId);
+
+      expect(deps.documentPersistence.updateVariantStatus).toHaveBeenCalledWith(
+        'v-winner',
+        'closed-not-winner',
+      );
+      expect(deps.documentPersistence.updateVariantStatus).toHaveBeenCalledWith(
+        'v-loser',
+        'closed-not-winner',
+      );
+      expect(deps.autoApplyWinner).not.toHaveBeenCalled();
+    });
+
     it('does nothing when the finalize lock is not acquired', async () => {
       deps.documentPersistence.acquireWaveFinalizeLock.mockResolvedValue(false);
 

@@ -85,6 +85,12 @@ export class WithdrawPublicationRatingUseCase {
         message: 'Withdrawals are disabled in this community',
       });
     }
+    if (postCommunity?.typeTag === 'future-vision') {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Withdrawals are disabled in Future Vision communities',
+      });
+    }
     if (postCommunity?.telegramChatId) {
       throw new TRPCError({
         code: 'FORBIDDEN',

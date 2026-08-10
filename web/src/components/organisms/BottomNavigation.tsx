@@ -256,8 +256,9 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                                 )}
                             >
                                 <Icon
-                                    size={24}
                                     className={cn(
+                                        'h-6 w-6 shrink-0',
+                                        tab.path === '/meriter/future-visions' && 'translate-y-px',
                                         active
                                             ? sc
                                                 ? 'text-stitch-accent'

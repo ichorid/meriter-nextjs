@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PositiveMeritAmountSchema } from './base-schemas';
 
 export const MeritTransferWalletTypeSchema = z.enum(['global', 'community', 'project']);
 
@@ -6,7 +7,7 @@ export const MeritTransferWalletTypeSchema = z.enum(['global', 'community', 'pro
 export const MeritTransferCreateObjectSchema = z.object({
   senderId: z.string().min(1),
   receiverId: z.string().min(1),
-  amount: z.number().int().positive(),
+  amount: PositiveMeritAmountSchema,
   comment: z.string().max(4000).optional(),
   sourceWalletType: MeritTransferWalletTypeSchema,
   sourceContextId: z.string().nullish(),
