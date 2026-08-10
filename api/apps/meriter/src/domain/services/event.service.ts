@@ -630,7 +630,9 @@ export class EventService {
 
     const receiver = await this.userService.getUserById(input.receiverId);
     const receiverName = receiver?.displayName ?? input.receiverId;
-    const content = `Передано ${input.amount} заслуг пользователю ${receiverName}`;
+    const baseContent = `Передано ${input.amount} заслуг пользователю ${receiverName}`;
+    const userComment = input.comment?.trim();
+    const content = userComment ? `${baseContent}. ${userComment}` : baseContent;
 
     await this.commentService.createMeritTransferAutoComment({
       eventPostId: publicationId,

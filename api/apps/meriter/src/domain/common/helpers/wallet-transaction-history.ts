@@ -122,6 +122,21 @@ export function meritHistoryLedgerMultiplier(tx: {
   return -1;
 }
 
+/**
+ * Aggregate community/project merit history: member wallet debits for top-ups are
+ * inflows into the shared project/community wallet (positive in this view).
+ */
+export function communityMeritHistoryLedgerMultiplier(tx: {
+  type: string;
+  referenceType?: string | null;
+}): 1 | -1 {
+  const rt = tx.referenceType ?? '';
+  if (rt === 'project_topup' || rt === 'community_wallet_topup') {
+    return 1;
+  }
+  return meritHistoryLedgerMultiplier(tx);
+}
+
 /** Fixed windows for dashboard (UTC calendar days through today). */
 export type MeritHistoryDashboardBoundedPeriodDays = 7 | 30 | 90;
 

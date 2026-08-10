@@ -6,7 +6,10 @@ import {
   enrichMeritHistoryTransactions,
   type MeritHistoryMongoDb,
 } from '../../../domain/common/helpers/merit-history-enrichment';
-import type { MeritHistoryFilterKey } from '../../../domain/common/helpers/wallet-transaction-history';
+import {
+  communityMeritHistoryLedgerMultiplier,
+  type MeritHistoryFilterKey,
+} from '../../../domain/common/helpers/wallet-transaction-history';
 import type { CommunityService } from '../../../domain/services/community.service';
 import type { UserCommunityRoleService } from '../../../domain/services/user-community-role.service';
 import type { UserService } from '../../../domain/services/user.service';
@@ -150,6 +153,10 @@ export class GetCommunityMeritHistoryUseCase {
       const subjectUserId = result.walletOwnerByTxId.get(tx.id) ?? null;
       return {
         ...row,
+        ledgerMultiplier: communityMeritHistoryLedgerMultiplier({
+          type: tx.type,
+          referenceType: tx.referenceType,
+        }),
         subjectUserId,
         subjectDisplayName:
           subjectUserId != null ? subjectNames.get(subjectUserId) ?? subjectUserId : null,

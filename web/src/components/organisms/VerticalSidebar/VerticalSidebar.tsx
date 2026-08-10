@@ -3,7 +3,7 @@
 import React, { useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Info, Star, Sparkles, FolderKanban, Bell, TrendingUp, LifeBuoy, User, Plus } from 'lucide-react';
+import { Info, Star, Sparkles, FolderKanban, Bell, TrendingUp, LifeBuoy, User, Plus, Search } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
 import { useUnreadFavoritesCount } from '@/hooks/api/useFavorites';
@@ -334,6 +334,48 @@ export const VerticalSidebar: React.FC<VerticalSidebarProps> = ({
             <>
           <div className={cn(paddingClass, 'mb-2 mt-1')}>
             <div className={cn('border-t', sc ? 'border-stitch-border' : 'border-base-300')} role="separator" aria-hidden />
+          </div>
+
+          {/* Search */}
+          <div className={paddingClass}>
+            <Link
+              href={routes.search}
+              onClick={() =>
+                trackMeriterUiEvent({
+                  name: 'nav_primary_click',
+                  payload: { item: 'search', surface: 'sidebar' },
+                })
+              }
+            >
+              <button className={secondaryNav(Boolean(pathname?.startsWith(routes.search)))}>
+                {isExpanded ? (
+                  <div className="flex items-center w-full">
+                    <Search
+                      className={cn(
+                        'w-5 h-5',
+                        sc && pathname?.startsWith(routes.search)
+                          ? 'text-stitch-accent'
+                          : sc
+                            ? 'text-stitch-muted'
+                            : '',
+                      )}
+                    />
+                    <span className="ml-2 text-sm font-medium">{t('search')}</span>
+                  </div>
+                ) : (
+                  <Search
+                    className={cn(
+                      'w-5 h-5',
+                      sc && pathname?.startsWith(routes.search)
+                        ? 'text-stitch-accent'
+                        : sc
+                          ? 'text-stitch-muted'
+                          : '',
+                    )}
+                  />
+                )}
+              </button>
+            </Link>
           </div>
 
           {/* Notifications */}

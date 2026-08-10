@@ -31,6 +31,7 @@ export const routes = {
         `/meriter/users/${userId}/merit-history?context=${encodeURIComponent(permissionCommunityId)}`,
     settings: "/meriter/settings",
     notifications: "/meriter/notifications",
+    search: "/meriter/search",
     about: "/meriter/about",
 
     // Communities

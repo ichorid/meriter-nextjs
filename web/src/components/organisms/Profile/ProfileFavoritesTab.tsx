@@ -55,8 +55,8 @@ export function ProfileFavoritesTab({
   if (favorites.length === 0) {
     return (
       <EmptyState
-        title="No favorites yet"
-        message={t('empty.publications.message')}
+        title={t('empty.favorites.title')}
+        message={t('empty.favorites.message')}
       />
     );
   }

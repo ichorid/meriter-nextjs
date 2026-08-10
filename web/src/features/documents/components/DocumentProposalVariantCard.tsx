@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useLocale, useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { variantStatusToneClass } from '@/features/documents/lib/document-canvas-shared';
@@ -44,8 +45,11 @@ export function DocumentProposalVariantCard({
 }: DocumentProposalVariantCardProps) {
   const tGdocs = useTranslations('pages.documents.gdocs');
   const locale = useLocale();
+  const [rationaleExpanded, setRationaleExpanded] = useState(false);
   const dateLabel = formatDate(proposedAt, locale);
   const comment = proposerComment?.trim();
+  const rationaleClampThreshold = 200;
+  const rationaleNeedsToggle = comment != null && comment.length > rationaleClampThreshold;
 
   return (
     <li>
@@ -80,12 +84,26 @@ export function DocumentProposalVariantCard({
                 <p className="text-[11px] text-base-content/50">{dateLabel}</p>
               ) : null}
               {comment ? (
-                <p className="mt-2 text-xs leading-relaxed text-base-content/80">
+                <div className="mt-2 text-xs leading-relaxed text-base-content/80">
                   <span className="font-medium text-base-content/55">
                     {tGdocs('proposerCommentLabel')}:{' '}
                   </span>
-                  <span className="line-clamp-4">{comment}</span>
-                </p>
+                  <span className={cn(!rationaleExpanded && rationaleNeedsToggle && 'line-clamp-4')}>
+                    {comment}
+                  </span>
+                  {rationaleNeedsToggle ? (
+                    <button
+                      type="button"
+                      className="mt-1 block text-[11px] font-medium text-primary hover:underline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setRationaleExpanded((prev) => !prev);
+                      }}
+                    >
+                      {rationaleExpanded ? tGdocs('hideFullRationale') : tGdocs('showFullRationale')}
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
             </div>
           </div>

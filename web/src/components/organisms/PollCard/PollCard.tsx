@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/shadcn/card';
 import { Button } from '@/components/ui/shadcn/button';
 import { Badge } from '@/components/atoms/Badge/Badge';
@@ -35,6 +36,7 @@ export const PollCard: React.FC<PollCardProps> = ({
   createdAt,
   expiresAt,
 }) => {
+  const t = useTranslations('polls');
   const hasVoted = !!userVote;
   const [selectedOption, setSelectedOption] = useState<string | null>(userVote || null);
 
@@ -63,7 +65,7 @@ export const PollCard: React.FC<PollCardProps> = ({
         </div>
         {expiresAt && (
           <Badge variant="warning" size="xs" className="mt-2">
-            Ends {new Date(expiresAt).toLocaleDateString()}
+            {t('pollFinished')} {new Date(expiresAt).toLocaleDateString()}
           </Badge>
         )}
       </CardHeader>
@@ -77,7 +79,7 @@ export const PollCard: React.FC<PollCardProps> = ({
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{option.text}</span>
                     <span className="text-sm text-base-content/60">
-                      {option.votes} votes ({option.percentage}%)
+                      {option.votes} {t('merits')} ({option.percentage}%)
                     </span>
                   </div>
                   <div className="w-full bg-base-300 rounded-full h-2">
@@ -89,7 +91,7 @@ export const PollCard: React.FC<PollCardProps> = ({
                   </div>
                   {selectedOption === option.id && (
                     <Badge variant="success" size="xs" className="absolute right-2 top-0">
-                      Your vote
+                      {t('youCast')}
                     </Badge>
                   )}
                 </div>
@@ -106,7 +108,7 @@ export const PollCard: React.FC<PollCardProps> = ({
           ))}
 
           <div className="text-xs text-base-content/60 mt-2">
-            {totalVotes} {totalVotes === 1 ? 'vote' : 'votes'}
+            {t('totalCasts')}: {totalVotes}
             {createdAt && ` • ${new Date(createdAt).toLocaleDateString()}`}
           </div>
         </div>

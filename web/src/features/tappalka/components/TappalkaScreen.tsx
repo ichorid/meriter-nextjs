@@ -55,6 +55,8 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
   const inactivityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   /** Prevents duplicate submitChoice for the same gesture (card drop + drag end). */
   const submitHandledSessionRef = useRef<string | null>(null);
+  const seenPostIdsRef = useRef<Set<string>>(new Set());
+  const [showRecycleBanner, setShowRecycleBanner] = useState(false);
 
   const utils = trpc.useUtils();
 
@@ -85,6 +87,17 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
       submitHandledSessionRef.current = null;
     }
   }, [pair?.sessionId, votedSessionId]);
+
+  useEffect(() => {
+    if (!pair?.postA?.id || !pair?.postB?.id) {
+      setShowRecycleBanner(false);
+      return;
+    }
+    const ids = [pair.postA.id, pair.postB.id];
+    const bothSeen = ids.every((id) => seenPostIdsRef.current.has(id));
+    setShowRecycleBanner(bothSeen);
+    ids.forEach((id) => seenPostIdsRef.current.add(id));
+  }, [pair?.sessionId, pair?.postA?.id, pair?.postB?.id]);
 
   const applyChoiceResult = useCallback(
     (result: TappalkaChoiceResult) => {
@@ -380,6 +393,14 @@ export const TappalkaScreen: React.FC<TappalkaScreenProps> = ({
       />
 
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden flex flex-col items-center justify-center md:justify-start p-4 md:p-6 gap-4">
+        {showRecycleBanner ? (
+          <p
+            className="w-full max-w-2xl rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-center text-sm text-base-content/80"
+            role="status"
+          >
+            {t('recycledPairBanner')}
+          </p>
+        ) : null}
         {pairLoading ? (
           <div className="flex flex-col items-center gap-4 py-8">
             <Loader2 className="w-8 h-8 animate-spin text-brand-primary" />

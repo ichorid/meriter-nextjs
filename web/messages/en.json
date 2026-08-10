@@ -261,6 +261,10 @@
             "projects": {
                 "title": "No Projects",
                 "message": "You haven't created any projects yet."
+            },
+            "favorites": {
+                "title": "No favorites yet",
+                "message": "Save publications and polls to favorites to find them quickly later."
             }
         },
         "emptyCommunities": {
@@ -515,7 +519,8 @@
         "noPostsInCommunityMessage": "There are not enough projects to compare in this community yet. Try again later!",
         "loadingPosts": "Loading projects...",
         "viewPost": "View project",
-        "readMore": "Read more"
+        "readMore": "Read more",
+        "recycledPairBanner": "No new posts to compare for now — showing ones you have already viewed this session."
     },
     "postClosing": {
         "closePostTitle": "Close post",
@@ -756,7 +761,7 @@
         "checkEmail": {
             "title": "Check your email",
             "sentTo": "We sent a sign-in link to <b>{email}</b>",
-            "hint": "Open the email and click the link — you will be signed in automatically. It usually arrives within a minute; if you don't see it, check your spam folder.",
+            "hint": "Open the email and click the link — you will be signed in automatically. It usually arrives within a minute; if you don't see it, check your Spam and Promotions / newsletters folders.",
             "waiting": "Waiting for you to open the link…",
             "resend": "Send again",
             "resendIn": "Resend in {seconds}s",
@@ -793,8 +798,8 @@
         "cancel": "Cancel",
         "creating": "Creating...",
         "createPoll": "Create Poll",
-        "willPayWithWallet": "Creating a poll costs {cost} merit(s). You have {balance} merits available. Payment will be deducted from wallet merits.",
-        "insufficientPayment": "Insufficient wallet merits. You need at least {cost} wallet merit(s) to create a poll.",
+        "willPayWithWallet": "Creating a poll costs {cost, plural, one {# merit} other {# merits}}. You have {balance, plural, one {# merit} other {# merits}} available. Payment will be deducted from wallet merits.",
+        "insufficientPayment": "Insufficient wallet merits. You need at least {cost, plural, one {# merit} other {# merits}} to create a poll.",
         "pollIsFree": "Polls are free to create in this community.",
         "errorMaxOptions": "Maximum 10 answer options",
         "errorMinOptions": "Minimum 2 answer options",
@@ -807,13 +812,13 @@
         "active": "Active",
         "pollFinished": "Poll finished",
         "timeRemaining": "Time remaining",
-        "casts": "casts",
-        "votes": "votes",
+        "casts": "merits cast",
+        "votes": "merits on option",
         "thanks": "casts",
         "youCast": "✓ You cast",
         "clickToView": "Click to view",
         "collapseAria": "Collapse poll",
-        "totalCasts": "Total casts",
+        "totalCasts": "Total merits cast",
         "you": "You",
         "points": "points",
         "casters": "casters",
@@ -1242,7 +1247,9 @@
             },
             "gdocs": {
                 "railTitle": "Proposals",
-                "railSubtitle": "{count} active threads",
+                "railSubtitle": "{count, plural, one {# active thread} other {# active threads}}",
+                "showFullRationale": "Show full text",
+                "hideFullRationale": "Show less",
                 "mobileProposalsCta": "Edit proposals ({count})",
                 "previewOfficialTitle": "Original version",
                 "previewVariantTitle": "Proposal by {name}",
@@ -1858,19 +1865,19 @@
             "quotaRemaining": "You have {remaining} wallet merits remaining.",
             "insufficientQuota": "Insufficient wallet merits. You need at least 1 wallet merit to create a post.",
             "willPayWithQuota": "Creating a post costs {cost} wallet merits. Payment will be deducted from your wallet.",
-            "willPayWithWallet": "Creating a post costs {cost} wallet merit(s). You have {balance} wallet merit(s). Payment will be deducted from your wallet.",
-            "insufficientPayment": "Insufficient wallet merits. You need at least {cost} wallet merit(s) to create a post.",
-            "insufficientMeritsPopup": "You don't have enough merits to pay for publication – you need at least {cost} merits.",
+            "willPayWithWallet": "Creating a post costs {cost, plural, one {# wallet merit} other {# wallet merits}}. You have {balance, plural, one {# wallet merit} other {# wallet merits}}. Payment will be deducted from your wallet.",
+            "insufficientPayment": "Insufficient wallet merits. You need at least {cost, plural, one {# wallet merit} other {# wallet merits}} to create a post.",
+            "insufficientMeritsPopup": "You don't have enough merits to pay for publication – you need at least {cost, plural, one {# merit} other {# merits}}.",
             "postIsFree": "Posts are free to create in this community.",
             "payment": {
                 "sectionTitle": "Publication payment",
-                "costLine": "Creating this post costs {cost} merit(s) (per community settings).",
-                "sourceWalletLine": "Community wallet (posting as): {balance} merit(s) available.",
-                "personalWalletLine": "Your global wallet: {balance} merit(s) available.",
+                "costLine": "Creating this post costs {cost, plural, one {# merit} other {# merits}} (per community settings).",
+                "sourceWalletLine": "Community wallet (posting as): {balance, plural, one {# merit} other {# merits}} available.",
+                "personalWalletLine": "Your global wallet: {balance, plural, one {# merit} other {# merits}} available.",
                 "payFromCommunityWallet": "Community wallet (default)",
                 "payFromPersonalWallet": "My global wallet",
-                "insufficientCommunityWallet": "The community wallet has {balance} merit(s); {cost} required.",
-                "willChargeCommunityWallet": "{cost} merit(s) will be charged from the community wallet.",
+                "insufficientCommunityWallet": "The community wallet has {balance, plural, one {# merit} other {# merits}}; {cost} required.",
+                "willChargeCommunityWallet": "{cost, plural, one {# merit} other {# merits}} will be charged from the community wallet.",
                 "summaryCommunity": "{cost} merit(s) · community wallet",
                 "summaryPersonal": "{cost} merit(s) · your wallet",
                 "summarySourceProject": "{cost} merit(s) · project wallet",

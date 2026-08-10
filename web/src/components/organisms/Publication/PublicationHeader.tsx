@@ -19,6 +19,7 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { ResourcePermissions } from '@/types/api-v1';
 import { useTranslations } from 'next-intl';
 import { useCommunity } from '@/hooks/api';
+import { resolvePriorityHubDisplayName } from '@/lib/i18n/community-display-name';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { ForwardPopup } from './ForwardPopup';
 import { ReviewForwardPopup } from './ReviewForwardPopup';
@@ -122,6 +123,7 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
   const t = useTranslations('shared');
   const tPub = useTranslations('publications');
   const tProjects = useTranslations('projects');
+  const tCommon = useTranslations('common');
   
   const deletePublication = useDeletePublication();
   const permanentDeletePublication = usePermanentDeletePublication();
@@ -142,6 +144,13 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
     isCommunityAuthor && authoredCommunityId ? authoredCommunityId : '',
   );
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
+
+  const communityBadgeLabel = useMemo(() => {
+    const rawName =
+      publication.meta?.origin?.telegramChatName?.trim() || community?.name?.trim() || '';
+    if (!rawName) return '';
+    return resolvePriorityHubDisplayName(community?.typeTag, rawName, tCommon);
+  }, [community?.name, community?.typeTag, publication.meta?.origin?.telegramChatName, tCommon]);
 
   const effectivePublicationId = publicationId || publication.id;
   const { data: publicationDetails } = trpc.publications.getById.useQuery(
@@ -578,11 +587,11 @@ export const PublicationHeader: React.FC<PublicationHeaderProps> = ({
             #{publication.meta?.hashtagName}
           </Badge>
         )}
-        {showCommunityAvatar && publication.meta?.origin?.telegramChatName && (
+        {showCommunityAvatar && communityBadgeLabel ? (
           <Badge variant="info" size="sm">
-            {publication.meta?.origin?.telegramChatName}
+            {communityBadgeLabel}
           </Badge>
-        )}
+        ) : null}
       </div>
       
       {/* Forward Popup */}

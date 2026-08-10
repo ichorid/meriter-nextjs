@@ -766,7 +766,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 <p className="text-muted-foreground">
                   {birzhaSourceEntity
                     ? tBirzha('publishCostExplainer', { cost: formatMerits(postCost) })
-                    : t('payment.costLine', { cost: formatMerits(postCost) })}
+                    : t('payment.costLine', { cost: postCost })}
                 </p>
                 <p className="text-muted-foreground">
                   {birzhaSourceEntity
@@ -776,12 +776,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                           : 'sourceCommunityWalletBalance',
                         { balance: formatMerits(communityWalletBalance) },
                       )
-                    : t('payment.sourceWalletLine', { balance: formatMerits(communityWalletBalance) })}
+                    : t('payment.sourceWalletLine', { balance: communityWalletBalance })}
                 </p>
                 <p className="text-muted-foreground">
                   {birzhaSourceEntity
                     ? tBirzha('personalWalletBalance', { balance: formatMerits(walletBalance) })
-                    : t('payment.personalWalletLine', { balance: formatMerits(walletBalance) })}
+                    : t('payment.personalWalletLine', { balance: walletBalance })}
                 </p>
                 <BrandFormControl label={tBirzha('payFromLabel')}>
                   <Select
@@ -826,7 +826,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 {hasInsufficientPayment ? (
                   <p className="text-destructive text-sm">
                     {postCostFunding === 'caller_global_wallet'
-                      ? t('insufficientPayment', { cost: formatMerits(postCost) })
+                      ? t('insufficientPayment', { cost: postCost })
                       : birzhaSourceEntity
                         ? tBirzha(
                             birzhaSourceIsProject
@@ -838,8 +838,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                             },
                           )
                         : t('payment.insufficientCommunityWallet', {
-                            balance: formatMerits(communityWalletBalance),
-                            cost: formatMerits(postCost),
+                            balance: communityWalletBalance,
+                            cost: postCost,
                           })}
                   </p>
                 ) : postCost > 0 ? (
@@ -850,12 +850,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                             birzhaSourceIsProject
                               ? 'willChargeProjectWallet'
                               : 'willChargeCommunityWallet',
-                            { cost: formatMerits(postCost) },
+                            { cost: postCost },
                           )
-                        : t('payment.willChargeCommunityWallet', { cost: formatMerits(postCost) })
+                        : t('payment.willChargeCommunityWallet', { cost: postCost })
                       : t('willPayWithWallet', {
-                          balance: formatMerits(walletBalance),
-                          cost: formatMerits(postCost),
+                          balance: walletBalance,
+                          cost: postCost,
                         })}
                   </p>
                 ) : (

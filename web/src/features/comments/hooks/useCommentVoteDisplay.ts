@@ -9,6 +9,8 @@ export interface UseCommentVoteDisplayOptions {
     directionPlus?: boolean;
     optimisticSum?: number;
     withdrawableBalance: number;
+    /** Hide "+ 0" / "0" rate (e.g. merit-transfer auto-comments). */
+    suppressZeroRate?: boolean;
 }
 
 export interface CommentVoteDisplay {
@@ -29,6 +31,7 @@ export function useCommentVoteDisplay({
     directionPlus,
     optimisticSum,
     withdrawableBalance,
+    suppressZeroRate = false,
 }: UseCommentVoteDisplayOptions): CommentVoteDisplay {
     // Calculate direction
     const calculatedDirectionPlus = directionPlus ?? 
@@ -43,14 +46,19 @@ export function useCommentVoteDisplay({
     const rate = useMemo(() => {
         if (!hasVoteTransactionData || amountTotal === undefined) {
             const score = displaySum;
-            if (score === 0) return "0";
-            const sign = score > 0 ? "+" : "-";
+            if (score === 0) {
+                return suppressZeroRate ? '' : '0';
+            }
+            const sign = score > 0 ? '+' : '-';
             return `${sign} ${Math.abs(score)}`;
         }
         const amount = Math.abs(amountTotal);
-        const sign = calculatedDirectionPlus ? "+" : "-";
+        if (amount === 0 && suppressZeroRate) {
+            return '';
+        }
+        const sign = calculatedDirectionPlus ? '+' : '-';
         return `${sign} ${amount}`;
-    }, [hasVoteTransactionData, amountTotal, displaySum, calculatedDirectionPlus]);
+    }, [hasVoteTransactionData, amountTotal, displaySum, calculatedDirectionPlus, suppressZeroRate]);
     
     // Determine vote type
     const voteType = useMemo(() => {
