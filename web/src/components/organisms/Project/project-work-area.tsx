@@ -6,6 +6,11 @@ import { useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import { routes } from '@/lib/constants/routes';
+import {
+  projectDividerClass,
+  projectPanelInsetClass,
+  projectPanelSurfaceClass,
+} from './project-surface';
 import { TicketList } from './TicketList';
 import { DiscussionList } from './DiscussionList';
 import { CreateTicketForm } from './CreateTicketForm';
@@ -63,12 +68,12 @@ export function ProjectWorkArea({
   }
 
   return (
-    <section aria-labelledby="project-work-area-heading" className="rounded-xl border border-white/10 bg-white/5 p-4 sm:p-5 space-y-4">
+    <section aria-labelledby="project-work-area-heading" className={cn(projectPanelSurfaceClass, 'space-y-4 p-4 sm:p-5')}>
       <h2 id="project-work-area-heading" className="sr-only">
         {t('tabs.tickets')} / {t('tabs.discussions')}
       </h2>
 
-      <div className="flex flex-wrap gap-4 border-b border-white/10">
+      <div className={cn('flex flex-wrap gap-4 border-b pb-px', projectDividerClass)}>
         <button
           type="button"
           onClick={() => setActiveTab('tickets')}
@@ -100,7 +105,10 @@ export function ProjectWorkArea({
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium text-base-content">{t('ticket')}</span>
             <select
-              className="rounded-lg border border-white/10 bg-background px-2 py-1.5 text-sm text-base-content"
+              className={cn(
+                'rounded-lg border bg-background px-2 py-1.5 text-sm text-base-content',
+                projectDividerClass,
+              )}
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as TicketStatus | 'all')}
             >

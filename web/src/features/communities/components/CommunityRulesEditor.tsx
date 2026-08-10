@@ -59,6 +59,7 @@ interface CommunityRulesEditorProps {
       allowEditByOthers?: boolean;
       allowWithdraw?: boolean;
       forwardRule?: 'standard' | 'project';
+      sharedWalletWithProjects?: boolean;
     };
     votingSettings?: {
       votingRestriction?: 'any' | 'not-same-team';
@@ -241,6 +242,9 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
   const [forwardRule, setForwardRule] = useState<'standard' | 'project'>(
     (community.settings?.forwardRule as 'standard' | 'project') || 'standard'
   );
+  const [sharedWalletWithProjects, setSharedWalletWithProjects] = useState<boolean>(
+    community.settings?.sharedWalletWithProjects ?? false
+  );
 
   const { user } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
@@ -281,6 +285,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     allowEditByOthers: community.settings?.allowEditByOthers ?? false,
     allowWithdraw: community.settings?.allowWithdraw ?? true,
     forwardRule: (community.settings?.forwardRule as 'standard' | 'project') || 'standard',
+    sharedWalletWithProjects: community.settings?.sharedWalletWithProjects ?? false,
     votingRestriction: (() => {
       const restriction = community.votingSettings?.votingRestriction;
       if (Array.isArray(restriction)) {
@@ -372,6 +377,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setAllowEditByOthers(community.settings?.allowEditByOthers ?? false);
     setAllowWithdraw(community.settings?.allowWithdraw ?? true);
     setForwardRule((community.settings?.forwardRule as 'standard' | 'project') || 'standard');
+    setSharedWalletWithProjects(community.settings?.sharedWalletWithProjects ?? false);
     const restriction = community.votingSettings?.votingRestriction;
     if (Array.isArray(restriction)) {
       setVotingRestriction((restriction[0] as 'any' | 'not-same-team') || 'any');
@@ -398,6 +404,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       allowEditByOthers: community.settings?.allowEditByOthers ?? false,
       allowWithdraw: community.settings?.allowWithdraw ?? true,
       forwardRule: (community.settings?.forwardRule as 'standard' | 'project') || 'standard',
+      sharedWalletWithProjects: community.settings?.sharedWalletWithProjects ?? false,
       votingRestriction: (() => {
       const restriction = community.votingSettings?.votingRestriction;
       if (Array.isArray(restriction)) {
@@ -440,6 +447,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         allowEditByOthers,
         allowWithdraw,
         forwardRule,
+        ...(!community.isProject ? { sharedWalletWithProjects } : {}),
       };
       
       // Filter out 'viewer' from quotaRecipients as it's not allowed in the schema
@@ -488,6 +496,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
         allowEditByOthers,
         allowWithdraw,
         forwardRule,
+        sharedWalletWithProjects,
         votingRestriction,
         currencySource,
         allowNegativeVoting,
@@ -525,6 +534,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
     setAllowEditByOthers(originalSettings.allowEditByOthers);
     setAllowWithdraw(originalSettings.allowWithdraw);
     setForwardRule(originalSettings.forwardRule);
+    setSharedWalletWithProjects(originalSettings.sharedWalletWithProjects);
     setVotingRestriction(originalSettings.votingRestriction);
     setCurrencySource(originalSettings.currencySource);
     setAllowNegativeVoting(originalSettings.allowNegativeVoting);
@@ -546,6 +556,7 @@ export const CommunityRulesEditor: React.FC<CommunityRulesEditorProps> = ({
       allowEditByOthers !== originalSettings.allowEditByOthers ||
       allowWithdraw !== originalSettings.allowWithdraw ||
       forwardRule !== originalSettings.forwardRule ||
+      sharedWalletWithProjects !== originalSettings.sharedWalletWithProjects ||
       votingRestriction !== originalSettings.votingRestriction ||
       currencySource !== originalSettings.currencySource ||
       allowNegativeVoting !== originalSettings.allowNegativeVoting ||
@@ -1184,6 +1195,26 @@ label={t('quotaEnabled')}
                 {t('allowWithdraw')}
               </Label>
             </div>
+
+            {!community.isProject && (
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2.5">
+                  <Checkbox
+                    id="sharedWalletWithProjects"
+                    checked={sharedWalletWithProjects}
+                    onCheckedChange={(checked) =>
+                      setSharedWalletWithProjects(checked as boolean)
+                    }
+                  />
+                  <Label htmlFor="sharedWalletWithProjects" className="text-sm cursor-pointer">
+                    {t('sharedWalletWithProjects')}
+                  </Label>
+                </div>
+                <p className="text-xs text-muted-foreground pl-6">
+                  {t('sharedWalletWithProjectsHelp')}
+                </p>
+              </div>
+            )}
           </>
         )}
 

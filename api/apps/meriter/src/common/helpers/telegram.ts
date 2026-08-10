@@ -56,7 +56,7 @@ export function buildDesktopUrl(action: string, params: Record<string, string | 
       if (desktopPath) return `${baseUrl}${ensure(String(desktopPath))}`;
       const communityId = params['communityId'];
       const slug = params['slug'] ?? params['id'];
-      if (communityId && slug) return `${baseUrl}/meriter/communities/${communityId}?post=${slug}`;
+      if (communityId && slug) return `${baseUrl}/meriter/communities/${communityId}/posts/${slug}`;
       if (params['id']) return `${baseUrl}/meriter/publications/${params['id']}`;
       return `${baseUrl}/meriter/profile`;
     }

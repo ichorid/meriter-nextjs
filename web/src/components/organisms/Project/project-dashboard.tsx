@@ -11,6 +11,8 @@ import { ProjectInvestorsDialog } from './ProjectInvestorsDialog';
 import { Button } from '@/components/ui/shadcn/button';
 import { routes } from '@/lib/constants/routes';
 import { useProjectWallet } from '@/hooks/api/useProjects';
+import { cn } from '@/lib/utils';
+import { projectPanelSurfaceClass, projectTrackBgClass } from './project-surface';
 export interface ProjectDashboardProps {
   projectId: string;
   founderSharePercent: number;
@@ -31,7 +33,7 @@ function SharesMiniBar({ founder, investor }: { founder: number; investor: numbe
     return null;
   }
   return (
-    <div className="h-1.5 w-full overflow-hidden flex rounded-full bg-white/10">
+    <div className={cn('h-1.5 w-full overflow-hidden flex rounded-full', projectTrackBgClass)}>
       {founder > 0 && (
         <div
           className="h-full shrink-0 bg-blue-500 transition-all"
@@ -46,7 +48,7 @@ function SharesMiniBar({ founder, investor }: { founder: number; investor: numbe
       )}
       {other > 0 && (
         <div
-          className="h-full shrink-0 bg-white/25 transition-all"
+          className="h-full shrink-0 bg-base-content/20 transition-all"
           style={{ width: `${other}%` }}
         />
       )}
@@ -75,7 +77,7 @@ export function ProjectDashboard({
     <>
     <div className="flex flex-col gap-3">
     <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-      <div className="flex min-h-0 flex-col rounded-xl border border-white/10 bg-white/5 p-4 md:h-full">
+      <div className={cn(projectPanelSurfaceClass, 'flex min-h-0 flex-col p-4 md:h-full')}>
         <ProjectWalletCard
           projectId={projectId}
           investingEnabled={investingEnabled}
@@ -95,7 +97,7 @@ export function ProjectDashboard({
         />
       </div>
 
-      <div className="flex min-h-0 flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 md:h-full">
+      <div className={cn(projectPanelSurfaceClass, 'flex min-h-0 flex-col gap-3 p-4 md:h-full')}>
         <div className="flex items-center gap-2 text-sm font-medium text-base-content">
           <Users className="h-5 w-5 text-base-content/70 shrink-0" aria-hidden />
           {t('cardTeam')}
@@ -129,7 +131,7 @@ export function ProjectDashboard({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-col gap-3 rounded-xl border border-white/10 bg-white/5 p-4 md:h-full">
+      <div className={cn(projectPanelSurfaceClass, 'flex min-h-0 flex-col gap-3 p-4 md:h-full')}>
         <div className="flex items-center gap-2 text-sm font-medium text-base-content">
           <PieChart className="h-5 w-5 text-base-content/70 shrink-0" aria-hidden />
           {t('cardShares')}

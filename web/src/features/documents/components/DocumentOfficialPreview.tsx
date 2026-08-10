@@ -4,29 +4,17 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { DocumentRichContent } from '@/features/documents/components/DocumentRichContent';
+import { DocumentSectionHeading } from '@/features/documents/components/DocumentSectionHeading';
 import {
   groupBlocksBySection,
   sectionTitleForDisplay,
   type DocSection,
 } from '@/features/documents/lib/document-canvas-shared';
+import { joinBlocksToDisplayHtml } from '@/features/documents/lib/document-html-structure';
 import { htmlToPlainText } from '@/features/documents/lib/document-text-diff';
 import { cn } from '@/lib/utils';
 
 const COLLAPSED_MAX_PX = 132;
-
-function officialTypographyClass(blockType: string): string {
-  switch (blockType) {
-    case 'heading':
-      return 'text-xl font-semibold tracking-tight text-base-content';
-    case 'quote':
-      return 'border-l-2 border-base-content/25 pl-4 italic text-base-content/85';
-    case 'list-bullet':
-    case 'list-numbered':
-      return 'text-base leading-relaxed [&_ul]:list-disc [&_ol]:list-decimal [&_ul]:pl-5 [&_ol]:pl-5';
-    default:
-      return 'text-base leading-relaxed text-base-content/95';
-  }
-}
 
 export interface DocumentOfficialPreviewProps {
   sections: DocSection[] | unknown;
@@ -66,7 +54,7 @@ export function DocumentOfficialPreview({ sections: sectionsRaw, className }: Do
       <div
         ref={bodyRef}
         className={cn(
-          'space-y-3 text-sm',
+          'space-y-4',
           !expanded && needsExpand && 'max-h-[8.25rem] overflow-hidden relative',
         )}
       >
@@ -79,18 +67,16 @@ export function DocumentOfficialPreview({ sections: sectionsRaw, className }: Do
             return null;
           }
           return (
-            <div key={section.id} className="space-y-2">
+            <div key={section.id} className="space-y-2.5">
               {sectionLabel ? (
-                <h3 className="text-sm font-semibold text-base-content/90">{sectionLabel}</h3>
+                <DocumentSectionHeading>{sectionLabel}</DocumentSectionHeading>
               ) : null}
-              {visibleBlocks.map((block) => (
+              {visibleBlocks.length > 0 ? (
                 <DocumentRichContent
-                  key={block.id}
-                  html={block.officialContent ?? ''}
-                  blockType={block.blockType}
-                  className={officialTypographyClass(block.blockType)}
+                  html={joinBlocksToDisplayHtml(visibleBlocks)}
+                  className="text-base-content/95"
                 />
-              ))}
+              ) : null}
             </div>
           );
         })}
@@ -106,6 +92,7 @@ export function DocumentOfficialPreview({ sections: sectionsRaw, className }: Do
           type="button"
           onClick={(e) => {
             e.stopPropagation();
+            e.preventDefault();
             setExpanded((v) => !v);
           }}
           className="text-primary text-sm font-medium hover:underline flex items-center gap-1"

@@ -1,0 +1,74 @@
+{
+  "work_unit_id": "p10-script-community-defaults",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/domain/services/community-defaults.service.ts",
+    "api/scripts/migrate-community-rules-to-defaults.ts",
+    "api/scripts/migrate-comment-mode.ts",
+    "api/scripts/migrate-voting-restrictions.ts",
+    "api/scripts/migrate-to-global-merit.ts",
+    "api/scripts/create-ob-posts.ts",
+    "api/scripts/migrate-publication-acting-as-community-author.ts",
+    "api/scripts/migrate-birzha-publication-author-fields.ts",
+    "api/scripts/migrate-publication-status-and-closing.ts",
+    "api/scripts/migrate-collaborative-documents.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/domain/services/community-defaults.service.ts",
+      "summary": "Added getDefaultSettings, getStandardCurrencyNames, getGlobalCommunitySeedDocument, getPriorityHubTypeTags, and migration-only legacy *Rules derivations from permission/merit/voting defaults."
+    },
+    {
+      "file": "api/scripts/migrate-community-rules-to-defaults.ts",
+      "summary": "Replaced inline stale default functions with NestJS app context + CommunityDefaultsService; also compares/removes stored meritSettings, votingSettings, and permissionRules when they match service defaults."
+    },
+    {
+      "file": "api/scripts/migrate-comment-mode.ts",
+      "summary": "Bootstraps MeriterModule; missing commentMode backfill uses CommunityDefaultsService.getDefaultSettings().commentMode instead of hardcoded 'all'."
+    },
+    {
+      "file": "api/scripts/migrate-voting-restrictions.ts",
+      "summary": "Bootstraps MeriterModule; 'not-own' migration target uses getDefaultVotingSettings().votingRestriction instead of hardcoded 'any'."
+    },
+    {
+      "file": "api/scripts/migrate-to-global-merit.ts",
+      "summary": "Bootstraps MeriterModule; global community seed and priority typeTags/currency come from CommunityDefaultsService instead of inline Mongo defaults."
+    },
+    {
+      "file": "api/scripts/create-ob-posts.ts",
+      "summary": "Replaced raw MongoClient + insertOne with NestJS app context; uses CommunityService, PublicationService.createFutureVisionPost (postCost=0 system action)."
+    },
+    {
+      "file": "api/scripts/migrate-publication-acting-as-community-author.ts",
+      "summary": "Replaced raw MongoClient with NestJS app context and Publication mongoose model (no stale schema defaults)."
+    },
+    {
+      "file": "api/scripts/migrate-birzha-publication-author-fields.ts",
+      "summary": "Replaced raw MongoClient with NestJS app context; marathon-of-good lookup via CommunityService.getCommunityByTypeTag."
+    },
+    {
+      "file": "api/scripts/migrate-publication-status-and-closing.ts",
+      "summary": "Replaced raw MongoClient with NestJS app context and Publication mongoose model."
+    },
+    {
+      "file": "api/scripts/migrate-collaborative-documents.ts",
+      "summary": "Documented that community defaults are resolved by CommunityDefaultsService at runtime."
+    }
+  ],
+  "verification": {
+    "scripts_use_nestjs_app_context": true,
+    "stale_inline_default_functions_in_migrate_community_rules": false,
+    "raw_mongo_client_in_write_set_scripts": false,
+    "comment_mode_default_from_service": true,
+    "voting_restriction_default_from_service": true,
+    "global_community_seed_from_service": true,
+    "create_ob_posts_uses_publication_service": true,
+    "tsc_changed_files": "no errors on community-defaults.service.ts and api/scripts/*"
+  },
+  "success_criteria": {
+    "scripts_use_domain_services_for_defaults": true,
+    "no_stale_schema_defaults_in_scripts": true
+  },
+  "notes": "All write_set migrate-* scripts and create-ob-posts.ts now bootstrap MeriterModule. CommunityDefaultsService centralizes settings, global seed, and legacy-rules comparison shapes; create-ob-posts uses PublicationService for OB post creation."
+}

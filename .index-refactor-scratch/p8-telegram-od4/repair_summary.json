@@ -1,0 +1,25 @@
+{
+  "node_id": "p8-telegram-od4",
+  "attempt": 1,
+  "files_changed": [],
+  "fixes_applied": [],
+  "status": "blocked_outside_write_set",
+  "write_set_lint": "pass",
+  "lint_delta_analysis": {
+    "new_issues_total": 42,
+    "issues_in_write_set": 0,
+    "write_set_paths_checked": [
+      "api/apps/meriter/src/infrastructure/telegram/",
+      "api/apps/meriter/src/domain/services/tg-bots.service.ts"
+    ],
+    "outside_write_set_categories": [
+      "application/use-cases/auth/* (14 import/no-restricted-paths)",
+      "application/use-cases/communities/* (2 import/no-restricted-paths)",
+      "application/use-cases/permissions/evaluate-resource-permissions.use-case.ts (3 no-unused-vars)",
+      "application/use-cases/uploads/upload-media.use-case.ts (1 import/no-restricted-paths)",
+      "domain/services/*.ts except tg-bots.service.ts (18 import/no-restricted-paths + 4 no-unused-vars in publication.service.ts)",
+      "trpc/routers/publications.router.ts (1 import/no-restricted-paths)"
+    ]
+  },
+  "notes": "lint_delta.json (attempt-03) lists 42 new issues; none are in this node's write_set. eslint on infrastructure/telegram/** and tg-bots.service.ts exits 0. Per repair constraints, issues in auth/communities/uploads use-cases, other domain services, and trpc routers cannot be fixed here. Overall lint verifier will remain fail until those out-of-scope files are addressed by their owning nodes."
+}

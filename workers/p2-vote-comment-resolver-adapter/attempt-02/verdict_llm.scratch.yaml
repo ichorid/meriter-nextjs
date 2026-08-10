@@ -1,0 +1,119 @@
+VerifierVerdict:
+  work_unit_id: p2-vote-comment-resolver-adapter
+  attempt: 2
+  channel: llm
+  verdict: pass
+  summary: >-
+    Attempt 2 satisfies all success criteria. VoteCommentResolver adapter owns the
+    vote-first ID bridge with INV-14 documentation at the boundary; domain
+    VoteCommentResolverService implements vote-before-comment resolve(); comments.getById
+    now delegates to VoteCommentResolver.fromTrpcContext(ctx).resolveEntity(), fixing
+    the prior comment-first INV-14 violation. api-v1 shim re-exports the canonical
+    domain service so DI paths (getDetails, permissions) share the same resolver.
+  reviewed_at: "2026-05-28"
+  diff_basis: >-
+    Uncommitted git diff on branch refactor/p2-vote-comment-resolver-adapter
+    (git diff HEAD~..HEAD reflects unrelated prior commits; work-unit delta reviewed
+    via git diff on the four changed files plus direct file reads).
+
+  intent_match: true
+  write_set_compliance: true
+  files_modified:
+    - api/apps/meriter/src/adapters/resolvers/vote-comment.resolver.ts
+    - api/apps/meriter/src/domain/services/vote-comment-resolver.service.ts
+  files_outside_write_set:
+    - path: api/apps/meriter/src/trpc/routers/comments.router.ts
+      reason: >-
+        Required to wire comments.getById to the adapter resolver; success criterion
+        "comments.getById uses resolver consistently" depends on this change.
+    - path: api/apps/meriter/src/api-v1/common/services/vote-comment-resolver.service.ts
+      reason: >-
+        Re-export shim so ctx.voteCommentResolverService and permissions helper use
+        the canonical domain vote-first implementation instead of duplicated api-v1 logic.
+
+  constraint_checks:
+    - id: phase-2
+      status: pass
+      evidence: >-
+        New adapter at adapters/resolvers/vote-comment.resolver.ts with domain service
+        extraction; aligns with Phase 2 adapter scaffold (AdaptersModule, resolvers/).
+    - id: bounded_contexts-BC-04-BC-18
+      status: pass
+      evidence: >-
+        VoteCommentResolver class docstring explicitly scopes BC-04/BC-18 at the
+        adapter boundary for vote/comment shared ID resolution.
+    - id: invariants-inv-14
+      status: pass
+      evidence: >-
+        Domain resolve() calls voteService.getVoteById(id) before
+        commentsService.getComment(id). Adapter documents and enforces INV-14 via
+        resolve() / resolveEntity() delegation. getById no longer uses comment-first
+        inline lookup.
+
+  success_criteria:
+    - id: resolver_adapter_owns_vote_first_comment_id_bridge
+      status: pass
+      evidence: >-
+        VoteCommentResolver in adapters/resolvers/vote-comment.resolver.ts exposes
+        resolve(), resolveEntity(), and fromTrpcContext() factory; delegates to domain
+        VoteCommentResolverService for vote-first ordering.
+    - id: comments_getById_uses_resolver_consistently
+      status: pass
+      evidence: >-
+        comments.router.ts getById handler calls
+        VoteCommentResolver.fromTrpcContext(ctx).resolveEntity(input.id), replacing
+        prior comment-first try/catch then vote fallback. getDetails continues using
+        ctx.voteCommentResolverService.resolve() which now re-exports the same domain
+        vote-first service.
+    - id: inv14_enforcer_at_adapter_boundary
+      status: pass
+      evidence: >-
+        Adapter class and method JSDoc cite INV-14; resolveEntity() routes through
+        vote-first domain resolve() and throws NotFoundError when neither entity exists.
+
+  architecture_alignment:
+    - id: domain-canonical-resolver
+      status: pass
+      evidence: >-
+        VoteCommentResolverService lives in domain/services with typed ResolvedVoteComment
+        (vote, comment, snapshot, authorId). api-v1 file is a thin re-export shim.
+    - id: depends-on-p2-adapters-scaffold
+      status: pass
+      evidence: >-
+        adapters/adapters.module.ts and adapters/resolvers/index.ts scaffold exist;
+        VoteCommentResolver file placed under adapters/resolvers/ per scaffold layout.
+
+  attempt_delta_from_prior:
+    - id: attempt-1-getById-not-wired
+      status: resolved
+      evidence: >-
+        Attempt 1 introduced adapter and domain service but left getById on inline
+        comment-first lookup (INV-14 violation). Attempt 2 wires getById to
+        VoteCommentResolver.fromTrpcContext().resolveEntity().
+    - id: attempt-1-api-v1-duplication
+      status: resolved
+      evidence: >-
+        api-v1 vote-comment-resolver.service.ts reduced from 74-line duplicate
+        implementation to 5-line re-export of domain service.
+
+  findings: []
+
+  warnings:
+    - id: nest-di-registration-deferred
+      severity: info
+      message: >-
+        VoteCommentResolver not yet registered in AdaptersModule; VoteCommentResolverService
+        not yet in DomainModule exports; resolvers/index.ts remains scaffold comment only.
+        getById uses static fromTrpcContext factory as interim wiring per worker notes.
+    - id: getDetails-wiring-path
+      severity: info
+      message: >-
+        getDetails uses ctx.voteCommentResolverService (domain via shim) while getById
+        uses adapter VoteCommentResolver.fromTrpcContext(). Both enforce vote-first via
+        the same domain service; adapter import path differs but behavior is consistent.
+    - id: uncommitted-changes
+      severity: info
+      message: >-
+        Work-unit changes are uncommitted on branch refactor/p2-vote-comment-resolver-adapter.
+
+  blockers: []

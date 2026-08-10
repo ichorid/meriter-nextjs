@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
+import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
@@ -8,10 +9,16 @@ import {
   formatHubFeedTabCount,
   useCommunityHubFeedTabCounts,
 } from '@/features/communities/hooks/useCommunityHubFeedTabCounts';
+import {
+  buildCommunityHubFeedTabHref,
+  needsCommunityHubFeedTabSanitize,
+  resolveCommunityHubFeedTab,
+  type CommunityHubFeedTab,
+} from '@/features/communities/lib/community-hub-feed-tab';
 
 const SCROLL_OPTS = { scroll: false as const };
 
-export type CommunityHubFeedTab = 'posts' | 'projects' | 'events' | 'birzha';
+export type { CommunityHubFeedTab };
 
 const DEFAULT_VISIBLE: readonly CommunityHubFeedTab[] = [
   'posts',
@@ -41,8 +48,11 @@ export function CommunityHubFeedTabBar({
   const searchParams = useSearchParams();
   const t = useTranslations('pages.communities');
 
-  const visibleSet = new Set<CommunityHubFeedTab>(visibleTabs);
-  const orderedTabs = TAB_ORDER.filter((id) => visibleSet.has(id));
+  const orderedTabs = useMemo(
+    () => TAB_ORDER.filter((id) => visibleTabs.includes(id)),
+    [visibleTabs],
+  );
+  const visibleTabsKey = useMemo(() => orderedTabs.join(','), [orderedTabs]);
 
   const { counts: tabCounts, isLoading: tabCountsLoading } = useCommunityHubFeedTabCounts(
     communityId,
@@ -50,46 +60,28 @@ export function CommunityHubFeedTabBar({
     { hubKind },
   );
 
-  const KNOWN_NON_POST = new Set<string>(['projects', 'events', 'birzha']);
-  const rawVal = searchParams?.get('feedTab');
-  const unknownFeedTab = Boolean(rawVal && !KNOWN_NON_POST.has(rawVal));
-  const parsed: CommunityHubFeedTab =
-    rawVal && KNOWN_NON_POST.has(rawVal) ? (rawVal as CommunityHubFeedTab) : 'posts';
-  const active: CommunityHubFeedTab = visibleSet.has(parsed) ? parsed : 'posts';
+  const feedTabRaw = searchParams?.get('feedTab') ?? null;
+  const searchParamsString = searchParams?.toString() ?? '';
+  const active = resolveCommunityHubFeedTab(feedTabRaw, orderedTabs);
+  const shouldSanitizeUrl = needsCommunityHubFeedTabSanitize(feedTabRaw, orderedTabs);
 
   useEffect(() => {
-    if (!pathname) return;
-    const sp = searchParams?.toString() ?? '';
-    if (unknownFeedTab) {
-      const p = new URLSearchParams(sp);
-      p.delete('feedTab');
-      const q = p.toString();
-      router.replace(q ? `${pathname}?${q}` : pathname, SCROLL_OPTS);
-      return;
-    }
-    if (parsed === active) return;
-    const p = new URLSearchParams(sp);
-    if (active === 'posts') {
-      p.delete('feedTab');
-    } else {
-      p.set('feedTab', active);
-    }
-    const q = p.toString();
-    router.replace(q ? `${pathname}?${q}` : pathname, SCROLL_OPTS);
-  }, [active, parsed, pathname, router, searchParams, unknownFeedTab]);
-
-  const setTab = (tab: CommunityHubFeedTab) => {
-    if (!visibleSet.has(tab)) return;
-    const p = new URLSearchParams(searchParams?.toString() ?? '');
-    if (tab === 'posts') {
-      p.delete('feedTab');
-    } else {
-      p.set('feedTab', tab);
-    }
-    const q = p.toString();
-    const base = pathname ?? '';
-    router.replace(q ? `${base}?${q}` : base, SCROLL_OPTS);
-  };
+    if (!pathname || !shouldSanitizeUrl) return;
+    const href = buildCommunityHubFeedTabHref(
+      pathname,
+      searchParamsString,
+      resolveCommunityHubFeedTab(feedTabRaw, orderedTabs),
+    );
+    router.replace(href, SCROLL_OPTS);
+  }, [
+    feedTabRaw,
+    orderedTabs,
+    pathname,
+    router,
+    searchParamsString,
+    shouldSanitizeUrl,
+    visibleTabsKey,
+  ]);
 
   const labelFor = (id: CommunityHubFeedTab): string => {
     switch (id) {
@@ -107,13 +99,14 @@ export function CommunityHubFeedTabBar({
   };
 
   const n = orderedTabs.length;
+  const basePath = pathname ?? '';
 
   return (
     <div
       role="tablist"
       aria-label={t('feedTabListAria')}
       className={cn(
-        'grid w-full gap-0.5 bg-base-200/35 p-1 dark:bg-base-200/25',
+        'relative z-10 grid w-full shrink-0 gap-0.5 bg-base-200/35 p-1 dark:bg-base-200/25',
         className,
       )}
       style={{ gridTemplateColumns: n > 0 ? `repeat(${n}, minmax(0, 1fr))` : undefined }}
@@ -127,13 +120,17 @@ export function CommunityHubFeedTabBar({
           showCount && count !== undefined
             ? `${label} (${count})`
             : label;
+        const href = buildCommunityHubFeedTabHref(basePath, searchParamsString, tab);
 
         return (
-          <button
+          <Link
             key={tab}
-            type="button"
+            href={href}
+            replace
+            scroll={false}
             role="tab"
             aria-selected={selected}
+            aria-current={selected ? 'page' : undefined}
             aria-label={tabAriaLabel}
             className={cn(
               'flex min-h-9 w-full items-center justify-center rounded-lg px-1 py-1.5 text-center text-sm font-medium transition-colors sm:px-2',
@@ -141,7 +138,6 @@ export function CommunityHubFeedTabBar({
                 ? 'bg-base-100 text-base-content shadow-sm dark:bg-base-300/80'
                 : 'text-base-content/70 hover:bg-base-300/40 hover:text-base-content',
             )}
-            onClick={() => setTab(tab)}
           >
             <span className="flex min-w-0 max-w-full flex-col items-center justify-center gap-0.5 sm:flex-row sm:gap-1.5">
               <span className="line-clamp-2 min-w-0 leading-tight">{label}</span>
@@ -164,7 +160,7 @@ export function CommunityHubFeedTabBar({
                 />
               ) : null}
             </span>
-          </button>
+          </Link>
         );
       })}
     </div>

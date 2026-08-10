@@ -53,3 +53,11 @@ export const CurrencySchema = z.object({
   plural: z.string().min(1),
   genitive: z.string().min(1),
 });
+
+/** Merit amount with one decimal place (0.1 step). Float-safe (avoids IEEE 754 multipleOf pitfalls). */
+export const MeritAmountSchema = z.number().refine(
+  (n) => Number.isFinite(n) && Math.abs(n * 10 - Math.round(n * 10)) < 1e-8,
+  { message: 'Must be a multiple of 0.1' },
+);
+export const NonNegativeMeritAmountSchema = MeritAmountSchema.min(0);
+export const PositiveMeritAmountSchema = MeritAmountSchema.positive();

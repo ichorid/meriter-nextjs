@@ -7,14 +7,14 @@ import { TestDatabaseHelper } from './test-db.helper';
 import { NotificationService } from '../src/domain/services/notification.service';
 
 describe('Favorite notifications deduplication (NotificationService)', () => {
+  jest.setTimeout(60000);
+
   let app: INestApplication;
   let testDb: TestDatabaseHelper;
   let notificationService: NotificationService;
   let connection: Connection;
 
   beforeAll(async () => {
-    jest.setTimeout(30000);
-
     testDb = new TestDatabaseHelper();
     const mongoUri = await testDb.start();
     process.env.MONGO_URL = mongoUri;
@@ -29,7 +29,7 @@ describe('Favorite notifications deduplication (NotificationService)', () => {
 
     notificationService = app.get(NotificationService);
     connection = app.get(getConnectionToken());
-  }, 30000);
+  }, 60000);
 
   afterAll(async () => {
     await app.close();

@@ -1,0 +1,113 @@
+{
+  "work_unit_id": "p7-profile-tabs-dedup",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "web/src/features/profile/index.ts",
+    "web/src/features/profile/hooks/index.ts",
+    "web/src/features/profile/hooks/useProfileTabSortFromSearch.ts",
+    "web/src/features/profile/hooks/useProfileTabPageSize.ts",
+    "web/src/features/profile/lib/merit-history-shared.ts",
+    "web/src/features/profile/components/index.ts",
+    "web/src/features/profile/components/ProfileTabPageFrame.tsx",
+    "web/src/features/profile/components/PublicationsTabShell.tsx",
+    "web/src/features/profile/components/PollsTabShell.tsx",
+    "web/src/features/profile/components/CommentsTabShell.tsx",
+    "web/src/features/profile/components/MeritHistoryTabContent.tsx",
+    "web/src/features/profile/components/ProfileMeritHistoryShell.tsx",
+    "web/src/features/profile/components/UserMeritHistoryShell.tsx",
+    "web/src/app/meriter/profile/publications/Client.tsx",
+    "web/src/app/meriter/profile/polls/Client.tsx",
+    "web/src/app/meriter/profile/comments/CommentsClient.tsx",
+    "web/src/app/meriter/profile/merit-transfers/Client.tsx",
+    "web/src/app/meriter/users/[userId]/publications/UserPublicationsClient.tsx",
+    "web/src/app/meriter/users/[userId]/polls/UserPollsClient.tsx",
+    "web/src/app/meriter/users/[userId]/comments/UserCommentsClient.tsx",
+    "web/src/app/meriter/users/[userId]/merit-history/UserMeritHistoryClient.tsx"
+  ],
+  "changes": [
+    {
+      "file": "web/src/features/profile/components/ProfileTabPageFrame.tsx",
+      "summary": "Shared auth gate, ProfileTopBar sticky header, and AdaptiveLayout wrapper with optional feed interaction state."
+    },
+    {
+      "file": "web/src/features/profile/hooks/useProfileTabSortFromSearch.ts",
+      "summary": "Shared URL ?sort= sync for publications, polls, and comments tabs."
+    },
+    {
+      "file": "web/src/features/profile/components/PublicationsTabShell.tsx",
+      "summary": "Canonical publications tab: infinite query, project filter, ProfilePublicationsTab; parameterized contentClassName for profile vs user routes."
+    },
+    {
+      "file": "web/src/features/profile/components/PollsTabShell.tsx",
+      "summary": "Canonical polls tab shell shared by profile and user routes."
+    },
+    {
+      "file": "web/src/features/profile/components/CommentsTabShell.tsx",
+      "summary": "Canonical comments/votes tab shell shared by profile and user routes."
+    },
+    {
+      "file": "web/src/features/profile/lib/merit-history-shared.ts",
+      "summary": "Shared merit history filter tabs, page limit, and wallet transaction row mapping."
+    },
+    {
+      "file": "web/src/features/profile/components/MeritHistoryTabContent.tsx",
+      "summary": "Shared merit history dashboard, filter tabs, feed, and infinite scroll (dedupes profile merit-transfers vs user merit-history UI)."
+    },
+    {
+      "file": "web/src/features/profile/components/ProfileMeritHistoryShell.tsx",
+      "summary": "Self-profile merit history route shell with auth/login gates."
+    },
+    {
+      "file": "web/src/features/profile/components/UserMeritHistoryShell.tsx",
+      "summary": "Other-user merit history shell with redirect, permission context, and shared tab content."
+    },
+    {
+      "file": "web/src/app/meriter/profile/publications/Client.tsx",
+      "summary": "Thin wrapper delegating to PublicationsTabShell."
+    },
+    {
+      "file": "web/src/app/meriter/profile/polls/Client.tsx",
+      "summary": "Thin wrapper delegating to PollsTabShell."
+    },
+    {
+      "file": "web/src/app/meriter/profile/comments/CommentsClient.tsx",
+      "summary": "Thin wrapper delegating to CommentsTabShell."
+    },
+    {
+      "file": "web/src/app/meriter/profile/merit-transfers/Client.tsx",
+      "summary": "Thin wrapper delegating to ProfileMeritHistoryShell (~191 lines removed)."
+    },
+    {
+      "file": "web/src/app/meriter/users/[userId]/publications/UserPublicationsClient.tsx",
+      "summary": "Thin wrapper with p-4 content padding."
+    },
+    {
+      "file": "web/src/app/meriter/users/[userId]/polls/UserPollsClient.tsx",
+      "summary": "Thin wrapper with p-4 content padding."
+    },
+    {
+      "file": "web/src/app/meriter/users/[userId]/comments/UserCommentsClient.tsx",
+      "summary": "Thin wrapper with p-4 pb-24 content padding."
+    },
+    {
+      "file": "web/src/app/meriter/users/[userId]/merit-history/UserMeritHistoryClient.tsx",
+      "summary": "Thin wrapper delegating to UserMeritHistoryShell (~209 lines removed)."
+    }
+  ],
+  "verification": {
+    "profile_publications_client_lines": 9,
+    "user_publications_client_lines": 7,
+    "profile_merit_transfers_client_lines": 7,
+    "user_merit_history_client_lines": 7,
+    "publications_tab_shell_lines": 68,
+    "route_layer_duplicate_tab_ui_removed": true,
+    "tsc_profile_paths_clean": true
+  },
+  "success_criteria": {
+    "shared_tab_client_components": true,
+    "profile_and_user_routes_thin_wrappers": true,
+    "four_jscpd_cluster_pairs_consolidated": true
+  },
+  "notes": "Consolidated four duplicate clusters: (1) publications profile/user, (2) polls, (3) comments, (4) merit history profile merit-transfers vs user merit-history. Favorites, investments, and projects remain profile-only (no user-route twins). UserMeritTransfersClient unchanged (peer-transfer flow, distinct from merit history)."
+}

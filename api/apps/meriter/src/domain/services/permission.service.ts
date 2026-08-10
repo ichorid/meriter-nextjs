@@ -42,6 +42,7 @@ export class PermissionService {
     private voteService: VoteService,
     @Inject(forwardRef(() => DocumentService))
     private documentService: DocumentService,
+    @Inject(forwardRef(() => PermissionRuleEngine))
     private permissionRuleEngine: PermissionRuleEngine,
     private permissionContextService: PermissionContextService,
   ) { }
@@ -291,6 +292,40 @@ export class PermissionService {
     );
   }
 
+  async canVoteOnDocumentBlockOfficial(
+    userId: string,
+    documentId: string,
+    blockId: string,
+  ): Promise<boolean> {
+    const doc = await this.documentService.getById(documentId);
+    if (!doc || doc.deleted) {
+      return false;
+    }
+    const community = await this.communityService.getCommunity(doc.communityId);
+    if (!community) {
+      return false;
+    }
+    if (community.settings?.documentsMode === 'off') {
+      return false;
+    }
+    if (community.isProject && community.projectStatus === 'archived') {
+      return false;
+    }
+    const role = await this.getUserRoleInCommunity(userId, doc.communityId);
+    if (!role) {
+      return false;
+    }
+    const block = this.documentService.findBlock(doc, blockId);
+    if (!block) {
+      return false;
+    }
+    return this.permissionRuleEngine.canPerformAction(
+      userId,
+      doc.communityId,
+      ActionType.VOTE_DOCUMENT_VARIANT,
+    );
+  }
+
   async canProposeDocumentVariant(userId: string, documentId: string): Promise<boolean> {
     const doc = await this.documentService.getById(documentId);
     if (!doc || doc.deleted) {
@@ -327,6 +362,13 @@ export class PermissionService {
       return true;
     }
     if (doc.createdBy === userId) {
+      return true;
+    }
+    const isCommunityAdmin = await this.communityService.isUserAdmin(
+      doc.communityId,
+      userId,
+    );
+    if (isCommunityAdmin) {
       return true;
     }
     return this.permissionRuleEngine.canPerformAction(

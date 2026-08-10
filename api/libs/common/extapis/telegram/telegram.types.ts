@@ -15,6 +15,25 @@ export interface Update {
   my_chat_member?: any;
   chat_member?: any;
   chat_join_request?: any;
+  message_reaction?: MessageReactionUpdated;
+  message_reaction_count?: MessageReactionCountUpdated;
+}
+
+export interface MessageReactionCountUpdated {
+  chat: { id: number; type?: string; title?: string };
+  message_id: number;
+  date: number;
+  reactions?: Array<{ type?: string; emoji?: string; total_count?: number }>;
+}
+
+export interface MessageReactionUpdated {
+  chat: { id: number; type?: string; title?: string; username?: string };
+  message_id: number;
+  user?: { id: number; first_name?: string; last_name?: string; username?: string };
+  actor_chat?: { id: number; type?: string; title?: string };
+  date: number;
+  old_reaction?: Array<{ type?: string; emoji?: string }>;
+  new_reaction?: Array<{ type?: string; emoji?: string }>;
 }
 
 export interface Message {

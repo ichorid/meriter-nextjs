@@ -7,6 +7,30 @@ import { trpc } from '@/lib/trpc/client';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import type { Community } from '@/types/api-v1';
 
+type MembershipCommunity = {
+  id: string;
+  name: string;
+  description?: string;
+  isProject?: boolean;
+  typeTag?: string;
+};
+
+function mergeCommunityRecord(
+  id: string,
+  batch?: Community,
+  membership?: MembershipCommunity,
+  roleMeta?: { name?: string; typeTag?: string },
+): Community {
+  if (batch) return batch;
+  return {
+    id,
+    name: membership?.name ?? roleMeta?.name ?? 'Community',
+    description: membership?.description ?? '',
+    isProject: membership?.isProject ?? false,
+    typeTag: membership?.typeTag ?? roleMeta?.typeTag,
+  } as Community;
+}
+
 /**
  * Hook to get user's communities with wallets and quotas
  *
@@ -35,6 +59,20 @@ export function useUserCommunities() {
     { userId: 'me' },
     { enabled: !!user },
   );
+
+  const roleMetaByCommunityId = useMemo(() => {
+    const map = new Map<string, { name?: string; typeTag?: string }>();
+    userRoles.forEach((role) => {
+      if (role.communityId) {
+        map.set(role.communityId, {
+          name: role.communityName,
+          typeTag: role.communityTypeTag,
+        });
+      }
+    });
+    return map;
+  }, [userRoles]);
+
   const membershipCommunityIds = useMemo(() => {
     const fromApi = membershipData?.map((c) => c.id) ?? [];
     const fromRoles = userRoles
@@ -47,14 +85,34 @@ export function useUserCommunities() {
     return Array.from(merged);
   }, [membershipData, userRoles]);
 
-  const { communities: memberCommunities, isLoading: memberCommunitiesLoading } = useCommunitiesBatch(membershipCommunityIds);
+  const membershipById = useMemo(() => {
+    const map = new Map<string, MembershipCommunity>();
+    (membershipData ?? []).forEach((c) => map.set(c.id, c));
+    return map;
+  }, [membershipData]);
+
+  const { communities: batchCommunities, isLoading: memberCommunitiesLoading, isFetched: batchFetched } =
+    useCommunitiesBatch(membershipCommunityIds);
+
+  const batchById = useMemo(() => {
+    const map = new Map<string, Community>();
+    batchCommunities.forEach((c) => map.set(c.id, c));
+    return map;
+  }, [batchCommunities]);
 
   const communities = useMemo(() => {
     if (membershipCommunityIds.length === 0) {
       return [];
     }
-    return memberCommunities;
-  }, [memberCommunities, membershipCommunityIds]);
+    return membershipCommunityIds.map((id) =>
+      mergeCommunityRecord(
+        id,
+        batchById.get(id),
+        membershipById.get(id),
+        roleMetaByCommunityId.get(id),
+      ),
+    );
+  }, [membershipCommunityIds, batchById, membershipById, roleMetaByCommunityId]);
 
   // Get community IDs from the communities array, sorted with special communities first
   const communityIds = useMemo(() => {
@@ -75,7 +133,7 @@ export function useUserCommunities() {
   // Create a map of communityId -> wallet for quick lookup
   const walletsMap = useMemo(() => {
     const map = new Map<string, typeof wallets[0]>();
-    wallets.forEach((wallet: any) => {
+    wallets.forEach((wallet: { communityId?: string }) => {
       if (wallet?.communityId) {
         map.set(wallet.communityId, wallet);
       }
@@ -83,8 +141,11 @@ export function useUserCommunities() {
     return map;
   }, [wallets]);
 
-  // Combined loading state
-  const isLoading = walletsLoading || membershipLoading || memberCommunitiesLoading;
+  // Combined loading state: wait for membership + roles; batch fetch is best-effort enrichment
+  const isLoading =
+    walletsLoading ||
+    membershipLoading ||
+    (membershipCommunityIds.length > 0 && !batchFetched && memberCommunitiesLoading);
 
   return {
     communities,
@@ -95,4 +156,3 @@ export function useUserCommunities() {
     isLoading,
   };
 }
-

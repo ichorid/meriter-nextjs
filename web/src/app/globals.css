@@ -4,12 +4,13 @@
 
 @layer base {
 
-  /* Root html/body viewport constraints */
+  /* Root html/body viewport constraints — shell scroll lives in .mainWrap only */
   html,
   body {
     max-width: 100vw;
-    overflow-x: hidden;
-    height: 100%;
+    overflow: hidden;
+    height: 100dvh;
+    min-height: 0;
   }
 
   :root {
@@ -601,11 +602,12 @@
 /* App container styles - viewport containment */
 @layer components {
   .app {
-    min-height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     width: 100%;
     min-width: 0;
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -854,6 +856,7 @@
   .appShell {
     height: 100dvh;
     min-height: 0;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -896,12 +899,73 @@
 
   /* Main scroll container */
   .mainWrap {
-    overflow: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     min-height: 0;
     min-width: 0;
     width: 100%;
     position: relative;
     z-index: 2;
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--stitch-border-rgb) / 0.75) transparent;
+  }
+
+  .mainWrap::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .mainWrap::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .mainWrap::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--stitch-border-rgb) / 0.75);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  [data-theme="dark"] .mainWrap {
+    scrollbar-color: rgb(var(--stitch-muted-rgb) / 0.35) transparent;
+  }
+
+  [data-theme="dark"] .mainWrap::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--stitch-muted-rgb) / 0.35);
+  }
+
+  .leftNav .overflow-y-auto,
+  .inspectorDock {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(var(--stitch-border-rgb) / 0.75) transparent;
+  }
+
+  .leftNav .overflow-y-auto::-webkit-scrollbar,
+  .inspectorDock::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .leftNav .overflow-y-auto::-webkit-scrollbar-track,
+  .inspectorDock::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .leftNav .overflow-y-auto::-webkit-scrollbar-thumb,
+  .inspectorDock::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--stitch-border-rgb) / 0.75);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  [data-theme="dark"] .leftNav .overflow-y-auto,
+  [data-theme="dark"] .inspectorDock {
+    scrollbar-color: rgb(var(--stitch-muted-rgb) / 0.35) transparent;
+  }
+
+  [data-theme="dark"] .leftNav .overflow-y-auto::-webkit-scrollbar-thumb,
+  [data-theme="dark"] .inspectorDock::-webkit-scrollbar-thumb {
+    background-color: rgb(var(--stitch-muted-rgb) / 0.35);
   }
 
   .main {
@@ -1036,5 +1100,112 @@
       display: none;
       /* replace with a drawer */
     }
+  }
+}
+
+/* GDocs editor: admin-pinned text spans */
+.document-canvas-prose .document-locked-range {
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: help;
+}
+
+:root .document-canvas-prose .document-locked-range {
+  background: rgb(250 204 21 / 0.22);
+  box-shadow: inset 0 -2px 0 rgb(202 138 4 / 0.55);
+}
+
+[data-theme='dark'] .document-canvas-prose .document-locked-range {
+  background: rgb(168 85 247 / 0.2);
+  box-shadow: inset 0 -2px 0 rgb(168 85 247 / 0.65);
+}
+
+/* GDocs editor: spans with open proposals */
+.document-canvas-prose .document-proposal-range {
+  border-radius: 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  cursor: help;
+}
+
+:root .document-canvas-prose .document-proposal-range {
+  background: rgb(250 204 21 / 0.35);
+  box-shadow: inset 0 -2px 0 rgb(234 179 8 / 0.75);
+}
+
+[data-theme='dark'] .document-canvas-prose .document-proposal-range {
+  background: rgb(250 204 21 / 0.28);
+  box-shadow: inset 0 -2px 0 rgb(202 138 4 / 0.85);
+}
+
+/*
+ * Document preview lists: custom ::before markers (margin on ul is overridden by prose).
+ * Marker at li left edge; text indented via li padding-inline-start.
+ */
+.document-rich-content ul,
+.document-rich-content ol,
+ul.document-rich-content,
+ol.document-rich-content {
+  list-style: none;
+  margin-block: 0.5rem 0.75rem;
+  margin-inline: 0;
+  padding-inline: 0;
+}
+
+.document-rich-content ol,
+ol.document-rich-content {
+  counter-reset: doc-rich-ol;
+}
+
+.document-rich-content ul > li,
+.document-rich-content ol > li,
+ul.document-rich-content > li,
+ol.document-rich-content > li {
+  position: relative;
+  padding-inline-start: 1.25rem;
+  margin-block: 0.125rem;
+}
+
+.document-rich-content ul > li::before,
+ul.document-rich-content > li::before {
+  content: '•';
+  position: absolute;
+  inset-inline-start: 0;
+  font-weight: 600;
+  line-height: inherit;
+  color: inherit;
+}
+
+.document-rich-content ol > li,
+ol.document-rich-content > li {
+  counter-increment: doc-rich-ol;
+}
+
+.document-rich-content ol > li::before,
+ol.document-rich-content > li::before {
+  content: counter(doc-rich-ol) '.';
+  position: absolute;
+  inset-inline-start: 0;
+  font-variant-numeric: tabular-nums;
+  line-height: inherit;
+  color: inherit;
+}
+
+.document-rich-content li > p {
+  margin-block: 0;
+  display: inline;
+}
+
+/* Guidewell help FAB — sit above mobile bottom nav (h-16 + safe area) */
+@media (max-width: 1023px) {
+  #guidewell-widget-host {
+    bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)) !important;
+    z-index: 45 !important;
+  }
+
+  /* Document page: proposals dock sits above bottom nav — lift FAB higher */
+  [data-document-page] #guidewell-widget-host {
+    bottom: calc(5.5rem + 6px + 3.25rem + env(safe-area-inset-bottom, 0px)) !important;
   }
 }

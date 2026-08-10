@@ -3,16 +3,20 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
 import {
-  CategorySchemaClass,
-  CategoryDocument,
   Category,
 } from '../models/category/category.schema';
 import { uid } from 'uid';
-import { PublicationSchemaClass, PublicationDocument } from '../models/publication/publication.schema';
+import {
+  CATEGORY_PERSISTENCE_PORT,
+  type CategoryPersistencePort,
+} from '../ports/category.persistence.port';
+import {
+  PUBLICATION_PERSISTENCE_PORT,
+  type PublicationPersistencePort,
+} from '../ports/publication.persistence.port';
 
 export interface CreateCategoryDto {
   name: string;
@@ -31,10 +35,10 @@ export class CategoryService {
   private readonly logger = new Logger(CategoryService.name);
 
   constructor(
-    @InjectModel(CategorySchemaClass.name)
-    private categoryModel: Model<CategoryDocument>,
-    @InjectModel(PublicationSchemaClass.name)
-    private publicationModel: Model<PublicationDocument>,
+    @Inject(CATEGORY_PERSISTENCE_PORT)
+    private readonly categoryPersistence: CategoryPersistencePort,
+    @Inject(PUBLICATION_PERSISTENCE_PORT)
+    private readonly publicationPersistence: PublicationPersistencePort,
   ) {}
 
   /**
@@ -53,30 +57,26 @@ export class CategoryService {
    * Get all categories, ordered by order field
    */
   async getAllCategories(): Promise<Category[]> {
-    const categories = await this.categoryModel
-      .find()
-      .sort({ order: 1, createdAt: 1 })
-      .exec();
-    return categories.map((cat) => cat.toObject());
+    return (await this.categoryPersistence.findAllOrdered()) as Category[];
   }
 
   /**
    * Get category by ID
    */
   async getCategoryById(id: string): Promise<Category> {
-    const category = await this.categoryModel.findOne({ id }).exec();
+    const category = await this.categoryPersistence.findById(id);
     if (!category) {
       throw new NotFoundException(`Category with id ${id} not found`);
     }
-    return category.toObject();
+    return category as Category;
   }
 
   /**
    * Get category by slug
    */
   async getCategoryBySlug(slug: string): Promise<Category | null> {
-    const category = await this.categoryModel.findOne({ slug }).exec();
-    return category ? category.toObject() : null;
+    const category = await this.categoryPersistence.findBySlug(slug);
+    return category ? (category as Category) : null;
   }
 
   /**
@@ -87,7 +87,7 @@ export class CategoryService {
     const slug = dto.slug || this.generateSlug(dto.name);
 
     // Check if slug already exists
-    const existing = await this.categoryModel.findOne({ slug }).exec();
+    const existing = await this.categoryPersistence.findBySlug(slug);
     if (existing) {
       throw new BadRequestException(`Category with slug "${slug}" already exists`);
     }
@@ -95,52 +95,50 @@ export class CategoryService {
     // Get max order if not provided
     let order = dto.order;
     if (order === undefined) {
-      const maxOrderCategory = await this.categoryModel
-        .findOne()
-        .sort({ order: -1 })
-        .exec();
-      order = maxOrderCategory ? maxOrderCategory.order + 1 : 0;
+      const maxOrder = await this.categoryPersistence.findMaxOrder();
+      order = maxOrder !== null ? maxOrder + 1 : 0;
     }
 
-    const category = new this.categoryModel({
+    const category = await this.categoryPersistence.create({
       id: uid(),
       name: dto.name,
       slug,
       order,
     });
 
-    await category.save();
     this.logger.log(`Created category: ${category.id} (${category.name})`);
-    return category.toObject();
+    return category as Category;
   }
 
   /**
    * Update a category
    */
   async updateCategory(id: string, dto: UpdateCategoryDto): Promise<Category> {
-    const category = await this.categoryModel.findOne({ id }).exec();
+    const category = await this.categoryPersistence.findById(id);
     if (!category) {
       throw new NotFoundException(`Category with id ${id} not found`);
     }
 
     // Check slug uniqueness if changing
     if (dto.slug && dto.slug !== category.slug) {
-      const existing = await this.categoryModel
-        .findOne({ slug: dto.slug, id: { $ne: id } })
-        .exec();
+      const existing = await this.categoryPersistence.findBySlugExcludingId(
+        dto.slug,
+        id,
+      );
       if (existing) {
         throw new BadRequestException(`Category with slug "${dto.slug}" already exists`);
       }
     }
 
     // Update fields
-    if (dto.name !== undefined) category.name = dto.name;
-    if (dto.slug !== undefined) category.slug = dto.slug;
-    if (dto.order !== undefined) category.order = dto.order;
-
-    await category.save();
+    const updated = await this.categoryPersistence.save({
+      ...category,
+      ...(dto.name !== undefined ? { name: dto.name } : {}),
+      ...(dto.slug !== undefined ? { slug: dto.slug } : {}),
+      ...(dto.order !== undefined ? { order: dto.order } : {}),
+    });
     this.logger.log(`Updated category: ${category.id} (${category.name})`);
-    return category.toObject();
+    return updated as Category;
   }
 
   /**
@@ -148,19 +146,28 @@ export class CategoryService {
    * Also removes the category from all publications that have it
    */
   async deleteCategory(id: string): Promise<void> {
-    const category = await this.categoryModel.findOne({ id }).exec();
+    const category = await this.categoryPersistence.findById(id);
     if (!category) {
       throw new NotFoundException(`Category with id ${id} not found`);
     }
 
-    // Remove category from all publications
-    await this.publicationModel.updateMany(
-      { categories: id },
-      { $pull: { categories: id } },
-    ).exec();
+    const publications = await this.publicationPersistence.findByQuery({
+      query: { categories: id },
+      select: { id: 1, categories: 1 },
+    });
+    await Promise.all(
+      publications.map(async (publication) => {
+        const categories = Array.isArray(publication.categories)
+          ? publication.categories
+          : [];
+        await this.publicationPersistence.patchById(publication.id, {
+          set: { categories: categories.filter((catId) => catId !== id) },
+        });
+      }),
+    );
 
     // Delete the category
-    await this.categoryModel.deleteOne({ id }).exec();
+    await this.categoryPersistence.deleteById(id);
     this.logger.log(`Deleted category: ${id} (${category.name})`);
   }
 
@@ -168,7 +175,7 @@ export class CategoryService {
    * Initialize default categories (for first-time setup)
    */
   async initializeDefaultCategories(): Promise<Category[]> {
-    const existingCategories = await this.categoryModel.countDocuments().exec();
+    const existingCategories = await this.categoryPersistence.countAll();
     if (existingCategories > 0) {
       this.logger.log('Categories already exist, skipping initialization');
       return this.getAllCategories();
@@ -189,14 +196,13 @@ export class CategoryService {
 
     const created = [];
     for (const cat of defaultCategories) {
-      const category = new this.categoryModel({
+      const category = await this.categoryPersistence.create({
         id: uid(),
         name: cat.name,
         slug: cat.slug,
         order: cat.order,
       });
-      await category.save();
-      created.push(category.toObject());
+      created.push(category as Category);
     }
 
     this.logger.log(`Initialized ${created.length} default categories`);

@@ -12,10 +12,13 @@ import { AppModeProvider } from '@/contexts/AppModeContext';
 import StyledJsxRegistry from '@/registry';
 import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 import { ClientRouter } from '@/components/ClientRouter';
+import { AuthSessionRefresh } from '@/components/AuthSessionRefresh';
 import { DevToolsBar } from '@/components/organisms/DevToolsBar/DevToolsBar';
 import { isTestAuthMode } from '@/config';
 import { TelegramHint } from '@/components/TelegramHint';
+import { GuidewellWidget } from '@/components/GuidewellWidget';
 import { CaptiveBrowserProvider } from '@/lib/captive-browser';
+import type { GuidewellWidgetConfig } from '@/lib/guidewell/parse-guidewell-config';
 // Import auth debug utilities (only active in development)
 import '@/lib/utils/auth-debug';
 
@@ -26,6 +29,7 @@ import { useIntlPortalStore } from '@/stores/intl-portal.store';
 interface ClientRootLayoutProps {
   children: React.ReactNode;
   serverLocale?: Locale;
+  guidewellConfig: GuidewellWidgetConfig;
 }
 
 // Stable fallback values computed once at module load time
@@ -65,7 +69,11 @@ function detectLocale(): Locale {
   }
 }
 
-export default function ClientRootLayout({ children, serverLocale }: ClientRootLayoutProps) {
+export default function ClientRootLayout({
+  children,
+  serverLocale,
+  guidewellConfig,
+}: ClientRootLayoutProps) {
   const initialLocale = serverLocale ?? DEFAULT_LOCALE;
   const initialLocaleRef = useRef(initialLocale);
   const [locale, setLocale] = useState<Locale>(initialLocale);
@@ -118,9 +126,11 @@ export default function ClientRootLayout({ children, serverLocale }: ClientRootL
           >
             {/* CaptiveBrowserProvider wraps TelegramHint and routed content so captive detection stays in sync. */}
             <CaptiveBrowserProvider>
+              <GuidewellWidget config={guidewellConfig} />
               <TelegramHint />
               <Suspense fallback={null}>
                 <ClientRouter />
+                <AuthSessionRefresh />
               </Suspense>
               <AuthProvider>
                 {isTestAuthMode() && <DevToolsBar />}
@@ -129,7 +139,7 @@ export default function ClientRootLayout({ children, serverLocale }: ClientRootL
                   fallbackAuthnEnabled={fallbackAuthnEnabled}
                 >
                   <div
-                  className={`w-full min-w-0 flex flex-col flex-1 ${isTestAuthMode() ? 'pt-[60px]' : ''}`}
+                  className={`w-full min-w-0 flex flex-col flex-1 h-dvh min-h-0 overflow-hidden ${isTestAuthMode() ? 'pt-[60px]' : ''}`}
                   style={isTestAuthMode() ? { ['--dev-tools-bar-height' as string]: '60px' } : undefined}
                 >
                     <Root>{children}</Root>

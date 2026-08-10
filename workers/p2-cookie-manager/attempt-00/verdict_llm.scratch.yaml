@@ -1,0 +1,127 @@
+VerifierVerdict:
+  work_unit_id: p2-cookie-manager
+  attempt: 0
+  channel: llm
+  verdict: pass
+  summary: >-
+    CookieManager extracted to infrastructure/auth/cookie-manager.ts with centralized
+    AUTH_SESSION_SAME_SITE, domain normalization, isRequestSecure, and resolveIsProduction.
+    auth.controller and auth.router delegate logout/clear/establish/session flows via
+    logoutJwt, clearAllRequestCookies, establishJwtAuth, and setAuthSessionCookie.
+    Independent grep confirms zero isHttpsRequest and zero inline sameSite/secure cookie
+    attribute blocks in auth layers; api-v1 util is a thin re-export shim only.
+  reviewed_at: "2026-05-28"
+  diff_basis: >-
+    Uncommitted git diff on write_set (git diff HEAD~..HEAD shows prior
+    p1-zone6-eslint-post-split commit; work-unit delta reviewed via
+    git diff on four write_set paths plus independent ripgrep verification).
+
+  intent_match: true
+  write_set_compliance: true
+  files_modified:
+    - api/apps/meriter/src/infrastructure/auth/cookie-manager.ts
+    - api/apps/meriter/src/api-v1/common/utils/cookie-manager.util.ts
+    - api/apps/meriter/src/api-v1/auth/auth.controller.ts
+    - api/apps/meriter/src/trpc/routers/auth.router.ts
+  files_outside_write_set: []
+
+  constraint_checks:
+    - id: phase-2
+      status: pass
+      evidence: >-
+        BC-12 infrastructure extraction: CookieManager moved from api-v1/common/utils
+        to infrastructure/auth/cookie-manager.ts; auth transport layers delegate without
+        reimplementing cookie attribute logic.
+    - id: bounded_contexts-BC-12
+      status: pass
+      evidence: >-
+        New file at api/apps/meriter/src/infrastructure/auth/cookie-manager.ts owns
+        auth cookie domain/Secure/SameSite rules and high-level auth flows (logoutJwt,
+        clearAllRequestCookies, establishJwtAuth, setAuthSessionCookie).
+    - id: duplication_clusters-P-5
+      status: pass
+      evidence: >-
+        Removed duplicated isHttpsRequest helpers and inline JWT/session cookie attribute
+        blocks from auth.controller.ts and auth.router.ts. Logic consolidated in
+        infrastructure CookieManager; util shim re-exports single implementation.
+    - id: invariants-inv-09
+      status: pass
+      evidence: >-
+        AUTH_SESSION_SAME_SITE ('lax') defined once; all setJwtCookie, clear variants,
+        and setAuthSessionCookie paths use centralized sameSite/secure/domain resolution
+        via isRequestSecure and resolveIsProduction.
+    - id: retirement_criteria-P-5
+      status: pass
+      evidence: >-
+        JWT cookie attribute duplication retired from REST and tRPC auth layers;
+        auth.controller/router call infrastructure methods only (no res.cookie with
+        inline secure/sameSite/domain for auth flows).
+
+  success_criteria:
+    - id: single_cookie_manager_owns_domain_secure_samesite
+      status: pass
+      evidence: >-
+        ripgrep sameSite under api/apps/meriter/src → matches only in
+        infrastructure/auth/cookie-manager.ts. Domain normalization, getCookieDomain,
+        secure resolution, and SameSite constant live in that single class.
+    - id: rest_and_trpc_delegate_to_infrastructure
+      status: pass
+      evidence: >-
+        auth.controller imports CookieManager from infrastructure/auth/cookie-manager
+        and delegates logout, clear-cookies, fake auth, OAuth, passkey, SMS/email/call
+        flows via establishJwtAuth/setAuthSessionCookie/logoutJwt/clearAllRequestCookies.
+        auth.router delegates logout, clearCookies, authenticateFake, authenticateFakeSuperadmin
+        to the same infrastructure methods on ctx.cookieManager.
+    - id: p5_retirement_jwt_duplication_in_auth_layers
+      status: pass
+      evidence: >-
+        ripgrep isHttpsRequest under api/apps/meriter/src → 0 matches.
+        clearAllJwtCookieVariants/setJwtCookie/clearCookieVariants not called from
+        auth.controller or auth.router (only from infrastructure and user.guard).
+    - id: inv09_cookie_rules_centralized
+      status: pass
+      evidence: >-
+        HTTPS detection (isRequestSecure), production flag (resolveIsProduction), and
+        session cookie attributes (setAuthSessionCookie) centralized in infrastructure;
+        auth layers no longer duplicate NODE_ENV || isSecure patterns or sameSite='lax'.
+
+  architecture_alignment:
+    - id: shim-preserves-existing-imports
+      status: pass
+      evidence: >-
+        cookie-manager.util.ts is a deprecated one-line re-export to infrastructure;
+        ApiV1CommonModule, user.guard, trpc/context, trpc.service unchanged in write_set
+        but continue receiving the same CookieManager token via shim.
+    - id: oauth-mode-preserved
+      status: pass
+      evidence: >-
+        establishJwtAuth(..., 'oauth') uses clearHostOnlyJwtCookie before setJwtCookie
+        for Google/Yandex callbacks, matching prior OAuth Set-Cookie bloat mitigation.
+    - id: depends-on-prerequisites
+      status: pass
+      evidence: >-
+        Refactor is self-contained within meriter app; no dependency on unmerged
+        p1-zone6-eslint changes for cookie logic correctness.
+
+  findings: []
+
+  warnings:
+    - id: user-guard-low-level-call
+      severity: info
+      message: >-
+        user.guard.ts (outside write_set) still resolves isProduction inline and calls
+        clearAllJwtCookieVariants directly; acceptable per worker notes for guard invalidation
+        path; follow-up could delegate to logoutJwt/clear helpers for full inv-09 coverage.
+    - id: di-registration-via-common-module
+      severity: info
+      message: >-
+        auth.controller imports infrastructure path but CookieManager DI registration
+        remains in ApiV1CommonModule via shim re-export; functionally correct, optional
+        follow-up to register from infrastructure module.
+    - id: uncommitted-changes
+      severity: info
+      message: >-
+        Work-unit changes are uncommitted on branch refactor/p2-cookie-manager;
+        infrastructure/auth/ directory is untracked (new file).
+
+  blockers: []

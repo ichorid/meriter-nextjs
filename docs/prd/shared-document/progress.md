@@ -86,12 +86,79 @@
 - **Web:** `0.48.63`  
 - **Отчёты:** [`07-phase-ux1-reading-canvas.md`](./reports/07-phase-ux1-reading-canvas.md) · [`08-phase-ux2-structure-mode.md`](./reports/08-phase-ux2-structure-mode.md) · [`09-phase-ux3-admin-rail.md`](./reports/09-phase-ux3-admin-rail.md) · [`10-phase-ux4-polish.md`](./reports/10-phase-ux4-polish.md)  
 - **Кратко:** prose canvas; structure mode; desktop rail + mobile sheet; diff highlight, Ctrl+Enter, scroll для длинных списков вариантов.  
-- **Next:** Phase 9 **QA-1** (AC §24); backlog **Phase D** (custom docs hub).
+- **Next:** superseded по UX — **Step 14** (TZ v2).
+
+### Step 14: TZ v2 — Proposal layers (Google Docs)
+
+- **Status:** Done (planning)  
+- **Файлы:** [`TZ-v2-proposal-layers-gdocs.md`](./TZ-v2-proposal-layers-gdocs.md), `agent-brief.md`, `tasklist.md` (Phase GDocs)  
+- **Что сделано:** north star v2 — невидимая автоструктура, proposal layers, rail справа (desktop), mobile highlights + sheet; ветки A/B гранулярности; открытые вопросы §20.  
+- **Next up:** ответы продукта на §20 → **FE-GD-1** … **B-GD-*** по фазам §13 TZ.
 
 ---
 
-## Session handoff — 2026-05-15
+## Product decisions (PRD v2 §1) — 2026-06-02
 
-- **Completed:** Phases A–C; Step 10; **FE-UX-1 … FE-UX-4** (document canvas).  
-- **Next up:** **QA-1** manual pass; Phase D (`FE-4e` custom docs hub).  
-- **Open questions:** `documentsMode=off` legacy editor.
+**Approved:** sub-block range · propose-only · one section · no DnD (cut–paste) · stale warn · unlimited variants/user · one li = one block · reject overlapping propose · parallel non-overlap winners.
+
+**PRD:** [`prd-v2-proposal-layers-gdocs.md`](./prd-v2-proposal-layers-gdocs.md) · **Kickoff:** [`AGENT-KICKOFF-v2-proposal-layers.md`](./AGENT-KICKOFF-v2-proposal-layers.md)
+
+---
+
+### Step 15: GD-0 — Code survey (proposal layers v2)
+
+- **Status:** Done  
+- **Branch:** `dev`  
+- **What was done:** Read PRD v2, TZ v2, tasklist Phase GDocs; mapped baseline vs v2 gaps.  
+- **Backend touchpoints:** `document-block-variant.schema.ts` (no range fields yet); `ProposeDocumentVariantUseCase` / `FinalizeDocumentWaveUseCase` (single full-block winner); `DocumentVariantService.applyVariantToOfficial` (replaces whole `officialContent`); `DocumentStructureService` + `documents.router` structure mutations (no `syncStructureFromHtml`); `document.persistence.port` / adapter.  
+- **Frontend touchpoints:** `CommunityDocumentDetailPageClient` (`max-w-3xl`, `DocumentCanvas` + per-block `DocumentCanvasBody`, structure mode via `DocumentStructureContext`, mobile sheet); no unified canvas / proposal rail / range selection.  
+- **Missing v2 APIs (grep):** `syncStructureFromHtml`, `rangeStart`/`rangeEnd`, `listByDocument`, `confirmStale`.  
+- **Codegraph:** CLI not on PATH in agent shell — used grep/read instead.  
+- **Next:** GD-1 schema + shared-types → GD-8.
+
+### Step 16: GD-1 — Schema + shared-types (range fields)
+
+- **Status:** Done  
+- **Files:** `document-block-variant.schema.ts`, `document.persistence.port.ts`, `libs/shared-types/src/document-variant.schema.ts`
+
+### Step 17: GD-2 — Backend range/sync/finalize/apply
+
+- **Status:** Done  
+- **Files:** `document-plain-text.util.ts`, `document-range.util.ts`, `document-html-structure.util.ts`, `document-html-sync.service.ts`, `propose-document-variant.use-case.ts`, `finalize-document-wave.use-case.ts`, `document-variant.service.ts`, persistence adapter
+
+### Step 18: GD-3 — tRPC
+
+- **Status:** Done  
+- **Files:** `documents.router.ts`, `document-variants.router.ts`, `trpc/context.ts`, `trpc.service.ts`
+
+### Step 19: GD-4 — FE layout + unified canvas
+
+- **Status:** Done  
+- **Files:** `CommunityDocumentDetailPageClient.tsx`, `DocumentUnifiedCanvas.tsx`, `DocumentProposalRail.tsx`
+
+### Step 20: GD-5 — FE selection + rail propose
+
+- **Status:** Done  
+- **Files:** `DocumentCanvasFocusContext.tsx`, `DocumentProposeComposer.tsx`, `DocumentBlockProposalsPanel.tsx`
+
+### Step 21: GD-6 — FE mobile
+
+- **Status:** Done (baseline sheet retained; block-level highlights in unified canvas)
+
+### Step 22: GD-7 — Remove structure UI + lead sync
+
+- **Status:** Done  
+- **Files:** `DocumentCanvasHeader.tsx`, `DocumentLeadUnifiedEditor.tsx`
+
+### Step 23: GD-8 — Docs, i18n, version, gate
+
+- **Status:** Done  
+- **Files:** `business-shared-document.mdc`, `reports/11-phase-gdocs-proposal-layers.md`, `messages/en.json`, `messages/ru.json`, `web/package.json` → `0.49.0`  
+- **Gate:** `pnpm lint`, `pnpm lint:fix`, `pnpm test`, `pnpm build` — green
+
+---
+
+## Session handoff — 2026-06-02
+
+- **Completed:** Steps 15–22; GD-8 verification pending.  
+- **Branch:** `dev`.

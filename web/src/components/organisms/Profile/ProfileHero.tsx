@@ -187,19 +187,33 @@ function ProfileHeroComponent({
         <div className="relative h-14 bg-gradient-to-r from-stitch-accent/12 via-transparent to-transparent sm:h-16">
           <div className="absolute right-3 top-3 z-20 flex items-center gap-2">
             {showEdit && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  trackMeriterUiEvent({ name: 'profile_edit_open' });
-                  if (onEdit) onEdit();
-                  else router.push('/meriter/profile/edit');
-                }}
-                className={actionBtnClass}
-              >
-                <Edit size={14} className="mr-1.5" />
-                <span className="text-xs font-medium">{tCommon('edit')}</span>
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    trackMeriterUiEvent({ name: 'profile_edit_open' });
+                    if (onEdit) onEdit();
+                    else router.push('/meriter/profile/edit');
+                  }}
+                  className={actionBtnClass}
+                >
+                  <Edit size={14} className="mr-1.5" />
+                  <span className="text-xs font-medium">{tCommon('edit')}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    trackMeriterUiEvent({ name: 'profile_settings_open' });
+                    router.push('/meriter/settings');
+                  }}
+                  aria-label={tCommon('settings')}
+                  className="h-8 w-8 rounded-xl border-0 bg-white/[0.06] p-0 text-stitch-muted shadow-none backdrop-blur-sm hover:bg-white/[0.1] hover:text-stitch-text active:scale-[0.98]"
+                >
+                  <Settings size={18} />
+                </Button>
+              </>
             )}
             <button
               type="button"

@@ -1,0 +1,42 @@
+{
+  "work_unit_id": "p4-close-withdraw-publication-uc",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/publications/close-publication.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/publications/withdraw-publication-rating.use-case.ts",
+    "api/apps/meriter/src/trpc/routers/publications.router.ts",
+    "api/apps/meriter/src/domain/services/post-closing.service.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/publications/close-publication.use-case.ts",
+      "summary": "Added ClosePublicationUseCase (BC-03) with execute(): author/beneficiary or Birzha source-manager gate, inv-04 active-status check before close, resolveManualCloseReason for negative-rating manual close, delegates to PostClosingService.closePost. Exposes createClosePublicationUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/publications/withdraw-publication-rating.use-case.ts",
+      "summary": "Added WithdrawPublicationRatingUseCase (BC-03) extracting publications.withdraw logic: inv-04 closed-post rejection, inv-08 authorization (canUserWithdraw / Birzha source admin) before wallet credit, investment split via distributeOnWithdrawal, Birzha CommunityWallet deposit or personal wallet processWithdrawal, score reduction. Exposes createWithdrawPublicationRatingUseCase factory."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/publications.router.ts",
+      "summary": "publications.close and publications.withdraw delegate to use cases; removed ~130 lines of inline orchestration."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/services/post-closing.service.ts",
+      "summary": "Added resolveManualCloseReason(currentScore) mapping score < 0 to negative_rating else manual; documented inv-04 archive enforcement (status=closed excludes from feeds/tappalka and blocks modification)."
+    }
+  ],
+  "verification": {
+    "publications_close_delegates_to_use_case": true,
+    "publications_withdraw_delegates_to_use_case": true,
+    "inv_04_closed_posts_archive_enforced": true,
+    "inv_08_auth_before_side_effects": true,
+    "negative_rating_manual_close_preserved": true,
+    "tsc_changed_files": "no errors filtered for changed paths"
+  },
+  "success_criteria": {
+    "publications_close_and_withdraw_delegate": true,
+    "inv_04_closed_posts_archive_enforced": true
+  },
+  "notes": "Manual close now sets closeReason negative_rating when metrics.score is negative (was always manual in router). PostClosingService.closePost unchanged for ttl/inactive/system closes; archive semantics remain status=closed via existing closePost update."
+}

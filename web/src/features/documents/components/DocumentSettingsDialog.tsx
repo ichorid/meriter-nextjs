@@ -134,6 +134,9 @@ export function DocumentSettingsDialog({
                 <SelectItem value="auto">{t('modeAuto')}</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-base-content/60">
+              {mode === 'auto' ? t('modeAutoHelp') : t('modeManualHelp')}
+            </p>
           </div>
 
           <div className="space-y-2">

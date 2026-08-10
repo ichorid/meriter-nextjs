@@ -3,12 +3,16 @@ const { RunScriptWebpackPlugin } = require('run-script-webpack-plugin');
 const path = require('path');
 
 module.exports = function (options, webpack) {
+  const plugins = options.plugins.filter(
+    (plugin) => plugin.constructor.name !== 'ForkTsCheckerWebpackPlugin',
+  );
+
   return {
     ...options,
     entry: ['webpack/hot/poll?100', options.entry],
     externals: [
       nodeExternals({
-        allowlist: ['webpack/hot/poll?100', '@meriter/shared-types'],
+        allowlist: ['webpack/hot/poll?100', /^@meriter\/shared-types/],
       }),
     ],
     resolve: {
@@ -19,7 +23,7 @@ module.exports = function (options, webpack) {
       },
     },
     plugins: [
-      ...options.plugins,
+      ...plugins,
       new webpack.HotModuleReplacementPlugin(),
       new webpack.WatchIgnorePlugin({
         paths: [/\.js$/, /\.d\.ts$/],

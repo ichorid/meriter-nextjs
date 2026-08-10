@@ -54,6 +54,7 @@ import {
   usePublishToBirzhaSource,
   useCommunityWalletForSource,
 } from '@/hooks/api/useBirzhaSource';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type PublicationPostType = 'basic' | 'poll' | 'project' | 'discussion';
 
@@ -92,10 +93,38 @@ interface PublicationCreateFormProps {
   showContextSwitcher?: boolean;
 }
 
-const getDraftKey = (communityId: string, birzha?: { type: string; id: string }) =>
-  birzha
-    ? `publication_draft_birzha_${birzha.type}_${birzha.id}`
-    : `publication_draft_${communityId}`;
+const getDraftKey = (
+  userId: string | undefined,
+  communityId: string,
+  birzha?: { type: string; id: string },
+) => {
+  const scope = userId?.trim() || 'anonymous';
+  return birzha
+    ? `publication_draft_${scope}_birzha_${birzha.type}_${birzha.id}`
+    : `publication_draft_${scope}_${communityId}`;
+};
+
+function stripHtmlToText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isDraftEmpty(draft: PublicationDraft): boolean {
+  const hasTitle = draft.title.trim().length > 0;
+  const hasDescription = stripHtmlToText(draft.description).length > 0;
+  const hasImages = (draft.images?.length ?? 0) > 0 || Boolean(draft.imageUrl);
+  const hasTags =
+    (draft.hashtags?.length ?? 0) > 0 ||
+    (draft.valueTags?.length ?? 0) > 0 ||
+    (draft.beneficiaries?.length ?? 0) > 0 ||
+    (draft.methods?.length ?? 0) > 0 ||
+    (draft.helpNeeded?.length ?? 0) > 0;
+  const hasTaxonomy = Boolean(draft.impactArea || draft.stage);
+  return !(hasTitle || hasDescription || hasImages || hasTags || hasTaxonomy);
+}
 
 /** Generate placeholder image URLs (dev only). Uses picsum.photos with seed for unique images. */
 function getPlaceholderUrls(width: number, height: number, count: number): string[] {
@@ -139,6 +168,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     translateHelpNeeded,
   } = useTaxonomyTranslations();
   const router = useRouter();
+  const { user } = useAuth();
   const createPublication = useCreatePublication();
   const updatePublication = useUpdatePublication();
   const { data: community } = useCommunity(communityId);
@@ -260,6 +290,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   const [ttlDays, setTtlDays] = useState<7 | 14 | 30 | 60 | 90 | null>((initialData as any)?.ttlDays ?? null);
   const [stopLoss, setStopLoss] = useState<number>((initialData as any)?.stopLoss ?? 0);
   const [noAuthorWalletSpend, setNoAuthorWalletSpend] = useState<boolean>((initialData as any)?.noAuthorWalletSpend ?? false);
+  const [isPinned, setIsPinned] = useState<boolean>(
+    Boolean((initialData as { isPinned?: boolean })?.isPinned),
+  );
+  const isCommunityAdmin = community?.isAdmin === true;
   const [openAdvancedSettings, setOpenAdvancedSettings] = useState(true);
   // Support both legacy single image and new multi-image
   const initialImages = initialData?.imageUrl
@@ -337,9 +371,10 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       newErrors.title = t('errors.titleTooLong', { max: 200 });
     }
 
-    if (!description.trim()) {
+    const descriptionText = stripHtmlToText(description);
+    if (!descriptionText) {
       newErrors.description = t('errors.descriptionRequired');
-    } else if (description.trim().length > 5000) {
+    } else if (descriptionText.length > 5000) {
       newErrors.description = t('errors.descriptionTooLong', { max: 5000 });
     }
 
@@ -376,38 +411,44 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
     if (isEditMode) {
       return; // Don't load draft when editing
     }
-    const draftKey = getDraftKey(communityId, birzhaSourceEntity);
+    const draftKey = getDraftKey(user?.id, communityId, birzhaSourceEntity);
     const savedDraft = localStorage.getItem(draftKey);
-    if (savedDraft) {
-      try {
-        const draft: PublicationDraft = JSON.parse(savedDraft);
-        setTitle(draft.title || '');
-        setDescription(draft.description || '');
-        // If draft has isProject but no postType, set postType to 'project' for backwards compatibility
-        const draftPostType = draft.postType || (draft.isProject ? 'project' : defaultPostType);
-        setPostType(draftPostType);
-        setHashtags(draft.hashtags || []);
-        setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
-        setImpactArea((draft.impactArea as ImpactArea) || '');
-        setBeneficiaries(draft.beneficiaries || []);
-        setMethods(draft.methods || []);
-        setStage((draft.stage as Stage) || '');
-        setHelpNeeded(draft.helpNeeded || []);
-        setValueTags(draft.valueTags || []);
-        setHasDraft(true);
-        setShowDraftAlert(true);
-      } catch (error) {
-        console.error('Failed to load draft:', error);
-      }
+    if (!savedDraft) {
+      return;
     }
-  }, [communityId, birzhaSourceEntity, defaultPostType, isEditMode]);
+    try {
+      const draft: PublicationDraft = JSON.parse(savedDraft);
+      if (isDraftEmpty(draft)) {
+        localStorage.removeItem(draftKey);
+        return;
+      }
+      setTitle(draft.title || '');
+      setDescription(draft.description || '');
+      // If draft has isProject but no postType, set postType to 'project' for backwards compatibility
+      const draftPostType = draft.postType || (draft.isProject ? 'project' : defaultPostType);
+      setPostType(draftPostType);
+      setHashtags(draft.hashtags || []);
+      setImages(draft.images || (draft.imageUrl ? [draft.imageUrl] : []));
+      setImpactArea((draft.impactArea as ImpactArea) || '');
+      setBeneficiaries(draft.beneficiaries || []);
+      setMethods(draft.methods || []);
+      setStage((draft.stage as Stage) || '');
+      setHelpNeeded(draft.helpNeeded || []);
+      setValueTags(draft.valueTags || []);
+      setHasDraft(true);
+      setShowDraftAlert(true);
+    } catch (error) {
+      console.error('Failed to load draft:', error);
+      localStorage.removeItem(draftKey);
+    }
+  }, [user?.id, communityId, birzhaSourceEntity, defaultPostType, isEditMode]);
 
   // Auto-save draft (skip if editing)
   useEffect(() => {
     if (isEditMode) {
       return; // Don't auto-save draft when editing
     }
-    const hasContent = title.trim() || description.trim();
+    const hasContent = title.trim().length > 0 || stripHtmlToText(description).length > 0;
     if (!hasContent) {
       return;
     }
@@ -428,7 +469,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       savedAt: new Date().toISOString(),
     };
 
-    const draftKey = getDraftKey(communityId, birzhaSourceEntity);
+    const draftKey = getDraftKey(user?.id, communityId, birzhaSourceEntity);
     localStorage.setItem(draftKey, JSON.stringify(draft));
   }, [
     title,
@@ -465,14 +506,14 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
       savedAt: new Date().toISOString(),
     };
 
-    const draftKey = getDraftKey(communityId, birzhaSourceEntity);
+    const draftKey = getDraftKey(user?.id, communityId, birzhaSourceEntity);
     localStorage.setItem(draftKey, JSON.stringify(draft));
     setHasDraft(true);
     addToast(t('draftSaved'), 'success');
   };
 
   const loadDraft = () => {
-    const draftKey = getDraftKey(communityId, birzhaSourceEntity);
+    const draftKey = getDraftKey(user?.id, communityId, birzhaSourceEntity);
     const savedDraft = localStorage.getItem(draftKey);
     if (savedDraft) {
       try {
@@ -499,7 +540,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
   };
 
   const clearDraft = () => {
-    const draftKey = getDraftKey(communityId, birzhaSourceEntity);
+    const draftKey = getDraftKey(user?.id, communityId, birzhaSourceEntity);
     localStorage.removeItem(draftKey);
     setHasDraft(false);
     setTitle('');
@@ -577,6 +618,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
             stopLoss,
             noAuthorWalletSpend,
             ttlDays: ttlDays ?? undefined,
+            ...(isCommunityAdmin ? { isPinned } : {}),
           },
         });
       } else if (birzhaSourceEntity) {
@@ -598,7 +640,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           noAuthorWalletSpend: noAuthorWalletSpend || undefined,
         });
         publication = { id: pubResult.id, slug: undefined };
-        const draftKey = getDraftKey(communityId, birzhaSourceEntity);
+        const draftKey = getDraftKey(user?.id, communityId, birzhaSourceEntity);
         localStorage.removeItem(draftKey);
         setHasDraft(false);
       } else {
@@ -637,10 +679,11 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           actingAsCommunityId: effectiveActingAsCommunityId ?? undefined,
           postCostFunding:
             effectiveActingAsCommunityId && !birzhaSourceEntity ? postCostFunding : undefined,
+          ...(isCommunityAdmin ? { isPinned } : {}),
         } as any); // Type assertion needed until types regenerate
 
         // Clear draft after successful publication
-        const draftKey = getDraftKey(communityId, birzhaSourceEntity);
+        const draftKey = getDraftKey(user?.id, communityId, birzhaSourceEntity);
         localStorage.removeItem(draftKey);
         setHasDraft(false);
       }
@@ -723,7 +766,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 <p className="text-muted-foreground">
                   {birzhaSourceEntity
                     ? tBirzha('publishCostExplainer', { cost: formatMerits(postCost) })
-                    : t('payment.costLine', { cost: formatMerits(postCost) })}
+                    : t('payment.costLine', { cost: postCost })}
                 </p>
                 <p className="text-muted-foreground">
                   {birzhaSourceEntity
@@ -733,12 +776,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                           : 'sourceCommunityWalletBalance',
                         { balance: formatMerits(communityWalletBalance) },
                       )
-                    : t('payment.sourceWalletLine', { balance: formatMerits(communityWalletBalance) })}
+                    : t('payment.sourceWalletLine', { balance: communityWalletBalance })}
                 </p>
                 <p className="text-muted-foreground">
                   {birzhaSourceEntity
                     ? tBirzha('personalWalletBalance', { balance: formatMerits(walletBalance) })
-                    : t('payment.personalWalletLine', { balance: formatMerits(walletBalance) })}
+                    : t('payment.personalWalletLine', { balance: walletBalance })}
                 </p>
                 <BrandFormControl label={tBirzha('payFromLabel')}>
                   <Select
@@ -783,7 +826,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                 {hasInsufficientPayment ? (
                   <p className="text-destructive text-sm">
                     {postCostFunding === 'caller_global_wallet'
-                      ? t('insufficientPayment', { cost: formatMerits(postCost) })
+                      ? t('insufficientPayment', { cost: postCost })
                       : birzhaSourceEntity
                         ? tBirzha(
                             birzhaSourceIsProject
@@ -795,8 +838,8 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                             },
                           )
                         : t('payment.insufficientCommunityWallet', {
-                            balance: formatMerits(communityWalletBalance),
-                            cost: formatMerits(postCost),
+                            balance: communityWalletBalance,
+                            cost: postCost,
                           })}
                   </p>
                 ) : postCost > 0 ? (
@@ -807,12 +850,12 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
                             birzhaSourceIsProject
                               ? 'willChargeProjectWallet'
                               : 'willChargeCommunityWallet',
-                            { cost: formatMerits(postCost) },
+                            { cost: postCost },
                           )
-                        : t('payment.willChargeCommunityWallet', { cost: formatMerits(postCost) })
+                        : t('payment.willChargeCommunityWallet', { cost: postCost })
                       : t('willPayWithWallet', {
-                          balance: formatMerits(walletBalance),
-                          cost: formatMerits(postCost),
+                          balance: walletBalance,
+                          cost: postCost,
                         })}
                   </p>
                 ) : (
@@ -862,7 +905,7 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
           <BrandFormControl
             label={t('fields.description')}
             error={errors.description}
-            helperText={`${description.length}/5000 ${t('fields.characters')}`}
+            helperText={`${stripHtmlToText(description).length}/5000 ${t('fields.characters')}`}
             required
           >
             <RichTextEditor
@@ -1278,6 +1321,23 @@ export const PublicationCreateForm: React.FC<PublicationCreateFormProps> = ({
               onChange={setValueTags}
               disabled={isSubmitting}
             />
+          )}
+
+          {isCommunityAdmin && !birzhaSourceEntity && (
+            <div className="rounded-xl border border-brand-border bg-stitch-surface/40 p-4 space-y-2">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="isPinned"
+                  checked={isPinned}
+                  onCheckedChange={(checked) => setIsPinned(checked === true)}
+                  disabled={isSubmitting}
+                />
+                <Label htmlFor="isPinned" className="text-sm font-medium cursor-pointer">
+                  {t('pinLabel')}
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground pl-6">{t('pinHelp')}</p>
+            </div>
           )}
 
           {errors.submit && (

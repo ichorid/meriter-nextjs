@@ -4,14 +4,16 @@ import { Document } from 'mongoose';
 /**
  * PollCast Mongoose Schema
  * 
- * SOURCE OF TRUTH: @meriter/shared-types/src/schemas.ts - PollCastSchema (Zod)
+ * SOURCE OF TRUTH: @meriter/shared-types/schemas - PollCastSchema (Zod)
  * 
  * This Mongoose schema implements the PollCast entity defined in shared-types.
  * Any changes to the PollCast entity MUST be made in the Zod schema first,
  * then this Mongoose schema should be updated to match.
  * 
- * Fields correspond to PollCastSchema in libs/shared-types/src/schemas.ts
+ * Fields correspond to PollCastSchema in @meriter/shared-types/schemas
  */
+
+export type PollCastDirection = 'up' | 'down';
 
 export interface PollCast {
   id: string;
@@ -20,6 +22,8 @@ export interface PollCast {
   optionId: string; // Changed from optionIndex to optionId
   amountQuota: number;
   amountWallet: number;
+  /** Legacy casts lack this field and are read as 'up'. */
+  direction?: PollCastDirection;
   communityId: string; // Added for consistency
   createdAt: Date;
 }
@@ -43,6 +47,9 @@ export class PollCastSchemaClass implements PollCast {
 
   @Prop({ required: true, default: 0, min: 0 })
   amountWallet!: number;
+
+  @Prop({ type: String, enum: ['up', 'down'], default: 'up' })
+  direction?: PollCastDirection;
 
   @Prop({ required: true })
   communityId!: string; // Added for consistency

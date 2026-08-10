@@ -1,0 +1,8 @@
+{
+  "node_id": "p0-1-eslint-plugin-import",
+  "attempt": 0,
+  "files_resolved": [
+    "api/apps/meriter/src/domain/services/community.service.ts"
+  ],
+  "notes": "Resolved UpdateCommunityDto.futureVisionDocumentSeed conflict by keeping refactor branch DRY type alias CreateCommunityDto['futureVisionDocumentSeed'] instead of duplicating inline structure from HEAD. No conflict markers remain."
+}

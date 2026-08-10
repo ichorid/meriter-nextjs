@@ -47,6 +47,15 @@ Main content type on the platform. All other types inherit from base post.
 | metrics | Object including `score` (current merit total on post), `upvotes`, `downvotes`, `commentCount` |
 | lifetimeCredits | Total merits ever credited to this post (votes, author top-up, tappalka wins); never decreased; used for closing summary |
 | status, closedAt, closeReason | Lifecycle: active/closed, close time, reason (`manual`, `ttl`, `inactive`, `negative_rating`) |
+| isPinned | When `true`, post is pinned to the top of **`communities.getFeed`** for its `communityId`; UI badge «Закреплён». Default `false`. |
+
+### Pinned posts (community feed)
+
+- **Who can pin:** lead or superadmin of the post's `communityId` only — on **create** (`CreatePublicationDto.isPinned`) or **edit** (`UpdatePublicationDto.isPinned`). Non-admins cannot set or clear pin (server rejects).
+- **Feed scope:** **`communities.getFeed`** only (community/project hub). Profile, favorites, Birzha source lists, tappalka — unchanged sort.
+- **Order:** All pinned publications first; then polls + unpinned publications. Within the pinned group and within the rest group, order follows the active feed sort (`recent` → `createdAt` desc, `score` → `metrics.score` desc).
+- **Pagination:** Pinned items appear on **page 1** only; later pages are unpinned + polls with skip adjusted for pinned count.
+- **Filters:** Pinned posts respect the same search/taxonomy filters as the rest of the feed.
 
 **Publishing as a community (actor):** create input may include **`actingAsCommunityId`** (only on `publications.create`). Backend checks lead role, then stores **`sourceEntityId` / `sourceEntityType: 'community'`** on the publication. The field `actingAsCommunityId` is not stored on the document. Optional **`postCostFunding`** controls whether **`postCost`** is paid from that community’s **CommunityWallet** or from the caller’s global wallet when applicable. Canonical community-actor + wallet rules: @business-communities.mdc.
 
@@ -72,14 +81,20 @@ Conceptually similar to base post (content with time limit, no publication `metr
 | Field | Description |
 |-------|-------------|
 | question | Poll question text |
-| options | List of voting options |
+| options | List of voting options; each option carries `amountUp`, `amountDown`, `amount` (net = up − down, may be negative). Legacy readers: `amountUp ?? amount`, `amountDown ?? 0` |
 | expiresAt | Voting close time (required in schema) |
+| settings.quotaAllowed | Default **false** — casts are wallet-only; when `true`, up-casts use quota-first → wallet |
+| resultsAnnouncedAt | Set by the Telegram results cron after итоги are posted (also stamped for chat-less/frozen/non-MVP communities to prevent reprocessing) |
 
-### Poll Voting
-- Poll creation uses `settings.pollCost` (community-level cost)
-- Poll voting spends user merits by vote amount (wallet/quota rules apply)
-- Vote weight = amount of merits spent
-- After expiresAt, new votes are NOT accepted
+### Poll Voting (casts)
+- Poll creation uses `settings.pollCost` (community-level cost, global wallet, burn). Who may create: **`settings.pollCreation`** (`admin` | `members`, default `members`) — enforced in `CreatePollUseCase`.
+- `polls.cast` accepts `direction: 'up' | 'down'` (default `'up'`); vote weight = merits spent; multiple casts per user allowed (amounts accumulate).
+- **Up**: wallet-only unless `poll.settings.quotaAllowed === true` (then quota-first → wallet; server re-splits, client split ignored).
+- **Down**: wallet-only ALWAYS (quota rejected); voter's merits **burn**; option `amountDown` grows, net `amount` may go negative.
+- After expiresAt (or `isActive: false`), new casts are NOT accepted.
+- **Cast visibility**: `polls.getCasts({ pollId, optionId?, skip, limit })` — member-only paginated feed (`PollCastView[]`: user, option, amount, direction, time) + `casters` top-20 aggregate (`PollCasterSummary`). When `optionId` is set, both the feed and `casters` are scoped to that option. `polls.getResults` rows include `amountUp` / `amountDown` / `amount` (net).
+- **Mini app**: `community-app.router` exposes the `polls.*` namespace for `community-web` («Голосования» tab at `/c/{id}/polls`; deep link `startapp=poll:{pollId}`).
+- **Telegram bot** (`telegram_mvp` mode): announce on create (inline button «Открыть голосование»), `/polls` group command, results cron every 10 min posts итоги and stamps `resultsAnnouncedAt`.
 
 ---
 

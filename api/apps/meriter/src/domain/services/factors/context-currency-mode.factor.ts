@@ -53,7 +53,8 @@ export class ContextCurrencyModeFactor {
       isDownvote &&
       (targetType === 'publication' ||
         targetType === 'vote' ||
-        targetType === 'document-variant')
+        targetType === 'document-variant' ||
+        targetType === 'document-block-official')
     ) {
       this.logger.debug(`[evaluate] Downvote → wallet-only (early): community=${community.id}`);
       return {
@@ -70,7 +71,8 @@ export class ContextCurrencyModeFactor {
       currencySource &&
       (targetType === 'publication' ||
         targetType === 'vote' ||
-        targetType === 'document-variant')
+        targetType === 'document-variant' ||
+        targetType === 'document-block-official')
     ) {
       if (currencySource === 'quota-only') {
         this.logger.debug(
@@ -116,7 +118,8 @@ export class ContextCurrencyModeFactor {
       isFutureVision &&
       (targetType === 'publication' ||
         targetType === 'vote' ||
-        targetType === 'document-variant') &&
+        targetType === 'document-variant' ||
+        targetType === 'document-block-official') &&
       !currencySource
     ) {
       this.logger.debug(

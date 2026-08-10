@@ -10,6 +10,10 @@ export class ApiError extends HttpException {
     super(
       {
         success: false,
+        // Top-level `message` so NestJS HttpException.initMessage() (and thus
+        // Sentry.captureException) reports the real cause instead of deriving
+        // "Internal Server Error" from the class name.
+        message,
         error: {
           code,
           message,
@@ -49,6 +53,12 @@ export class ForbiddenError extends ApiError {
 export class ConflictError extends ApiError {
   constructor(message: string, details?: any) {
     super(message, 'CONFLICT', HttpStatus.CONFLICT, details);
+  }
+}
+
+export class TooManyRequestsError extends ApiError {
+  constructor(message: string = 'Too many requests', details?: any) {
+    super(message, 'RATE_LIMIT_EXCEEDED', HttpStatus.TOO_MANY_REQUESTS, details);
   }
 }
 

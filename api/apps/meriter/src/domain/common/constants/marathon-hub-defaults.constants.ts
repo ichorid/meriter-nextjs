@@ -1,4 +1,4 @@
-import { DECREE_809_TAGS } from '@meriter/shared-types';
+import { DECREE_809_TAGS } from '@meriter/shared-types/value-rubricator';
 import type {
   CommunityMeritSettings,
   CommunityTappalkaSettings,

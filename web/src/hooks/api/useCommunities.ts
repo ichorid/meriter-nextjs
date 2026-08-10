@@ -3,7 +3,7 @@ import { keepPreviousData } from "@tanstack/react-query";
 import { trpc } from "@/lib/trpc/client";
 import { queryKeys } from "@/lib/constants/queryKeys";
 import { STALE_TIME } from "@/lib/constants/query-config";
-import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { invalidatePersonalWalletCaches } from '@/hooks/api/invalidate-community-session-caches';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useTranslations } from 'next-intl';
@@ -176,11 +176,10 @@ export function useTopUpCommunitySourceWallet() {
   const t = useTranslations('projects');
 
   return trpc.communities.topUpCommunityWallet.useMutation({
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
       void utils.communities.getCommunityWallet.invalidate({ communityId: variables.communityId });
       void utils.communities.getById.invalidate({ id: variables.communityId });
-      void utils.wallets.getBalance.invalidate({ communityId: GLOBAL_COMMUNITY_ID });
-      void utils.wallets.getAll.invalidate();
+      await invalidatePersonalWalletCaches(utils, [variables.communityId]);
       if (!data.thankNonMember) {
         addToast(t('topUpSuccess'), 'success');
       }

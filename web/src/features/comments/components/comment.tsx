@@ -159,6 +159,8 @@ export const Comment: React.FC<CommentProps> = ({
         (amountTotal !== undefined ? (amountTotal > 0 || commentUpvotes > 0) :
             ((commentUpvotes > commentDownvotes) || (displaySum > 0)));
 
+    const isMeritTransferAutoLine = Boolean(isAutoComment);
+
     // Use extracted hooks for vote display, recipient, and withdrawal
     const voteDisplay = useCommentVoteDisplay({
         amountTotal,
@@ -169,6 +171,7 @@ export const Comment: React.FC<CommentProps> = ({
         directionPlus: calculatedDirectionPlus,
         optimisticSum,
         withdrawableBalance,
+        suppressZeroRate: isMeritTransferAutoLine,
     });
 
     const { recipientName, recipientAvatar, commentDetails } = useCommentRecipient({
@@ -227,7 +230,6 @@ export const Comment: React.FC<CommentProps> = ({
     const commentUnderReply = activeCommentHook[0] == (forTransactionId || _id);
     const nobodyUnderReply = activeCommentHook[0] === null;
     const avatarUrl = authorMeta?.photoUrl || '';
-    const isMeritTransferAutoLine = Boolean(isAutoComment);
 
     return (
         <div

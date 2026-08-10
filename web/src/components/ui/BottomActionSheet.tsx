@@ -22,6 +22,7 @@ export const BottomActionSheet = React.forwardRef<HTMLDivElement, BottomActionSh
 }, ref) => {
     const titleHeadingId = useId();
     const [mounted, setMounted] = useState(false);
+    const [rendered, setRendered] = useState(false);
     const [visible, setVisible] = useState(false);
 
     useEffect(() => {
@@ -31,30 +32,34 @@ export const BottomActionSheet = React.forwardRef<HTMLDivElement, BottomActionSh
 
     useEffect(() => {
         if (isOpen) {
+            setRendered(true);
             requestAnimationFrame(() => setVisible(true));
             document.body.style.overflow = 'hidden';
             return () => {
                 document.body.style.overflow = '';
             };
-        } else {
-            setVisible(false);
-            const timer = setTimeout(() => {
-                document.body.style.overflow = '';
-            }, 300);
-            return () => {
-                clearTimeout(timer);
-                document.body.style.overflow = '';
-            };
         }
+
+        setVisible(false);
+        const timer = window.setTimeout(() => {
+            setRendered(false);
+            document.body.style.overflow = '';
+        }, 300);
+        return () => {
+            window.clearTimeout(timer);
+            document.body.style.overflow = '';
+        };
     }, [isOpen]);
 
-    if (!mounted) return null;
+    if (!mounted || !rendered) {
+        return null;
+    }
 
     const content = (
         <div
             ref={ref}
             className={`
-                fixed inset-0 z-[100] flex items-center justify-center
+                fixed inset-0 z-[200] flex items-center justify-center
                 transition-opacity duration-300
                 ${isOpen ? 'pointer-events-auto' : 'pointer-events-none'}
             `}
@@ -76,7 +81,7 @@ export const BottomActionSheet = React.forwardRef<HTMLDivElement, BottomActionSh
                 className={`
                     relative mx-4 w-full max-w-lg overflow-hidden rounded-2xl border border-base-200/70 bg-base-100 shadow-2xl
                     transform transition-all duration-300 ease-out
-                    ${visible ? 'translate-y-0 scale-100' : 'translate-y-10 scale-95'}
+                    ${visible ? 'translate-y-0 scale-100 opacity-100' : 'translate-y-10 scale-95 opacity-0'}
                 `}
                 onClick={(e) => e.stopPropagation()}
             >

@@ -323,7 +323,6 @@ export function UserForm({
                             label={t("about")}
                             helperText={`${about.length}/1000`}
                             error={errors.about}
-                            required
                         >
                             <Textarea
                                 className="min-h-[120px]"

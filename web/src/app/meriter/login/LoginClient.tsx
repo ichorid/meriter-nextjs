@@ -2,48 +2,18 @@
 
 import { LoginForm } from '@/components/LoginForm';
 import { VersionDisplay } from '@/components/organisms';
-import { getEnabledProviders, getAuthEnv } from '@/lib/utils/oauth-providers';
 import { useRuntimeConfig } from '@/hooks/useRuntimeConfig';
 import { useCaptiveBrowser } from '@/lib/captive-browser';
-import { useMemo } from 'react';
+import { EMAIL_ONLY_LOGIN, resolveLoginProviders } from '@/lib/constants/login-methods';
 import { Loader2 } from 'lucide-react';
 
 export default function PageMeriterLogin() {
     // Fetch runtime config (falls back to build-time defaults if API fails)
     const { config: runtimeConfig, isLoading, error } = useRuntimeConfig();
 
-    // Extract stable primitive values for dependencies to avoid object reference issues
-    // React Query might return new object references even when values are the same
-    const oauthGoogle = runtimeConfig?.oauth?.google ?? false;
-    const oauthYandex = runtimeConfig?.oauth?.yandex ?? false;
-    const oauthVk = runtimeConfig?.oauth?.vk ?? false;
-    const oauthTelegram = runtimeConfig?.oauth?.telegram ?? false;
-    const oauthApple = runtimeConfig?.oauth?.apple ?? false;
-    const oauthTwitter = runtimeConfig?.oauth?.twitter ?? false;
-    const oauthInstagram = runtimeConfig?.oauth?.instagram ?? false;
-    const oauthSber = runtimeConfig?.oauth?.sber ?? false;
-    const oauthMailru = runtimeConfig?.oauth?.mailru ?? false;
-    const authnEnabled = runtimeConfig?.authn?.enabled ?? false;
-    const smsEnabled = runtimeConfig?.sms?.enabled ?? false;
-    const phoneEnabled = runtimeConfig?.phone?.enabled ?? false;
     const emailEnabled = runtimeConfig?.email?.enabled ?? false;
-
-    // Memoize enabled providers using primitive dependencies
-    // This ensures we only recompute when oauth config values actually change
-    const enabledProviders = useMemo(() => {
-        const env = getAuthEnv(runtimeConfig ?? null);
-        return getEnabledProviders(env);
-    }, [
-        oauthGoogle,
-        oauthYandex,
-        oauthVk,
-        oauthTelegram,
-        oauthApple,
-        oauthTwitter,
-        oauthInstagram,
-        oauthSber,
-        oauthMailru,
-    ]);
+    const enabledProviders = resolveLoginProviders(runtimeConfig?.oauth);
+    const botUsername = runtimeConfig?.botUsername ?? null;
 
     const { isCaptive: captiveBrowser } = useCaptiveBrowser();
 
@@ -69,11 +39,10 @@ export default function PageMeriterLogin() {
         <div className="min-h-screen bg-gradient-to-br from-background to-muted/20 px-4 py-12 flex items-center justify-center pt-20">
             <div className="w-full max-w-md">
                 <LoginForm
+                    {...EMAIL_ONLY_LOGIN}
                     enabledProviders={enabledProviders}
-                    authnEnabled={authnEnabled}
-                    smsEnabled={smsEnabled}
-                    phoneEnabled={phoneEnabled}
                     emailEnabled={emailEnabled}
+                    botUsername={botUsername}
                     captiveBrowser={captiveBrowser}
                 />
 

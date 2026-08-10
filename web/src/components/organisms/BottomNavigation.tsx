@@ -3,7 +3,7 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
 import { useMeriterCommunityCreateContext } from '@/hooks/useMeriterCommunityCreateContext';
 import { usePathname, useRouter } from 'next/navigation';
-import { User, Bell, Info, Sparkles, FolderKanban, TrendingUp, Star, LifeBuoy } from 'lucide-react';
+import { User, Bell, Info, Sparkles, FolderKanban, TrendingUp, Star, LifeBuoy, Settings } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadCount } from '@/hooks/api/useNotifications';
@@ -256,8 +256,9 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                                 )}
                             >
                                 <Icon
-                                    size={24}
                                     className={cn(
+                                        'h-6 w-6 shrink-0',
+                                        tab.path === '/meriter/future-visions' && 'translate-y-px',
                                         active
                                             ? sc
                                                 ? 'text-stitch-accent'
@@ -348,6 +349,14 @@ export const BottomNavigation = ({ customTabs }: BottomNavigationProps) => {
                         >
                             <Star className="w-5 h-5 text-base-content/60" />
                             <span className="text-sm font-medium">{t('favorites')}</span>
+                        </button>
+                        <button
+                            type="button"
+                            className="flex items-center gap-3 w-full px-4 py-3 text-left hover:bg-base-200 transition-colors"
+                            onClick={() => handleProfileMenuAction(routes.settings)}
+                        >
+                            <Settings className="w-5 h-5 text-base-content/60" />
+                            <span className="text-sm font-medium">{t('settings')}</span>
                         </button>
                         <button
                             type="button"

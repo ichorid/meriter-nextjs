@@ -1,0 +1,86 @@
+VerifierVerdict:
+  work_unit_id: p0-1-eslint-plugin-import
+  attempt: 1
+  channel: llm
+  verdict: pass
+  summary: >-
+    Attempt 1 made no further write_set edits; eslint-plugin-import (^2.32.0) and
+    eslint-import-resolver-typescript (^4.4.4) are already in @meriter/api devDependencies
+    from commit 56bc6d70 with matching lockfile entries. pnpm install and `pnpm lint` in
+    api/ both exit 0 with no import-resolver errors.
+  reviewed_at: "2026-05-28"
+  diff_basis: >-
+    git diff api/package.json pnpm-lock.yaml is empty (write_set committed in 56bc6d70).
+    git show 56bc6d70 -- api/package.json pnpm-lock.yaml adds both devDependencies and
+    lockfile importer entries; HEAD~..HEAD (72866f9c) only updates orchestration artifacts
+    outside the write_set.
+
+  intent_match: true
+  write_set_compliance: true
+  files_created: []
+  files_modified:
+    - api/package.json
+    - pnpm-lock.yaml
+  files_outside_write_set: []
+
+  constraint_checks:
+    - id: phase-0
+      status: pass
+      evidence: >-
+        Dependency-only prerequisites in api/package.json and pnpm-lock.yaml; no application
+        logic or ESLint config wiring beyond manifests.
+    - id: bounded-context-bc-17
+      status: pass
+      evidence: >-
+        Packages scoped to @meriter/api devDependencies only; no cross-package source edits.
+
+  success_criteria:
+    - id: eslint-plugin-import-listed-in-api-package-json-devDependencies
+      status: pass
+      evidence: >-
+        api/package.json devDependencies includes "eslint-plugin-import": "^2.32.0" and
+        "eslint-import-resolver-typescript": "^4.4.4".
+    - id: pnpm-install-succeeds
+      status: pass
+      evidence: "pnpm install exited 0 (verified independently on attempt 1)."
+    - id: api-lint-runs-without-resolver-errors
+      status: pass
+      evidence: >-
+        `pnpm lint` in api/ exited 0 with no import/resolver error output (verified
+        independently on attempt 1).
+
+  architecture_alignment:
+    - id: target-section-4-3-prerequisites
+      status: pass
+      evidence: >-
+        Both eslint-plugin-import and eslint-import-resolver-typescript are present as
+        @meriter/api devDependencies per TARGET §4.3 prerequisites; lockfile records
+        resolved versions 2.32.0 and 4.4.4 under the api importer.
+
+  findings: []
+
+  warnings:
+    - id: attempt-1-no-new-write-set-diff
+      severity: info
+      message: >-
+        Attempt 1 re-verified committed state from 56bc6d70; no additional api/package.json
+        or pnpm-lock.yaml edits on this attempt.
+    - id: commit-includes-non-write-set-files
+      severity: info
+      message: >-
+        Commit 56bc6d70 also adds .index-refactor-scratch, .serena, and prior attempt verdict
+        files; work-unit manifest changes remain limited to api/package.json and
+        pnpm-lock.yaml.
+    - id: lockfile-transitive-drift
+      severity: info
+      message: >-
+        pnpm-lock.yaml in 56bc6d70 also normalizes ts-jest snapshot dependency strings
+        (ts-node peer chain); incidental to resolver install and within write_set.
+    - id: repo-lint-delta-out-of-scope
+      severity: info
+      message: >-
+        Lint channel may report 888 @meriter/web @typescript-eslint/no-explicit-any issues
+        vs empty baseline; unrelated to api devDependency prerequisites and not part of
+        success criteria.
+
+  blockers: []

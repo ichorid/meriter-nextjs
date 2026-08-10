@@ -35,12 +35,23 @@ const SettingsPage = () => {
 
     const createFakeCommunityMutation = trpc.communities.createFakeCommunity.useMutation();
     const addUserToAllCommunitiesMutation = trpc.communities.addUserToAllCommunities.useMutation();
+    const utils = trpc.useUtils();
+
+    const invalidateCommunityMembership = async () => {
+        if (!user?.id) return;
+        await Promise.all([
+            utils.users.getUserCommunities.invalidate({ userId: 'me' }),
+            utils.users.getUserRoles.invalidate({ userId: user.id }),
+            utils.communities.getAll.invalidate(),
+        ]);
+    };
 
     const handleCreateFakeCommunity = async () => {
         setCreatingFakeCommunity(true);
         setFakeCommunityMessage('');
         try {
             const community = await createFakeCommunityMutation.mutateAsync();
+            await invalidateCommunityMembership();
             setFakeCommunityMessage(t('fakeCommunityCreated', { name: community.name }));
             setTimeout(() => {
                 router.push(`/meriter/communities/${community.id}`);
@@ -59,15 +70,13 @@ const SettingsPage = () => {
         setAddToAllMessage('');
         try {
             const result = await addUserToAllCommunitiesMutation.mutateAsync();
+            await invalidateCommunityMembership();
             if (result.errors && result.errors.length > 0) {
                 setAddToAllMessage(t('addToAllPartial', { added: result.added, skipped: result.skipped, errors: result.errors.length }));
             } else {
                 setAddToAllMessage(t('addToAllSuccess', { added: result.added, skipped: result.skipped }));
             }
             setTimeout(() => setAddToAllMessage(''), 5000);
-            setTimeout(() => {
-                window.location.reload();
-            }, 2000);
         } catch (error) {
             console.error('Add to all communities error:', error);
             setAddToAllMessage(t('addToAllFailed'));

@@ -1,21 +1,27 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { InjectConnection } from '@nestjs/mongoose';
-import { Connection } from 'mongoose';
-import { QuotaUsageSchemaClass, QuotaUsageDocument } from '../models/quota-usage/quota-usage.schema';
+import { Injectable, Logger, BadRequestException, Inject } from '@nestjs/common';
 import type { QuotaUsage } from '../models/quota-usage/quota-usage.schema';
 import { uid } from 'uid';
+import {
+  QUOTA_USAGE_PERSISTENCE_PORT,
+  type QuotaUsagePersistencePort,
+} from '../ports/quota-usage.persistence.port';
 
-export type QuotaUsageType = 'vote' | 'poll_cast' | 'publication_creation' | 'poll_creation' | 'forward' | 'forward_proposal';
+export type QuotaUsageType =
+  | 'vote'
+  | 'poll_cast'
+  | 'publication_creation'
+  | 'poll_creation'
+  | 'forward'
+  | 'forward_proposal'
+  | 'document_variant_proposal';
 
 @Injectable()
 export class QuotaUsageService {
   private readonly logger = new Logger(QuotaUsageService.name);
 
   constructor(
-    @InjectModel(QuotaUsageSchemaClass.name) private quotaUsageModel: Model<QuotaUsageDocument>,
-    @InjectConnection() private readonly connection: Connection,
+    @Inject(QUOTA_USAGE_PERSISTENCE_PORT)
+    private readonly quotaUsagePersistence: QuotaUsagePersistencePort,
   ) {}
 
   /**
@@ -42,7 +48,7 @@ export class QuotaUsageService {
       throw new BadRequestException('Quota amount must be positive');
     }
 
-    const quotaUsage = await this.quotaUsageModel.create({
+    const quotaUsage = await this.quotaUsagePersistence.create({
       id: uid(),
       userId,
       communityId,
@@ -53,7 +59,15 @@ export class QuotaUsageService {
     });
 
     this.logger.log(`Quota consumed successfully: ${quotaUsage.id}`);
-    return quotaUsage.toObject();
+    return {
+      id: quotaUsage.id,
+      userId: quotaUsage.userId,
+      communityId: quotaUsage.communityId,
+      amountQuota: quotaUsage.amountQuota,
+      usageType: quotaUsage.usageType,
+      referenceId,
+      createdAt: quotaUsage.createdAt,
+    };
   }
 
   /**
@@ -68,26 +82,7 @@ export class QuotaUsageService {
     communityId: string,
     since: Date,
   ): Promise<number> {
-    const result = await this.connection.db!
-      .collection('quota_usage')
-      .aggregate([
-        {
-          $match: {
-            userId,
-            communityId,
-            createdAt: { $gte: since },
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amountQuota' },
-          },
-        },
-      ])
-      .toArray();
-
-    return result.length > 0 ? result[0].total : 0;
+    return this.quotaUsagePersistence.sumUsedSince(userId, communityId, since);
   }
 }
 

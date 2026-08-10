@@ -1,0 +1,27 @@
+{
+  "work_unit_id": "p10-script-rewrite-add-test-leads",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "scripts/add-test-leads.mjs"
+  ],
+  "changes": [
+    {
+      "file": "scripts/add-test-leads.mjs",
+      "summary": "Replaced legacy mongosh raw Mongo inserts with NestJS application-context script: creates users via UserService.createOrUpdateUser (authProvider: fake, fake_lead_* authIds), ensures fake superadmin, and assigns leads via createAssignLeadUseCase.execute (wallet createOrGetWallet + membership side effects)."
+    }
+  ],
+  "verification": {
+    "uses_assignLead_use_case": true,
+    "uses_raw_mongo_for_roles": false,
+    "uses_raw_mongo_for_users": false,
+    "authProvider_fake_not_test": true,
+    "wallet_side_effects_via_use_case": true
+  },
+  "success_criteria": {
+    "script_uses_assignLead_not_raw_mongo": true,
+    "authProvider_fake_not_test": true,
+    "closes_waiver_V-10": true
+  },
+  "notes": "New script path scripts/add-test-leads.mjs (repo root). Legacy add-test-leads.mjs at repo root unchanged (outside write_set). Requires api deps (pnpm install) and MongoDB; bootstraps MeriterModule like migrate-collaborative-documents.ts."
+}

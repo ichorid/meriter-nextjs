@@ -1,8 +1,12 @@
 'use client';
 
-import { DocumentDraftCanvasBody } from '@/features/documents/components/DocumentDraftCanvasBody';
-import { DocumentDraftStructureProvider } from '@/features/documents/context/DocumentDraftStructureContext';
+import { useMemo } from 'react';
+import { RichTextEditor } from '@/components/molecules/RichTextEditor/RichTextEditor';
 import type { DocumentDraft } from '@/features/documents/lib/document-draft';
+import {
+  draftToEditorHtml,
+  updateDraftFromEditorHtml,
+} from '@/features/documents/lib/document-draft';
 import { cn } from '@/lib/utils';
 
 export interface CollaborativeDocumentDraftEditorProps {
@@ -14,8 +18,8 @@ export interface CollaborativeDocumentDraftEditorProps {
 }
 
 /**
- * Local collaborative-document editor (sections/blocks) for forms before a document exists.
- * Reuses structure UI from the live document canvas via DocumentStructureContext.
+ * Single rich-text surface for pre-create collaborative document seeds.
+ * Structure (sections/blocks) is derived when the community/project is saved.
  */
 export function CollaborativeDocumentDraftEditor({
   value,
@@ -24,16 +28,24 @@ export function CollaborativeDocumentDraftEditor({
   disabled,
   className,
 }: CollaborativeDocumentDraftEditorProps) {
+  const html = useMemo(() => draftToEditorHtml(value), [value]);
+
   return (
-    <DocumentDraftStructureProvider
-      value={value}
-      onChange={onChange}
-      disabled={disabled}
-      blockPlaceholder={placeholder}
+    <div
+      className={cn(
+        'overflow-hidden rounded-xl border border-stitch-border bg-stitch-canvas/80',
+        className,
+      )}
     >
-      <div className={cn('space-y-4', className)}>
-        <DocumentDraftCanvasBody />
-      </div>
-    </DocumentDraftStructureProvider>
+      <RichTextEditor
+        content={html}
+        onChange={(next) => onChange(updateDraftFromEditorHtml(value, next))}
+        placeholder={placeholder}
+        editable={!disabled}
+        toolbar="default"
+        minEditorHeight="220px"
+        editorClassName="min-h-[220px]"
+      />
+    </div>
   );
 }

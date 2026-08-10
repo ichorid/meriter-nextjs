@@ -25,6 +25,10 @@ export interface UserCommunityRole {
   frozenInternalMerits?: number;
   /** Set when user left a project; row kept for frozen merits. Excluded from active membership queries. */
   leftAt?: Date | null;
+  /** Telegram MVP: frozen when user left the linked TG group. */
+  membershipStatus?: 'active' | 'frozen';
+  /** Lead grace period end when TG admin rights were removed. */
+  leadGraceUntil?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +56,12 @@ export class UserCommunityRoleSchemaClass implements UserCommunityRole {
 
   @Prop({ type: Date, default: null })
   leftAt?: Date | null;
+
+  @Prop({ type: String, enum: ['active', 'frozen'], default: 'active' })
+  membershipStatus?: 'active' | 'frozen';
+
+  @Prop({ type: Date, default: null })
+  leadGraceUntil?: Date | null;
 
   @Prop({ required: true })
   createdAt!: Date;

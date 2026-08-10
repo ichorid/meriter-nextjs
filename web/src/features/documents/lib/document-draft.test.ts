@@ -34,4 +34,15 @@ describe('document-draft', () => {
       officialContent: '<p>Seed</p>',
     });
   });
+
+  it('serializeDraftForApi splits editor HTML into blocks', () => {
+    const draft = createEmptyDocumentDraft();
+    const block = draft.sections[0]?.blocks?.[0];
+    if (!block) throw new Error('missing block');
+    block.officialContent = '<p>One</p><h2>Title</h2><p>Two</p>';
+    const seed = serializeDraftForApi(draft);
+    expect(seed.sections).toHaveLength(1);
+    expect(seed.sections[0]?.blocks).toHaveLength(3);
+    expect(seed.sections[0]?.blocks[1]?.blockType).toBe('heading');
+  });
 });

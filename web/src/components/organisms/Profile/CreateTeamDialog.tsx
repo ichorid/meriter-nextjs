@@ -17,6 +17,14 @@ import { useCreateTeam } from '@/hooks/api/useTeams';
 import { useFutureVisionTags } from '@/hooks/api/useFutureVisions';
 import { ImageUploader } from '@/components/ui/ImageUploader/ImageUploader';
 import { FutureVisionCoverDevPlaceholders } from '@/shared/components/FutureVisionCoverDevPlaceholders';
+import { MeriterEditor } from '@/components/molecules/RichTextEditor';
+import {
+  concatOfficialPlainTextFromDraft,
+  createEmptyDocumentDraft,
+  documentDraftHasOfficialText,
+  serializeDraftForApi,
+  type DocumentDraft,
+} from '@/features/documents/lib/document-draft';
 import { Loader2 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/shadcn/checkbox';
 
@@ -29,34 +37,41 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
   const t = useTranslations('profile');
   const tCommon = useTranslations('common');
   const tProjects = useTranslations('projects');
+  const tCommunities = useTranslations('communities');
   const createTeam = useCreateTeam();
   const { data: platformSettings } = useFutureVisionTags();
   const availableTags = platformSettings?.availableFutureVisionTags ?? [];
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [futureVisionText, setFutureVisionText] = useState('');
+  const [futureVisionDraft, setFutureVisionDraft] = useState<DocumentDraft>(() =>
+    createEmptyDocumentDraft(),
+  );
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [futureVisionCover, setFutureVisionCover] = useState('');
 
+  const resetForm = () => {
+    setName('');
+    setDescription('');
+    setFutureVisionDraft(createEmptyDocumentDraft());
+    setSelectedTags([]);
+    setFutureVisionCover('');
+  };
+
   const handleSubmit = async () => {
     const trimmedName = name.trim();
-    const trimmedFutureVision = futureVisionText.trim();
-    if (!trimmedName || !trimmedFutureVision) return;
+    if (!trimmedName || !documentDraftHasOfficialText(futureVisionDraft)) return;
 
     try {
       await createTeam.mutateAsync({
         name: trimmedName,
         description: description.trim() || undefined,
-        futureVisionText: trimmedFutureVision,
+        futureVisionText: concatOfficialPlainTextFromDraft(futureVisionDraft),
+        futureVisionDocumentSeed: serializeDraftForApi(futureVisionDraft),
         futureVisionTags: selectedTags.length > 0 ? selectedTags : undefined,
         futureVisionCover: futureVisionCover.trim() || undefined,
       });
-      setName('');
-      setDescription('');
-      setFutureVisionText('');
-      setSelectedTags([]);
-      setFutureVisionCover('');
+      resetForm();
       onClose();
     } catch {
       // Error handling is done in the hook
@@ -65,11 +80,7 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
 
   const handleClose = () => {
     if (!createTeam.isPending) {
-      setName('');
-      setDescription('');
-      setFutureVisionText('');
-      setSelectedTags([]);
-      setFutureVisionCover('');
+      resetForm();
       onClose();
     }
   };
@@ -82,7 +93,7 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{t('createTeamDialogTitle')}</DialogTitle>
           <DialogDescription>
@@ -107,17 +118,16 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
           </div>
 
           <div className="space-y-2">
-            <label htmlFor="team-future-vision" className="text-sm font-medium">
+            <span className="text-sm font-medium">
               {tProjects('futureVisionRequired')} <span className="text-error">*</span>
-            </label>
-            <Textarea
-              id="team-future-vision"
-              value={futureVisionText}
-              onChange={(e) => setFutureVisionText(e.target.value)}
+            </span>
+            <p className="text-xs text-base-content/60">{tCommunities('futureVisionSectionHint')}</p>
+            <MeriterEditor
+              mode="collaborative-document"
+              value={futureVisionDraft}
+              onChange={setFutureVisionDraft}
               placeholder={tProjects('futureVisionPlaceholder')}
-              maxLength={10000}
               disabled={createTeam.isPending}
-              className="rounded-xl min-h-[80px]"
             />
           </div>
 
@@ -183,7 +193,11 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!name.trim() || !futureVisionText.trim() || createTeam.isPending}
+            disabled={
+              !name.trim() ||
+              !documentDraftHasOfficialText(futureVisionDraft) ||
+              createTeam.isPending
+            }
             className="rounded-xl"
           >
             {createTeam.isPending && (
@@ -196,5 +210,3 @@ export function CreateTeamDialog({ open, onClose }: CreateTeamDialogProps) {
     </Dialog>
   );
 }
-
-

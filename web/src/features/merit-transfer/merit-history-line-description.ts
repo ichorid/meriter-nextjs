@@ -10,6 +10,41 @@ type RowSlice = {
 
 const PROJECT_PAYOUT_BUCKETS = ['founder', 'investor', 'team'] as const;
 
+/** Known English API `description` strings → i18n keys (before raw fallback). */
+const BY_DESCRIPTION_EN: Record<string, string> = {
+  'Merit transfer (sent)': 'merit_transfer_sent',
+  'Merit transfer (received)': 'merit_transfer_received',
+  'Community wallet top-up': 'community_wallet_topup',
+  'Project wallet top-up': 'project_topup_member',
+  'Project wallet top-up (donation)': 'project_topup_donation',
+  'Payment for creating a publication': 'publication_creation',
+  'Payment for publishing to Birzha (personal wallet)': 'publication_creation_birzha',
+  'Publication post cost (community wallet)': 'publication_post_cost',
+  'Payment for creating a poll': 'poll_creation',
+  'Payment for voting in a poll': 'poll_cast',
+  'Payment for a forward proposal': 'forward_proposal',
+  'Withdrawal from a publication to your wallet': 'publication_withdrawal',
+  'Withdrawal from a comment to your wallet': 'comment_withdrawal',
+  'Withdrawal from a vote to your wallet': 'vote_withdrawal',
+  'Mining show cost': 'tappalka_show_cost',
+  'Mining reward': 'tappalka_reward',
+  'Investment in a post': 'investment',
+  'Investment distribution': 'investment_distribution',
+  'Investment pool return (post closed)': 'investment_pool_return',
+  'Investment pool return — remainder': 'investment_pool_return_remainder',
+  'Project wallet payout': 'project_payout',
+  'Project merit distribution': 'project_distribution',
+  'Investment in a project': 'project_investment',
+  'Merits spent on a publication vote': 'publication_vote',
+  'Merits spent on a vote': 'vote_vote',
+  'Merits spent on a comment vote': 'comment_vote',
+  'Project instant appreciation': 'project_appreciation',
+  'Accepted document edit': 'document_variant_apply',
+  'Debit for accepted edit with negative rating': 'document_variant_apply_debit',
+  'Welcome merits': 'welcome_merits',
+  'Community starting merits': 'community_starting_merits',
+};
+
 /**
  * Maps wallet transaction rows to next-intl keys under `meritHistory.lineDescription.*`.
  * Raw English `description` from the API is not shown when a key exists here.
@@ -36,6 +71,14 @@ export function resolveMeritHistoryLineDescription(row: RowSlice): MeritHistoryL
 
   if (rt === 'welcome_merits') {
     return { kind: 'i18n', messageKey: 'welcome_merits' };
+  }
+
+  if (rt === 'document_variant_apply') {
+    const incoming = row.type === 'deposit';
+    return {
+      kind: 'i18n',
+      messageKey: incoming ? 'document_variant_apply' : 'document_variant_apply_debit',
+    };
   }
 
   if (rt === 'project_topup') {
@@ -110,6 +153,11 @@ export function resolveMeritHistoryLineDescription(row: RowSlice): MeritHistoryL
   const messageKey = byRefType[rt];
   if (messageKey) {
     return { kind: 'i18n', messageKey };
+  }
+
+  const byDesc = BY_DESCRIPTION_EN[desc];
+  if (byDesc) {
+    return { kind: 'i18n', messageKey: byDesc };
   }
 
   return { kind: 'raw', text: desc || row.referenceType || '—' };

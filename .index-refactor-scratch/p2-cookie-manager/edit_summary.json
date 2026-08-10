@@ -1,0 +1,46 @@
+{
+  "work_unit_id": "p2-cookie-manager",
+  "status": "DONE",
+  "attempt": 1,
+  "files_changed": [
+    "api/apps/meriter/src/infrastructure/auth/cookie-manager.ts",
+    "api/apps/meriter/src/api-v1/common/utils/cookie-manager.util.ts",
+    "api/apps/meriter/src/api-v1/auth/auth.controller.ts",
+    "api/apps/meriter/src/trpc/routers/auth.router.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/infrastructure/auth/cookie-manager.ts",
+      "summary": "BC-12 infrastructure CookieManager owns domain normalization, AUTH_SESSION_SAME_SITE, isRequestSecure, resolveIsProduction, and auth flows: logoutJwt, clearAllRequestCookies, establishJwtAuth (full|oauth), setAuthSessionCookie. Low-level clear/setJwtCookie retained for UserGuard and legacy callers."
+    },
+    {
+      "file": "api/apps/meriter/src/api-v1/common/utils/cookie-manager.util.ts",
+      "summary": "Deprecated one-line re-export shim to infrastructure/auth/cookie-manager for ApiV1CommonModule and existing imports without module churn in this work unit."
+    },
+    {
+      "file": "api/apps/meriter/src/api-v1/auth/auth.controller.ts",
+      "summary": "Imports infrastructure CookieManager; removed private isHttpsRequest and duplicated JWT/session cookie attribute blocks. REST auth delegates to logoutJwt, clearAllRequestCookies, establishJwtAuth, setAuthSessionCookie."
+    },
+    {
+      "file": "api/apps/meriter/src/trpc/routers/auth.router.ts",
+      "summary": "Removed local isHttpsRequest and inline cookie attribute logic; tRPC logout/clear/fake auth delegates to infrastructure CookieManager same as REST."
+    }
+  ],
+  "verification": {
+    "attempt_0_verifiers": "tsc pass, lint pass, static pass (2/5 clusters); llm partial due to missing verdict_llm.scratch.yaml path (infra issue, not code)",
+    "attempt_1_revalidation": {
+      "isHttpsRequest_in_auth_layers": false,
+      "sameSite_or_inline_res_cookie_in_auth_layers": false,
+      "sameSite_matches_only_infrastructure": true,
+      "auth_controller_delegates_to_infrastructure": true,
+      "auth_router_delegates_to_infrastructure": true
+    }
+  },
+  "success_criteria": {
+    "single_cookie_manager_owns_domain_secure_samesite": true,
+    "rest_and_trpc_delegate_to_infrastructure": true,
+    "p5_retirement_jwt_duplication_in_auth_layers": true,
+    "inv09_cookie_rules_centralized": true
+  },
+  "notes": "Attempt 1 confirmed attempt-0 implementation; no additional code edits required. common.module.ts, user.guard.ts, trpc/context.ts still import via cookie-manager.util re-export."
+}

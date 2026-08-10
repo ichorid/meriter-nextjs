@@ -1,6 +1,6 @@
 // Idempotent replica set init — runs on every deploy via mongodb-rs-init service.
-// Matches mongodb-init/01-replica-set.js (rs0, single member mongodb:27017).
-// Needed when data volume already existed before initdb.d scripts ran (e.g. remote VPS).
+// Sole replica-set init path (initdb.d no longer runs rs.initiate — it fails during first boot).
+// rs0, single member mongodb:27017. Needed when data volume existed before replSet was configured.
 
 (function initReplicaSet() {
   const cfg = {

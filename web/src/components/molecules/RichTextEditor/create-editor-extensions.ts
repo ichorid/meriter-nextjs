@@ -18,6 +18,8 @@ export function createEditorExtensions(options: CreateEditorExtensionsOptions = 
   const extensions: Extensions = [
     StarterKit.configure({
       heading: { levels: [2, 3] },
+      link: false,
+      underline: false,
     }),
     Underline,
     TextAlign.configure({

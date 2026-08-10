@@ -1,0 +1,41 @@
+{
+  "work_unit_id": "p1-shared-types-export-map",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "libs/shared-types/package.json",
+    "libs/shared-types/src/index.ts",
+    "libs/shared-types/src/schemas/permissions.ts",
+    "libs/shared-types/src/schemas/notifications.ts"
+  ],
+  "changes": [
+    {
+      "file": "libs/shared-types/package.json",
+      "summary": "Added Option B export map entries for ./schemas/permissions and ./schemas/notifications (types + default → dist/schemas/*.js), matching value-rubricator subpath pattern."
+    },
+    {
+      "file": "libs/shared-types/src/index.ts",
+      "summary": "Documented Phase 1 Option B subpath import paths; no export list changes — root barrel @meriter/shared-types unchanged."
+    },
+    {
+      "file": "libs/shared-types/src/schemas/permissions.ts",
+      "summary": "Subpath entry stub re-exporting PermissionRule*, ResourcePermissions* from ../schemas until p1-permissions-schema-split extracts definitions."
+    },
+    {
+      "file": "libs/shared-types/src/schemas/notifications.ts",
+      "summary": "Empty subpath entry stub for downstream p1-notification-type-schema / routing stub units."
+    }
+  ],
+  "verification": {
+    "npm_run_build_shared_types": "exit 0",
+    "dist_schemas_permissions_js": true,
+    "dist_schemas_notifications_js": true,
+    "root_barrel_exports_unchanged": true
+  },
+  "success_criteria": {
+    "exports_map_includes_schemas_permissions_and_notifications": true,
+    "existing_root_import_paths_unchanged": true,
+    "tsc_build_passes_for_shared_types": true
+  },
+  "notes": "Stub entry modules required so tsc emits dist/schemas/* for package.json exports; canonical extraction deferred to p1-permissions-schema-split and p1-notification-type-schema per dag.yaml."
+}

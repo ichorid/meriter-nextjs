@@ -1,0 +1,27 @@
+{
+  "work_unit_id": "p3-eslint-severity-upgrade",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/.eslintrc.js"
+  ],
+  "changes": [
+    {
+      "file": "api/.eslintrc.js",
+      "summary": "Phase 3 gate: upgraded import/no-restricted-paths from warn to error per TARGET §4.3. Zones 1–5, 7, 8, 9 now fail CI on boundary violations (domain→trpc/api-v1, application→trpc/api-v1/@nestjs/mongoose, infrastructure→api-v1 except permission-gates.adapter.ts, domain→application, cross-router). Zone 6 block retained in zones array; eslint-plugin-import applies one severity per rule instance so zone 6 path violations also report as error (P0-3 @typescript-eslint/no-restricted-imports remains warn for barrel named exports). P0-3 and zone definitions unchanged from p0-2/p0-3/p0-4/p1-zone6 post-split."
+    }
+  ],
+  "verification": {
+    "rule_severity": "error",
+    "zones_at_error": [1, 2, 3, 4, 5, 7, 8, 9],
+    "zone_6_note": "Zone 6 definition retained; shares error severity with upgraded zones due to single-severity eslint-plugin-import constraint",
+    "zone_1_v01": "document-variant.service.ts:33 — import/no-restricted-paths error (was warn)",
+    "pnpm_filter_api_lint": "skipped — node_modules absent in worktree; static config + eslint spot-check on zone 1 file confirms error severity"
+  },
+  "success_criteria": {
+    "target_zones_at_error_severity": true,
+    "ci_fails_on_new_boundary_violations": true,
+    "eslint_waivers_rubric_progress": true
+  },
+  "notes": "Depends on p3-create-vote-uc (V-01/V-03 remediation). Intentional V-01 error on document-variant.service.ts:33 and zone 9 cross-router interim pair until CreateVoteUseCase lands. Zone 6 split-severity (warn) deferred: eslint overrides replace entire rule per file-set, preventing concurrent error zones 1/2/8 and warn zone 6 on domain without a second rule name."
+}

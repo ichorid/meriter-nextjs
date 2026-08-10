@@ -1,5 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { PermissionService } from '../../../domain/services/permission.service';
+import {
+  PERMISSION_GATES_PORT,
+  type PermissionGatesPort,
+} from '../../../domain/ports/permission-gates.port';
 import { PublicationService } from '../../../domain/services/publication.service';
 import { CommentService } from '../../../domain/services/comment.service';
 import { PollService } from '../../../domain/services/poll.service';
@@ -30,6 +34,8 @@ export class PermissionsHelperService {
     private userService: UserService,
     private voteService: VoteService,
     private voteCommentResolver: VoteCommentResolverService,
+    @Inject(PERMISSION_GATES_PORT)
+    private readonly permissionGates: PermissionGatesPort,
   ) {}
 
   /**
@@ -236,7 +242,7 @@ export class PermissionsHelperService {
     const canDelete = await this.permissionService.canDeleteComment(userId, commentId);
 
     // Check if comment voting is enabled (feature flag)
-    const enableCommentVoting = process.env.ENABLE_COMMENT_VOTING === 'true';
+    const enableCommentVoting = this.permissionGates.isCommentVotingEnabled();
     
     // For comment voting, check if this is a vote-comment or regular comment
     // Try to resolve as vote-comment first

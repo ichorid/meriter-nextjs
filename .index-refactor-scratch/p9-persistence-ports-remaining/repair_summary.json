@@ -1,0 +1,21 @@
+{
+  "node_id": "p9-persistence-ports-remaining",
+  "attempt": 2,
+  "status": "complete",
+  "files_changed": [
+    "api/apps/meriter/src/domain/services/post-closing-cron.module.ts",
+    "api/apps/meriter/test/document-structure.service.spec.ts",
+    "api/apps/meriter/test/document-update-meta.spec.ts"
+  ],
+  "fixes_applied": [
+    "Ran pnpm install to restore node_modules (initial jest MODULE_NOT_FOUND)",
+    "PostClosingCronModule: import PersistenceModule so PostClosingCronService resolves PUBLICATION_PERSISTENCE_PORT after port migration",
+    "document-structure.service.spec.ts: mock DOCUMENT_PERSISTENCE_PORT.withdrawOpenVariantsOnBlock instead of Mongoose variantModel.updateMany",
+    "document-update-meta.spec.ts: mock DOCUMENT_PERSISTENCE_PORT.updateDocumentMeta instead of Mongoose documentModel.updateOne"
+  ],
+  "test_results": {
+    "pnpm_test_api": "66 suites passed, 462 tests passed, 1 skipped",
+    "pnpm_test": "api + web all passed (88 suites, 575 tests total)"
+  },
+  "notes": "Ports/mappers write_set unchanged from repair-1 (deep-clone isolation, full DocumentPersistencePort contract). Test failures were DI wiring (PostClosingCronModule) and stale unit-test mocks after service port migration—not port/mapper defects."
+}

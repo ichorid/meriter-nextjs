@@ -70,17 +70,20 @@ function invalidateCommunityLeadCaches(
     utils: ReturnType<typeof trpc.useUtils>,
     communityId: string,
 ) {
-    void utils.communities.getMembers.invalidate({ id: communityId });
-    void utils.communities.getById.invalidate({ id: communityId });
-    void utils.users.getUserRoles.invalidate();
-    void utils.users.getMe.invalidate();
+    return Promise.all([
+        utils.communities.getMembers.invalidate({ id: communityId }),
+        utils.communities.getById.invalidate({ id: communityId }),
+        utils.users.getUserRoles.invalidate(),
+        utils.users.getMe.invalidate(),
+    ]);
 }
 
 export function usePromoteMemberToLead(communityId: string) {
     const utils = trpc.useUtils();
     return trpc.communities.promoteMemberToLead.useMutation({
-        onSuccess: () => {
-            invalidateCommunityLeadCaches(utils, communityId);
+        onSuccess: async () => {
+            await invalidateCommunityLeadCaches(utils, communityId);
+            await utils.communities.getMembers.refetch({ id: communityId });
         },
     });
 }
@@ -88,8 +91,11 @@ export function usePromoteMemberToLead(communityId: string) {
 export function useDemoteSelfFromLead(communityId: string) {
     const utils = trpc.useUtils();
     return trpc.communities.demoteSelfFromLead.useMutation({
-        onSuccess: () => {
-            invalidateCommunityLeadCaches(utils, communityId);
+        onSuccess: async () => {
+            await invalidateCommunityLeadCaches(utils, communityId);
+            // Refetch members so demoted lead disappears from admin list without full reload.
+            // Superadmin may still appear as admin by platform role — that is intentional.
+            await utils.communities.getMembers.refetch({ id: communityId });
         },
     });
 }
@@ -98,9 +104,10 @@ export function useDemoteSelfFromLead(communityId: string) {
 export function useUpdateCommunityUserRoleAsSuperadmin(communityId: string) {
     const utils = trpc.useUtils();
     return trpc.communities.updateUserRole.useMutation({
-        onSuccess: (_data, variables) => {
-            invalidateCommunityLeadCaches(utils, communityId);
-            void utils.users.getUserRoles.invalidate({ userId: variables.userId });
+        onSuccess: async (_data, variables) => {
+            await invalidateCommunityLeadCaches(utils, communityId);
+            await utils.communities.getMembers.refetch({ id: communityId });
+            await utils.users.getUserRoles.invalidate({ userId: variables.userId });
         },
     });
 }

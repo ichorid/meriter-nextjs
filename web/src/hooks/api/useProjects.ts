@@ -8,7 +8,7 @@ import { useToastStore } from '@/shared/stores/toast.store';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { STALE_TIME } from '@/lib/constants/query-config';
-import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { invalidatePersonalWalletCaches } from '@/hooks/api/invalidate-community-session-caches';
 
 /** Matches API project.getById payload shape for placeholderData when list already has Community */
 export type ProjectGetByIdPlaceholder = {
@@ -155,13 +155,12 @@ export function useTopUpWallet() {
   const t = useTranslations('projects');
 
   return trpc.project.topUpWallet.useMutation({
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
       void utils.project.getWallet.invalidate({ projectId: variables.projectId });
       void utils.project.getById.invalidate({ id: variables.projectId });
       void utils.project.listInvestments.invalidate({ projectId: variables.projectId });
       void utils.users.myInvestments.invalidate();
-      void utils.wallets.getBalance.invalidate({ communityId: GLOBAL_COMMUNITY_ID });
-      void utils.wallets.getAll.invalidate();
+      await invalidatePersonalWalletCaches(utils, [variables.projectId]);
       if (data.mode === 'investment') {
         addToast(t('topUpSuccessInvestment'), 'success');
       } else {

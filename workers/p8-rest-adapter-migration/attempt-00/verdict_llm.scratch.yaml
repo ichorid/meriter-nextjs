@@ -1,0 +1,116 @@
+VerifierVerdict:
+  work_unit_id: p8-rest-adapter-migration
+  attempt: 0
+  channel: llm
+  verdict: pass
+  summary: >-
+    AuthController canonical implementation moved to adapters/rest/auth.controller.ts;
+    api-v1/auth/auth.controller.ts is a deprecated re-export shim and AuthModule registers
+    the adapter controller. OAuth, passkey, SMS/email OTP, magic link redeem, and call/status
+    endpoints delegate to application use cases while preserving per-endpoint REST response
+    envelopes (inv-18). Fake/mock auth, logout, /me, and call/init remain direct
+    infrastructure/service calls as noted by the worker.
+  reviewed_at: "2026-05-28"
+  diff_basis: >-
+    Uncommitted git diff on write_set (git diff HEAD~..HEAD shows prior
+    p7-profile-tabs-dedup commit; work-unit delta reviewed via git diff on
+    adapters/rest/ and api-v1/auth/ plus file read of adapters/rest/auth.controller.ts).
+
+  intent_match: true
+  write_set_compliance: true
+  files_modified:
+    - api/apps/meriter/src/adapters/rest/auth.controller.ts
+    - api/apps/meriter/src/adapters/rest/index.ts
+    - api/apps/meriter/src/api-v1/auth/auth.controller.ts
+    - api/apps/meriter/src/api-v1/auth/auth.module.ts
+  files_outside_write_set: []
+
+  constraint_checks:
+    - id: phase-8
+      status: pass
+      evidence: >-
+        REST auth transport relocated from api-v1/auth to adapters/rest with barrel export;
+        api-v1 path reduced to deprecated re-export matching prior phase retirement pattern.
+    - id: bounded_contexts-BC-12
+      status: pass
+      evidence: >-
+        adapters/rest/auth.controller.ts documents BC-12 REST auth adapter; AuthModule wires
+        controller from adapters/rest while auth services remain in api-v1/auth module providers.
+    - id: invariants-inv-18
+      status: pass
+      evidence: >-
+        Controller documents inv-18; compared HEAD vs adapter res.json shapes for logout/clear
+        ({success,data}), fake/superadmin ({success,data:{user,...}}), mock ({success,user,
+        isNewUser,jwt}), /me ({success,data:user}), passkey start endpoints (raw res.json without
+        wrapper), passkey finish ({success,...}), SMS/email OTP ({success,expiresIn,...} and
+        {success,user,isNewUser}), call/status CONFIRMED and pending envelopes unchanged.
+        OAuth/magic-link remain redirects (non-JSON).
+
+  success_criteria:
+    - id: REST_auth_controllers_under_adapters_rest
+      status: pass
+      evidence: >-
+        Canonical AuthController at api/apps/meriter/src/adapters/rest/auth.controller.ts;
+        adapters/rest/index.ts exports AuthController; api-v1/auth/auth.module.ts imports
+        controller from adapters/rest; only auth REST controller exists under api-v1/auth.
+    - id: inv_18_envelope_distinction_preserved
+      status: pass
+      evidence: >-
+        Transport-layer res.json/redirect shapes match pre-migration controller for all
+        audited endpoints; passkey/WebAuthn start endpoints still return unwrapped JSON;
+        data-wrapped vs flat success payloads unchanged from prior REST contract.
+
+  architecture_alignment:
+    - id: oauth-delegates-to-use-cases
+      status: pass
+      evidence: >-
+        google/yandex initiation calls InitiateOAuthUseCase; callbacks call
+        CompleteOAuthCallbackUseCase.completeGoogleCallback/completeYandexCallback (replaces
+        inline OAuth logic in HEAD controller).
+    - id: passkey-delegates-to-use-cases
+      status: pass
+      evidence: >-
+        RegisterPasskeyUseCase and AuthenticatePasskeyUseCase replace direct
+        authService.generate/verifyPasskey* calls from HEAD controller.
+    - id: otp-magic-call-delegate-to-use-cases
+      status: pass
+      evidence: >-
+        SendSmsOtpUseCase/VerifySmsOtpUseCase, SendEmailOtpUseCase/VerifyEmailOtpUseCase,
+        RedeemMagicLinkUseCase, VerifyCallCheckUseCase wired in constructor and invoked from
+        sms/email/link/call/status handlers.
+    - id: shim-preserves-api-v1-import-path
+      status: pass
+      evidence: >-
+        api-v1/auth/auth.controller.ts re-exports AuthController from adapters/rest for
+        backward-compatible import paths.
+    - id: depends-on-prerequisites
+      status: pass
+      evidence: >-
+        Use cases imported from application/use-cases/auth/* (p6b passkey, upload-related
+        session flows, prior establish-session wiring); no missing symbols in write_set tsc scan.
+
+  findings: []
+
+  warnings:
+    - id: call-init-still-service-direct
+      severity: info
+      message: >-
+        POST call/init still calls smsProviderService.initiateCallVerification directly;
+        acceptable per worker notes until InitCallCheckUseCase exists.
+    - id: mock-fake-me-direct-calls
+      severity: info
+      message: >-
+        Mock auth, fake/superadmin, GET /me, logout/clear-cookies remain on EstablishSessionUseCase,
+        AuthProviderService, or CookieManager without dedicated use cases; consistent with worker scope.
+    - id: manual-use-case-construction
+      severity: info
+      message: >-
+        Use cases instantiated manually in constructor (same pattern as EstablishSessionUseCase);
+        optional follow-up to Nest DI providers.
+    - id: uncommitted-changes
+      severity: info
+      message: >-
+        Work-unit changes are uncommitted on branch refactor/p8-rest-adapter-migration;
+        adapters/rest/auth.controller.ts is untracked new file.
+
+  blockers: []

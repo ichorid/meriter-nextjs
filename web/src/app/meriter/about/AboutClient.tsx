@@ -398,10 +398,10 @@ const AboutPage = () => {
                             <DialogTitle>{tSettings('platformTitle')}</DialogTitle>
                         </DialogHeader>
                         <div className="pt-4 space-y-6">
+                            <PlatformDevDangerSection />
                             <WelcomeMeritsPlatformRow />
                             <CategoryManagement />
                             <FutureVisionRubricatorRow />
-                            <PlatformDevDangerSection />
                             <ResetAboutToDemoRow />
                         </div>
                     </DialogContent>

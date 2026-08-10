@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import { cn } from '@/lib/utils';
 import { createEditorExtensions } from './create-editor-extensions';
+import { createLockedRangeHighlightExtension } from './locked-range-highlight-extension';
+import { createProposalRangeHighlightExtension } from './proposal-range-highlight-extension';
 import { FormatToolbar } from './FormatToolbar';
 import { DocumentStructureToolbar } from './DocumentStructureToolbar';
 import type { RichTextEditorProps } from './types';
@@ -18,11 +20,55 @@ export function RichTextEditor({
   documentActions,
   editorClassName,
   minEditorHeight = '150px',
+  lockedRanges = [],
+  lockedRangeTooltip = '',
+  proposalHighlightRanges = [],
+  toolbarSecondary,
 }: RichTextEditorProps) {
   const showDocumentToolbar = toolbar === 'document';
+  const lockedRangesRef = useRef(lockedRanges);
+  const lockedTooltipRef = useRef(lockedRangeTooltip);
+  const proposalRangesRef = useRef(proposalHighlightRanges);
+  lockedRangesRef.current = lockedRanges;
+  lockedTooltipRef.current = lockedRangeTooltip;
+  proposalRangesRef.current = proposalHighlightRanges;
+
+  const lockedHighlightExtension = useMemo(
+    () =>
+      createLockedRangeHighlightExtension({
+        getRanges: () => lockedRangesRef.current,
+        getTooltip: () => lockedTooltipRef.current,
+      }),
+    [],
+  );
+
+  const proposalHighlightExtension = useMemo(
+    () =>
+      createProposalRangeHighlightExtension({
+        getRanges: () => proposalRangesRef.current,
+      }),
+    [],
+  );
+
+  const lockedRangesKey = useMemo(
+    () => lockedRanges.map((r) => `${r.rangeStart}:${r.rangeEnd}`).join(','),
+    [lockedRanges],
+  );
+
+  const proposalRangesKey = useMemo(
+    () =>
+      proposalHighlightRanges
+        .map((r) => `${r.rangeStart}:${r.rangeEnd}:${r.tooltip.length}`)
+        .join('|'),
+    [proposalHighlightRanges],
+  );
 
   const editor = useEditor({
-    extensions: createEditorExtensions({ placeholder }),
+    extensions: [
+      ...createEditorExtensions({ placeholder }),
+      lockedHighlightExtension,
+      proposalHighlightExtension,
+    ],
     content: content || '',
     editable,
     immediatelyRender: false,
@@ -39,6 +85,13 @@ export function RichTextEditor({
       },
     },
   });
+
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+    editor.view.dispatch(editor.state.tr);
+  }, [editor, lockedRangesKey, lockedRangeTooltip, proposalRangesKey]);
 
   useEffect(() => {
     if (!editor) {
@@ -67,9 +120,24 @@ export function RichTextEditor({
       )}
     >
       {showFormatToolbar ? (
-        <div className="rounded-t-xl overflow-hidden">
+        <div
+          className={cn(
+            'rounded-t-xl overflow-hidden',
+            toolbarSecondary ? 'border-b border-base-300 bg-base-200' : null,
+          )}
+        >
           {showDocumentToolbar ? <DocumentStructureToolbar actions={documentActions} /> : null}
-          <FormatToolbar editor={editor} variant={toolbar} disabled={!editable} />
+          <FormatToolbar
+            editor={editor}
+            variant={toolbar}
+            disabled={!editable}
+            embedded={Boolean(toolbarSecondary)}
+          />
+          {toolbarSecondary ? (
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5 px-2 pb-2 pt-0 sm:gap-2 sm:px-3">
+              {toolbarSecondary}
+            </div>
+          ) : null}
         </div>
       ) : null}
       <EditorContent

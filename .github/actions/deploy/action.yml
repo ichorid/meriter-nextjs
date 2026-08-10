@@ -12,9 +12,12 @@ inputs:
     description: 'Short commit SHA for image tag (stage/prod release builds)'
     required: false
   use-dev-image-tags:
-    description: 'Set true for dev branch deploys (web-dev-latest / api-dev-latest)'
+    description: 'Set true for dev branch deploys (web-dev-latest / api-dev-latest / community-web-dev-latest)'
     required: false
     default: 'false'
+  bot-token:
+    description: 'Optional BOT_TOKEN for dev/prod profile merge (GitHub environment secret)'
+    required: false
 
 runs:
   using: 'composite'
@@ -36,6 +39,13 @@ runs:
       run: |
         mkdir -p ~/.ssh
         ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+    # Normalize LF on the runner before scp so a Windows-corrupted working tree
+    # cannot land on the VPS. Then re-check integrity.
+    - name: Normalize and verify shell script line endings
+      shell: bash
+      run: |
+        set -euo pipefail
+        bash scripts/ci/check-shell-lf.sh --fix
     # Stack definition on the VPS must match the repo (compose, init scripts, Caddy).
     # Image pull alone does not update docker-compose.yml or mongodb-init/.
     # Use scp (not rsync): ubuntu-latest runners may not ship rsync.
@@ -47,9 +57,13 @@ runs:
         set -euo pipefail
         TARGET="deploy@${VPS_HOST}:/opt/meriter/"
         scp docker-compose.yml deploy.sh Caddyfile "$TARGET"
-        ssh "deploy@${VPS_HOST}" "mkdir -p /opt/meriter/scripts/docker"
+        ssh "deploy@${VPS_HOST}" "mkdir -p /opt/meriter/scripts/docker /opt/meriter/scripts/vps/profiles"
         scp scripts/docker/mongo-docker-entry.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/docker/mongo-docker-entry.sh"
-        ssh "deploy@${VPS_HOST}" "chmod +x /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh"
+        scp scripts/vps/apply-telegram-profile.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/apply-telegram-profile.sh"
+        scp scripts/vps/profiles/dev.env "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/profiles/dev.env"
+        scp scripts/vps/profiles/prod.env "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/profiles/prod.env"
+        scp scripts/vps/mongodb-backup.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/mongodb-backup.sh"
+        ssh "deploy@${VPS_HOST}" "sed -i 's/\\r\$//' /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh /opt/meriter/scripts/vps/apply-telegram-profile.sh /opt/meriter/scripts/vps/mongodb-backup.sh && chmod +x /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh /opt/meriter/scripts/vps/apply-telegram-profile.sh /opt/meriter/scripts/vps/mongodb-backup.sh"
         ssh "deploy@${VPS_HOST}" "rm -rf /opt/meriter/mongodb-init"
         scp -r mongodb-init "deploy@${VPS_HOST}:/opt/meriter/"
     - name: Run remote deploy script
@@ -58,11 +72,9 @@ runs:
         VPS_HOST: ${{ inputs.vps-host }}
         COMMIT_SHA: ${{ inputs.commit-sha }}
         USE_DEV_IMAGE_TAGS: ${{ inputs.use-dev-image-tags }}
+        BOT_TOKEN: ${{ inputs.bot-token }}
       run: |
-        ssh "deploy@$VPS_HOST" <<EOF
-          cd /opt/meriter
-          export COMMIT_SHA="$COMMIT_SHA"
-          export USE_DEV_IMAGE_TAGS="$USE_DEV_IMAGE_TAGS"
-          ./deploy.sh
-        EOF
+        set -euo pipefail
+        # Integrity gate on VPS: zero-newline or lingering CR must not reach bash/shebang.
+        ssh "deploy@${VPS_HOST}" "cd /opt/meriter && lines=\$(wc -l < deploy.sh | tr -d '[:space:]') && test \"\${lines:-0}\" -gt 0 && ! grep -q \$'\\r' deploy.sh && export COMMIT_SHA='${COMMIT_SHA}' USE_DEV_IMAGE_TAGS='${USE_DEV_IMAGE_TAGS}' BOT_TOKEN='${BOT_TOKEN}' && bash deploy.sh"
 

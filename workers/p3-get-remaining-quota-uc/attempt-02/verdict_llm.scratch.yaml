@@ -1,0 +1,181 @@
+VerifierVerdict:
+  work_unit_id: p3-get-remaining-quota-uc
+  attempt: 2
+  channel: llm
+  verdict: partial
+  summary: >-
+    Attempt 2 closes all attempt-1 write_set gaps: GetRemainingQuotaUseCase orchestrates
+    cap/window/aggregate/compute with active params.db; publication-creation-quota shim
+    and events.router both route through the use case (V-02 closed). Write_set inline
+    quota math is retired in publication-creation-quota and getCommunityMembers. V-01
+    remains open (document-variant.service.ts still imports the tRPC helper), and P-3
+    cluster duplication persists in polls/votes/wallets routers named by intent but
+    outside write_set.
+  reviewed_at: "2026-05-28"
+  diff_basis: >-
+    Uncommitted git diff on branch refactor/p3-get-remaining-quota-uc
+    (git diff HEAD~..HEAD reflects unrelated p2-vote-comment-resolver-adapter commit;
+    work-unit delta reviewed via git diff on the four write_set files plus direct reads
+    of get-remaining-quota.use-case.ts and downstream consumers).
+
+  intent_match: partial
+  write_set_compliance: true
+  files_modified:
+    - api/apps/meriter/src/application/use-cases/wallets/get-remaining-quota.use-case.ts
+    - api/apps/meriter/src/trpc/helpers/publication-creation-quota.ts
+    - api/apps/meriter/src/domain/services/community.service.ts
+    - api/apps/meriter/src/trpc/routers/events.router.ts
+
+  constraint_checks:
+    - id: phase-3
+      status: pass
+      evidence: >-
+        Application use case at application/use-cases/wallets/get-remaining-quota.use-case.ts
+        orchestrates BC-02 quota flow; tRPC entry points delegate via
+        createGetRemainingQuotaUseCase factory.
+    - id: bounded_contexts-BC-02
+      status: pass
+      evidence: >-
+        CommunityService helpers document BC-02 inv-02 (getQuotaStartTime,
+        getPublicationCreateDailyCap, getDailyEmissionCapForQuota, computeRemainingQuota,
+        aggregateQuotaUsedSince). Use case class docstring cites BC-02 inv-02 (P-3).
+    - id: duplication_clusters-P-3
+      status: partial
+      evidence: >-
+        Write_set duplication retired: publication-creation-quota.ts reduced to ~30-line
+        use-case delegate; getCommunityMembers uses shared cap/compute helpers instead of
+        inline aggregation math. Full P-3 cluster copies remain in polls.router.ts (~100-line
+        getRemainingQuota), votes.router.ts, and wallets.router.ts (getQuota, batch quota,
+        getFreeBalance inline aggregation).
+    - id: invariants-inv-02
+      status: pass
+      evidence: >-
+        Quota window, cap derivation, used aggregation, and remaining computation centralized
+        in CommunityService for write_set paths; use case passes explicit db handle to
+        aggregateQuotaUsedSince preserving tRPC connection semantics.
+    - id: retirement_criteria-P-3
+      status: partial
+      evidence: >-
+        Write_set inline math retired; intent-named polls.router and wallets.router not in
+        write_set and still contain duplicate aggregation pipelines.
+    - id: closes_waiver-V-02
+      status: pass
+      evidence: >-
+        events.router.ts imports createGetRemainingQuotaUseCase from application layer;
+        no import of trpc/helpers/publication-creation-quota. createEvent calls
+        getRemainingQuota.forPublicationCreate({ userId, communityId, community, db }) at
+        lines 81–86 and 105–110.
+    - id: closes_waiver-V-01
+      status: fail
+      evidence: >-
+        document-variant.service.ts:33 still imports getRemainingQuotaForPublicationCreate
+        from trpc/helpers/publication-creation-quota; calls at lines 854 and 878. Domain
+        API communityService.getRemainingPublicationCreateQuota exists but consumer not migrated.
+
+  success_criteria:
+    - id: single_use_case_owns_remaining_quota_calculation
+      status: pass
+      evidence: >-
+        GetRemainingQuotaUseCase.forPublicationCreate / forDailyEmission orchestrate
+        getPublicationCreateDailyCap|getDailyEmissionCapForQuota → getQuotaStartTime →
+        aggregateQuotaUsedSince(db) → computeRemainingQuota. CommunityService owns shared
+        aggregation primitives and zone-8 domain getRemaining* methods; use case is the
+        single application entry for tRPC quota calculation.
+    - id: routers_delegate_to_use_case
+      status: partial
+      evidence: >-
+        events.router delegates directly via createGetRemainingQuotaUseCase(ctx).
+        publication-creation-quota shim delegates via createGetRemainingQuotaUseCase({ communityService }),
+        so publications.router indirect path also routes through the use case. polls.router,
+        votes.router, and wallets.router retain local inline getRemainingQuota / aggregation
+        helpers (not in write_set).
+    - id: V-01_closed
+      status: fail
+      evidence: >-
+        document-variant.service.ts domain→trpc import persists; V-01 waiver active despite
+        work-unit constraint closes_waiver: V-01.
+    - id: V-02_closed
+      status: pass
+      evidence: >-
+        events.router.ts quota-helper import retired; uses GetRemainingQuotaUseCase factory
+        with explicit db validation.
+    - id: P-3_retirement_criterion_met
+      status: partial
+      evidence: >-
+        Write_set sites (publication-creation-quota, getCommunityMembers) retired;
+        codebase-wide P-3 cluster not eliminated (polls/votes/wallets routers).
+
+  architecture_alignment:
+    - id: zone-8-domain-no-application-import
+      status: pass
+      evidence: >-
+        Domain CommunityService owns aggregation and getRemainingPublicationCreateQuota /
+        getRemainingDailyEmissionQuota for zone-8 consumers. Application use case delegates
+        downward; no domain→application imports.
+    - id: application-bootstrap-registration
+      status: info
+      evidence: >-
+        GetRemainingQuotaUseCase not registered in applicationUseCaseProviders; tRPC uses
+        createGetRemainingQuotaUseCase(ctx) factory as interim wiring.
+    - id: db-param-active
+      status: pass
+      evidence: >-
+        GetRemainingQuotaParams.db validated and forwarded to
+        communityService.aggregateQuotaUsedSince(..., params.db); attempt-1 void params.db
+        dead code removed.
+
+  attempt_delta_from_prior:
+    - id: attempt-1-publication-shim-bypass
+      status: resolved
+      evidence: >-
+        publication-creation-quota.ts now calls createGetRemainingQuotaUseCase({ communityService })
+        .forPublicationCreate({...}) instead of communityService.getRemainingPublicationCreateQuota
+        directly.
+    - id: attempt-1-dead-db-param
+      status: resolved
+      evidence: >-
+        Use case forPublicationCreate/forDailyEmission validate params.db and pass it to
+        aggregateQuotaUsedSince; events.router and shim both supply connection.db.
+    - id: attempt-1-publications-router-bypass
+      status: resolved
+      evidence: >-
+        publications.router still imports the tRPC shim, but shim now routes through
+        GetRemainingQuotaUseCase rather than bypassing to CommunityService domain method.
+    - id: attempt-1-v01-document-variant
+      status: unresolved
+      evidence: >-
+        document-variant.service.ts import unchanged; file outside write_set.
+    - id: attempt-1-p3-router-duplication
+      status: unresolved
+      evidence: >-
+        polls.router, votes.router, wallets.router inline helpers unchanged; outside write_set.
+
+  findings:
+    - id: v01-document-variant-unmigrated
+      severity: blocker
+      message: >-
+        document-variant.service.ts still imports trpc/helpers/publication-creation-quota;
+        V-01 waiver not closed despite work-unit constraint closes_waiver: V-01.
+    - id: p3-router-duplication-persists
+      severity: blocker
+      message: >-
+        Intent names wallets.router and polls.router retirement; both still contain full
+        inline quota aggregation. votes.router has a third copy. P-3 cluster not retired
+        codebase-wide (routers outside write_set).
+
+  warnings:
+    - id: use-case-untracked
+      severity: info
+      message: >-
+        get-remaining-quota.use-case.ts lives under untracked
+        application/use-cases/wallets/ directory; work-unit changes remain uncommitted.
+    - id: domain-parallel-api
+      severity: info
+      message: >-
+        CommunityService.getRemainingPublicationCreateQuota / getRemainingDailyEmissionQuota
+        duplicate orchestration logic for zone-8 domain consumers; intentional split per
+        zone-8 architecture but creates two entry paths until document-variant migrates.
+
+  blockers:
+    - v01-document-variant-unmigrated
+    - p3-router-duplication-persists

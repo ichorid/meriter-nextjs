@@ -46,6 +46,9 @@ RUN mkdir -p /out && \
     cp libs/shared-types/package.json /out/libs/shared-types/package.json && \
     # Copy public directory (favicon)
     cp -R api/apps/meriter/public /out/public && \
+    mkdir -p /out/scripts && \
+    cp api/scripts/setup-webhook.js /out/scripts/setup-webhook.js && \
+    cp api/scripts/setup-bot-menu.js /out/scripts/setup-bot-menu.js && \
     # Demo seed TSV (webpack bundle does not include these; platformDemo.seedDemoWorld reads from here)
     mkdir -p /out/dist/apps/meriter/seed-data && \
     cp -R api/apps/meriter/seed-data/. /out/dist/apps/meriter/seed-data/
@@ -60,10 +63,12 @@ ENV CI=true
 # Copy built artifacts and production node_modules (from pnpm deploy)
 COPY --from=builder --chown=nestjs:nodejs /out ./
 
-# Install production dependencies
-RUN pnpm install --prod && \
-    rm -f package.json.root pnpm-workspace.yaml pnpm-lock.yaml
+# node_modules are built in the builder stage with --frozen-lockfile.
+# Do not run pnpm install here: without the lockfile semver can bump transitive
+# deps (sanitize-html → htmlparser2@12 ESM) and crash Nest at runtime (ERR_REQUIRE_ESM).
+RUN rm -f package.json.root pnpm-workspace.yaml pnpm-lock.yaml 2>/dev/null || true
 
 USER nestjs
 EXPOSE 8002
+# Collaborative documents migration runs on process start (CollaborativeDocumentsMigrationService.onModuleInit).
 CMD ["node", "dist/apps/meriter/main"]

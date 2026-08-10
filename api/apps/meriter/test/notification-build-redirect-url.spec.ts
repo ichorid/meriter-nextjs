@@ -44,7 +44,7 @@ describe('NotificationService.buildRedirectUrl', () => {
           },
         }),
       ),
-    ).toBe('/meriter/communities/birzha-1?post=pub-2');
+    ).toBe('/meriter/communities/birzha-1/posts/pub-2');
   });
 
   it('project_distributed uses project page', () => {
@@ -69,7 +69,7 @@ describe('NotificationService.buildRedirectUrl', () => {
           },
         }),
       ),
-    ).toBe('/meriter/communities/fv-1?post=pub-ob');
+    ).toBe('/meriter/communities/fv-1/posts/pub-ob');
   });
 
   it('ob_vote_join_offer falls back to futureVisionCommunityId', () => {
@@ -83,7 +83,7 @@ describe('NotificationService.buildRedirectUrl', () => {
           },
         }),
       ),
-    ).toBe('/meriter/communities/fv-2?post=pub-x');
+    ).toBe('/meriter/communities/fv-2/posts/pub-x');
   });
 
   it('team_join_request uses members path when only communityId', () => {
@@ -147,5 +147,33 @@ describe('NotificationService.buildRedirectUrl', () => {
         }),
       ),
     ).toBe('/meriter/projects/p-9');
+  });
+
+  it('document notifications use document page redirect', () => {
+    const metadata = { communityId: 'c-doc', documentId: 'doc-42', blockId: 'blk-1' };
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'document_variant_proposed',
+          metadata,
+        }),
+      ),
+    ).toBe('/meriter/communities/c-doc/documents/doc-42#block-blk-1');
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'document_variant_not_selected',
+          metadata: { communityId: 'c-doc', documentId: 'doc-42' },
+        }),
+      ),
+    ).toBe('/meriter/communities/c-doc/documents/doc-42');
+    expect(
+      service.buildRedirectUrl(
+        n({
+          type: 'document_variant_won',
+          metadata,
+        }),
+      ),
+    ).toBe('/meriter/communities/c-doc/documents/doc-42#block-blk-1');
   });
 });

@@ -3,6 +3,7 @@
 /**
  * Manual / dry-run entry for collaborative-documents migration.
  * Production API runs the same logic on startup via `CollaborativeDocumentsMigrationService`.
+ * Community defaults are resolved at runtime by CommunityDefaultsService (not Mongoose schema defaults).
  *
  * Usage:
  *   pnpm --filter @meriter/api migrate:collaborative-documents [--dry-run]

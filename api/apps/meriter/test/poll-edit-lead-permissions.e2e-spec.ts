@@ -202,9 +202,9 @@ describe('Poll Edit and Lead Permissions E2E', () => {
     });
 
     it('should NOT allow poll author to edit poll with votes', async () => {
-      // Create poll as author
+      // Create poll as author (quota participates in casts only when the poll opts in)
       (global as any).testUserId = authorId;
-      const pollDto = createTestPoll(communityId, {});
+      const pollDto = createTestPoll(communityId, { settings: { quotaAllowed: true } });
       const created = await trpcMutation(app, 'polls.create', pollDto);
 
       const pollId = created.id;

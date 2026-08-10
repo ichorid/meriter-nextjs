@@ -2,34 +2,33 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Inject,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import {
-  CommunityWalletSchemaClass,
-  CommunityWalletDocument,
-} from '../models/community-wallet/community-wallet.schema';
 import type { CommunityWallet } from '../models/community-wallet/community-wallet.schema';
 import { uid } from 'uid';
+import {
+  COMMUNITY_WALLET_PERSISTENCE_PORT,
+  type CommunityWalletPersistencePort,
+} from '../ports/community-wallet.persistence.port';
 
 @Injectable()
 export class CommunityWalletService {
   constructor(
-    @InjectModel(CommunityWalletSchemaClass.name)
-    private readonly communityWalletModel: Model<CommunityWalletDocument>,
+    @Inject(COMMUNITY_WALLET_PERSISTENCE_PORT)
+    private readonly communityWalletPersistence: CommunityWalletPersistencePort,
   ) {}
 
   /**
    * Create a wallet for a community (e.g. project). Idempotent: if wallet exists, return it.
    */
   async createWallet(communityId: string): Promise<CommunityWallet> {
-    const existing = await this.communityWalletModel
-      .findOne({ communityId })
-      .lean();
+    const existing = await this.communityWalletPersistence.findByCommunityId(
+      communityId,
+    );
     if (existing) {
       return existing as unknown as CommunityWallet;
     }
-    const doc = await this.communityWalletModel.create({
+    const doc = await this.communityWalletPersistence.createWallet({
       id: uid(),
       communityId,
       balance: 0,
@@ -38,16 +37,16 @@ export class CommunityWalletService {
       createdAt: new Date(),
       updatedAt: new Date(),
     });
-    return doc.toObject() as unknown as CommunityWallet;
+    return doc as unknown as CommunityWallet;
   }
 
   /**
    * Get wallet by community ID.
    */
   async getWallet(communityId: string): Promise<CommunityWallet | null> {
-    const doc = await this.communityWalletModel
-      .findOne({ communityId })
-      .lean();
+    const doc = await this.communityWalletPersistence.findByCommunityId(
+      communityId,
+    );
     return doc ? (doc as unknown as CommunityWallet) : null;
   }
 
@@ -70,20 +69,17 @@ export class CommunityWalletService {
     if (amount <= 0) {
       throw new BadRequestException('Deposit amount must be positive');
     }
-    const doc = await this.communityWalletModel.findOneAndUpdate(
-      { communityId },
-      {
-        $inc: { balance: amount, totalReceived: amount },
-        $set: { updatedAt: new Date() },
-      },
-      { new: true },
+    const doc = await this.communityWalletPersistence.deposit(
+      communityId,
+      amount,
+      new Date(),
     );
     if (!doc) {
       throw new NotFoundException(
         `CommunityWallet not found for community ${communityId}`,
       );
     }
-    return doc.toObject() as unknown as CommunityWallet;
+    return doc as unknown as CommunityWallet;
   }
 
   /**
@@ -97,13 +93,10 @@ export class CommunityWalletService {
     if (amount <= 0) {
       throw new BadRequestException('Amount must be positive');
     }
-    const doc = await this.communityWalletModel.findOneAndUpdate(
-      { communityId, balance: { $gte: amount } },
-      {
-        $inc: { balance: -amount },
-        $set: { updatedAt: new Date() },
-      },
-      { new: true },
+    const doc = await this.communityWalletPersistence.deductBalance(
+      communityId,
+      amount,
+      new Date(),
     );
     if (!doc) {
       const wallet = await this.getWallet(communityId);
@@ -112,7 +105,7 @@ export class CommunityWalletService {
         `Insufficient balance: have ${balance}, need ${amount}`,
       );
     }
-    return doc.toObject() as unknown as CommunityWallet;
+    return doc as unknown as CommunityWallet;
   }
 
   /**
@@ -126,13 +119,10 @@ export class CommunityWalletService {
     if (amount <= 0) {
       throw new BadRequestException('Debit amount must be positive');
     }
-    const doc = await this.communityWalletModel.findOneAndUpdate(
-      { communityId, balance: { $gte: amount } },
-      {
-        $inc: { balance: -amount, totalDistributed: amount },
-        $set: { updatedAt: new Date() },
-      },
-      { new: true },
+    const doc = await this.communityWalletPersistence.debit(
+      communityId,
+      amount,
+      new Date(),
     );
     if (!doc) {
       const wallet = await this.getWallet(communityId);
@@ -141,7 +131,7 @@ export class CommunityWalletService {
         `Insufficient balance: have ${balance}, need ${amount}`,
       );
     }
-    return doc.toObject() as unknown as CommunityWallet;
+    return doc as unknown as CommunityWallet;
   }
 
   /**
@@ -154,19 +144,16 @@ export class CommunityWalletService {
     if (amount <= 0) {
       throw new BadRequestException('Amount must be positive');
     }
-    const doc = await this.communityWalletModel.findOneAndUpdate(
-      { communityId },
-      {
-        $inc: { totalDistributed: amount },
-        $set: { updatedAt: new Date() },
-      },
-      { new: true },
+    const doc = await this.communityWalletPersistence.addTotalDistributed(
+      communityId,
+      amount,
+      new Date(),
     );
     if (!doc) {
       throw new NotFoundException(
         `CommunityWallet not found for community ${communityId}`,
       );
     }
-    return doc.toObject() as unknown as CommunityWallet;
+    return doc as unknown as CommunityWallet;
   }
 }

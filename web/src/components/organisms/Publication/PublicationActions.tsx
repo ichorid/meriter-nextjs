@@ -226,7 +226,10 @@ export const PublicationActions: React.FC<PublicationActionsProps> = ({
   // Mutual exclusivity logic
   // Withdrawal is enabled - users can manually withdraw accumulated votes to permanent merits
   // Check if community allows withdrawals
-  const allowWithdraw = community?.settings?.allowWithdraw ?? true;
+  const allowWithdraw =
+    community?.typeTag === 'future-vision'
+      ? false
+      : (community?.settings?.allowWithdraw ?? true);
   const canShowWithdraw =
     !hideWithdrawFromProjectAppreciation &&
     !ticketPostMode &&

@@ -4,22 +4,29 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Inject,
 } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import {
-  PublicationSchemaClass,
-  PublicationDocument,
-} from '../models/publication/publication.schema';
 import { PublicationId } from '../value-objects';
 import { CommunityService } from './community.service';
 import { UserCommunityRoleService } from './user-community-role.service';
 import { UserService } from './user.service';
-import { NotificationService } from './notification.service';
-import { VoteService } from './vote.service';
 import { EventBus } from '../events/event-bus';
-import { PublicationCreatedEvent } from '../events';
+import {
+  PublicationCreatedEvent,
+  TicketAssignedEvent,
+  TicketApplyEvent,
+  TicketRejectedEvent,
+} from '../events';
 import { GLOBAL_ROLE_SUPERADMIN } from '../common/constants/roles.constants';
+import {
+  TRANSITION_TICKET_STATUS_PORT,
+  type TransitionTicketStatusPort,
+} from '../ports/transition-ticket-status.port';
+import {
+  TICKET_PERSISTENCE_PORT,
+  type TicketPersistencePort,
+  type TicketRecord,
+} from '../ports/ticket.persistence.port';
 
 export interface CreateTicketDto {
   title: string;
@@ -47,13 +54,13 @@ export class TicketService {
   private readonly logger = new Logger(TicketService.name);
 
   /** Rich metadata for ticket-related notifications (URLs + client copy). */
-  private async buildTicketNotificationMetadata(
+  async buildTicketNotificationMetadata(
     ticketId: string,
     projectId: string,
     extra: Record<string, unknown> = {},
   ): Promise<Record<string, unknown>> {
     const [ticket, project] = await Promise.all([
-      this.publicationModel.findOne({ id: ticketId }).select('title').lean().exec(),
+      this.ticketPersistence.findOneLean({ id: ticketId }, 'title'),
       this.communityService.getCommunity(projectId),
     ]);
     const rawTitle = ticket && typeof (ticket as { title?: string }).title === 'string'
@@ -112,33 +119,15 @@ export class TicketService {
   }
 
   constructor(
-    @InjectModel(PublicationSchemaClass.name)
-    private publicationModel: Model<PublicationDocument>,
+    @Inject(TICKET_PERSISTENCE_PORT)
+    private readonly ticketPersistence: TicketPersistencePort,
     private communityService: CommunityService,
     private userCommunityRoleService: UserCommunityRoleService,
     private userService: UserService,
-    private notificationService: NotificationService,
-    private voteService: VoteService,
     private eventBus: EventBus,
-  ) {}
-
-  private assigneeDeclinePublicationComment(locale: string | undefined, reason: string): string {
-    const loc = (locale ?? '').toLowerCase();
-    if (loc === 'ru' || loc.startsWith('ru-')) {
-      return `Отказался: ${reason}`;
-    }
-    return `Declined: ${reason}`;
-  }
-
-  private leadReturnForRevisionPublicationComment(
-    locale: string | undefined,
-    reason: string,
-  ): string {
-    const loc = (locale ?? '').toLowerCase();
-    if (loc === 'ru' || loc.startsWith('ru-')) {
-      return `Возврат на доработку: ${reason}`;
-    }
-    return `Returned for revision: ${reason}`;
+    @Inject(TRANSITION_TICKET_STATUS_PORT)
+    private readonly transitionTicketStatusUseCase: TransitionTicketStatusPort,
+  ) {
   }
 
   private async assertProjectLeadOrSuperadmin(userId: string, projectId: string): Promise<void> {
@@ -161,7 +150,7 @@ export class TicketService {
     action: string,
     detail?: Record<string, unknown>,
   ): Promise<void> {
-    await this.publicationModel.updateOne(
+    await this.ticketPersistence.updateOne(
       { id: ticketId },
       {
         $push: {
@@ -208,7 +197,7 @@ export class TicketService {
     const id = PublicationId.generate().getValue();
     const now = new Date();
 
-    await this.publicationModel.create({
+    await this.ticketPersistence.create({
       id,
       communityId: projectId,
       authorId: leadUserId,
@@ -234,19 +223,9 @@ export class TicketService {
       new PublicationCreatedEvent(id, leadUserId, projectId),
     );
 
-    try {
-      await this.notificationService.createNotification({
-        userId: dto.beneficiaryId,
-        type: 'ticket_assigned',
-        source: 'system',
-        sourceId: leadUserId,
-        metadata: await this.buildTicketNotificationMetadata(id, projectId, { leadUserId }),
-        title: 'Ticket assigned',
-        message: `You were assigned a ticket in the project.`,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify beneficiary about ticket: ${err}`);
-    }
+    await this.eventBus.publish(
+      new TicketAssignedEvent(id, projectId, dto.beneficiaryId, leadUserId),
+    );
 
     this.logger.log(`Ticket created: ${id} in project ${projectId}`);
     return { id };
@@ -273,7 +252,7 @@ export class TicketService {
     const id = PublicationId.generate().getValue();
     const now = new Date();
 
-    await this.publicationModel.create({
+    await this.ticketPersistence.create({
       id,
       communityId: projectId,
       authorId: leadUserId,
@@ -308,7 +287,7 @@ export class TicketService {
    * Apply for a neutral ticket. Any authenticated user. Adds to applicants[], notifies lead.
    */
   async applyForTicket(ticketId: string, userId: string): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -334,22 +313,15 @@ export class TicketService {
     const applicantName = applicant?.displayName || applicant?.username || '';
     const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
     for (const lead of leads) {
-      try {
-        await this.notificationService.createNotification({
-          userId: lead.userId,
-          type: 'ticket_apply',
-          source: 'system',
-          sourceId: userId,
-          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-            applicantUserId: userId,
-            applicantName,
-          }),
-          title: 'New ticket application',
-          message: 'Someone applied for a neutral ticket in your project.',
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to notify lead about ticket apply: ${err}`);
-      }
+      await this.eventBus.publish(
+        new TicketApplyEvent(
+          ticketId,
+          projectId,
+          lead.userId,
+          userId,
+          applicantName,
+        ),
+      );
     }
 
     this.logger.log(`User ${userId} applied for ticket ${ticketId}`);
@@ -363,7 +335,7 @@ export class TicketService {
     leadUserId: string,
     applicantUserId: string,
   ): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -402,19 +374,9 @@ export class TicketService {
       status: 'in_progress',
     });
 
-    try {
-      await this.notificationService.createNotification({
-        userId: applicantUserId,
-        type: 'ticket_assigned',
-        source: 'system',
-        sourceId: leadUserId,
-        metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, { leadUserId }),
-        title: 'Ticket assigned',
-        message: 'You were assigned a ticket in the project.',
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify approved applicant: ${err}`);
-    }
+    await this.eventBus.publish(
+      new TicketAssignedEvent(ticketId, projectId, applicantUserId, leadUserId),
+    );
 
     const project = await this.communityService.getCommunity(projectId);
     const rejectionMessage =
@@ -422,21 +384,15 @@ export class TicketService {
 
     for (const otherUserId of applicants) {
       if (otherUserId === applicantUserId) continue;
-      try {
-        await this.notificationService.createNotification({
-          userId: otherUserId,
-          type: 'ticket_rejection',
-          source: 'system',
-          sourceId: leadUserId,
-          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-            rejectionMessage,
-          }),
-          title: 'Application not selected',
-          message: rejectionMessage,
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to notify rejected applicant ${otherUserId}: ${err}`);
-      }
+      await this.eventBus.publish(
+        new TicketRejectedEvent(
+          ticketId,
+          projectId,
+          otherUserId,
+          leadUserId,
+          rejectionMessage,
+        ),
+      );
     }
 
     this.logger.log(`Applicant ${applicantUserId} approved for ticket ${ticketId}`);
@@ -446,7 +402,7 @@ export class TicketService {
    * Lead/superadmin: take an open neutral ticket as assignee immediately (no applicant queue).
    */
   async assignOpenNeutralToSelfAsModerator(ticketId: string, userId: string): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -484,19 +440,9 @@ export class TicketService {
       selfAssignedByModerator: true,
     });
 
-    try {
-      await this.notificationService.createNotification({
-        userId: assigneeId,
-        type: 'ticket_assigned',
-        source: 'system',
-        sourceId: userId,
-        metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, { leadUserId: userId }),
-        title: 'Ticket assigned',
-        message: 'You were assigned a ticket in the project.',
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify assignee: ${err}`);
-    }
+    await this.eventBus.publish(
+      new TicketAssignedEvent(ticketId, projectId, assigneeId, userId),
+    );
 
     const project = await this.communityService.getCommunity(projectId);
     const rejectionMessage =
@@ -504,21 +450,15 @@ export class TicketService {
 
     for (const otherUserId of previousApplicants) {
       if (otherUserId === assigneeId) continue;
-      try {
-        await this.notificationService.createNotification({
-          userId: otherUserId,
-          type: 'ticket_rejection',
-          source: 'system',
-          sourceId: userId,
-          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-            rejectionMessage,
-          }),
-          title: 'Application not selected',
-          message: rejectionMessage,
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to notify rejected applicant ${otherUserId}: ${err}`);
-      }
+      await this.eventBus.publish(
+        new TicketRejectedEvent(
+          ticketId,
+          projectId,
+          otherUserId,
+          userId,
+          rejectionMessage,
+        ),
+      );
     }
 
     this.logger.log(`Open neutral ticket ${ticketId} self-assigned by moderator ${userId}`);
@@ -532,7 +472,7 @@ export class TicketService {
     leadUserId: string,
     applicantUserId: string,
   ): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -559,21 +499,15 @@ export class TicketService {
     const rejectionMessage =
       (project?.rejectionMessage?.trim()) || 'Your application was not selected.';
 
-    try {
-      await this.notificationService.createNotification({
-        userId: applicantUserId,
-        type: 'ticket_rejection',
-        source: 'system',
-        sourceId: leadUserId,
-        metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-          rejectionMessage,
-        }),
-        title: 'Application not selected',
-        message: rejectionMessage,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify rejected applicant: ${err}`);
-    }
+    await this.eventBus.publish(
+      new TicketRejectedEvent(
+        ticketId,
+        projectId,
+        applicantUserId,
+        leadUserId,
+        rejectionMessage,
+      ),
+    );
 
     this.logger.log(`Applicant ${applicantUserId} rejected for ticket ${ticketId}`);
   }
@@ -587,17 +521,13 @@ export class TicketService {
       throw new NotFoundException('Project not found');
     }
 
-    const list = await this.publicationModel
-      .find({
-        communityId: projectId,
-        postType: 'ticket',
-        isNeutralTicket: true,
-        ticketStatus: 'open',
-        deleted: { $ne: true },
-      })
-      .select('id title description')
-      .lean()
-      .exec();
+    const list = await this.ticketPersistence.findMany({
+      communityId: projectId,
+      postType: 'ticket',
+      isNeutralTicket: true,
+      ticketStatus: 'open',
+      deleted: { $ne: true },
+    });
 
     return list.map((d) => ({
       id: d.id,
@@ -610,7 +540,7 @@ export class TicketService {
    * Get applicants for a neutral ticket. Lead only.
    */
   async getApplicants(ticketId: string, leadUserId: string): Promise<string[]> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -633,75 +563,7 @@ export class TicketService {
     userId: string,
     newStatus: TicketStatus,
   ): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
-    if (!doc) {
-      throw new NotFoundException('Ticket not found');
-    }
-    if (doc.postType !== 'ticket') {
-      throw new BadRequestException('Publication is not a ticket');
-    }
-
-    const current = (doc.ticketStatus ?? 'in_progress') as TicketStatus;
-    if (newStatus === 'done' && current === 'in_progress') {
-      const beneficiaryId = doc.beneficiaryId ?? doc.authorId;
-      if (userId !== beneficiaryId) {
-        throw new ForbiddenException('Only the ticket beneficiary can mark it as done');
-      }
-      doc.ticketStatus = 'done';
-      doc.updatedAt = new Date();
-      await doc.save();
-
-      await this.appendTicketActivity(ticketId, userId, 'status_changed', {
-        from: current,
-        to: 'done',
-      });
-
-      const projectId = doc.communityId;
-      const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
-      for (const lead of leads) {
-        try {
-          await this.notificationService.createNotification({
-            userId: lead.userId,
-            type: 'ticket_done',
-            source: 'system',
-            sourceId: userId,
-            metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-              beneficiaryId: userId,
-            }),
-            title: 'Ticket marked done',
-            message: 'A ticket was marked as done and is ready for review.',
-          });
-        } catch (err) {
-          this.logger.warn(`Failed to notify lead about ticket done: ${err}`);
-        }
-      }
-
-      this.logger.log(`Ticket ${ticketId} marked done by beneficiary`);
-      return;
-    }
-
-    if (newStatus === 'in_progress' && current === 'closed') {
-      await this.assertProjectLeadOrSuperadmin(userId, doc.communityId);
-      const beneficiaryId = doc.beneficiaryId;
-      if (!beneficiaryId) {
-        throw new BadRequestException('Cannot reopen a ticket without an assignee');
-      }
-      doc.ticketStatus = 'in_progress';
-      doc.updatedAt = new Date();
-      await doc.save();
-
-      await this.appendTicketActivity(ticketId, userId, 'status_changed', {
-        from: 'closed',
-        to: 'in_progress',
-      });
-
-      this.logger.log(`Ticket ${ticketId} reopened (closed → in_progress) by lead/superadmin`);
-      return;
-    }
-
-    throw new BadRequestException(
-      `Invalid status transition or caller: current=${current}, requested=${newStatus}`,
-    );
+    await this.transitionTicketStatusUseCase.updateStatus({ ticketId, userId, newStatus });
   }
 
   /**
@@ -715,134 +577,19 @@ export class TicketService {
     reason: string,
     locale?: string,
   ): Promise<void> {
-    const trimmed = reason.trim();
-    if (trimmed.length === 0) {
-      throw new BadRequestException('Comment is required');
-    }
-    if (trimmed.length > 2000) {
-      throw new BadRequestException('Comment is too long');
-    }
-
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
-    if (!doc) {
-      throw new NotFoundException('Ticket not found');
-    }
-    if (doc.postType !== 'ticket') {
-      throw new BadRequestException('Publication is not a ticket');
-    }
-
-    const current = (doc.ticketStatus ?? 'in_progress') as TicketStatus;
-    if (current !== 'in_progress') {
-      throw new BadRequestException('Only a task in progress can be declined by the assignee');
-    }
-
-    const assigneeId = doc.beneficiaryId;
-    if (!assigneeId || assigneeId !== userId) {
-      throw new ForbiddenException('Only the current assignee can decline this task');
-    }
-
-    doc.set('beneficiaryId', null);
-    doc.ticketStatus = 'open';
-    doc.isNeutralTicket = true;
-    doc.applicants = [];
-    doc.updatedAt = new Date();
-    await doc.save();
-
-    await this.appendTicketActivity(ticketId, userId, 'assignee_declined', {
-      reason: trimmed,
-      from: 'in_progress',
-      to: 'open',
+    await this.transitionTicketStatusUseCase.declineAsAssignee({
+      ticketId,
+      userId,
+      reason,
+      locale,
     });
-
-    const commentText = this.assigneeDeclinePublicationComment(locale, trimmed);
-    try {
-      await this.voteService.createVote(
-        userId,
-        'publication',
-        ticketId,
-        0,
-        0,
-        'up',
-        commentText,
-        doc.communityId,
-      );
-    } catch (err) {
-      this.logger.error(
-        `Ticket ${ticketId}: assignee declined but failed to add publication comment vote: ${err}`,
-      );
-      throw err;
-    }
-
-    const projectId = doc.communityId;
-    const leads = await this.userCommunityRoleService.getUsersByRole(projectId, 'lead');
-    for (const lead of leads) {
-      try {
-        await this.notificationService.createNotification({
-          userId: lead.userId,
-          type: 'ticket_assignee_declined',
-          source: 'system',
-          sourceId: userId,
-          metadata: await this.buildTicketNotificationMetadata(ticketId, projectId, {
-            assigneeId: userId,
-            reason: trimmed,
-          }),
-          title: 'Assignee declined task',
-          message: `The assignee declined the task: ${trimmed.slice(0, 200)}`,
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to notify lead about assignee decline: ${err}`);
-      }
-    }
-
-    this.logger.log(`Ticket ${ticketId} declined by assignee ${userId}`);
   }
 
   /**
    * Lead accepts work: done → closed.
    */
   async acceptWork(ticketId: string, leadUserId: string): Promise<void> {
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
-    if (!doc) {
-      throw new NotFoundException('Ticket not found');
-    }
-    if (doc.postType !== 'ticket') {
-      throw new BadRequestException('Publication is not a ticket');
-    }
-
-    const current = (doc.ticketStatus ?? 'in_progress') as TicketStatus;
-    if (current !== 'done') {
-      throw new BadRequestException('Ticket must be in done status to accept work');
-    }
-
-    await this.assertProjectLeadOrSuperadmin(leadUserId, doc.communityId);
-
-    doc.ticketStatus = 'closed';
-    doc.updatedAt = new Date();
-    await doc.save();
-
-    await this.appendTicketActivity(ticketId, leadUserId, 'work_accepted', {
-      from: 'done',
-      to: 'closed',
-    });
-
-    const beneficiaryId = doc.beneficiaryId ?? doc.authorId;
-    try {
-      await this.notificationService.createNotification({
-        userId: beneficiaryId,
-        type: 'ticket_accepted',
-        source: 'system',
-        sourceId: leadUserId,
-        metadata: await this.buildTicketNotificationMetadata(ticketId, doc.communityId, {
-          leadUserId,
-        }),
-        title: 'Work accepted',
-        message: 'Your work was accepted by the project lead.',
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify beneficiary about accept: ${err}`);
-    }
-
-    this.logger.log(`Ticket ${ticketId} accepted (closed) by lead`);
+    await this.transitionTicketStatusUseCase.acceptWork({ ticketId, leadUserId });
   }
 
   /**
@@ -854,84 +601,12 @@ export class TicketService {
     reason: string,
     locale?: string,
   ): Promise<void> {
-    const trimmed = reason.trim();
-    if (trimmed.length === 0) {
-      throw new BadRequestException('Comment is required');
-    }
-    if (trimmed.length > 2000) {
-      throw new BadRequestException('Comment is too long');
-    }
-
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
-    if (!doc) {
-      throw new NotFoundException('Ticket not found');
-    }
-    if (doc.postType !== 'ticket') {
-      throw new BadRequestException('Publication is not a ticket');
-    }
-
-    const current = (doc.ticketStatus ?? 'in_progress') as TicketStatus;
-    if (current !== 'done') {
-      throw new BadRequestException(
-        'Ticket must be in done status to return for revision',
-      );
-    }
-
-    await this.assertProjectLeadOrSuperadmin(leadUserId, doc.communityId);
-
-    const assigneeId = doc.beneficiaryId ?? doc.authorId;
-    if (!assigneeId) {
-      throw new BadRequestException('Ticket has no assignee');
-    }
-
-    doc.ticketStatus = 'in_progress';
-    doc.updatedAt = new Date();
-    await doc.save();
-
-    await this.appendTicketActivity(ticketId, leadUserId, 'returned_for_revision', {
-      reason: trimmed,
-      from: 'done',
-      to: 'in_progress',
-      assigneeId,
+    await this.transitionTicketStatusUseCase.returnWorkForRevision({
+      ticketId,
+      leadUserId,
+      reason,
+      locale,
     });
-
-    const commentText = this.leadReturnForRevisionPublicationComment(locale, trimmed);
-    try {
-      await this.voteService.createVote(
-        leadUserId,
-        'publication',
-        ticketId,
-        0,
-        0,
-        'up',
-        commentText,
-        doc.communityId,
-      );
-    } catch (err) {
-      this.logger.error(
-        `Ticket ${ticketId}: return for revision but failed to add publication comment vote: ${err}`,
-      );
-      throw err;
-    }
-
-    try {
-      await this.notificationService.createNotification({
-        userId: assigneeId,
-        type: 'ticket_returned_for_revision',
-        source: 'system',
-        sourceId: leadUserId,
-        metadata: await this.buildTicketNotificationMetadata(ticketId, doc.communityId, {
-          reason: trimmed,
-          leadUserId,
-        }),
-        title: 'Task returned for revision',
-        message: trimmed.slice(0, 200),
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to notify assignee about return for revision: ${err}`);
-    }
-
-    this.logger.log(`Ticket ${ticketId} returned for revision by ${leadUserId}`);
   }
 
   /**
@@ -973,7 +648,7 @@ export class TicketService {
       throw new BadRequestException('No updates provided');
     }
 
-    const doc = await this.publicationModel.findOne({ id: ticketId }).exec();
+    const doc = await this.ticketPersistence.findOne({ id: ticketId });
     if (!doc) {
       throw new NotFoundException('Ticket not found');
     }
@@ -1055,7 +730,7 @@ export class TicketService {
       };
     }
 
-    await this.publicationModel.updateOne({ id: ticketId }, { $set, $push }).exec();
+    await this.ticketPersistence.updateOne({ id: ticketId }, { $set, $push });
     this.logger.log(`Ticket ${ticketId} updated by moderator ${moderatorUserId}`);
   }
 
@@ -1065,47 +740,40 @@ export class TicketService {
   async getTicketsByBeneficiary(
     projectId: string,
     userId: string,
-  ): Promise<PublicationDocument[]> {
-    const list = await this.publicationModel
-      .find({
-        communityId: projectId,
-        postType: 'ticket',
-        beneficiaryId: userId,
-        deleted: { $ne: true },
-      })
-      .exec();
-    return list as unknown as PublicationDocument[];
+  ): Promise<TicketRecord[]> {
+    return this.ticketPersistence.findMany({
+      communityId: projectId,
+      postType: 'ticket',
+      beneficiaryId: userId,
+      deleted: { $ne: true },
+    });
   }
 
   /**
    * Set ticket to open, no beneficiary, neutral (for leaveProject when user had in_progress).
    */
   async setTicketOpenAndNeutral(ticketId: string): Promise<void> {
-    await this.publicationModel
-      .updateOne(
-        { id: ticketId, postType: 'ticket' },
-        {
-          $set: {
-            ticketStatus: 'open',
-            beneficiaryId: null,
-            isNeutralTicket: true,
-            updatedAt: new Date(),
-          },
+    await this.ticketPersistence.updateOne(
+      { id: ticketId, postType: 'ticket' },
+      {
+        $set: {
+          ticketStatus: 'open',
+          beneficiaryId: null,
+          isNeutralTicket: true,
+          updatedAt: new Date(),
         },
-      )
-      .exec();
+      },
+    );
   }
 
   /**
    * Set ticket to closed (for leaveProject when user had done - work counted).
    */
   async setTicketClosed(ticketId: string): Promise<void> {
-    await this.publicationModel
-      .updateOne(
-        { id: ticketId, postType: 'ticket' },
-        { $set: { ticketStatus: 'closed', updatedAt: new Date() } },
-      )
-      .exec();
+    await this.ticketPersistence.updateOne(
+      { id: ticketId, postType: 'ticket' },
+      { $set: { ticketStatus: 'closed', updatedAt: new Date() } },
+    );
   }
 
   /**
@@ -1115,7 +783,7 @@ export class TicketService {
     projectId: string,
     userId: string,
     options: { postType?: 'ticket' | 'discussion'; ticketStatus?: TicketStatus } = {},
-  ): Promise<PublicationDocument[]> {
+  ): Promise<TicketRecord[]> {
     const project = await this.communityService.getCommunity(projectId);
     if (!project?.isProject) {
       throw new NotFoundException('Project not found');
@@ -1135,13 +803,7 @@ export class TicketService {
       filter.ticketStatus = options.ticketStatus;
     }
 
-    const list = await this.publicationModel
-      .find(filter)
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
-
-    return list as unknown as PublicationDocument[];
+    return this.ticketPersistence.findMany(filter, { sort: { createdAt: -1 } });
   }
 
   /**
@@ -1155,37 +817,8 @@ export class TicketService {
       throw new NotFoundException('Project not found');
     }
 
-    const pipeline = [
-      {
-        $match: {
-          communityId: projectId,
-          deleted: { $ne: true },
-          postType: { $in: ['ticket', 'discussion'] },
-          status: 'active',
-        },
-      },
-      {
-        $project: {
-          score: { $ifNull: ['$metrics.score', 0] },
-          effectiveUserId: {
-            $cond: {
-              if: { $eq: ['$postType', 'ticket'] },
-              then: { $ifNull: ['$beneficiaryId', '$authorId'] },
-              else: '$authorId',
-            },
-          },
-        },
-      },
-      {
-        $group: {
-          _id: '$effectiveUserId',
-          internalMerits: { $sum: '$score' },
-        },
-      },
-      { $match: { _id: { $ne: null } } },
-    ];
-
-    const grouped = await this.publicationModel.aggregate<{ _id: string; internalMerits: number }>(pipeline);
+    const grouped =
+      await this.ticketPersistence.aggregateProjectContributors(projectId);
     const totalActive = grouped.reduce((sum, r) => sum + r.internalMerits, 0);
     const totalFrozen = await this.userCommunityRoleService.getTotalFrozenInternalMerits(projectId);
     const total = totalActive + totalFrozen;

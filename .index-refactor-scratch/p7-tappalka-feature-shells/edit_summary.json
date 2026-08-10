@@ -1,0 +1,70 @@
+{
+  "work_unit_id": "p7-tappalka-feature-shells",
+  "status": "DONE",
+  "attempt": 1,
+  "files_changed": [
+    "web/src/features/tappalka/components/BirzhaSourcePostsShell.tsx",
+    "web/src/features/tappalka/components/BirzhaPublishShell.tsx",
+    "web/src/features/tappalka/components/index.ts",
+    "web/src/features/tappalka/index.ts",
+    "web/src/app/meriter/communities/[id]/birzha-posts/CommunityBirzhaPostsPageClient.tsx",
+    "web/src/app/meriter/communities/[id]/birzha-publish/BirzhaPublishPageClient.tsx",
+    "web/src/app/meriter/projects/[id]/birzha-posts/ProjectBirzhaPostsPageClient.tsx",
+    "web/src/app/meriter/projects/[id]/birzha-publish/ProjectBirzhaPublishPageClient.tsx"
+  ],
+  "changes": [
+    {
+      "file": "web/src/features/tappalka/components/BirzhaSourcePostsShell.tsx",
+      "summary": "W-1 canonical shell: shared Birzha source posts list UI (header, publish CTA, SourceBirzhaPostsList, AdaptiveLayout) parameterized by sourceEntityType/id, backPath, and publishHref."
+    },
+    {
+      "file": "web/src/features/tappalka/components/BirzhaPublishShell.tsx",
+      "summary": "W-2 canonical shell: shared Birzha publish flow (birzha hub lookup, loading/error, sticky header, PublicationCreateForm) with community Obsidian value-tag seeding via futureVisionPublicationId preserved."
+    },
+    {
+      "file": "web/src/features/tappalka/components/index.ts",
+      "summary": "Export BirzhaSourcePostsShell and BirzhaPublishShell."
+    },
+    {
+      "file": "web/src/features/tappalka/index.ts",
+      "summary": "Re-export Birzha shells and their prop types from feature barrel."
+    },
+    {
+      "file": "web/src/app/meriter/communities/[id]/birzha-posts/CommunityBirzhaPostsPageClient.tsx",
+      "summary": "Thin wrapper delegating to BirzhaSourcePostsShell with community routes."
+    },
+    {
+      "file": "web/src/app/meriter/projects/[id]/birzha-posts/ProjectBirzhaPostsPageClient.tsx",
+      "summary": "Thin wrapper delegating to BirzhaSourcePostsShell with project paths."
+    },
+    {
+      "file": "web/src/app/meriter/communities/[id]/birzha-publish/BirzhaPublishPageClient.tsx",
+      "summary": "Thin wrapper delegating to BirzhaPublishShell for community source."
+    },
+    {
+      "file": "web/src/app/meriter/projects/[id]/birzha-publish/ProjectBirzhaPublishPageClient.tsx",
+      "summary": "Thin wrapper delegating to BirzhaPublishShell for project source."
+    }
+  ],
+  "verification": {
+    "community_posts_client_lines": 33,
+    "project_posts_client_lines": 31,
+    "community_publish_client_lines": 17,
+    "project_publish_client_lines": 17,
+    "shared_posts_shell_lines": 92,
+    "shared_publish_shell_lines": 130,
+    "route_layer_duplicate_ui_removed": true,
+    "future_vision_seed_value_tags_preserved": true,
+    "obsidian_ui_classes_unchanged": true,
+    "no_source_birzha_posts_list_in_routes": true,
+    "no_publication_create_form_in_routes": true,
+    "no_get_birzha_community_in_routes": true
+  },
+  "success_criteria": {
+    "community_and_project_birzha_routes_thin_wrappers": true,
+    "w1_retirement_criterion_met": true,
+    "w2_retirement_criterion_met": true,
+    "inv_10_obsidian_tokens_preserved": true
+  },
+  "notes": "Attempt 1 confirms attempt-0 delta; no further write_set edits required. Prior attempt failed only on LLM verifier path (verdict_llm.scratch.yaml missing under non-wt workers dir); tsc/lint/static passed. Route page.tsx files unchanged; hub embeds continue importing route-local *PageClient re-exports."
+}

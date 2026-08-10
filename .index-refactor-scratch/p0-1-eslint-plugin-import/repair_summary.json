@@ -1,0 +1,13 @@
+{
+  "node_id": "p0-1-eslint-plugin-import",
+  "attempt": 1,
+  "files_changed": [],
+  "fixes_applied": [
+    "Confirmed eslint-plugin-import (^2.32.0) and eslint-import-resolver-typescript (^4.4.4) already in api/package.json devDependencies",
+    "Confirmed pnpm-lock.yaml resolves both packages under @meriter/api importer",
+    "Root-caused lint channel failure: verifier runs root `pnpm lint` (api + web) and compares output to empty baseline (baseline_count=0); all 888 delta issues are pre-existing @meriter/web warnings (542 no-explicit-any, 312 no-unused-vars), zero in api/",
+    "Verified reverting api/package.json+pnpm-lock.yaml to pre-node commit 86c20aba yields identical 888 web warnings — not caused by write_set",
+    "Re-verified pnpm install (exit 0) and `pnpm --filter @meriter/api lint` (exit 0, no import/resolver errors)"
+  ],
+  "notes": "No write_set edits required. Node success criteria are satisfied; lint verifier false positive is orchestrator baseline scope (full-repo lint vs empty baseline), outside bounded write_set."
+}

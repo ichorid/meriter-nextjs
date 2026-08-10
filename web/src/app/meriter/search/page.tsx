@@ -12,6 +12,14 @@ import { InfoCard } from '@/components/ui/InfoCard';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/shadcn/avatar';
 import { Loader2 } from 'lucide-react';
 import type { SearchContentType } from '@/types/api-v1';
+import { stripHtml } from '@/shared/lib/text';
+
+function formatSearchSnippet(text: string | undefined, maxLength = 100): string {
+  if (!text) return '';
+  const plain = stripHtml(text).replace(/\s+/g, ' ').trim();
+  if (plain.length <= maxLength) return plain;
+  return `${plain.slice(0, maxLength)}…`;
+}
 
 export default function SearchResultsPage() {
   const router = useRouter();
@@ -135,7 +143,7 @@ export default function SearchResultsPage() {
                     // Build subtitle string
                     const subtitleParts: string[] = [];
                     if (result.description) {
-                      subtitleParts.push(result.description.substring(0, 100));
+                      subtitleParts.push(formatSearchSnippet(result.description));
                     }
                     const metaParts: string[] = [];
                     if (result.author) {

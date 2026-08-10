@@ -1,0 +1,37 @@
+{
+  "work_unit_id": "p6-invest-tappalka-ucs",
+  "status": "DONE",
+  "attempt": 3,
+  "files_changed": [
+    "api/apps/meriter/src/application/use-cases/investments/invest-in-post.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/tappalka/process-tappalka-comparison.use-case.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/investments/invest-in-post.use-case.ts",
+      "summary": "BC-08 InvestInPostUseCase extracted from InvestmentService.processInvestment. inv-08 assertInvestPermission (PermissionService.getUserRoleInCommunity membership, post eligibility, marathon-of-good Birzha rule) runs before inv-01 assertInvestorSolvency (wallet.canAfford). Orchestrates wallet debit, publication pool update, and investment_received notification. createInvestInPostUseCaseFromContext wires publication model from mongoose connection."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/tappalka/process-tappalka-comparison.use-case.ts",
+      "summary": "BC-13 ProcessTappalkaComparisonUseCase wraps TappalkaService.submitChoice. inv-08 assertComparisonPermission (membership + tappalka-enabled) and assertPostsSolventForShowCost (pool/rating/Birzha/author-wallet eligibility paths mirroring getPair) run before side effects. Uses Nest ForbiddenException/BadRequestException/NotFoundException only; generic Error from submitChoice wrapped as BadRequestException. createProcessTappalkaComparisonUseCaseFromContext wires publication model from mongoose connection."
+    }
+  ],
+  "verification": {
+    "invest_in_post_use_case_exists": true,
+    "process_tappalka_comparison_use_case_exists": true,
+    "inv_08_permission_gates_before_side_effects": true,
+    "inv_01_wallet_solvency_gate_on_invest": true,
+    "tappalka_solvency_eligibility_pre_check": true,
+    "tappalka_nest_exception_layering": true,
+    "investments_invest_delegates": true,
+    "tappalka_submitChoice_delegates": true,
+    "eslint_write_set_files": 0,
+    "tsc_errors_in_write_set": 0
+  },
+  "success_criteria": {
+    "investments_and_tappalka_delegate": true,
+    "investor_e2e_green": "blocked_external",
+    "use_cases_extracted_with_gates": true
+  },
+  "notes": "Attempt 3 confirms write_set use cases complete with permission and solvency gates. investment.invest and tappalka.submitChoice delegate via create*FromContext factories (router wiring outside nominal write_set, present in working tree). eslint/tsc clean on both write_set files. Attempt-2 lint channel failure is from 35 pre-existing issues in auth/communities/permissions/domain files outside write_set. investment.e2e-spec.ts blocked at Nest bootstrap by pre-existing DI cycle from p5-permission-engine-merge."
+}

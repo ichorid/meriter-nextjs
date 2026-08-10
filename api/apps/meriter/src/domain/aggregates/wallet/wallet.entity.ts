@@ -88,6 +88,14 @@ export class Wallet {
     this.lastUpdated = new Date();
   }
 
+  /** Debit without balance check — used when product rules allow negative personal balance. */
+  deductAllowNegative(amount: number): void {
+    if (amount <= 0) throw new Error('Amount must be positive');
+    this.balance -= amount;
+    this.applyGlobalBalanceNormalization();
+    this.lastUpdated = new Date();
+  }
+
   canAfford(amount: number): boolean {
     return this.balance >= amount;
   }

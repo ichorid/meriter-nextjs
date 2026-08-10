@@ -134,62 +134,29 @@ export const SimpleStickyHeader: React.FC<{
       e.preventDefault();
       e.stopPropagation();
       // The main scroll container is .mainWrap
-      const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
-      if (mainWrap) {
-        mainWrap.scrollTo({ top: 0, behavior: 'smooth' });
-      } else {
-        // Fallback to window/document scroll
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
-        document.body.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      const mainWrap = document.querySelector('.mainWrap') as HTMLElement | null;
+      mainWrap?.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // Scroll detection for scroll-to-top button
     React.useEffect(() => {
       if (!showScrollToTop) return;
 
+      const mainWrap = document.querySelector('.mainWrap') as HTMLElement | null;
+      if (!mainWrap) return;
+
       const checkScroll = () => {
-        // The main scroll container is .mainWrap (has overflow: auto)
-        const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
-
-        let scrollTop = 0;
-        if (mainWrap) {
-          scrollTop = mainWrap.scrollTop;
-        } else {
-          // Fallback to window/document scroll if mainWrap not found
-          scrollTop = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-        }
-
         const windowHeight = window.innerHeight;
-
-        // Show button if scrolled more than half a screen
-        setShowScrollButton(scrollTop > windowHeight / 2);
+        setShowScrollButton(mainWrap.scrollTop > windowHeight / 2);
       };
 
-      // Check on mount with a small delay to ensure DOM is ready
       const timeoutId = setTimeout(checkScroll, 100);
-
-      // Listen to scroll events on the main scroll container
-      const mainWrap = document.querySelector('.mainWrap');
-
-      if (mainWrap) {
-        mainWrap.addEventListener('scroll', checkScroll, { passive: true });
-      } else {
-        // Fallback to window scroll if mainWrap not found
-        window.addEventListener('scroll', checkScroll, { passive: true });
-      }
-
-      // Also listen to resize in case window height changes
+      mainWrap.addEventListener('scroll', checkScroll, { passive: true });
       window.addEventListener('resize', checkScroll, { passive: true });
 
       return () => {
         clearTimeout(timeoutId);
-        if (mainWrap) {
-          mainWrap.removeEventListener('scroll', checkScroll);
-        } else {
-          window.removeEventListener('scroll', checkScroll);
-        }
+        mainWrap.removeEventListener('scroll', checkScroll);
         window.removeEventListener('resize', checkScroll);
       };
     }, [showScrollToTop]);

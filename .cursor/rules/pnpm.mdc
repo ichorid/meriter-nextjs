@@ -14,3 +14,9 @@ What happens under the hood (root `package.json`):
 - `pnpm lint:fix` — same `@meriter/api` command as `pnpm lint`, then `pnpm --filter @meriter/web lint:fix` (eslint with `--fix` for web). Only the **web** step differs from `pnpm lint`.
 
 Full command list and dev setup: see @local-dev-win.mdc or `docs/LOCAL_DEVELOPMENT_SETUP.md`.
+
+### API tests and mongodb-memory-server
+
+- API Jest runs use in-memory MongoDB (`mongodb-memory-server`). Temp data lives under `api/.cache/mongo-mem-test` (not `/tmp` for new runs).
+- `pretest` sweeps **stale** orphaned dirs before each `pnpm --filter @meriter/api test`.
+- If `/tmp/mongo-mem-*` or cache dirs accumulate (e.g. after Ctrl+C), run from repo root: `pnpm test:cleanup-mongo` (or `pnpm --filter @meriter/api test:cleanup-mongo -- --force` to kill live mongod and remove dirs).

@@ -146,4 +146,45 @@ export const platformDevRouter = router({
       }
       return ctx.platformSettingsService.resetDecree809RubricatorToCanonical();
     }),
+
+  /** Idempotent scoped seed: «Сообщество предпринимателей» (does not wipe the whole DB). */
+  seedEntrepreneursCommunity: protectedProcedure
+    .input(
+      z
+        .object({
+          force: z.boolean().optional(),
+          packJson: z.string().optional(),
+        })
+        .optional(),
+    )
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.user?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'Only superadmin can seed entrepreneurs demo',
+        });
+      }
+
+      const packJson = input?.packJson?.trim();
+      if (packJson && ctx.platformDemoPackImportService.isMeriterDemoPackV1Json(packJson)) {
+        const pack =
+          ctx.platformDemoPackImportService.parseMeriterDemoPackV1(packJson);
+        return ctx.platformDemoPackImportService.importMeriterDemoPackV1(pack);
+      }
+
+      return ctx.platformEntrepreneursDemoSeedService.seedEntrepreneursCommunity({
+        force: input?.force ?? false,
+        packJson,
+      });
+    }),
+
+  getEntrepreneursDemoPersonas: protectedProcedure.query(async ({ ctx }) => {
+    if (ctx.user?.globalRole !== GLOBAL_ROLE_SUPERADMIN) {
+      throw new TRPCError({
+        code: 'FORBIDDEN',
+        message: 'Only superadmin can list demo personas',
+      });
+    }
+    return ctx.platformEntrepreneursDemoSeedService.getDemoPersonas();
+  }),
 });

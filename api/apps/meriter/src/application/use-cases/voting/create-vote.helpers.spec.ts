@@ -1,0 +1,103 @@
+import {
+  getPublicationEffectiveBeneficiaryId,
+  isPublicationAuthorMeritTopup,
+  shouldUseTelegramInstantWalletMirror,
+} from './create-vote.helpers';
+import {
+  effectiveAllowWithdraw,
+  isTelegramLinkedCommunity,
+} from '../../../domain/common/helpers/community.helper';
+
+describe('create-vote.helpers (Telegram MVP)', () => {
+  describe('isTelegramLinkedCommunity', () => {
+    it('returns true when telegramChatId is set', () => {
+      expect(isTelegramLinkedCommunity({ telegramChatId: '-100123' })).toBe(true);
+    });
+
+    it('returns false for empty or missing chat id', () => {
+      expect(isTelegramLinkedCommunity({ telegramChatId: '' })).toBe(false);
+      expect(isTelegramLinkedCommunity({})).toBe(false);
+      expect(isTelegramLinkedCommunity(null)).toBe(false);
+    });
+  });
+
+  describe('effectiveAllowWithdraw', () => {
+    it('disables withdraw for Telegram-linked communities', () => {
+      expect(
+        effectiveAllowWithdraw({
+          telegramChatId: '-1001',
+          settings: { allowWithdraw: true },
+        }),
+      ).toBe(false);
+    });
+
+    it('respects allowWithdraw when not Telegram-linked', () => {
+      expect(effectiveAllowWithdraw({ settings: { allowWithdraw: false } })).toBe(false);
+      expect(effectiveAllowWithdraw({ settings: { allowWithdraw: true } })).toBe(true);
+      expect(effectiveAllowWithdraw({})).toBe(true);
+    });
+  });
+
+  describe('getPublicationEffectiveBeneficiaryId', () => {
+    it('returns author when beneficiary is unset', () => {
+      expect(getPublicationEffectiveBeneficiaryId({ authorId: 'u1' })).toBe('u1');
+    });
+
+    it('returns beneficiary when set', () => {
+      expect(
+        getPublicationEffectiveBeneficiaryId({ authorId: 'u1', beneficiaryId: 'u2' }),
+      ).toBe('u2');
+    });
+
+    it('returns null without author', () => {
+      expect(getPublicationEffectiveBeneficiaryId(null)).toBeNull();
+      expect(getPublicationEffectiveBeneficiaryId({ beneficiaryId: 'u2' })).toBeNull();
+    });
+  });
+
+  describe('isPublicationAuthorMeritTopup', () => {
+    it('is top-up when author votes on own post', () => {
+      expect(isPublicationAuthorMeritTopup({ authorId: 'u1' }, 'u1')).toBe(true);
+      expect(
+        isPublicationAuthorMeritTopup({ authorId: 'u1', beneficiaryId: 'u1' }, 'u1'),
+      ).toBe(true);
+    });
+
+    it('is not top-up when author nominates another user', () => {
+      expect(
+        isPublicationAuthorMeritTopup({ authorId: 'u1', beneficiaryId: 'u2' }, 'u1'),
+      ).toBe(false);
+    });
+
+    it('is not top-up for non-authors', () => {
+      expect(
+        isPublicationAuthorMeritTopup({ authorId: 'u1', beneficiaryId: 'u2' }, 'u2'),
+      ).toBe(false);
+    });
+  });
+
+  describe('shouldUseTelegramInstantWalletMirror', () => {
+    it('mirrors when community is Telegram-linked and amount is positive', () => {
+      expect(
+        shouldUseTelegramInstantWalletMirror(
+          { telegramChatId: '-1001' },
+          { authorId: 'u1' },
+          1,
+        ),
+      ).toBe(true);
+    });
+
+    it('does not mirror without publication or zero amount', () => {
+      expect(
+        shouldUseTelegramInstantWalletMirror({ telegramChatId: '-1001' }, null, 1),
+      ).toBe(false);
+      expect(
+        shouldUseTelegramInstantWalletMirror(
+          { telegramChatId: '-1001' },
+          { authorId: 'u1' },
+          0,
+        ),
+      ).toBe(false);
+    });
+  });
+});

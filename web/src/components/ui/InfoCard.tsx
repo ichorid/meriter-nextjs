@@ -30,12 +30,10 @@ export const InfoCard: React.FC<InfoCardProps> = ({
     footer,
     badges,
 }) => {
-    const Component = onClick ? 'button' : 'div';
-
     const paddingClass = variant === 'compact' ? 'p-3' : variant === 'detailed' ? 'p-6' : 'p-4';
 
     return (
-        <Component
+        <div
             className={`
         w-full max-w-full flex flex-col bg-brand-surface shadow-none rounded-xl
         transition-all duration-300 overflow-hidden
@@ -44,6 +42,18 @@ export const InfoCard: React.FC<InfoCardProps> = ({
         ${className}
       `}
             onClick={onClick}
+            onKeyDown={
+                onClick
+                    ? (e) => {
+                          if (e.target !== e.currentTarget) return;
+                          if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onClick();
+                          }
+                      }
+                    : undefined
+            }
+            tabIndex={onClick ? 0 : undefined}
         >
             {/* Header Section */}
             {header && (
@@ -98,6 +108,6 @@ export const InfoCard: React.FC<InfoCardProps> = ({
                     {footer}
                 </div>
             )}
-        </Component>
+        </div>
     );
 };

@@ -13,6 +13,7 @@ import { useApplyForTicket } from '@/hooks/api/useTickets';
 import { TopUpWalletDialog } from './TopUpWalletDialog';
 import { shareUrl } from '@shared/lib/share-utils';
 import { cn } from '@/lib/utils';
+import { hubFeedCardClass } from './project-surface';
 import { ArrowUp, ChevronDown, PiggyBank, Share2, Users } from 'lucide-react';
 import { Button } from '@/components/ui/shadcn/button';
 import { NeutralTicketPublicCard } from './NeutralTicketPublicCard';
@@ -118,7 +119,7 @@ export function ProjectCard({
   };
 
   return (
-    <div className="rounded-xl overflow-hidden bg-[#F5F5F5] dark:bg-[#2a3239] p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2">
+    <div className={cn(hubFeedCardClass, 'focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2')}>
       <Link href={projectUrl} className="block outline-none">
         <div className="h-28 w-full relative overflow-hidden flex-shrink-0 rounded-lg mb-4">
           {hasCover ? (

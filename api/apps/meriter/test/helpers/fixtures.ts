@@ -1,5 +1,6 @@
 import { uid } from 'uid';
 import { CreateCommunityDto, CreatePublicationDto, CreateCommentDto, CreateVoteDto, CreatePollDto } from '@meriter/shared-types';
+import type { Publication } from '../../src/domain/models/publication/publication.schema';
 
 /**
  * Create test user fixtures
@@ -46,6 +47,39 @@ export function createTestCommunity(overrides: Partial<CreateCommunityDto> = {})
     isActive: true,
     ...overrides,
   } as any;
+}
+
+/**
+ * Canonical MongoDB publication document fixture (CP-1).
+ * Use for publicationModel.create(), raw insertOne, and migration scripts.
+ */
+export function createPublicationDocument(
+  communityId: string,
+  authorId: string,
+  overrides: Partial<Publication> = {},
+): Publication {
+  const now = new Date();
+  return {
+    id: uid(),
+    communityId,
+    authorId,
+    content: `Test publication content ${uid()}`,
+    type: 'text',
+    hashtags: [],
+    categories: [],
+    images: [],
+    metrics: { upvotes: 0, downvotes: 0, score: 0, commentCount: 0 },
+    investingEnabled: false,
+    investmentPool: 0,
+    investmentPoolTotal: 0,
+    investments: [],
+    status: 'active',
+    postType: 'basic',
+    isProject: false,
+    createdAt: now,
+    updatedAt: now,
+    ...overrides,
+  };
 }
 
 /**

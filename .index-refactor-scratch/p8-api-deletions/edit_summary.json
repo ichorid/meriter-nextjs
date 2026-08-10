@@ -1,0 +1,49 @@
+{
+  "work_unit_id": "p8-api-deletions",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/permission.guard.ts",
+    "api/apps/meriter/src/telegram/beneficiary-parser.service.ts",
+    "api/apps/meriter/src/telegram/file-handler.service.ts",
+    "api/apps/meriter/src/telegram/message-processor.service.ts",
+    "api/apps/meriter/src/telegram/publication-creator.service.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/permission.guard.ts",
+      "summary": "Deleted unused REST PermissionGuard (354 lines). No controllers import PermissionGuard or @RequirePermission; authorization is enforced via trpc permission.middleware.ts per GUARD_MIGRATION_STATUS.md."
+    },
+    {
+      "file": "api/apps/meriter/src/telegram/",
+      "summary": "Removed duplicate orphaned Nest telegram service tree (4 services, ~17KB). Logic lives in TgBotsModule/TgBotsService and @common/extapis/telegram types; these files were never registered in any module."
+    }
+  ],
+  "verification": {
+    "knip_unused_files_removed": [
+      "apps/meriter/src/permission.guard.ts",
+      "apps/meriter/src/telegram/beneficiary-parser.service.ts",
+      "apps/meriter/src/telegram/file-handler.service.ts",
+      "apps/meriter/src/telegram/message-processor.service.ts",
+      "apps/meriter/src/telegram/publication-creator.service.ts"
+    ],
+    "tg_bots_module_unchanged": "api/apps/meriter/src/tg-bots/tg-bots.module.ts still provides Telegram bot functionality",
+    "extapis_telegram_libs_preserved": [
+      "api/libs/common/extapis/telegram/",
+      "api/libs/extapis/src/telegram/"
+    ]
+  },
+  "success_criteria": {
+    "dead_rest_permission_guard_removed": true,
+    "no_duplicate_telegram_service_tree": true,
+    "knip_clean_on_deleted_targets": true,
+    "tsc_clean": "not_run (api/node_modules missing in worktree)"
+  },
+  "deferred": {
+    "verifyJWT_export": {
+      "file": "api/apps/meriter/src/common/helpers/jwt.ts",
+      "reason": "Outside write_set; knip still reports verifyJWT as unused export. signJWT remains used by auth.service and jwt-service.util."
+    }
+  },
+  "notes": "DAG write_set listed api/apps/meriter/src/api-v1/common/guards/permission.guard.ts but the dead guard lived at api/apps/meriter/src/permission.guard.ts (knip-confirmed unused). Empty src/telegram/ directory removed after file deletions."
+}

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Bell, Info, Settings, Star } from 'lucide-react';
+import { Bell, Info, Settings, Star, Search } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { useAuth } from '@/contexts/AuthContext';
@@ -57,6 +57,20 @@ export function MeriterDesktopTopBar() {
         className="flex flex-wrap items-center justify-end gap-1 sm:gap-2"
         aria-label={t('topBarActions', { defaultValue: 'Account and tools' })}
       >
+        <Link
+          href={routes.search}
+          className={iconBtn}
+          aria-label={t('search')}
+          onClick={() =>
+            trackMeriterUiEvent({
+              name: 'nav_primary_click',
+              payload: { item: 'search', surface: 'topbar' },
+            })
+          }
+        >
+          <Search className="h-5 w-5" strokeWidth={1.75} />
+        </Link>
+
         <Link
           href={routes.notifications}
           className={iconBtn}

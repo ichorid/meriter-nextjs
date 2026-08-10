@@ -1,9 +1,5 @@
 import { Injectable, Logger, NotFoundException, forwardRef, Inject } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
 import { Comment } from '../aggregates/comment/comment.entity';
-import { CommentSchemaClass, CommentDocument } from '../models/comment/comment.schema';
-import { PublicationSchemaClass, PublicationDocument } from '../models/publication/publication.schema';
 import { UserId } from '../value-objects';
 import { CommentAddedEvent, CommentVotedEvent } from '../events';
 import { EventBus } from '../events/event-bus';
@@ -12,6 +8,14 @@ import { PublicationDocument as IPublicationDocument } from '../../common/interf
 import { uid } from 'uid';
 import { PublicationService } from './publication.service';
 import { CommentSortingHelpers } from './comment-sorting.helpers';
+import {
+  COMMENT_PERSISTENCE_PORT,
+  type CommentPersistencePort,
+} from '../ports/comment.persistence.port';
+import {
+  PUBLICATION_PERSISTENCE_PORT,
+  type PublicationPersistencePort,
+} from '../ports/publication.persistence.port';
 
 export interface CreateCommentDto {
   targetType: 'publication' | 'comment';
@@ -26,9 +30,10 @@ export class CommentService {
   private readonly logger = new Logger(CommentService.name);
 
   constructor(
-    @InjectModel(CommentSchemaClass.name) private commentModel: Model<CommentDocument>,
-    @InjectModel(PublicationSchemaClass.name) private publicationModel: Model<PublicationDocument>,
-    @InjectConnection() private mongoose: Connection,
+    @Inject(COMMENT_PERSISTENCE_PORT)
+    private readonly commentPersistence: CommentPersistencePort,
+    @Inject(PUBLICATION_PERSISTENCE_PORT)
+    private readonly publicationPersistence: PublicationPersistencePort,
     private eventBus: EventBus,
     @Inject(forwardRef(() => PublicationService)) private publicationService: PublicationService,
   ) {}
@@ -40,7 +45,7 @@ export class CommentService {
 
     // Validate target exists using Mongoose directly
     if (dto.targetType === 'publication') {
-      const publication = await this.publicationModel.findOne({ id: dto.targetId }).lean();
+      const publication = await this.publicationPersistence.findById(dto.targetId);
       if (!publication) {
         throw new NotFoundException('Publication not found');
       }
@@ -49,7 +54,7 @@ export class CommentService {
       if (dto.targetId.startsWith('vote_')) {
         throw new NotFoundException(`Invalid targetId: cannot use vote-comment ID '${dto.targetId}' as targetId. Vote-comment IDs can only be used as parentCommentId.`);
       }
-      const parentComment = await this.commentModel.findOne({ id: dto.targetId }).lean();
+      const parentComment = await this.commentPersistence.findById(dto.targetId);
       if (!parentComment) {
         throw new NotFoundException(`Comment with id '${dto.targetId}' not found`);
       }
@@ -64,7 +69,7 @@ export class CommentService {
         // (they're synthetic but represent valid hierarchy)
       } else {
         // Regular comment parent - validate it exists
-        const parent = await this.commentModel.findOne({ id: dto.parentCommentId }).lean();
+        const parent = await this.commentPersistence.findById(dto.parentCommentId);
         if (!parent) {
           throw new NotFoundException('Parent comment not found');
         }
@@ -82,20 +87,19 @@ export class CommentService {
     );
 
     // Save using Mongoose directly
-    await this.commentModel.create(comment.toSnapshot());
+    await this.commentPersistence.create(comment.toSnapshot());
 
     // If comment is on a publication, update the publication's commentCount
     if (dto.targetType === 'publication') {
-      const publication = await this.publicationModel.findOne({ id: dto.targetId }).lean();
+      const publication = await this.publicationPersistence.findById(dto.targetId);
       if (publication) {
         // Update publication metrics to increment comment count
         const { Publication } = await import('../aggregates/publication/publication.entity');
-        const pub = Publication.fromSnapshot(publication as any);
-        pub.addComment();
-        await this.publicationModel.updateOne(
-          { id: dto.targetId },
-          { $set: pub.toSnapshot() }
+        const pub = Publication.fromSnapshot(
+          publication as unknown as IPublicationDocument,
         );
+        pub.addComment();
+        await this.publicationPersistence.updateSnapshot(dto.targetId, pub.toSnapshot());
       }
     }
 
@@ -118,20 +122,17 @@ export class CommentService {
     meritTransferId: string;
     content: string;
   }): Promise<string> {
-    const publication = await this.publicationModel.findOne({ id: params.eventPostId }).lean();
+    const publication = await this.publicationPersistence.findById(params.eventPostId);
     if (!publication) {
       throw new NotFoundException('Publication not found');
     }
     const now = new Date();
     const id = uid();
-    await this.commentModel.create({
+    await this.commentPersistence.createAutoComment({
       id,
-      targetType: 'publication',
       targetId: params.eventPostId,
       authorId: params.authorId,
       content: params.content,
-      metrics: { upvotes: 0, downvotes: 0, score: 0, replyCount: 0 },
-      isAutoComment: true,
       meritTransferId: params.meritTransferId,
       createdAt: now,
       updatedAt: now,
@@ -139,29 +140,24 @@ export class CommentService {
     const { Publication } = await import('../aggregates/publication/publication.entity');
     const pub = Publication.fromSnapshot(publication as unknown as IPublicationDocument);
     pub.addComment();
-    await this.publicationModel.updateOne(
-      { id: params.eventPostId },
-      { $set: pub.toSnapshot() },
+    await this.publicationPersistence.updateSnapshot(
+      params.eventPostId,
+      pub.toSnapshot(),
     );
     return id;
   }
 
   /** System lines (e.g. merit transfer) on a publication thread; small bounded set. */
   async findPublicationAutoComments(publicationId: string, max = 100): Promise<ICommentDocument[]> {
-    const rows = await this.commentModel
-      .find({
-        targetType: 'publication',
-        targetId: publicationId,
-        isAutoComment: true,
-      })
-      .sort({ createdAt: -1 })
-      .limit(max)
-      .lean();
+    const rows = await this.commentPersistence.findPublicationAutoComments(
+      publicationId,
+      max,
+    );
     return rows as ICommentDocument[];
   }
 
   async getComment(id: string): Promise<Comment | null> {
-    const doc = await this.commentModel.findOne({ id }).lean();
+    const doc = await this.commentPersistence.findById(id);
     return doc ? Comment.fromSnapshot(doc as ICommentDocument) : null;
   }
 
@@ -175,12 +171,13 @@ export class CommentService {
   ): Promise<Comment[]> {
     const sort = CommentSortingHelpers.buildSortQuery(sortField, sortOrder);
     
-    const docs = await this.commentModel
-      .find({ targetType, targetId })
-      .limit(limit)
-      .skip(skip)
-      .sort(sort as any)
-      .lean();
+    const docs = await this.commentPersistence.findByTarget({
+      targetType,
+      targetId,
+      limit,
+      skip,
+      sort: sort as Record<string, 1 | -1>,
+    });
     
     return docs.map(doc => Comment.fromSnapshot(doc as ICommentDocument));
   }
@@ -197,28 +194,18 @@ export class CommentService {
     // Query for both:
     // 1. Comments that are direct replies (parentCommentId matches)
     // 2. Comments that are votes on this comment (targetType: 'comment' and targetId matches)
-    const docs = await this.commentModel
-      .find({
-        $or: [
-          { parentCommentId: commentId },
-          { targetType: 'comment', targetId: commentId }
-        ]
-      })
-      .limit(limit)
-      .skip(skip)
-      .sort(sort as any)
-      .lean();
+    const docs = await this.commentPersistence.findReplies({
+      commentId,
+      limit,
+      skip,
+      sort: sort as Record<string, 1 | -1>,
+    });
     
     return docs.map(doc => Comment.fromSnapshot(doc as ICommentDocument));
   }
 
   async getCommentsByAuthor(userId: string, limit: number = 50, skip: number = 0): Promise<Comment[]> {
-    const docs = await this.commentModel
-      .find({ authorId: userId })
-      .limit(limit)
-      .skip(skip)
-      .sort({ createdAt: -1 })
-      .lean();
+    const docs = await this.commentPersistence.findByAuthor(userId, limit, skip);
     
     return docs.map(doc => Comment.fromSnapshot(doc as ICommentDocument));
   }
@@ -249,7 +236,7 @@ export class CommentService {
 
   async voteOnComment(commentId: string, userId: string, amount: number, direction: 'up' | 'down'): Promise<Comment> {
     // Load aggregate
-    const doc = await this.commentModel.findOne({ id: commentId }).lean();
+    const doc = await this.commentPersistence.findById(commentId);
     if (!doc) {
       throw new NotFoundException('Comment not found');
     }
@@ -261,10 +248,7 @@ export class CommentService {
     comment.vote(voteAmount);
 
     // Save
-    await this.commentModel.updateOne(
-      { id: comment.getId },
-      { $set: comment.toSnapshot() }
-    );
+    await this.commentPersistence.updateSnapshot(comment.getId, comment.toSnapshot());
 
     // Publish event
     await this.eventBus.publish(
@@ -276,7 +260,7 @@ export class CommentService {
 
   async reduceScore(commentId: string, amount: number): Promise<Comment> {
     // Load aggregate
-    const doc = await this.commentModel.findOne({ id: commentId }).lean();
+    const doc = await this.commentPersistence.findById(commentId);
     if (!doc) {
       throw new NotFoundException('Comment not found');
     }
@@ -287,10 +271,7 @@ export class CommentService {
     comment.reduceScore(amount);
 
     // Save
-    await this.commentModel.updateOne(
-      { id: comment.getId },
-      { $set: comment.toSnapshot() }
-    );
+    await this.commentPersistence.updateSnapshot(comment.getId, comment.toSnapshot());
 
     return comment;
   }
@@ -300,31 +281,24 @@ export class CommentService {
     userId: string,
     updateData: { content: string },
   ): Promise<Comment> {
-    const doc = await this.commentModel.findOne({ id: commentId }).lean();
+    const doc = await this.commentPersistence.findById(commentId);
     if (!doc) {
       throw new NotFoundException('Comment not found');
     }
-
-    const comment = Comment.fromSnapshot(doc as ICommentDocument);
 
     // Authorization is handled by PermissionGuard via PermissionService.canEditComment()
     // PermissionService already checks vote count and time window for authors
     // Leads and superadmins can edit regardless of votes/time, so no additional check needed here
 
     // Update comment content by updating the document directly
-    const _snapshot = comment.toSnapshot();
-    await this.commentModel.updateOne(
-      { id: commentId },
-      { 
-        $set: { 
-          content: updateData.content,
-          updatedAt: new Date(),
-        }
-      }
+    await this.commentPersistence.updateContent(
+      commentId,
+      updateData.content,
+      new Date(),
     );
 
     // Return updated comment
-    const updatedDoc = await this.commentModel.findOne({ id: commentId }).lean();
+    const updatedDoc = await this.commentPersistence.findById(commentId);
     if (!updatedDoc) {
       throw new NotFoundException('Comment not found after update');
     }
@@ -332,15 +306,12 @@ export class CommentService {
   }
 
   async deleteComment(commentId: string, _userId: string): Promise<boolean> {
-    const comment = await this.getComment(commentId);
-    if (!comment) {
-      throw new NotFoundException('Comment not found');
-    }
+    await this.getComment(commentId);
 
     // Authorization is handled by PermissionGuard via PermissionService.canDeleteComment()
     // No need for redundant check here
 
-    await this.commentModel.deleteOne({ id: commentId });
+    await this.commentPersistence.deleteById(commentId);
     return true;
   }
 

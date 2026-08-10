@@ -27,7 +27,9 @@ const REFERENCE_TYPES = {
     'vote',
     'comment_vote',
     'document_variant_vote',
+    'document_variant_apply',
     'project_appreciation',
+    'telegram_vote_mirror',
   ] as const,
 
   investment: ['investment', 'investment_distribution', 'investment_pool_return'] as const,
@@ -118,6 +120,21 @@ export function meritHistoryLedgerMultiplier(tx: {
   }
   if (tx.type === 'deposit') return 1;
   return -1;
+}
+
+/**
+ * Aggregate community/project merit history: member wallet debits for top-ups are
+ * inflows into the shared project/community wallet (positive in this view).
+ */
+export function communityMeritHistoryLedgerMultiplier(tx: {
+  type: string;
+  referenceType?: string | null;
+}): 1 | -1 {
+  const rt = tx.referenceType ?? '';
+  if (rt === 'project_topup' || rt === 'community_wallet_topup') {
+    return 1;
+  }
+  return meritHistoryLedgerMultiplier(tx);
 }
 
 /** Fixed windows for dashboard (UTC calendar days through today). */

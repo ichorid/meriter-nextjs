@@ -9,6 +9,11 @@ import { Button } from '@/components/ui/shadcn/button';
 import { formatMerits } from '@/lib/utils/currency';
 import { shareUrl } from '@shared/lib/share-utils';
 import { routes } from '@/lib/constants/routes';
+import { futureVisionMirrorPlainTextToHtml } from '@/features/documents/lib/future-vision-mirror-text';
+import { DocumentOfficialPreview } from '@/features/documents/components/DocumentOfficialPreview';
+import { CollapsibleRichPreview } from '@/features/documents/components/CollapsibleRichPreview';
+import { cn } from '@/lib/utils';
+import { hubFeedCardClass } from '@/components/organisms/Project/project-surface';
 
 export interface FutureVisionItem {
   communityId: string;
@@ -17,6 +22,9 @@ export interface FutureVisionItem {
   futureVisionText?: string;
   futureVisionTags?: string[];
   futureVisionCover?: string;
+  iconUrl?: string;
+  futureVisionDocumentId?: string;
+  futureVisionDocumentSections?: unknown;
   publicationId: string;
   score: number;
   memberCount: number;
@@ -49,6 +57,13 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
   const openVotingPopup = useUIStore((s) => s.openVotingPopup);
   const [gradientFrom, gradientTo] = futureVisionGradient(item.name);
   const hasCover = !!item.futureVisionCover;
+  const hasObDocumentPreview = Boolean(
+    item.futureVisionDocumentId && item.futureVisionDocumentSections,
+  );
+  const futureVisionMirrorHtml =
+    !hasObDocumentPreview && item.futureVisionText?.trim()
+      ? futureVisionMirrorPlainTextToHtml(item.futureVisionText.trim())
+      : '';
 
   const handleRatingClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -82,7 +97,10 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
   return (
     <Link
       href={`/meriter/communities/${item.communityId}`}
-      className="block w-full rounded-xl overflow-hidden bg-[#F5F5F5] dark:bg-[#2a3239] p-5 shadow-none hover:shadow-[0_8px_16px_rgba(0,0,0,0.15)] hover:scale-[1.01] hover:-translate-y-0.5 transition-all duration-300 focus-visible:outline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className={cn(
+        hubFeedCardClass,
+        'block w-full focus-visible:outline focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+      )}
     >
       <div className="h-28 w-full relative overflow-hidden flex-shrink-0 rounded-lg mb-4">
         {hasCover ? (
@@ -99,14 +117,29 @@ export function FutureVisionCard({ item }: FutureVisionCardProps) {
         )}
       </div>
 
-      <h3 className="text-lg font-semibold text-base-content leading-tight mb-2">
-        {item.name}
-      </h3>
-      {item.futureVisionText && (
-        <p className="text-sm text-base-content/70 mb-3 line-clamp-4">
-          {item.futureVisionText}
-        </p>
-      )}
+      <div className="flex items-center gap-2 mb-2">
+        <h3 className="text-lg font-semibold text-base-content leading-tight min-w-0 truncate">
+          {item.name}
+        </h3>
+        {item.iconUrl ? (
+          <img src={item.iconUrl} alt="" className="h-5 w-5 shrink-0 sm:h-6 sm:w-6" />
+        ) : null}
+      </div>
+      {hasObDocumentPreview ? (
+        <div className="mb-3 text-sm">
+          <DocumentOfficialPreview sections={item.futureVisionDocumentSections} />
+        </div>
+      ) : futureVisionMirrorHtml ? (
+        <CollapsibleRichPreview
+          html={futureVisionMirrorHtml}
+          className="mb-3"
+          contentClassName={`
+            text-sm text-base-content/70
+            [&_h2]:mb-1 [&_h2]:text-sm [&_h2]:font-semibold
+            [&_p]:my-0.5 [&_p]:leading-snug
+          `}
+        />
+      ) : null}
       {item.futureVisionTags && item.futureVisionTags.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-3">
           {item.futureVisionTags.map((tag) => (

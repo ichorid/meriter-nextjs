@@ -8,6 +8,7 @@ import { Settings, User } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/shadcn/avatar';
 import { routes } from '@/lib/constants/routes';
 import { cn } from '@/lib/utils';
+import { projectPanelSurfaceClass } from './project-surface';
 import type { Community } from '@meriter/shared-types';
 
 function projectGradient(name: string): [string, string] {
@@ -80,7 +81,7 @@ export function ProjectHero({
   const hasLongDescription = description && description.length > 160;
 
   return (
-    <header className="bg-base-100 rounded-xl overflow-hidden shadow-none border border-white/10">
+    <header className={cn(projectPanelSurfaceClass, 'overflow-hidden shadow-none')}>
       <div
         className={cn(
           'relative h-40 sm:h-[200px] w-full',
@@ -135,9 +136,10 @@ export function ProjectHero({
             <span
               className={cn(
                 'shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium',
-                status === 'active' && 'bg-green-600/20 text-green-400',
-                status === 'closed' && 'bg-white/10 text-base-content/70',
-                status === 'archived' && 'bg-white/10 text-base-content/50',
+                status === 'active' &&
+                  'bg-green-600/15 text-green-700 dark:bg-green-600/20 dark:text-green-400',
+                status === 'closed' && 'bg-base-200/80 text-base-content/70 dark:bg-white/10',
+                status === 'archived' && 'bg-base-200/60 text-base-content/50 dark:bg-white/10',
               )}
             >
               {statusLabel}

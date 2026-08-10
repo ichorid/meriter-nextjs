@@ -1,6 +1,8 @@
 # Agent brief: Совместные документы (Shared documents)
 
 **Нормативный ТЗ-текст:** [`business-approved-tz.md`](./business-approved-tz.md)  
+**PRD v2 / kickoff:** [`prd-v2-proposal-layers-gdocs.md`](./prd-v2-proposal-layers-gdocs.md) · [`AGENT-KICKOFF-v2-proposal-layers.md`](./AGENT-KICKOFF-v2-proposal-layers.md) — **текущий приоритет** на `dev`  
+**TZ v2:** [`TZ-v2-proposal-layers-gdocs.md`](./TZ-v2-proposal-layers-gdocs.md)  
 **PRD:** [`prd.md`](./prd.md) · **Тасклист:** [`tasklist.md`](./tasklist.md) · **Прогресс:** [`progress.md`](./progress.md)
 
 ---

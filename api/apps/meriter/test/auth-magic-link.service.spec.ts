@@ -22,8 +22,8 @@ describe('AuthMagicLinkService', () => {
     it('returns token and linkUrl for sms channel', async () => {
       const result = await authMagicLinkService.createToken('sms', '+79991234567');
       expect(result.token).toBeDefined();
-      expect(result.token).toHaveLength(32);
-      expect(result.token).toMatch(/^[a-f0-9]+$/);
+      expect(result.token).toHaveLength(16);
+      expect(result.token).toMatch(/^[A-Za-z0-9_-]+$/);
       expect(result.linkUrl).toContain(result.token);
       expect(result.linkUrl).toContain('/a/');
     });
@@ -31,8 +31,15 @@ describe('AuthMagicLinkService', () => {
     it('returns token and linkUrl for email channel', async () => {
       const result = await authMagicLinkService.createToken('email', 'user@example.com');
       expect(result.token).toBeDefined();
-      expect(result.token).toHaveLength(32);
+      expect(result.token).toHaveLength(16);
       expect(result.linkUrl).toContain(result.token);
+    });
+
+    it('tracks last created time per channel/target for rate limiting', async () => {
+      expect(await authMagicLinkService.getLastCreatedAt('email', 'fresh@example.com')).toBeNull();
+      await authMagicLinkService.createToken('email', 'fresh@example.com');
+      const lastCreatedAt = await authMagicLinkService.getLastCreatedAt('email', 'fresh@example.com');
+      expect(lastCreatedAt).toBeInstanceOf(Date);
     });
   });
 

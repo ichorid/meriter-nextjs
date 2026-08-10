@@ -1,6 +1,7 @@
 packages:
   - api
   - web
+  - community-web
   - libs/shared-types
 
 onlyBuiltDependencies:

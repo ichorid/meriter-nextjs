@@ -69,9 +69,14 @@ export class RoleHierarchyFactor {
       // Without this branch, superadmin was denied before STEP 6 bypass (no row for role superadmin).
       const isSuperadminNoRule = user.globalRole === GLOBAL_ROLE_SUPERADMIN;
       if (isSuperadminNoRule) {
-        if (action === ActionType.VOTE && context.isEffectiveBeneficiary) {
+        if (
+          (action === ActionType.VOTE || action === ActionType.VOTE_DOCUMENT_VARIANT) &&
+          context.isEffectiveBeneficiary
+        ) {
           const fallbackVoteRule = effectiveRules.find(
-            r => r.role === 'participant' && r.action === action,
+            r =>
+              r.role === 'participant' &&
+              (r.action === ActionType.VOTE || r.action === ActionType.VOTE_DOCUMENT_VARIANT),
           );
           if (fallbackVoteRule?.conditions?.canVoteForOwnPosts === false) {
             return {
@@ -91,7 +96,10 @@ export class RoleHierarchyFactor {
     // STEP 5.5: HIGH PRIORITY CHECK - canVoteForOwnPosts condition (voting only)
     // This check has the HIGHEST priority - applies even to superadmin
     // If canVoteForOwnPosts is false, user cannot vote for own posts regardless of role
-    if (action === ActionType.VOTE && matchingRule.conditions?.canVoteForOwnPosts !== undefined) {
+    if (
+      (action === ActionType.VOTE || action === ActionType.VOTE_DOCUMENT_VARIANT) &&
+      matchingRule.conditions?.canVoteForOwnPosts !== undefined
+    ) {
       if (context.isEffectiveBeneficiary && !matchingRule.conditions.canVoteForOwnPosts) {
         this.logger.debug(
           `[evaluate] HIGH PRIORITY BLOCK: Cannot vote for own posts (canVoteForOwnPosts=false), userId=${userId}, isSuperadmin=${user.globalRole === GLOBAL_ROLE_SUPERADMIN}`,

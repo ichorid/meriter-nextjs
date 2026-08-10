@@ -26,47 +26,26 @@ const ScrollToTopButton: React.FC = () => {
   const handleScrollToTop = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
-    if (mainWrap) {
-      mainWrap.scrollTo({ top: 0, behavior: 'smooth' });
-    } else {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
-      document.body.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+    const mainWrap = document.querySelector('.mainWrap') as HTMLElement | null;
+    mainWrap?.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   useEffect(() => {
+    const mainWrap = document.querySelector('.mainWrap') as HTMLElement | null;
+    if (!mainWrap) return;
+
     const checkScroll = () => {
-      const mainWrap = document.querySelector('.mainWrap') as HTMLElement;
-      let scrollTop = 0;
-      if (mainWrap) {
-        scrollTop = mainWrap.scrollTop;
-      } else {
-        scrollTop = window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-      }
       const windowHeight = window.innerHeight;
-      setShowButton(scrollTop > windowHeight / 2);
+      setShowButton(mainWrap.scrollTop > windowHeight / 2);
     };
 
     const timeoutId = setTimeout(checkScroll, 100);
-    const mainWrap = document.querySelector('.mainWrap');
-
-    if (mainWrap) {
-      mainWrap.addEventListener('scroll', checkScroll, { passive: true });
-    } else {
-      window.addEventListener('scroll', checkScroll, { passive: true });
-    }
-
+    mainWrap.addEventListener('scroll', checkScroll, { passive: true });
     window.addEventListener('resize', checkScroll, { passive: true });
 
     return () => {
       clearTimeout(timeoutId);
-      if (mainWrap) {
-        mainWrap.removeEventListener('scroll', checkScroll);
-      } else {
-        window.removeEventListener('scroll', checkScroll);
-      }
+      mainWrap.removeEventListener('scroll', checkScroll);
       window.removeEventListener('resize', checkScroll);
     };
   }, []);
@@ -77,7 +56,7 @@ const ScrollToTopButton: React.FC = () => {
     <button
       onClick={handleScrollToTop}
       className={cn(
-        'fixed bottom-20 right-10 z-50 rounded-full p-2.5 transition-all active:scale-95 lg:bottom-6 lg:right-3',
+        'fixed bottom-24 right-24 z-50 rounded-full p-2.5 transition-all active:scale-95 lg:bottom-6 lg:right-3',
         sc
           ? 'bg-stitch-surface2 text-stitch-text shadow-lg hover:bg-stitch-elevated'
           : 'bg-base-200 shadow-lg hover:bg-base-300',
@@ -105,6 +84,8 @@ export interface AdaptiveLayoutProps {
   stickyHeader?: React.ReactNode;
   /** Custom tabs for mobile bottom navigation */
   bottomNavTabs?: any[];
+  /** Replaces default community sidebar on desktop (lg+). */
+  leftSidebarOverride?: React.ReactNode;
 }
 
 /**
@@ -126,6 +107,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
   setActiveWithdrawPost = () => { },
   stickyHeader,
   bottomNavTabs,
+  leftSidebarOverride,
 }) => {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -206,7 +188,7 @@ export const AdaptiveLayout: React.FC<AdaptiveLayoutProps> = ({
       <div className="appBody">
         {/* Left Nav */}
         <aside className="leftNav hidden lg:block">
-          <VerticalSidebar isExpanded={true} />
+          {leftSidebarOverride ?? <VerticalSidebar isExpanded={true} />}
         </aside>
 
         {/* Main scroll container */}

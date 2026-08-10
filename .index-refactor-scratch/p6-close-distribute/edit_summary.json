@@ -1,0 +1,52 @@
+{
+  "work_unit_id": "p6-close-distribute",
+  "status": "DONE",
+  "attempt": 0,
+  "files_changed": [
+    "api/apps/meriter/src/domain/services/investment.service.ts",
+    "api/apps/meriter/src/domain/services/project.service.ts",
+    "api/apps/meriter/src/application/use-cases/investments/distribute-on-withdrawal.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/investments/handle-post-close.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/projects/invest-in-project.use-case.ts",
+    "api/apps/meriter/src/application/use-cases/projects/execute-project-payout.use-case.ts"
+  ],
+  "changes": [
+    {
+      "file": "api/apps/meriter/src/application/use-cases/investments/distribute-on-withdrawal.use-case.ts",
+      "summary": "BC-08 DistributeOnWithdrawalUseCase extracted from InvestmentService.distributeOnWithdrawal. Contract-percent split with C-4 rounding, wallet credits, earningsHistory updates, and investor notifications. Skips investor split when post.investingEnabled !== true."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/investments/handle-post-close.use-case.ts",
+      "summary": "BC-08 HandlePostCloseUseCase extracted from InvestmentService.handlePostClose. Mode A/B close distribution (distributeAllByContractOnClose) runs only when investingEnabled and investors present; delegates rating slices to DistributeOnWithdrawalUseCase."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/projects/invest-in-project.use-case.ts",
+      "summary": "BC-08 InvestInProjectUseCase extracted from ProjectService.investInProject. Global wallet debit, projectInvestments append, CommunityWallet deposit when investingEnabled."
+    },
+    {
+      "file": "api/apps/meriter/src/application/use-cases/projects/execute-project-payout.use-case.ts",
+      "summary": "BC-08 ExecuteProjectPayoutUseCase wraps ProjectPayoutService preview/execute/executeAll. Member preview gate preserved; CommunityWallet debit and founder/investor/team split unchanged."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/services/investment.service.ts",
+      "summary": "InvestmentService wires createDistributeOnWithdrawalUseCase and createHandlePostCloseUseCase in constructor; distributeOnWithdrawal and handlePostClose delegate to use cases. PostClosingService and withdraw-publication-rating callers unchanged."
+    },
+    {
+      "file": "api/apps/meriter/src/domain/services/project.service.ts",
+      "summary": "ProjectService wires InvestInProjectUseCase and ExecuteProjectPayoutUseCase; investInProject, previewProjectPayout, executeProjectPayout, and closeProject payout sweep delegate to use cases."
+    }
+  ],
+  "verification": {
+    "investment_service_delegates_close_distribute": true,
+    "project_service_delegates_invest_payout": true,
+    "investing_enabled_gate_on_close": true,
+    "community_wallet_payout_path_intact": true,
+    "tsc_errors_in_changed_files": 0,
+    "lint_errors_in_changed_files": 0
+  },
+  "success_criteria": {
+    "close_distribution_per_contract_when_investingEnabled": true,
+    "community_wallet_project_flows_intact": true
+  },
+  "notes": "Use case files created alongside domain-service wiring (required for compilation; pattern matches team-invitation.service interim domain→application import). Routers continue calling domain services which forward to use cases."
+}

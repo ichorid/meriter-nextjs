@@ -133,7 +133,7 @@ Fee payment is always from global merits (canonical: @business-index.mdc). Publi
 | Positive comment | Post rating increases | Quota (if enabled) → Global wallet | Quota → Local wallet |
 | Negative comment | Post rating decreases | Global wallet ONLY | Local wallet ONLY |
 | Self-vote (if allowed) | Rating increases | Global wallet ONLY | Local wallet ONLY |
-| Poll cast | Vote weight = merits spent (`quotaAmount` + `walletAmount`); quota used first when enabled and role allowed (`polls.cast`) | Quota (if enabled) → wallet resolved by `MeritResolverService` (`voting`: global for priority hubs and `isProject` communities, else local id) | Same |
+| Poll cast | Vote weight = merits spent; `direction: 'up' \| 'down'`. **Up**: wallet-only unless `poll.settings.quotaAllowed` (default false; then quota → wallet). **Down**: wallet-only always, merits **burn** (`polls.cast`) | Wallet resolved by `MeritResolverService` (`voting`: global for priority hubs and `isProject` communities, else local id) | Same |
 | Investment in post | Funds `investmentPool` | Global wallet ONLY | Local wallet ONLY |
 
 **Priority communities** = МД, ОБ, Projects, Support (typeTag or isPriority).

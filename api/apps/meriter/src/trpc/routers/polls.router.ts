@@ -1,116 +1,108 @@
 import { z } from 'zod';
 import { router, protectedProcedure, publicProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
-import { CreatePollDtoSchema, UpdatePollDtoSchema, CreatePollCastDtoSchema, IdInputSchema } from '@meriter/shared-types';
+import {
+  CreatePollDtoSchema,
+  UpdatePollDtoSchema,
+  CreatePollCastDtoSchema,
+  IdInputSchema,
+  type PollCastView,
+  type PollCasterSummary,
+} from '@meriter/shared-types';
 import { EntityMappers } from '../../api-v1/common/mappers/entity-mappers';
+import { UserFormatter } from '../../api-v1/common/utils/user-formatter.util';
 import { PaginationHelper } from '../../common/helpers/pagination.helper';
 import { checkPermissionInHandler } from '../middleware/permission.middleware';
-import { GLOBAL_COMMUNITY_ID } from '../../domain/common/constants/global.constant';
-import { isPriorityCommunity } from '../../domain/common/helpers/community.helper';
+import { createCreatePollUseCase } from '../../application/use-cases/polls/create-poll.use-case';
+import { createCastPollUseCase } from '../../application/use-cases/polls/cast-poll.use-case';
 
-/**
- * Helper to calculate remaining quota for a user in a community (including poll casts)
- */
-async function getRemainingQuota(
-  userId: string,
-  communityId: string,
-  community: any,
-  communityService: any,
-  connection: any,
-): Promise<number> {
-  if (isPriorityCommunity(community)) {
-    return 0;
-  }
+const CASTERS_SUMMARY_LIMIT = 20;
 
-  // Check if quota is enabled in community settings
-  if (community?.meritSettings?.quotaEnabled === false) {
-    return 0;
-  }
+/** Community polls list; mounted as both `getByCommunity` (web) and `listByCommunity` (mini app). */
+const listByCommunityProcedure = publicProcedure
+  .input(z.object({
+    communityId: z.string(),
+    page: z.number().int().min(1).optional(),
+    pageSize: z.number().int().min(1).max(100).optional(),
+    limit: z.number().int().min(1).max(100).optional(),
+    skip: z.number().int().min(0).optional(),
+  }))
+  .query(async ({ ctx, input }) => {
+    // Return empty array for future-vision communities
+    const community = await ctx.communityService.getCommunity(input.communityId);
+    if (!community) {
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: 'Community not found',
+      });
+    }
 
-  const effectiveMeritSettings = communityService.getEffectiveMeritSettings(community);
-  const dailyQuota =
-    typeof effectiveMeritSettings?.dailyQuota === 'number'
-      ? effectiveMeritSettings.dailyQuota
-      : 0;
+    if (community?.typeTag === 'future-vision') {
+      return {
+        data: [],
+        total: 0,
+        skip: 0,
+        limit: 20,
+      };
+    }
 
-  if (dailyQuota <= 0) {
-    return 0;
-  }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const quotaStartTime = community.lastQuotaResetAt
-    ? new Date(community.lastQuotaResetAt)
-    : today;
+    const pagination = PaginationHelper.parseOptions({
+      page: input.page,
+      pageSize: input.pageSize,
+      limit: input.limit,
+    });
+    const skip = PaginationHelper.getSkip(pagination);
 
-  if (!connection.db) {
-    throw new Error('Database connection not available');
-  }
+    const polls = await ctx.pollService.getPollsByCommunity(
+      input.communityId,
+      pagination.limit || 20,
+      skip,
+    );
 
-  // Aggregate quota used from votes, poll casts, and quota usage
-  const [votesUsed, pollCastsUsed, quotaUsageUsed] = await Promise.all([
-    connection.db
-      .collection('votes')
-      .aggregate([
-        {
-          $match: {
-            userId,
-            communityId,
-            createdAt: { $gte: quotaStartTime },
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amountQuota' },
-          },
-        },
-      ])
-      .toArray(),
-    connection.db
-      .collection('poll_casts')
-      .aggregate([
-        {
-          $match: {
-            userId,
-            communityId,
-            createdAt: { $gte: quotaStartTime },
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amountQuota' },
-          },
-        },
-      ])
-      .toArray(),
-    connection.db
-      .collection('quota_usage')
-      .aggregate([
-        {
-          $match: {
-            userId,
-            communityId,
-            createdAt: { $gte: quotaStartTime },
-          },
-        },
-        {
-          $group: {
-            _id: null,
-            total: { $sum: '$amountQuota' },
-          },
-        },
-      ])
-      .toArray(),
-  ]);
+    // Enrich polls with user and community data
+    const userIds = Array.from(
+      new Set(polls.map((p) => p.toSnapshot().authorId).filter(Boolean)),
+    );
+    const communityIds = Array.from(
+      new Set(polls.map((p) => p.toSnapshot().communityId).filter(Boolean)),
+    );
 
-  const votesTotal = votesUsed.length > 0 && votesUsed[0] ? (votesUsed[0].total as number) : 0;
-  const pollCastsTotal = pollCastsUsed.length > 0 && pollCastsUsed[0] ? (pollCastsUsed[0].total as number) : 0;
-  const quotaUsageTotal = quotaUsageUsed.length > 0 && quotaUsageUsed[0] ? (quotaUsageUsed[0].total as number) : 0;
-  const used = votesTotal + pollCastsTotal + quotaUsageTotal;
-  
-  return Math.max(0, dailyQuota - used);
-}
+    const [usersMap, communitiesMap] = await Promise.all([
+      ctx.userEnrichmentService.batchFetchUsers(userIds),
+      ctx.communityEnrichmentService.batchFetchCommunities(communityIds),
+    ]);
+
+    const enrichedPolls = polls.map((poll) =>
+      EntityMappers.mapPollToApi(poll, usersMap, communitiesMap),
+    );
+
+    // Batch calculate permissions for all polls (only if there are polls)
+    if (enrichedPolls.length > 0) {
+      const pollIds = enrichedPolls.map((poll) => poll.id);
+      const permissionsMap = await Promise.all(
+        pollIds.map((pollId) =>
+          ctx.permissionsHelperService.calculatePollPermissions(ctx.user?.id || null, pollId)
+        )
+      );
+
+      // Add permissions to each poll
+      enrichedPolls.forEach((poll, index) => {
+        poll.permissions = permissionsMap[index];
+      });
+    }
+
+    // Get total count
+    const total = await ctx.connection.db
+      ?.collection('polls')
+      .countDocuments({ communityId: input.communityId })
+      || polls.length;
+
+    return PaginationHelper.createResult(
+      enrichedPolls,
+      total,
+      pagination,
+    );
+  });
 
 export const pollsRouter = router({
   /**
@@ -234,75 +226,17 @@ export const pollsRouter = router({
   create: protectedProcedure
     .input(CreatePollDtoSchema)
     .mutation(async ({ ctx, input }) => {
-      // Check permissions
       await checkPermissionInHandler(ctx, 'create', 'poll', input);
 
-      // Prevent poll creation in future-vision communities
-      const community = await ctx.communityService.getCommunity(input.communityId);
-      if (!community) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Community not found',
-        });
-      }
-      if (community.typeTag === 'future-vision') {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Polls are disabled in future-vision communities',
-        });
-      }
-      
-      // Get poll cost from community settings (default to 1 if not set)
-      const pollCost = community.settings?.pollCost ?? 1;
-      
-      // Validate fee payment from global wallet (skip if cost is 0)
-      if (pollCost > 0) {
-        const wallet = await ctx.walletService.getWallet(
-          ctx.user.id,
-          GLOBAL_COMMUNITY_ID,
-        );
-        const walletBalance = wallet ? wallet.getBalance() : 0;
+      const poll = await createCreatePollUseCase({
+        user: ctx.user,
+        pollService: ctx.pollService,
+        communityService: ctx.communityService,
+        walletService: ctx.walletService,
+      }).execute(input);
 
-        if (walletBalance < pollCost) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: `Insufficient global wallet balance. You need at least ${pollCost} merit${pollCost === 1 ? '' : 's'} to create a poll. Available: ${walletBalance}`,
-          });
-        }
-      }
-      
-      // Create poll
-      const poll = await ctx.pollService.createPoll(ctx.user.id, input);
       const snapshot = poll.toSnapshot();
-      const pollId = snapshot.id;
-      
-      // Process fee payment after successful creation (always from global wallet)
-      if (pollCost > 0) {
-        try {
-          const globalCommunity = await ctx.communityService.getCommunity(
-            GLOBAL_COMMUNITY_ID,
-          );
-          const currency = globalCommunity?.settings?.currencyNames || {
-            singular: 'merit',
-            plural: 'merits',
-            genitive: 'merits',
-          };
-          await ctx.walletService.addTransaction(
-            ctx.user.id,
-            GLOBAL_COMMUNITY_ID,
-            'debit',
-            pollCost,
-            'personal',
-            'poll_creation',
-            pollId,
-            currency,
-            'Payment for creating poll',
-          );
-        } catch (_error) {
-          // Don't fail the request if wallet deduction fails - poll is already created
-        }
-      }
-      
+
       // Batch fetch user and community using enrichment services
       const [usersMap, communitiesMap] = await Promise.all([
         ctx.userEnrichmentService.batchFetchUsers([snapshot.authorId]),
@@ -378,89 +312,88 @@ export const pollsRouter = router({
   /**
    * Get polls by community ID
    */
-  getByCommunity: publicProcedure
+  getByCommunity: listByCommunityProcedure,
+
+  /**
+   * Mini-app alias for getByCommunity (shared contract name).
+   */
+  listByCommunity: listByCommunityProcedure,
+
+  /**
+   * Public cast feed for a poll (visible to community members only).
+   */
+  getCasts: protectedProcedure
     .input(z.object({
-      communityId: z.string(),
-      page: z.number().int().min(1).optional(),
-      pageSize: z.number().int().min(1).max(100).optional(),
-      limit: z.number().int().min(1).max(100).optional(),
+      pollId: z.string(),
+      optionId: z.string().optional(),
       skip: z.number().int().min(0).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
     }))
     .query(async ({ ctx, input }) => {
-      // Return empty array for future-vision communities
-      const community = await ctx.communityService.getCommunity(input.communityId);
-      if (!community) {
+      const poll = await ctx.pollService.getPoll(input.pollId);
+      if (!poll) {
         throw new TRPCError({
           code: 'NOT_FOUND',
-          message: 'Community not found',
+          message: 'Poll not found',
         });
       }
-      
-      if (community?.typeTag === 'future-vision') {
-        return {
-          data: [],
-          total: 0,
-          skip: 0,
-          limit: 20,
-        };
+      const snapshot = poll.toSnapshot();
+
+      const role = await ctx.userCommunityRoleService.getRole(
+        ctx.user.id,
+        snapshot.communityId,
+      );
+      if (!role) {
+        throw new TRPCError({
+          code: 'FORBIDDEN',
+          message: 'You must be a member of this community to view poll casts',
+        });
       }
 
-      const pagination = PaginationHelper.parseOptions({
-        page: input.page,
-        pageSize: input.pageSize,
-        limit: input.limit,
-      });
-      const skip = PaginationHelper.getSkip(pagination);
-
-      const polls = await ctx.pollService.getPollsByCommunity(
-        input.communityId,
-        pagination.limit || 20,
-        skip,
-      );
-
-      // Enrich polls with user and community data
-      const userIds = Array.from(
-        new Set(polls.map((p) => p.toSnapshot().authorId).filter(Boolean)),
-      );
-      const communityIds = Array.from(
-        new Set(polls.map((p) => p.toSnapshot().communityId).filter(Boolean)),
-      );
-
-      const [usersMap, communitiesMap] = await Promise.all([
-        ctx.userEnrichmentService.batchFetchUsers(userIds),
-        ctx.communityEnrichmentService.batchFetchCommunities(communityIds),
+      const [{ items, total }, casterTotals] = await Promise.all([
+        ctx.pollCastService.getCastsPaginated({
+          pollId: input.pollId,
+          optionId: input.optionId,
+          skip: input.skip ?? 0,
+          limit: input.limit ?? 20,
+        }),
+        ctx.pollCastService.getCastersSummary(
+          input.pollId,
+          CASTERS_SUMMARY_LIMIT,
+          input.optionId,
+        ),
       ]);
 
-      const enrichedPolls = polls.map((poll) =>
-        EntityMappers.mapPollToApi(poll, usersMap, communitiesMap),
+      const userIds = Array.from(
+        new Set([...items.map((c) => c.userId), ...casterTotals.map((c) => c.userId)]),
       );
+      const usersMap = await ctx.userEnrichmentService.batchFetchUsers(userIds);
+      const optionTextById = new Map(snapshot.options.map((o) => [o.id, o.text]));
 
-      // Batch calculate permissions for all polls (only if there are polls)
-      if (enrichedPolls.length > 0) {
-        const pollIds = enrichedPolls.map((poll) => poll.id);
-        const permissionsMap = await Promise.all(
-          pollIds.map((pollId) => 
-            ctx.permissionsHelperService.calculatePollPermissions(ctx.user?.id || null, pollId)
-          )
-        );
+      const userFields = (userId: string): { userDisplayName: string; avatarUrl?: string } => {
+        const formatted = UserFormatter.formatUserForApi(usersMap.get(userId), userId);
+        return { userDisplayName: formatted.name, avatarUrl: formatted.photoUrl };
+      };
 
-        // Add permissions to each poll
-        enrichedPolls.forEach((poll, index) => {
-          poll.permissions = permissionsMap[index];
-        });
-      }
+      const castViews: PollCastView[] = items.map((cast) => ({
+        id: cast.id,
+        userId: cast.userId,
+        ...userFields(cast.userId),
+        optionId: cast.optionId,
+        optionText: optionTextById.get(cast.optionId) ?? '',
+        amount: cast.amountQuota + cast.amountWallet,
+        direction: cast.direction ?? 'up',
+        createdAt: new Date(cast.createdAt).toISOString(),
+      }));
 
-      // Get total count
-      const total = await ctx.connection.db
-        ?.collection('polls')
-        .countDocuments({ communityId: input.communityId })
-        || polls.length;
+      const casters: PollCasterSummary[] = casterTotals.map((caster) => ({
+        userId: caster.userId,
+        ...userFields(caster.userId),
+        totalUp: caster.totalUp,
+        totalDown: caster.totalDown,
+      }));
 
-      return PaginationHelper.createResult(
-        enrichedPolls,
-        total,
-        pagination,
-      );
+      return { items: castViews, total, casters };
     }),
 
   /**
@@ -472,152 +405,15 @@ export const pollsRouter = router({
       data: CreatePollCastDtoSchema,
     }))
     .mutation(async ({ ctx, input }) => {
-      const poll = await ctx.pollService.getPoll(input.pollId);
-      if (!poll) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Poll not found',
-        });
-      }
-      
-      const snapshot = poll.toSnapshot();
-      const communityId = snapshot.communityId;
-      
-      // Get community first to check typeTag and get settings
-      const community = await ctx.communityService.getCommunity(communityId);
-      if (!community) {
-        throw new TRPCError({
-          code: 'NOT_FOUND',
-          message: 'Community not found',
-        });
-      }
-      
-      // Prevent poll casting in future-vision communities
-      if (community.typeTag === 'future-vision') {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Poll casting is disabled in future-vision communities',
-        });
-      }
-      
-      const requestedQuotaAmount = input.data.quotaAmount ?? 0;
-      const requestedWalletAmount = input.data.walletAmount ?? 0;
-      const totalAmount = requestedQuotaAmount + requestedWalletAmount;
-      
-      // Validate amounts
-      if (totalAmount <= 0) {
-        throw new TRPCError({
-          code: 'BAD_REQUEST',
-          message: 'Cast amount must be positive',
-        });
-      }
-      const userRole = await ctx.permissionService.getUserRoleInCommunity(
-        ctx.user.id,
-        communityId,
-      );
-      const effectiveMeritSettings = ctx.communityService.getEffectiveMeritSettings(community);
-      const quotaRecipients = effectiveMeritSettings?.quotaRecipients ?? [];
-      const canUseQuotaByRole = userRole ? quotaRecipients.includes(userRole) : true;
-      const quotaEnabled = effectiveMeritSettings?.quotaEnabled !== false;
-      const canUseQuota = quotaEnabled && canUseQuotaByRole;
-
-      let quotaAmount = 0;
-      if (canUseQuota) {
-        const remainingQuota = await getRemainingQuota(
-          ctx.user.id,
-          communityId,
-          community,
-          ctx.communityService,
-          ctx.connection,
-        );
-        quotaAmount = Math.min(totalAmount, remainingQuota);
-      }
-      const walletAmount = totalAmount - quotaAmount;
-
-      const walletCommunityId = ctx.meritResolverService.getWalletCommunityId(
-        community,
-        'voting',
-      );
-
-      // Validate and deduct balance BEFORE creating cast
-      if (walletAmount > 0) {
-        const wallet = await ctx.walletService.getWallet(
-          ctx.user.id,
-          walletCommunityId,
-        );
-        if (!wallet) {
-          throw new TRPCError({
-            code: 'NOT_FOUND',
-            message: 'Wallet not found',
-          });
-        }
-        
-        // Check balance
-        if (!wallet.canAfford(walletAmount)) {
-          throw new TRPCError({
-            code: 'BAD_REQUEST',
-            message: 'Insufficient balance to cast this amount',
-          });
-        }
-
-        const targetCommunity =
-          walletCommunityId === GLOBAL_COMMUNITY_ID
-            ? await ctx.communityService.getCommunity(GLOBAL_COMMUNITY_ID)
-            : community;
-        const currency = targetCommunity?.settings?.currencyNames || {
-          singular: 'merit',
-          plural: 'merits',
-          genitive: 'merits',
-        };
-
-        await ctx.walletService.addTransaction(
-          ctx.user.id,
-          walletCommunityId,
-          'debit',
-          walletAmount,
-          'personal',
-          'poll_cast',
-          input.pollId,
-          currency,
-          `Cast on poll ${input.pollId}`,
-        );
-      }
-      
-      // Check if this is a new caster (first vote in this poll) and first vote for this option
-      const existingCasts = await ctx.pollService.getUserCasts(input.pollId, ctx.user.id);
-      const isNewCaster = existingCasts.length === 0;
-      const isNewCasterForOption = !existingCasts.some(
-        (c: { optionId: string }) => c.optionId === input.data.optionId,
-      );
-      
-      // Create the cast record
-      const cast = await ctx.pollCastService.createCast(
-        input.pollId,
-        ctx.user.id,
-        input.data.optionId,
-        quotaAmount,
-        walletAmount,
-        communityId,
-      );
-      
-      // Update poll aggregate (option casterCount only when user votes for this option first time)
-      await ctx.pollService.updatePollForCast(
-        input.pollId,
-        input.data.optionId,
-        totalAmount,
-        isNewCaster,
-        isNewCasterForOption,
-      );
-      
-      // Get final wallet balance to return
-      const updatedWallet = walletAmount > 0 
-        ? await ctx.walletService.getWallet(ctx.user.id, walletCommunityId)
-        : null;
-      
-      return {
-        success: true,
-        data: cast,
-        walletBalance: updatedWallet?.getBalance() || 0,
-      };
+      return createCastPollUseCase({
+        user: ctx.user,
+        pollService: ctx.pollService,
+        pollCastService: ctx.pollCastService,
+        communityService: ctx.communityService,
+        permissionService: ctx.permissionService,
+        walletService: ctx.walletService,
+        walletContextResolverService: ctx.walletContextResolverService,
+        connection: ctx.connection,
+      }).execute(input);
     }),
 });

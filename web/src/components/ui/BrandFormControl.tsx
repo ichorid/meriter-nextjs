@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 
 interface BrandFormControlProps {
     label?: string;
+    labelDescription?: React.ReactNode;
     helperText?: string | React.ReactNode;
     error?: string;
     required?: boolean;
@@ -15,6 +16,7 @@ interface BrandFormControlProps {
 
 export const BrandFormControl: React.FC<BrandFormControlProps> = ({
     label,
+    labelDescription,
     helperText,
     error,
     required = false,
@@ -29,6 +31,11 @@ export const BrandFormControl: React.FC<BrandFormControlProps> = ({
                     {required && <span className="text-destructive ml-1">*</span>}
                 </Label>
             )}
+            {labelDescription ? (
+                <div className="space-y-2 text-sm leading-relaxed text-muted-foreground">
+                    {labelDescription}
+                </div>
+            ) : null}
             {children}
             {helperText && !error && (
                 <p className="text-xs text-muted-foreground">{helperText}</p>

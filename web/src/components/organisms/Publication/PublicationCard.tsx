@@ -15,7 +15,7 @@ import { getWalletBalance } from '@/lib/utils/wallet';
 import { getPublicationIdentifier } from '@/lib/utils/publication';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { useCommunity } from '@/hooks/api/useCommunities';
-import { BirzhaSourcePostBadge } from '@/components/molecules/ProjectPostBadge';
+import { BirzhaSourcePostBadge, PinnedPostBadge } from '@/components/molecules/ProjectPostBadge';
 
 import type {
   FeedItem,
@@ -220,6 +220,8 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
   const showMiningHeader =
     !(onOpenPostPage && contentOnlyPreview);
 
+  const showCardMetaBadges = Boolean(birzhaSourceForBadge || pubItem.isPinned);
+
   return (
     <article
       onClick={handleCardClick}
@@ -240,7 +242,7 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
             permissions: (pubItem as any).permissions,
           }}
           showCommunityAvatar={showCommunityAvatar}
-          className={birzhaSourceForBadge ? 'mb-0' : 'mb-3'}
+          className={showCardMetaBadges ? 'mb-0' : 'mb-3'}
           authorId={pubItem.authorId}
           beneficiaryId={pubItem.beneficiaryId}
           metrics={pubItem.metrics}
@@ -249,12 +251,15 @@ export const PublicationCardComponent: React.FC<PublicationCardProps> = ({
           isPoll={false}
         />
       ) : null}
-      {birzhaSourceForBadge ? (
-        <div className="mb-3 mt-1 flex w-full justify-end">
-          <BirzhaSourcePostBadge
-            sourceEntityType={birzhaSourceForBadge.type}
-            variant="card"
-          />
+      {showCardMetaBadges ? (
+        <div className="mb-3 mt-1 flex w-full flex-wrap justify-end gap-2">
+          {pubItem.isPinned ? <PinnedPostBadge /> : null}
+          {birzhaSourceForBadge ? (
+            <BirzhaSourcePostBadge
+              sourceEntityType={birzhaSourceForBadge.type}
+              variant="card"
+            />
+          ) : null}
         </div>
       ) : null}
 

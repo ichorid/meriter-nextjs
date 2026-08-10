@@ -3,8 +3,8 @@ import { DocumentService } from '../src/domain/services/document.service';
 
 describe('DocumentService.updateMeta', () => {
   let service: DocumentService;
-  let documentModel: {
-    updateOne: jest.Mock;
+  let documentPersistence: {
+    updateDocumentMeta: jest.Mock;
   };
 
   const baseDoc = {
@@ -20,12 +20,12 @@ describe('DocumentService.updateMeta', () => {
   };
 
   beforeEach(() => {
-    documentModel = {
-      updateOne: jest.fn().mockResolvedValue({ matchedCount: 1 }),
+    documentPersistence = {
+      updateDocumentMeta: jest.fn().mockResolvedValue(true),
     };
 
     service = new DocumentService(
-      documentModel as never,
+      documentPersistence as never,
       {} as never,
       {} as never,
     );
@@ -42,13 +42,11 @@ describe('DocumentService.updateMeta', () => {
       variantCost: 2,
     });
 
-    expect(documentModel.updateOne).toHaveBeenCalledWith(
-      { id: 'doc-1', deleted: false },
+    expect(documentPersistence.updateDocumentMeta).toHaveBeenCalledWith(
+      'doc-1',
       expect.objectContaining({
-        $set: expect.objectContaining({
-          mode: 'auto',
-          variantCost: 2,
-        }),
+        mode: 'auto',
+        variantCost: 2,
       }),
     );
     expect(updated).toBeTruthy();

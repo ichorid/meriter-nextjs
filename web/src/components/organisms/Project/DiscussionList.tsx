@@ -8,10 +8,16 @@ import { useUserProfile } from '@/hooks/api/useUsers';
 import { useCommunity } from '@/hooks/api';
 import Link from 'next/link';
 import { Button } from '@/components/ui/shadcn/button';
+import { cn } from '@/lib/utils';
+import {
+  projectDividerClass,
+  projectEmptyStateClass,
+  projectPanelSurfaceClass,
+  projectSoftHoverClass,
+} from './project-surface';
 import { routes } from '@/lib/constants/routes';
 import { plainTextExcerpt } from '@/lib/utils/plain-text-excerpt';
 import { formatMerits } from '@/lib/utils/currency';
-import { cn } from '@/lib/utils';
 import { useUIStore } from '@/stores/ui.store';
 
 interface DiscussionListProps {
@@ -57,7 +63,7 @@ export function DiscussionList({ projectId }: DiscussionListProps) {
 
   if (list.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-white/20 bg-white/[0.02] px-6 py-12 text-center">
+      <div className={cn(projectEmptyStateClass, 'flex flex-col items-center justify-center gap-4')}>
         <MessagesSquare className="h-12 w-12 text-base-content/30" aria-hidden />
         <p className="max-w-md text-sm text-base-content/70">{t('emptyDiscussionsHint')}</p>
         <Button size="sm" variant="default" asChild>
@@ -81,7 +87,13 @@ export function DiscussionList({ projectId }: DiscussionListProps) {
           const score = post.metrics?.score ?? 0;
           return (
             <li key={post.id}>
-              <div className="flex flex-col gap-2 rounded-xl border border-white/10 bg-white/5 p-4 text-card-foreground shadow-none transition-colors duration-200 hover:bg-white/[0.07]">
+              <div
+                className={cn(
+                  projectPanelSurfaceClass,
+                  projectSoftHoverClass,
+                  'flex flex-col gap-2 p-4 text-card-foreground shadow-none transition-colors duration-200',
+                )}
+              >
                 <Link href={routes.communityPost(projectId, post.id)} className="min-w-0 flex-1 block">
                   {post.title && <div className="font-medium">{post.title}</div>}
                   <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">
@@ -89,10 +101,13 @@ export function DiscussionList({ projectId }: DiscussionListProps) {
                   </div>
                   <AuthorLabel userId={post.authorId} />
                 </Link>
-                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
+                <div className={cn('flex flex-wrap items-center justify-between gap-2 border-t pt-3', projectDividerClass)}>
                   <button
                     type="button"
-                    className="flex min-w-0 items-center gap-1.5 text-sm hover:bg-white/10 rounded-lg px-2 py-1.5 transition-colors"
+                    className={cn(
+                      'flex min-w-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm transition-colors',
+                      projectSoftHoverClass,
+                    )}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();

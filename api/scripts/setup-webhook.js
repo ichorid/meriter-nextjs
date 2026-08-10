@@ -54,6 +54,73 @@ function makeRequest(url) {
     });
 }
 
+function makePostRequest(url, body) {
+    return new Promise((resolve, reject) => {
+        const parsedUrl = new URL(url);
+        const payload = JSON.stringify(body);
+        const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+        const req = protocol.request(
+            {
+                hostname: parsedUrl.hostname,
+                port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+                path: `${parsedUrl.pathname}${parsedUrl.search}`,
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload),
+                },
+            },
+            (res) => {
+                let data = '';
+                res.on('data', (chunk) => {
+                    data += chunk;
+                });
+                res.on('end', () => {
+                    try {
+                        resolve(JSON.parse(data));
+                    } catch (e) {
+                        reject(new Error(`Failed to parse response: ${e.message}`));
+                    }
+                });
+            },
+        );
+
+        req.on('error', reject);
+        req.write(payload);
+        req.end();
+    });
+}
+
+const BOT_COMMANDS = [
+    { command: 'balance', description: 'Ваш баланс и квота' },
+    { command: 'members', description: 'Рейтинг участников' },
+    // transfer: removed from menu; peer transfer stays in mini-app / tRPC (meritTransfer.*)
+    { command: 'help', description: 'Справка по командам' },
+    { command: 'guide', description: 'Подробный гайд в личку' },
+    { command: 'link', description: 'Ссылка на мини-приложение' },
+    { command: 'linkandpin', description: 'Ссылка и закрепить' },
+];
+
+async function setBotCommands(botToken) {
+    console.log('📋 Registering bot commands (English)...\n');
+    const apiBase = `https://api.telegram.org/bot${botToken}/setMyCommands`;
+    const scopes = [
+        { type: 'default' },
+        { type: 'all_group_chats' },
+        { type: 'all_private_chats' },
+    ];
+
+    for (const scope of scopes) {
+        const response = await makePostRequest(apiBase, { commands: BOT_COMMANDS, scope });
+        if (!response.ok) {
+            throw new Error(response.description || `setMyCommands failed for scope ${scope.type}`);
+        }
+        console.log(`   ✅ scope: ${scope.type}`);
+    }
+    console.log('');
+}
+
 async function checkWebhook(botToken) {
     console.log('🔍 Checking webhook status...\n');
     
@@ -78,6 +145,15 @@ async function checkWebhook(botToken) {
                 console.log(`   ⚠️  Last error: ${info.last_error_message || 'Unknown'}`);
                 console.log(`      Date: ${lastErrorDate.toISOString()}`);
             }
+            if (Array.isArray(info.allowed_updates)) {
+                console.log(`   Allowed updates: ${info.allowed_updates.join(', ')}`);
+                const required = ['message_reaction', 'message_reaction_count'];
+                for (const key of required) {
+                    if (!info.allowed_updates.includes(key)) {
+                        console.log(`   ⚠️  Missing ${key} — reactions will not work; run: node scripts/setup-webhook.js set`);
+                    }
+                }
+            }
         } else {
             console.log('ℹ️  No webhook configured (using long polling mode)');
         }
@@ -95,7 +171,18 @@ async function setWebhook(botToken, botUsername, appUrl) {
     console.log('🔧 Setting webhook...');
     console.log(`   URL: ${webhookUrl}\n`);
     
-    const url = `https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`;
+    const allowedUpdates = [
+        'message',
+        'my_chat_member',
+        'chat_member',
+        'callback_query',
+        'message_reaction',
+        'message_reaction_count',
+    ].join(',');
+    const url =
+        `https://api.telegram.org/bot${botToken}/setWebhook` +
+        `?url=${encodeURIComponent(webhookUrl)}` +
+        `&allowed_updates=${encodeURIComponent(allowedUpdates)}`;
     
     try {
         const response = await makeRequest(url);
@@ -105,6 +192,8 @@ async function setWebhook(botToken, botUsername, appUrl) {
         }
         
         console.log('✅ Webhook successfully configured!\n');
+
+        await setBotCommands(botToken);
         
         // Verify the configuration
         await checkWebhook(botToken);

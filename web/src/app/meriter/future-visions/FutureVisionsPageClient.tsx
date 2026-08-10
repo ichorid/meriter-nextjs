@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { FutureVisionFeed } from '@/components/organisms/FutureVision/FutureVisionFeed';
 import { CommunityHeroCard } from '@/components/organisms/Community/CommunityHeroCard';
@@ -10,22 +10,17 @@ import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { SimpleStickyHeader } from '@/components/organisms/ContextTopBar/ContextTopBar';
 import { QuotaDisplay } from '@/components/molecules/QuotaDisplay/QuotaDisplay';
-import { EarnMeritsBirzhaButton } from '@/components/molecules/EarnMeritsBirzhaButton/EarnMeritsBirzhaButton';
-import { BirzhaTappalkaModal } from '@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { trpc } from '@/lib/trpc/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUserRoles } from '@/hooks/api/useProfile';
 import { useCommunity } from '@/hooks/api/useCommunities';
 import { useWallets } from '@/hooks/api/useWallet';
-import { useBirzhaCommunityId } from '@/hooks/useBirzhaCommunityId';
 
 export default function FutureVisionsPageClient() {
   const t = useTranslations('common');
   const { user } = useAuth();
   const { data: userRoles = [] } = useUserRoles(user?.id || '');
-  const birzhaCommunityId = useBirzhaCommunityId();
-  const [birzhaEarnModalOpen, setBirzhaEarnModalOpen] = useState(false);
 
   const { data: communitiesData } = useCommunities();
   const futureVisionCommunityId = useMemo(() => {
@@ -79,11 +74,7 @@ export default function FutureVisionsPageClient() {
                   showDaily={hasQuota}
                   compact={true}
                   className="mr-2 -ml-[15px] mt-[5px]"
-                  onEarnMeritsClick={
-                    birzhaCommunityId ? () => setBirzhaEarnModalOpen(true) : undefined
-                  }
                 />
-                <EarnMeritsBirzhaButton />
               </div>
             }
           />
@@ -111,12 +102,6 @@ export default function FutureVisionsPageClient() {
         )}
         <FutureVisionFeed />
       </div>
-
-      <BirzhaTappalkaModal
-        open={birzhaEarnModalOpen}
-        onOpenChange={setBirzhaEarnModalOpen}
-        communityId={birzhaCommunityId}
-      />
     </AdaptiveLayout>
   );
 }

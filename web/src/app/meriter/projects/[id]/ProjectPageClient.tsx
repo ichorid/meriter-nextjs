@@ -24,13 +24,15 @@ import { EarnMeritsBirzhaButton } from '@/components/molecules/EarnMeritsBirzhaB
 import { Button } from '@/components/ui/shadcn/button';
 import { CommunityJoinRequestPanel } from '@/components/molecules/CommunityJoinRequest/CommunityJoinRequestPanel';
 import { cn } from '@/lib/utils';
+import { projectEmptyStateClass, projectSoftHoverClass } from '@/components/organisms/Project/project-surface';
 import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
+import { CommunityHubFeedTabBar } from '@/features/communities/components/CommunityHubFeedTabBar';
 import {
-  CommunityHubFeedTabBar,
+  resolveCommunityHubFeedTab,
   type CommunityHubFeedTab,
-} from '@/features/communities/components/CommunityHubFeedTabBar';
+} from '@/features/communities/lib/community-hub-feed-tab';
 import { EventsContextPage } from '@/features/events/pages/EventsContextPage';
 import { ProjectBirzhaPostsPageClient } from '@/app/meriter/projects/[id]/birzha-posts/ProjectBirzhaPostsPageClient';
 
@@ -46,7 +48,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
   const { user } = useAuth();
-  const { data, isLoading } = useProject(projectId);
+  const { data, isLoading, isError } = useProject(projectId);
   const { data: membersData } = useProjectMembers(projectId, { limit: 100 });
   const leaveProject = useLeaveProject();
 
@@ -79,40 +81,15 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
     user && (meInProjectMembers?.role === 'lead' || user.globalRole === 'superadmin'),
   );
 
-  const projectHubFeedTab = useMemo(() => {
-    const v = searchParams?.get('feedTab');
-    if (v === 'events' || v === 'birzha') return v;
-    return 'posts' as const;
-  }, [searchParams]);
-
-  const documentsMode =
-    (data?.project?.settings as { documentsMode?: string } | undefined)?.documentsMode ??
-    'visionOrDescriptionOnly';
-
-  const descriptionDocQuery = trpc.documents.getOfficialByType.useQuery(
-    { communityId: projectId, type: 'description' },
-    { enabled: Boolean(user?.id && data?.project && documentsMode !== 'off') },
+  const projectHubFeedTab = useMemo(
+    () => resolveCommunityHubFeedTab(searchParams?.get('feedTab'), PROJECT_HUB_FEED_TABS),
+    [searchParams],
   );
 
-  const isProjectMemberForDocs = useMemo(() => {
-    if (!user?.id || !data?.project) return false;
-    const p = data.project;
-    return Boolean(
-      p.members?.includes(user.id) ||
-        meInProjectMembers?.role === 'lead' ||
-        meInProjectMembers?.role === 'participant',
-    );
-  }, [user?.id, data?.project, meInProjectMembers?.role]);
+  /** MVP: collaborative UI is OB-only; project description doc link hidden. */
+  const descriptionDocumentHref = undefined;
 
-  const descriptionDocumentHref =
-    user?.id &&
-    documentsMode !== 'off' &&
-    (isProjectMemberForDocs || user.globalRole === 'superadmin') &&
-    descriptionDocQuery.data?.id
-      ? routes.communityDocument(projectId, descriptionDocQuery.data.id)
-      : undefined;
-
-  if (isLoading || !data) {
+  if (isLoading || isError || !data) {
     return (
       <AdaptiveLayout
         communityId={projectId}
@@ -140,7 +117,11 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
       >
         <div className="max-w-4xl mx-auto p-4">
           <p className="text-base-content/70">
-            {isLoading ? tCommon('loading') : t('projectNotFound')}
+            {isLoading
+              ? tCommon('loading')
+              : isError
+                ? tCommon('error')
+                : t('projectNotFound')}
           </p>
           {!isLoading && (
             <Button variant="ghost" size="sm" className="mt-2" onClick={() => router.push('/meriter/projects')}>
@@ -308,14 +289,44 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           hubKind="project"
         />
 
-        {projectHubFeedTab === 'posts' && isMember && user ? (
-          <ProjectWorkArea
-            projectId={projectId}
-            currentUserId={user.id}
-            canModerateTickets={canModerateTickets}
-            isMember={isMember}
-            readOnly={isArchived}
-          />
+        {projectHubFeedTab === 'posts' ? (
+          user ? (
+            isMember ? (
+              <ProjectWorkArea
+                projectId={projectId}
+                currentUserId={user.id}
+                canModerateTickets={canModerateTickets}
+                isMember={isMember}
+                readOnly={isArchived}
+              />
+            ) : (
+              <div className={cn(projectEmptyStateClass, 'flex flex-col items-center gap-4')}>
+                <p className="text-sm font-medium text-base-content">{t('postsTabMembersOnlyTitle')}</p>
+                <p className="max-w-md text-sm text-base-content/70">{t('postsTabMembersOnlyHint')}</p>
+                {!isArchived ? (
+                  <CommunityJoinRequestPanel
+                    communityId={projectId}
+                    layout="inline"
+                    entityKind="project"
+                    className="max-w-sm w-full"
+                  />
+                ) : null}
+              </div>
+            )
+          ) : (
+            <div className={cn(projectEmptyStateClass, 'flex flex-col items-center gap-4')}>
+              <p className="text-sm font-medium text-base-content">{t('postsTabMembersOnlyTitle')}</p>
+              <p className="max-w-md text-sm text-base-content/70">{t('postsTabSignInHint')}</p>
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={() => router.push(routes.login)}
+              >
+                {tCommon('login')}
+              </Button>
+            </div>
+          )
         ) : null}
 
         {projectHubFeedTab === 'events' && user?.id ? (
@@ -350,7 +361,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-base-content hover:bg-white/10"
+                        className={cn('text-base-content', projectSoftHoverClass)}
                         onClick={() => setTransferAdminDialogOpen(true)}
                       >
                         {t('transferAdmin')}
@@ -359,7 +370,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="text-base-content hover:bg-white/10"
+                        className={cn('text-base-content', projectSoftHoverClass)}
                         onClick={() => setUpdateSharesDialogOpen(true)}
                       >
                         {t('updateShares')}
@@ -370,7 +381,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className={cn('text-base-content/55 hover:text-base-content/80 hover:bg-white/5')}
+                    className={cn('text-base-content/55 hover:text-base-content/80', projectSoftHoverClass)}
                     onClick={() => setLeaveDialogOpen(true)}
                     disabled={leaveProject.isPending}
                   >

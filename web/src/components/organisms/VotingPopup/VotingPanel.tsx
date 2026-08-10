@@ -49,6 +49,9 @@ interface VotingPanelProps {
     hintMode?: 'add' | 'withdraw';
     /** When withdrawing from a Birzha post published on behalf of a project/community, merits credit the source wallet (not personal). */
     withdrawMeritsDestination?: 'personal' | 'sourceProject' | 'sourceCommunity';
+    /** Collaborative document block: variant proposal or official text */
+    documentVoteTarget?: 'variant' | 'official';
+    documentAllowDownvotes?: boolean;
 }
 
 export const VotingPanel: React.FC<VotingPanelProps> = ({
@@ -81,6 +84,8 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     neutralHelperText,
     hintMode = 'withdraw',
     withdrawMeritsDestination = 'personal',
+    documentVoteTarget,
+    documentAllowDownvotes = true,
 }) => {
     const t = useTranslations("comments");
     const tShared = useTranslations("shared");
@@ -88,6 +93,10 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     const enableCommentImageUploads = features.commentImageUploads;
     const isFutureVision = community?.typeTag === 'future-vision';
     const allowDownvote = community?.votingSettings?.allowNegativeVoting !== false;
+    const effectiveAllowDownvote =
+        documentVoteTarget != null
+            ? allowDownvote && documentAllowDownvotes
+            : allowDownvote;
 
     // Direction is determined by the sign of amount
     const isPositive = amount >= 0;
@@ -129,6 +138,31 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
     
     // Determine which hint text to show
     const votingMechanicsText = useMemo(() => {
+        if (documentVoteTarget === 'variant' || documentVoteTarget === 'official') {
+            if (isOwnPost) {
+                return t('documentVariantOwnVotingMechanics');
+            }
+            if (!documentAllowDownvotes) {
+                if (currencySource === 'quota-only') {
+                    return t('documentBlockVotingMechanicsQuotaOnlyNoDownvote');
+                }
+                if (currencySource === 'wallet-only') {
+                    return t('documentBlockVotingMechanicsWalletOnlyNoDownvote');
+                }
+                return t('documentBlockVotingMechanicsNoDownvote');
+            }
+            if (currencySource === 'quota-only') {
+                return t('documentBlockVotingMechanicsQuotaOnly');
+            }
+            if (currencySource === 'wallet-only') {
+                return t('documentBlockVotingMechanicsWalletOnly');
+            }
+            return t(
+                documentVoteTarget === 'official'
+                    ? 'documentOfficialVotingMechanics'
+                    : 'documentVariantVotingMechanics',
+            );
+        }
         if (isOwnPost) {
             return t("ownPostVotingMechanics");
         }
@@ -142,7 +176,40 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             return t("votingMechanicsWalletOnly");
         }
         return t("votingMechanics");
-    }, [isOwnPost, isFutureVision, currencySource, t]);
+    }, [
+        documentVoteTarget,
+        documentAllowDownvotes,
+        isOwnPost,
+        isFutureVision,
+        currencySource,
+        t,
+    ]);
+
+    const commentHelperText = useMemo(() => {
+        if (documentVoteTarget === 'official') {
+            return t('documentOfficialCommentHelper');
+        }
+        if (documentVoteTarget === 'variant') {
+            return t('documentVariantCommentHelper');
+        }
+        if (isFutureVision) {
+            return t('futureVisionCommentHelper');
+        }
+        return t('explanationPlaceholder');
+    }, [documentVoteTarget, isFutureVision, t]);
+
+    const commentRequiredText = useMemo(() => {
+        if (documentVoteTarget === 'official') {
+            return t('documentOfficialCommentRequired');
+        }
+        if (documentVoteTarget === 'variant') {
+            return t('documentVariantCommentRequired');
+        }
+        if (isFutureVision) {
+            return t('futureVisionCommentRequired');
+        }
+        return t('commentRequired');
+    }, [documentVoteTarget, isFutureVision, t]);
 
     const headerTitle = useMemo(() => {
         if (title) return title;
@@ -320,7 +387,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             setAmount(0);
             return;
         }
-        if (!hideQuota && !allowDownvote && value.startsWith('-')) {
+        if (!hideQuota && !effectiveAllowDownvote && value.startsWith('-')) {
             setInputValue('');
             setInputSign('');
             setAmount(0);
@@ -352,7 +419,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
         // Parse number (handles negative values correctly)
         const numValue = Number(value);
         if (!isNaN(numValue) && cleanValue !== '' && cleanValue !== '0') {
-            if (!hideQuota && !allowDownvote && numValue < 0) {
+            if (!hideQuota && !effectiveAllowDownvote && numValue < 0) {
                 setInputValue('');
                 setInputSign('');
                 setAmount(0);
@@ -369,13 +436,13 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             // For upvotes, use maxAvailableMerits (which is maxPlus, correctly calculated based on voting mode)
             // For downvotes, use wallet only
             const maxByMerits = isPositive ? maxAvailableMerits : walletBalance;
-            const minByMerits = (!hideQuota && !allowDownvote) ? 0 : -maxAvailableMerits;
+            const minByMerits = (!hideQuota && !effectiveAllowDownvote) ? 0 : -maxAvailableMerits;
             
             // Use maxAvailableMerits for upvotes, maxMinus for downvotes
             const maxLimit = isPositive 
                 ? maxAvailableMerits // For upvotes, use maxAvailableMerits (maxPlus from VotingPopup)
                 : (maxMinus > 0 ? Math.min(maxMinus, maxByMerits) : maxByMerits);
-            const minLimit = (!hideQuota && !allowDownvote)
+            const minLimit = (!hideQuota && !effectiveAllowDownvote)
                 ? 0
                 : (maxMinus > 0 ? Math.max(-maxMinus, minByMerits) : minByMerits);
             
@@ -395,7 +462,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     setAmount(0);
                     return;
                 }
-                if (!hideQuota && !allowDownvote && isNegative) {
+                if (!hideQuota && !effectiveAllowDownvote && isNegative) {
                     setInputValue('');
                     setInputSign('');
                     setAmount(0);
@@ -410,11 +477,11 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     // For upvotes, use maxAvailableMerits (which is maxPlus, correctly calculated based on voting mode)
                     // For downvotes, use wallet only
                     const maxByMerits = isPositive ? maxAvailableMerits : walletBalance;
-                    const minByMerits = (!hideQuota && !allowDownvote) ? 0 : -maxAvailableMerits;
+                    const minByMerits = (!hideQuota && !effectiveAllowDownvote) ? 0 : -maxAvailableMerits;
                     const maxLimit = isPositive 
                         ? maxAvailableMerits // For upvotes, use maxAvailableMerits (maxPlus from VotingPopup)
                         : (maxMinus > 0 ? Math.min(maxMinus, maxByMerits) : maxByMerits);
-                    const minLimit = (!hideQuota && !allowDownvote)
+                    const minLimit = (!hideQuota && !effectiveAllowDownvote)
                         ? 0
                         : (maxMinus > 0 ? Math.max(-maxMinus, minByMerits) : minByMerits);
                     const clampedValue = Math.max(minLimit, Math.min(maxLimit, partialValue));
@@ -480,7 +547,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             return;
         }
 
-        if (!allowDownvote) {
+        if (!effectiveAllowDownvote) {
             const newAmount = Math.max(0, amount - 1);
             setAmount(newAmount);
             setInputValue(Math.abs(newAmount).toString());
@@ -666,7 +733,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                                 onClick={handleDecrease}
                                 disabled={
                                     // Disable if:
-                                    (!hideQuota && !allowDownvote && amount <= 0) ||
+                                    (!hideQuota && !effectiveAllowDownvote && amount <= 0) ||
                                     // 1. Amount is 0 and no wallet balance (can't go negative)
                                     // 2. Amount is negative and already at minimum (-maxMinus or -walletBalance)
                                     (amount === 0 && walletBalance === 0) ||
@@ -717,15 +784,17 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
             {/* Withdraw Progress Bar (when hideQuota is true, not in neutralOnly) */}
             {hideQuota && commentMode !== 'neutralOnly' && (
                 <div className="flex flex-col gap-4">
-                    {/* Hint text: different for "add merits" vs "withdraw" */}
-                    <p className="text-xs text-base-content/60 leading-relaxed">
-                        {hintMode === 'add'
-                            ? tShared('addMeritsHint')
-                            : withdrawMeritsDestination === 'sourceProject'
-                              ? tShared('withdrawHintSourceProject')
-                              : withdrawMeritsDestination === 'sourceCommunity'
-                                ? tShared('withdrawHintSourceCommunity')
-                                : tShared('withdrawHint')}
+                    {/* Hint: document votes use mechanics copy; withdraw/add for post withdraw UI */}
+                    <p className="text-xs text-base-content/60 leading-relaxed whitespace-pre-line">
+                        {documentVoteTarget === 'variant' || documentVoteTarget === 'official'
+                            ? votingMechanicsText
+                            : hintMode === 'add'
+                              ? tShared('addMeritsHint')
+                              : withdrawMeritsDestination === 'sourceProject'
+                                ? tShared('withdrawHintSourceProject')
+                                : withdrawMeritsDestination === 'sourceCommunity'
+                                  ? tShared('withdrawHintSourceCommunity')
+                                  : tShared('withdrawHint')}
                     </p>
 
                     {/* Available Progress Bar - above amount input */}
@@ -811,7 +880,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                     </label>
                     {commentMode !== 'neutralOnly' && (
                         <p className="text-xs text-base-content/60 mb-2">
-                            {isFutureVision ? t("futureVisionCommentHelper") : t("explanationPlaceholder")}
+                            {commentHelperText}
                         </p>
                     )}
                     <Textarea
@@ -828,7 +897,7 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                         <p className="text-xs text-error">
                             {commentMode === 'neutralOnly'
                                 ? t("commentEmptyHint")
-                                : (isFutureVision ? t("futureVisionCommentRequired") : t("commentRequired"))}
+                                : commentRequiredText}
                         </p>
                     )}
                 </div>
@@ -866,7 +935,10 @@ export const VotingPanel: React.FC<VotingPanelProps> = ({
                             : "bg-base-content text-base-100 hover:bg-base-content/90 border border-base-content/20"
                     )}
                 >
-                    {hideQuota ? (submitButtonLabel ?? tShared("withdrawButton")) : t("voteTitle")}
+                    {hideQuota
+                        ? (submitButtonLabel ??
+                          (documentVoteTarget ? t('voteTitle') : tShared('withdrawButton')))
+                        : t('voteTitle')}
                 </button>
                 {/* Server error (if any) */}
                 {error && (

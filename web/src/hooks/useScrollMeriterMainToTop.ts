@@ -4,13 +4,9 @@ import { useLayoutEffect } from 'react';
 
 function scrollMeriterMainToTop(): void {
   const mainWrap = document.querySelector('.mainWrap') as HTMLElement | null;
-  if (mainWrap) {
-    mainWrap.scrollTop = 0;
-    mainWrap.scrollLeft = 0;
-  }
-  window.scrollTo(0, 0);
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
+  if (!mainWrap) return;
+  mainWrap.scrollTop = 0;
+  mainWrap.scrollLeft = 0;
 }
 
 /**

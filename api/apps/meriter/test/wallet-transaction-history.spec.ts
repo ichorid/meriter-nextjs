@@ -1,6 +1,7 @@
 import {
   buildCommunityMeritHistoryTransactionMatch,
   buildMeritHistoryTransactionMatch,
+  communityMeritHistoryLedgerMultiplier,
   meritHistoryCategoryForReferenceType,
   meritHistoryLedgerMultiplier,
   meritHistoryReferenceTypeMatch,
@@ -56,6 +57,26 @@ describe('wallet-transaction-history', () => {
       expect(meritHistoryLedgerMultiplier({ type: 'deposit', referenceType: 'welcome_merits' })).toBe(
         1,
       );
+    });
+  });
+
+  describe('communityMeritHistoryLedgerMultiplier', () => {
+    it('treats project_topup debit as inflow in aggregate context', () => {
+      expect(
+        communityMeritHistoryLedgerMultiplier({
+          type: 'debit',
+          referenceType: 'project_topup',
+        }),
+      ).toBe(1);
+    });
+
+    it('treats community_wallet_topup debit as inflow in aggregate context', () => {
+      expect(
+        communityMeritHistoryLedgerMultiplier({
+          type: 'debit',
+          referenceType: 'community_wallet_topup',
+        }),
+      ).toBe(1);
     });
   });
 

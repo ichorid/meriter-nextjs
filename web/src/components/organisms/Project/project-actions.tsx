@@ -2,6 +2,8 @@
 
 import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
+import { cn } from '@/lib/utils';
+import { projectPanelSurfaceClass } from './project-surface';
 
 export interface ProjectActionsProps {
   joinBlock?: ReactNode;
@@ -20,7 +22,7 @@ export function ProjectActions({
     <section className="space-y-4" aria-label={t('actionsSection')}>
       {joinBlock}
       {managementSlot && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+        <div className={cn(projectPanelSurfaceClass, 'space-y-3 p-4')}>
           <h3 className="text-xs font-semibold uppercase tracking-wide text-base-content/50">
             {t('managementHeading')}
           </h3>

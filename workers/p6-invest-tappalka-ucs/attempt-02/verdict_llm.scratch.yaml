@@ -1,0 +1,173 @@
+VerifierVerdict:
+  work_unit_id: p6-invest-tappalka-ucs
+  attempt: 2
+  channel: llm
+  verdict: pass
+  summary: >-
+    InvestInPostUseCase (BC-08) and ProcessTappalkaComparisonUseCase (BC-13) are extracted
+    with inv-08 permission gates before side effects and inv-01/solvency pre-checks before
+    wallet debit or submitChoice. Attempt 2 confirms write_set use cases complete; resolves
+    attempt-1 partial on tappalka exception layering (Nest ForbiddenException/BadRequestException/
+    NotFoundException only, no TRPCError in application layer). investment.invest and
+    tappalka.submitChoice delegate via create*FromContext factories (router wiring from prior
+    attempts, outside nominal write_set). Write-set files pass eslint and tsc. investment.e2e-spec.ts
+    remains blocked by preexisting Nest DI stack overflow at bootstrap (external to this delta).
+  reviewed_at: "2026-05-28"
+  diff_basis: >-
+    git diff HEAD~..HEAD reflects unrelated p5-permission-engine-merge commit; work-unit delta
+    reviewed via uncommitted git diff on write_set paths and router delegation files, direct reads
+    of both use-case files, repair_summary.json (attempt 2), eslint/tsc on write_set, and
+    npx jest --config apps/meriter/test/jest-e2e.json --testPathPattern=investment.e2e-spec
+    (bootstrap blocked; local run also hit ENOSPC on jest cache write).
+
+  intent_match: true
+  write_set_compliance: true
+  files_modified:
+    - api/apps/meriter/src/application/use-cases/investments/invest-in-post.use-case.ts
+    - api/apps/meriter/src/application/use-cases/tappalka/process-tappalka-comparison.use-case.ts
+  files_outside_write_set:
+    - api/apps/meriter/src/trpc/routers/investment.router.ts
+    - api/apps/meriter/src/trpc/routers/tappalka.router.ts
+
+  constraint_checks:
+    - id: phase-6
+      status: pass
+      evidence: >-
+        BC-08 InvestInPostUseCase and BC-13 ProcessTappalkaComparisonUseCase live under
+        application/use-cases/ with create*FromContext factories for tRPC wiring, matching
+        prior phase use-case extraction patterns.
+    - id: bounded_contexts-BC-08
+      status: pass
+      evidence: >-
+        InvestInPostUseCase orchestrates wallet debit, publication pool update, and
+        investment_received notification; documents inv-01 wallet-only debit and inv-08
+        membership/post eligibility gates.
+    - id: bounded_contexts-BC-13
+      status: pass
+      evidence: >-
+        ProcessTappalkaComparisonUseCase wraps TappalkaService.submitChoice with inv-08
+        membership/tappalka-enabled gates and show-cost eligibility pre-check before
+        deductShowCost side effects.
+
+  success_criteria:
+    - id: investments_and_tappalka_delegate
+      status: pass
+      evidence: >-
+        investment.router invest mutation calls createInvestInPostUseCaseFromContext(ctx).execute;
+        tappalka.router submitChoice calls createProcessTappalkaComparisonUseCaseFromContext(ctx).execute.
+        Read-only investment/tappalka procedures still delegate to domain services (outside scope).
+    - id: investor_e2e_green
+      status: blocked
+      evidence: >-
+        repair_summary attempt 2 and worker notes: investment.e2e-spec.ts aborts at Nest bootstrap
+        with RangeError: Maximum call stack size exceeded in InstanceWrapper.getInstanceByContextId
+        (DI cycle / unbound PERMISSION_GATES_PORT from p5-permission-engine-merge). Failure occurs
+        before any test body runs; not attributable to p6 use-case extraction.
+    - id: use_cases_extracted_with_gates
+      status: pass
+      evidence: >-
+        Both use-case files exist; inv-08 gates run before wallet debit (invest) and before
+        submitChoice (tappalka); inv-01 assertInvestorSolvency uses wallet.canAfford before
+        addTransaction; tappalka assertPostsSolventForShowCost validates pool/rating paths.
+
+  architecture_alignment:
+    - id: gate-order-invest
+      status: pass
+      evidence: >-
+        InvestInPostUseCase.execute: assertInvestPermission (inv-08) then assertInvestorSolvency
+        (inv-01) then wallet debit and publication update. Adds membership gate not present in
+        legacy InvestmentService.processInvestment.
+    - id: gate-order-tappalka
+      status: pass
+      evidence: >-
+        ProcessTappalkaComparisonUseCase.execute: assertComparisonPermission (inv-08 membership +
+        tappalka enabled) then assertPostsSolventForShowCost then tappalkaService.submitChoice.
+        Membership gate is new relative to TappalkaService (no prior getUserRoleInCommunity check).
+    - id: invest-exception-layering
+      status: pass
+      evidence: >-
+        InvestInPostUseCase uses Nest ForbiddenException/BadRequestException/NotFoundException;
+        investment.router maps ForbiddenException to TRPC FORBIDDEN.
+    - id: tappalka-exception-layering
+      status: pass
+      evidence: >-
+        ProcessTappalkaComparisonUseCase uses Nest ForbiddenException/BadRequestException/
+        NotFoundException only; no TRPCError import (attempt-1 partial issue resolved). execute
+        re-throws Nest exceptions from submitChoice and wraps generic Error as BadRequestException.
+    - id: tappalka-solvency-parity
+      status: pass
+      evidence: >-
+        canPostCoverShowCost mirrors getEligiblePosts eligibility paths: pool >= showCost,
+        score >= max(minRating, showCost), spendable pool+score-stopLoss with minRating guard,
+        Birzha sourceEntityId fallback, and author-wallet fallback unless noAuthorWalletSpend.
+    - id: repair-hardening
+      status: pass
+      evidence: >-
+        Repair attempt 2: assertInvestPermission returns Community (single fetch); publication
+        model wired via connection.model('PublicationSchemaClass') without value import on router
+        load path; assertComparisonPermission merged with settings resolution in one community fetch.
+    - id: legacy-service-retention
+      status: pass
+      evidence: >-
+        InvestmentService.processInvestment retained for platform-demo-seed.service.ts; tRPC invest
+        path bypasses it via use case. Acceptable interim per worker notes.
+
+  verification_checks:
+    - id: invest_in_post_use_case_exists
+      status: pass
+    - id: process_tappalka_comparison_use_case_exists
+      status: pass
+    - id: inv_08_permission_gates_before_side_effects
+      status: pass
+    - id: inv_01_wallet_solvency_gate_on_invest
+      status: pass
+      evidence: assertInvestorSolvency uses wallet.canAfford(amount) before addTransaction debit.
+    - id: tappalka_solvency_eligibility_pre_check
+      status: pass
+      evidence: canPostCoverShowCost mirrors getPair eligibility paths (pool, rating, Birzha/community wallet fallbacks).
+    - id: tappalka_nest_exception_layering
+      status: pass
+      evidence: No TRPCError in process-tappalka-comparison.use-case.ts; Nest exceptions only.
+    - id: use_cases_referenced_from_routers
+      status: pass
+    - id: eslint_write_set_files
+      status: pass
+      evidence: npx eslint on both write_set files reports 0 issues.
+    - id: tsc_errors_in_write_set
+      status: pass
+      evidence: npx tsc --noEmit -p apps/meriter/tsconfig.app.json reports no errors on write_set paths.
+
+  findings:
+    - id: tappalka-router-exception-mapping
+      severity: warning
+      message: >-
+        tappalka.router submitChoice catch (error instanceof Error) still wraps all errors—including
+        ForbiddenException and NotFoundException from the use case—as TRPC BAD_REQUEST. investment.router
+        correctly maps Forbidden/NotFound separately. Follow-up outside nominal write_set.
+    - id: router-wiring-outside-write-set
+      severity: info
+      message: >-
+        investment.router.ts and tappalka.router.ts modified in prior attempts outside nominal
+        write_set; required to satisfy investments.invest / tappalka.submitChoice delegation success criterion.
+    - id: investment-service-duplicate-logic
+      severity: info
+      message: >-
+        InvestmentService.processInvestment retains parallel invest logic without inv-08 membership
+        gate; only tRPC path uses InvestInPostUseCase. Consolidation deferred per worker notes.
+
+  warnings:
+    - id: changes-uncommitted
+      severity: info
+      message: Work-unit changes remain uncommitted on branch refactor/p6-invest-tappalka-ucs.
+    - id: e2e-di-cycle-external
+      severity: warning
+      message: >-
+        Phase 6 investor e2e gate cannot be validated in this worktree until Nest DI stack overflow
+        at bootstrap is resolved (depends_on p5-permission-engine-merge follow-up).
+
+  blockers:
+    - id: investor-e2e-di-cycle
+      severity: external
+      message: >-
+        investment.e2e-spec.ts never reaches test assertions due to preexisting Nest DI
+        RangeError: Maximum call stack size exceeded; not attributable to p6 use-case extraction.

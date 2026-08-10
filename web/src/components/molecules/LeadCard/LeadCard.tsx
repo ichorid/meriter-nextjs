@@ -8,6 +8,7 @@ import { Badge } from '@/components/atoms/Badge';
 import { useTranslations } from 'next-intl';
 import { DailyQuotaRing } from '@/components/molecules/DailyQuotaRing';
 import { formatMerits } from '@/lib/utils/currency';
+import { cn } from '@/lib/utils';
 
 interface LeadCardProps {
     id: string;
@@ -27,6 +28,7 @@ interface LeadCardProps {
         usedToday: number;
     };
     hideChevron?: boolean;
+    className?: string;
 }
 
 export const LeadCard: React.FC<LeadCardProps> = ({
@@ -43,6 +45,7 @@ export const LeadCard: React.FC<LeadCardProps> = ({
     permanentMerits,
     quota,
     hideChevron = false,
+    className,
 }) => {
     const t = useTranslations('common');
     const tCommon = useTranslations('common');
@@ -77,12 +80,11 @@ export const LeadCard: React.FC<LeadCardProps> = ({
 
     return (
         <Component
-            className={`
-                w-full flex flex-row items-center
-                px-5 py-2.5 gap-4
-                bg-base-100 border-t border-base-300
-                ${onClick ? 'cursor-pointer hover:bg-base-200 active:bg-base-300 transition-colors' : ''}
-            `}
+            className={cn(
+                'w-full flex flex-row items-center px-5 py-2.5 gap-4 bg-base-100 border-t border-base-300',
+                onClick && 'cursor-pointer hover:bg-base-200 active:bg-base-300 transition-colors',
+                className,
+            )}
             onClick={onClick}
         >
             {/* Avatar */}

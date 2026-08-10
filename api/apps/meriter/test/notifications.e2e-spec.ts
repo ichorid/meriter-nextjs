@@ -22,6 +22,8 @@ import { trpcMutation, trpcQuery, trpcMutationWithError } from './helpers/trpc-t
 import { TestSetupHelper } from './helpers/test-setup.helper';
 
 describe('Notifications E2E Tests', () => {
+  jest.setTimeout(30000);
+
   let app: INestApplication;
   let testDb: any;
   let connection: Connection;
@@ -64,8 +66,6 @@ describe('Notifications E2E Tests', () => {
   }
 
   beforeAll(async () => {
-    jest.setTimeout(30000);
-
     originalEnableCommentVoting = process.env.ENABLE_COMMENT_VOTING;
     process.env.ENABLE_COMMENT_VOTING = 'true';
 

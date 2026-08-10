@@ -25,6 +25,8 @@ import { Textarea } from '@/components/ui/shadcn/textarea';
 import { useProjectMembers } from '@/hooks/api/useProjects';
 import { useUpdateTicket } from '@/hooks/api/useTickets';
 import { routes } from '@/lib/constants/routes';
+import { cn } from '@/lib/utils';
+import { projectMutedBadgeClass, projectPanelInsetClass } from './project-surface';
 import type { TicketStatus } from '@meriter/shared-types';
 
 export interface TicketPostPanelPublication {
@@ -251,10 +253,10 @@ export function TicketPostPanel({
   const status = (publication.ticketStatus ?? 'in_progress') as TicketStatus;
 
   return (
-    <div className="mb-4 space-y-3 rounded-xl border border-white/10 bg-white/[0.04] p-4">
+    <div className={cn(projectPanelInsetClass, 'mb-4 space-y-3 p-4')}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
-          <TicketStatusBadge status={status} className="border-white/10 bg-white/10" />
+          <TicketStatusBadge status={status} />
           {communityIsProject && (
             <Button variant="outline" size="sm" className="h-8 rounded-lg" asChild>
               <Link href={routes.project(communityId)}>{t('backToProject')}</Link>
