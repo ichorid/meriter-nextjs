@@ -196,7 +196,8 @@ jobs:
             {
               echo "build_type=release"
               echo "run_dev_deploy=false"
-              echo "run_stage_deploy=true"
+              # Stage VPS is offline; do not gate production on deploy-stage.
+              echo "run_stage_deploy=false"
               echo "run_prod_deploy=true"
             } >> "$GITHUB_OUTPUT"
           else
@@ -408,7 +409,6 @@ jobs:
       - test-unit
       - test-e2e
       - build-images
-      - deploy-stage
     if: needs.determine-target.outputs.run_prod_deploy == 'true'
     environment:
       name: prod
