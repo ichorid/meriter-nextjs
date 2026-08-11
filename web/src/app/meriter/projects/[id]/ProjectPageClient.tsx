@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +13,7 @@ import { ProjectDashboard } from '@/components/organisms/Project/project-dashboa
 import { ProjectWorkArea } from '@/components/organisms/Project/project-work-area';
 import { ProjectActions } from '@/components/organisms/Project/project-actions';
 import { routes } from '@/lib/constants/routes';
+import { smartBack } from '@/lib/routing';
 import { CloseProjectDialog } from '@/components/organisms/Project/CloseProjectDialog';
 import { LeaveProjectDialog } from '@/components/organisms/Project/LeaveProjectDialog';
 import { UpdateSharesDialog } from '@/components/organisms/Project/UpdateSharesDialog';
@@ -29,10 +30,8 @@ import { useWalletBalance } from '@/hooks/api/useWallet';
 import { useUserQuota } from '@/hooks/api/useQuota';
 import { GLOBAL_COMMUNITY_ID } from '@/lib/constants/app';
 import { CommunityHubFeedTabBar } from '@/features/communities/components/CommunityHubFeedTabBar';
-import {
-  resolveCommunityHubFeedTab,
-  type CommunityHubFeedTab,
-} from '@/features/communities/lib/community-hub-feed-tab';
+import { useCommunityHubFeedTab } from '@/features/communities/hooks/useCommunityHubFeedTab';
+import { type CommunityHubFeedTab } from '@/features/communities/lib/community-hub-feed-tab';
 import { EventsContextPage } from '@/features/events/pages/EventsContextPage';
 import { ProjectBirzhaPostsPageClient } from '@/app/meriter/projects/[id]/birzha-posts/ProjectBirzhaPostsPageClient';
 
@@ -44,7 +43,6 @@ interface ProjectPageClientProps {
 
 export default function ProjectPageClient({ projectId }: ProjectPageClientProps) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
   const { user } = useAuth();
@@ -60,6 +58,18 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
   const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
   const [updateSharesDialogOpen, setUpdateSharesDialogOpen] = useState(false);
   const [transferAdminDialogOpen, setTransferAdminDialogOpen] = useState(false);
+
+  const {
+    activeTab: projectHubFeedTab,
+    setActiveTab: setProjectHubFeedTab,
+    isTabVisited,
+  } = useCommunityHubFeedTab(PROJECT_HUB_FEED_TABS);
+
+  const projectBackFallback = useMemo(() => {
+    const parentId = data?.project?.parentCommunityId ?? data?.parentCommunity?.id;
+    if (parentId) return routes.community(parentId);
+    return '/meriter/projects';
+  }, [data?.parentCommunity?.id, data?.project?.parentCommunityId]);
 
   const meInProjectMembers = useMemo(() => {
     if (!user?.id || !membersData?.data) return null;
@@ -81,11 +91,6 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
     user && (meInProjectMembers?.role === 'lead' || user.globalRole === 'superadmin'),
   );
 
-  const projectHubFeedTab = useMemo(
-    () => resolveCommunityHubFeedTab(searchParams?.get('feedTab'), PROJECT_HUB_FEED_TABS),
-    [searchParams],
-  );
-
   /** MVP: collaborative UI is OB-only; project description doc link hidden. */
   const descriptionDocumentHref = undefined;
 
@@ -97,7 +102,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           <SimpleStickyHeader
             title={t('backToProjects')}
             showBack={true}
-            onBack={() => router.push('/meriter/projects')}
+            onBack={() => smartBack(router, projectBackFallback)}
             asStickyHeader={true}
             rightAction={
               user ? (
@@ -124,7 +129,12 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
                 : t('projectNotFound')}
           </p>
           {!isLoading && (
-            <Button variant="ghost" size="sm" className="mt-2" onClick={() => router.push('/meriter/projects')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2"
+              onClick={() => smartBack(router, projectBackFallback)}
+            >
               {t('backToProjects')}
             </Button>
           )}
@@ -177,7 +187,7 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
     <SimpleStickyHeader
       title={<span className="truncate max-w-[200px] sm:max-w-[280px]" title={project.name}>{project.name}</span>}
       showBack={true}
-      onBack={() => router.push('/meriter/projects')}
+      onBack={() => smartBack(router, projectBackFallback)}
       asStickyHeader={true}
       showScrollToTop={true}
       rightAction={
@@ -287,67 +297,87 @@ export default function ProjectPageClient({ projectId }: ProjectPageClientProps)
           communityId={projectId}
           visibleTabs={PROJECT_HUB_FEED_TABS}
           hubKind="project"
+          activeTab={projectHubFeedTab}
+          onTabChange={setProjectHubFeedTab}
         />
 
-        {projectHubFeedTab === 'posts' ? (
-          user ? (
-            isMember ? (
-              <ProjectWorkArea
-                projectId={projectId}
-                currentUserId={user.id}
-                canModerateTickets={canModerateTickets}
-                isMember={isMember}
-                readOnly={isArchived}
-              />
+        {isTabVisited('posts') ? (
+          <div
+            className={cn(projectHubFeedTab !== 'posts' && 'hidden')}
+            hidden={projectHubFeedTab !== 'posts'}
+            inert={projectHubFeedTab !== 'posts' ? true : undefined}
+          >
+            {user ? (
+              isMember ? (
+                <ProjectWorkArea
+                  projectId={projectId}
+                  currentUserId={user.id}
+                  canModerateTickets={canModerateTickets}
+                  isMember={isMember}
+                  readOnly={isArchived}
+                />
+              ) : (
+                <div className={cn(projectEmptyStateClass, 'flex flex-col items-center gap-4')}>
+                  <p className="text-sm font-medium text-base-content">{t('postsTabMembersOnlyTitle')}</p>
+                  <p className="max-w-md text-sm text-base-content/70">{t('postsTabMembersOnlyHint')}</p>
+                  {!isArchived ? (
+                    <CommunityJoinRequestPanel
+                      communityId={projectId}
+                      layout="inline"
+                      entityKind="project"
+                      className="max-w-sm w-full"
+                    />
+                  ) : null}
+                </div>
+              )
             ) : (
               <div className={cn(projectEmptyStateClass, 'flex flex-col items-center gap-4')}>
                 <p className="text-sm font-medium text-base-content">{t('postsTabMembersOnlyTitle')}</p>
-                <p className="max-w-md text-sm text-base-content/70">{t('postsTabMembersOnlyHint')}</p>
-                {!isArchived ? (
-                  <CommunityJoinRequestPanel
-                    communityId={projectId}
-                    layout="inline"
-                    entityKind="project"
-                    className="max-w-sm w-full"
-                  />
-                ) : null}
+                <p className="max-w-md text-sm text-base-content/70">{t('postsTabSignInHint')}</p>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="sm"
+                  onClick={() => router.push(routes.login)}
+                >
+                  {tCommon('login')}
+                </Button>
               </div>
-            )
-          ) : (
-            <div className={cn(projectEmptyStateClass, 'flex flex-col items-center gap-4')}>
-              <p className="text-sm font-medium text-base-content">{t('postsTabMembersOnlyTitle')}</p>
-              <p className="max-w-md text-sm text-base-content/70">{t('postsTabSignInHint')}</p>
-              <Button
-                type="button"
-                variant="default"
-                size="sm"
-                onClick={() => router.push(routes.login)}
-              >
-                {tCommon('login')}
-              </Button>
-            </div>
-          )
+            )}
+          </div>
         ) : null}
 
-        {projectHubFeedTab === 'events' && user?.id ? (
-          <EventsContextPage
-            communityId={projectId}
-            variant="embedded"
-            backHref={routes.project(projectId)}
-            projectMemberForEvents={Boolean(
-              user && (isMember || user.globalRole === 'superadmin'),
-            )}
-          />
+        {isTabVisited('events') && user?.id ? (
+          <div
+            className={cn(projectHubFeedTab !== 'events' && 'hidden')}
+            hidden={projectHubFeedTab !== 'events'}
+            inert={projectHubFeedTab !== 'events' ? true : undefined}
+          >
+            <EventsContextPage
+              communityId={projectId}
+              variant="embedded"
+              backHref={routes.project(projectId)}
+              projectMemberForEvents={Boolean(
+                user && (isMember || user.globalRole === 'superadmin'),
+              )}
+            />
+          </div>
         ) : null}
 
-        {projectHubFeedTab === 'birzha' ? (
-          <ProjectBirzhaPostsPageClient
-            projectId={projectId}
-            variant="embedded"
-            showPublishCta={Boolean(
-              user && (isMember || user.globalRole === 'superadmin'),
-            )}
-          />
+        {isTabVisited('birzha') ? (
+          <div
+            className={cn(projectHubFeedTab !== 'birzha' && 'hidden')}
+            hidden={projectHubFeedTab !== 'birzha'}
+            inert={projectHubFeedTab !== 'birzha' ? true : undefined}
+          >
+            <ProjectBirzhaPostsPageClient
+              projectId={projectId}
+              variant="embedded"
+              showPublishCta={Boolean(
+                user && (isMember || user.globalRole === 'superadmin'),
+              )}
+            />
+          </div>
         ) : null}
 
         {user && !isArchived && (

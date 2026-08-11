@@ -1,22 +1,13 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
-import Link from 'next/link';
-import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { cn } from '@/lib/utils';
 import {
   formatHubFeedTabCount,
   useCommunityHubFeedTabCounts,
 } from '@/features/communities/hooks/useCommunityHubFeedTabCounts';
-import {
-  buildCommunityHubFeedTabHref,
-  needsCommunityHubFeedTabSanitize,
-  resolveCommunityHubFeedTab,
-  type CommunityHubFeedTab,
-} from '@/features/communities/lib/community-hub-feed-tab';
-
-const SCROLL_OPTS = { scroll: false as const };
+import type { CommunityHubFeedTab } from '@/features/communities/lib/community-hub-feed-tab';
 
 export type { CommunityHubFeedTab };
 
@@ -33,6 +24,8 @@ export function CommunityHubFeedTabBar({
   communityId,
   visibleTabs = DEFAULT_VISIBLE,
   hubKind = 'community',
+  activeTab,
+  onTabChange,
   className,
 }: {
   communityId: string;
@@ -40,48 +33,23 @@ export function CommunityHubFeedTabBar({
   visibleTabs?: readonly CommunityHubFeedTab[];
   /** Project cooperative hub uses tickets/discussions for the posts tab. */
   hubKind?: 'community' | 'project';
+  activeTab: CommunityHubFeedTab;
+  onTabChange: (tab: CommunityHubFeedTab) => void;
   /** When tabs sit inside the feed chrome card (no outer border / separate rounding). */
   className?: string;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
   const t = useTranslations('pages.communities');
 
   const orderedTabs = useMemo(
     () => TAB_ORDER.filter((id) => visibleTabs.includes(id)),
     [visibleTabs],
   );
-  const visibleTabsKey = useMemo(() => orderedTabs.join(','), [orderedTabs]);
 
   const { counts: tabCounts, isLoading: tabCountsLoading } = useCommunityHubFeedTabCounts(
     communityId,
     orderedTabs,
     { hubKind },
   );
-
-  const feedTabRaw = searchParams?.get('feedTab') ?? null;
-  const searchParamsString = searchParams?.toString() ?? '';
-  const active = resolveCommunityHubFeedTab(feedTabRaw, orderedTabs);
-  const shouldSanitizeUrl = needsCommunityHubFeedTabSanitize(feedTabRaw, orderedTabs);
-
-  useEffect(() => {
-    if (!pathname || !shouldSanitizeUrl) return;
-    const href = buildCommunityHubFeedTabHref(
-      pathname,
-      searchParamsString,
-      resolveCommunityHubFeedTab(feedTabRaw, orderedTabs),
-    );
-    router.replace(href, SCROLL_OPTS);
-  }, [
-    feedTabRaw,
-    orderedTabs,
-    pathname,
-    router,
-    searchParamsString,
-    shouldSanitizeUrl,
-    visibleTabsKey,
-  ]);
 
   const labelFor = (id: CommunityHubFeedTab): string => {
     switch (id) {
@@ -99,20 +67,19 @@ export function CommunityHubFeedTabBar({
   };
 
   const n = orderedTabs.length;
-  const basePath = pathname ?? '';
 
   return (
     <div
       role="tablist"
       aria-label={t('feedTabListAria')}
       className={cn(
-        'relative z-10 grid w-full shrink-0 gap-0.5 bg-base-200/35 p-1 dark:bg-base-200/25',
+        'relative z-10 grid w-full shrink-0 gap-0.5 border border-base-content/15 bg-base-200/50 p-1 dark:border-stitch-border dark:bg-stitch-surface/40',
         className,
       )}
       style={{ gridTemplateColumns: n > 0 ? `repeat(${n}, minmax(0, 1fr))` : undefined }}
     >
       {orderedTabs.map((tab) => {
-        const selected = active === tab;
+        const selected = activeTab === tab;
         const label = labelFor(tab);
         const count = tabCounts[tab];
         const showCount = !tabCountsLoading && count !== undefined;
@@ -120,23 +87,23 @@ export function CommunityHubFeedTabBar({
           showCount && count !== undefined
             ? `${label} (${count})`
             : label;
-        const href = buildCommunityHubFeedTabHref(basePath, searchParamsString, tab);
 
         return (
-          <Link
+          <button
             key={tab}
-            href={href}
-            replace
-            scroll={false}
+            type="button"
             role="tab"
             aria-selected={selected}
             aria-current={selected ? 'page' : undefined}
             aria-label={tabAriaLabel}
+            onClick={() => {
+              if (!selected) onTabChange(tab);
+            }}
             className={cn(
-              'flex min-h-9 w-full items-center justify-center rounded-lg px-1 py-1.5 text-center text-sm font-medium transition-colors sm:px-2',
+              'flex min-h-9 w-full items-center justify-center rounded-lg border px-1 py-1.5 text-center text-sm font-medium transition-colors sm:px-2',
               selected
-                ? 'bg-base-100 text-base-content shadow-sm dark:bg-base-300/80'
-                : 'text-base-content/70 hover:bg-base-300/40 hover:text-base-content',
+                ? 'border-base-content/20 bg-base-100 text-base-content shadow-sm dark:border-stitch-border dark:bg-stitch-surface dark:text-stitch-text'
+                : 'border-transparent text-base-content/70 hover:border-base-content/10 hover:bg-base-300/50 hover:text-base-content dark:text-stitch-muted dark:hover:border-stitch-border/60 dark:hover:bg-stitch-surface2/80 dark:hover:text-stitch-text',
             )}
           >
             <span className="flex min-w-0 max-w-full flex-col items-center justify-center gap-0.5 sm:flex-row sm:gap-1.5">
@@ -160,7 +127,7 @@ export function CommunityHubFeedTabBar({
                 />
               ) : null}
             </span>
-          </Link>
+          </button>
         );
       })}
     </div>
