@@ -73,3 +73,15 @@ export function navigateToProfile(router: AppRouterInstance): void {
   router.push('/meriter/profile');
 }
 
+/**
+ * Prefer browser history when the user can go back in-app; otherwise push fallback.
+ * Avoids section-home `router.push` that ignores how the user arrived.
+ */
+export function smartBack(router: AppRouterInstance, fallbackHref: string): void {
+  if (typeof window !== 'undefined' && window.history.length > 1) {
+    router.back();
+    return;
+  }
+  router.push(fallbackHref);
+}
+

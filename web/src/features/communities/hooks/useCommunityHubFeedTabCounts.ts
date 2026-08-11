@@ -23,7 +23,7 @@ export function useCommunityHubFeedTabCounts(
     },
     {
       enabled,
-      staleTime: STALE_TIME.SHORT,
+      staleTime: STALE_TIME.LONG,
     },
   );
 

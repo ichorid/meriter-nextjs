@@ -2093,7 +2093,7 @@
         "cardShares": "Shares",
         "teamNoMembersPreview": "No members yet",
         "viewTeamMembers": "View",
-        "payoutMerits": "Pay out merits",
+        "payoutMerits": "Shares",
         "payoutMeritsShort": "Pay out",
         "payoutDialogTitleProject": "Pay out from project wallet",
         "payoutDialogDescriptionProject": "Merits are debited from the project wallet and credited to recipients' global wallets by founder, investor, and team shares.",

@@ -434,11 +434,23 @@
 [data-theme="dark"] input[type="number"],
 [data-theme="dark"] input[type="tel"],
 [data-theme="dark"] input[type="url"],
+[data-theme="dark"] input[type="date"],
+[data-theme="dark"] input[type="time"],
+[data-theme="dark"] input[type="datetime-local"],
 [data-theme="dark"] textarea,
 [data-theme="dark"] select {
   background-color: var(--base-200);
   color: var(--base-content);
   border-color: var(--base-300);
+  color-scheme: dark;
+}
+
+[data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator,
+[data-theme="dark"] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.85;
+  cursor: pointer;
 }
 
 [data-theme="dark"] input[type="text"]:focus,

@@ -83,6 +83,7 @@ import {
     CommunityHubFeedTabBar,
     type CommunityHubFeedTab,
 } from '@/features/communities/components/CommunityHubFeedTabBar';
+import { useCommunityHubFeedTab } from '@/features/communities/hooks/useCommunityHubFeedTab';
 import { CommunityProjectsPageClient } from '@/app/meriter/communities/[id]/projects/CommunityProjectsPageClient';
 import { EventsContextPage } from '@/features/events/pages/EventsContextPage';
 import { CommunityBirzhaPostsPageClient } from '@/app/meriter/communities/[id]/birzha-posts/CommunityBirzhaPostsPageClient';
@@ -91,7 +92,6 @@ import { canUserCreateEvents, type EventCreationMode } from '@/features/events/l
 import { useBirzhaCommunityId } from '@/hooks/useBirzhaCommunityId';
 import { BirzhaTappalkaModal } from '@/components/molecules/BirzhaTappalkaModal/BirzhaTappalkaModal';
 import { isHubPostsFeedPublication } from '@/features/communities/lib/hub-posts-feed-filter';
-import { resolveCommunityHubFeedTab } from '@/features/communities/lib/community-hub-feed-tab';
 
 interface CommunityPageClientProps {
     communityId: string;
@@ -423,10 +423,14 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
 
     const showHubFeedTabChrome = communityHubVisibleFeedTabs.length > 1;
 
-    const communityHubFeedTab = useMemo(
-        () => resolveCommunityHubFeedTab(searchParams?.get('feedTab'), communityHubVisibleFeedTabs),
-        [searchParams, communityHubVisibleFeedTabs],
-    );
+    const {
+        activeTab: communityHubFeedTab,
+        setActiveTab: setCommunityHubFeedTab,
+        isTabVisited,
+    } = useCommunityHubFeedTab(communityHubVisibleFeedTabs, {
+        // Avoid stripping `?feedTab=` while hub tabs are still the loading placeholder `['posts']`.
+        enableSanitize: Boolean(comms),
+    });
 
     useEffect(() => {
         setShowSearchModal(false);
@@ -1053,6 +1057,8 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                             <CommunityHubFeedTabBar
                                 communityId={chatId}
                                 visibleTabs={communityHubVisibleFeedTabs}
+                                activeTab={communityHubFeedTab}
+                                onTabChange={setCommunityHubFeedTab}
                             />
                         ) : null}
                         <div
@@ -1518,91 +1524,95 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                     </div>
                 ) : null}
 
-                {communityHubFeedTab === 'posts' && isAuthenticated &&
-                    filteredPublications
-                        .filter((p: FeedItem) => {
-                            if (p.type === 'publication') {
-                                const pub = p as PublicationFeedItem;
-                                return (
-                                    !!pub.content &&
-                                    isHubPostsFeedPublication(pub, {
-                                        hubCommunityId: chatId,
-                                        birzhaCommunityId,
-                                    })
-                                );
-                            }
-                            if (p.type === 'poll') {
-                                // Hide polls in future-vision communities
-                                return comms?.typeTag !== 'future-vision';
-                            }
-                            return false;
-                        })
-                        .map((p) => {
-                            // Check if this post is selected (for comments or polls)
-                            const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
-                                || !!(targetPollId && p.id === targetPollId);
-                            
-                            // Check if this is a poll - polls don't need the wrapper div
-                            const isPoll = p.type === 'poll';
-
-                            // For polls, render directly without wrapper
-                            if (isPoll) {
-                                return (
-                                    <div key={p.id} id={`post-${p.id}`}>
-                                        <PublicationCard
-                                            publication={p}
-                                            wallets={Array.isArray(wallets) ? wallets : []}
-                                            showCommunityAvatar={false}
-                                            isSelected={isSelected}
-                                        />
-                                    </div>
-                                );
-                            }
-
-                            // For regular posts, use wrapper with selection styling
-                            return (
-                                <div
-                                    key={p.id}
-                                    id={`post-${p.id}`}
-                                    className={
-                                        highlightedPostId === p.id
-                                            ? 'rounded-xl scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
-                                            : isSelected
-                                                ? 'rounded-xl scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
-                                                : 'hover:shadow-md transition-all duration-200 rounded-xl'
+                {isTabVisited('posts') ? (
+                    <div
+                        className={cn(communityHubFeedTab !== 'posts' && 'hidden')}
+                        hidden={communityHubFeedTab !== 'posts'}
+                        inert={communityHubFeedTab !== 'posts' ? true : undefined}
+                    >
+                        {isAuthenticated &&
+                            filteredPublications
+                                .filter((p: FeedItem) => {
+                                    if (p.type === 'publication') {
+                                        const pub = p as PublicationFeedItem;
+                                        return (
+                                            !!pub.content &&
+                                            isHubPostsFeedPublication(pub, {
+                                                hubCommunityId: chatId,
+                                                birzhaCommunityId,
+                                            })
+                                        );
                                     }
-                                >
-                                    <PublicationCard
-                                        publication={p}
-                                        wallets={Array.isArray(wallets) ? wallets : []}
-                                        showCommunityAvatar={false}
-                                        isSelected={isSelected}
-                                        onCategoryClick={
-                                            isMarathonOfGood
-                                                ? undefined
-                                                : (categoryId) => {
-                                                      const newCategories = [categoryId];
-                                                      setSelectedCategories(newCategories);
-                                                      const params = new URLSearchParams(searchParams?.toString() ?? '');
-                                                      params.set('categories', categoryId);
-                                                      router.push(`${pathname}?${params.toString()}`, { scroll: false });
-                                                  }
-                                        }
-                                        onValueTagClick={
-                                            isMarathonOfGood
-                                                ? (tag) => {
-                                                      setValueTagsInUrl([tag]);
-                                                      setBOpenFilters(false);
-                                                  }
-                                                : undefined
-                                        }
-                                    />
-                                </div>
-                            );
-                        })}
+                                    if (p.type === 'poll') {
+                                        // Hide polls in future-vision communities
+                                        return comms?.typeTag !== 'future-vision';
+                                    }
+                                    return false;
+                                })
+                                .map((p) => {
+                                    // Check if this post is selected (for comments or polls)
+                                    const isSelected = !!(targetPostSlug && (p.slug === targetPostSlug || p.id === targetPostSlug))
+                                        || !!(targetPollId && p.id === targetPollId);
 
-                {communityHubFeedTab === 'posts' ? (
-                    <>
+                                    // Check if this is a poll - polls don't need the wrapper div
+                                    const isPoll = p.type === 'poll';
+
+                                    // For polls, render directly without wrapper
+                                    if (isPoll) {
+                                        return (
+                                            <div key={p.id} id={`post-${p.id}`}>
+                                                <PublicationCard
+                                                    publication={p}
+                                                    wallets={Array.isArray(wallets) ? wallets : []}
+                                                    showCommunityAvatar={false}
+                                                    isSelected={isSelected}
+                                                />
+                                            </div>
+                                        );
+                                    }
+
+                                    // For regular posts, use wrapper with selection styling
+                                    return (
+                                        <div
+                                            key={p.id}
+                                            id={`post-${p.id}`}
+                                            className={
+                                                highlightedPostId === p.id
+                                                    ? 'rounded-xl scale-[1.02] bg-brand-primary/10 shadow-lg transition-all duration-300 p-2'
+                                                    : isSelected
+                                                        ? 'rounded-xl scale-[1.02] bg-brand-secondary/10 shadow-lg transition-all duration-300 p-2'
+                                                        : 'hover:shadow-md transition-all duration-200 rounded-xl'
+                                            }
+                                        >
+                                            <PublicationCard
+                                                publication={p}
+                                                wallets={Array.isArray(wallets) ? wallets : []}
+                                                showCommunityAvatar={false}
+                                                isSelected={isSelected}
+                                                onCategoryClick={
+                                                    isMarathonOfGood
+                                                        ? undefined
+                                                        : (categoryId) => {
+                                                              const newCategories = [categoryId];
+                                                              setSelectedCategories(newCategories);
+                                                              const params = new URLSearchParams(searchParams?.toString() ?? '');
+                                                              params.set('categories', categoryId);
+                                                              router.push(`${pathname}?${params.toString()}`, { scroll: false });
+                                                          }
+                                                }
+                                                onValueTagClick={
+                                                    isMarathonOfGood
+                                                        ? (tag) => {
+                                                              setValueTagsInUrl([tag]);
+                                                              setBOpenFilters(false);
+                                                          }
+                                                        : undefined
+                                                }
+                                            />
+                                        </div>
+                                    );
+                                })}
+
                         {/* Infinite scroll trigger */}
                         <div ref={observerTarget} className="h-4" />
 
@@ -1611,10 +1621,14 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                                 <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
                             </div>
                         )}
-                    </>
+                    </div>
                 ) : null}
-                {communityHubFeedTab === 'projects' ? (
-                    <div className="min-w-0">
+                {isTabVisited('projects') ? (
+                    <div
+                        className={cn('min-w-0', communityHubFeedTab !== 'projects' && 'hidden')}
+                        hidden={communityHubFeedTab !== 'projects'}
+                        inert={communityHubFeedTab !== 'projects' ? true : undefined}
+                    >
                         <CommunityProjectsPageClient
                             communityId={chatId}
                             variant="embedded"
@@ -1623,24 +1637,36 @@ export function CommunityPageClient({ communityId: chatId }: CommunityPageClient
                         />
                     </div>
                 ) : null}
-                {communityHubFeedTab === 'events' && user?.id ? (
-                    <EventsContextPage
-                        communityId={chatId}
-                        variant="embedded"
-                        backHref={routes.community(chatId)}
-                        listTitleSearch={hubSearchEvents}
-                        hideNewEventButton
-                        createDialogOpen={hubEventCreateOpen}
-                        onCreateDialogOpenChange={setHubEventCreateOpen}
-                    />
+                {isTabVisited('events') && user?.id ? (
+                    <div
+                        className={cn(communityHubFeedTab !== 'events' && 'hidden')}
+                        hidden={communityHubFeedTab !== 'events'}
+                        inert={communityHubFeedTab !== 'events' ? true : undefined}
+                    >
+                        <EventsContextPage
+                            communityId={chatId}
+                            variant="embedded"
+                            backHref={routes.community(chatId)}
+                            listTitleSearch={hubSearchEvents}
+                            hideNewEventButton
+                            createDialogOpen={hubEventCreateOpen}
+                            onCreateDialogOpenChange={setHubEventCreateOpen}
+                        />
+                    </div>
                 ) : null}
-                {communityHubFeedTab === 'birzha' ? (
-                    <CommunityBirzhaPostsPageClient
-                        communityId={chatId}
-                        variant="embedded"
-                        listTitleSearch={hubSearchBirzha}
-                        suppressPublishToolbar
-                    />
+                {isTabVisited('birzha') ? (
+                    <div
+                        className={cn(communityHubFeedTab !== 'birzha' && 'hidden')}
+                        hidden={communityHubFeedTab !== 'birzha'}
+                        inert={communityHubFeedTab !== 'birzha' ? true : undefined}
+                    >
+                        <CommunityBirzhaPostsPageClient
+                            communityId={chatId}
+                            variant="embedded"
+                            listTitleSearch={hubSearchBirzha}
+                            suppressPublishToolbar
+                        />
+                    </div>
                 ) : null}
             </div>
 

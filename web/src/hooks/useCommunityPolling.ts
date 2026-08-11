@@ -22,7 +22,11 @@ export function useCommunityPolling(communityId?: string, enabled: boolean = tru
     useEffect(() => {
         if (!communityId || !enabled) return;
 
-        const intervalId = setInterval(() => {
+        const tick = () => {
+            if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+                return;
+            }
+
             // 1. Invalidate community feed (publications/polls) to refresh scores/votes
             utils.communities.getFeed.invalidate({ communityId });
 
@@ -52,8 +56,9 @@ export function useCommunityPolling(communityId?: string, enabled: boolean = tru
                 // Refresh wallet list (sidebar usually shows balances)
                 utils.wallets.getAll.invalidate();
             }
+        };
 
-        }, POLLING_INTERVAL_MS);
+        const intervalId = setInterval(tick, POLLING_INTERVAL_MS);
 
         return () => clearInterval(intervalId);
     }, [communityId, enabled, queryClient, utils, user]);

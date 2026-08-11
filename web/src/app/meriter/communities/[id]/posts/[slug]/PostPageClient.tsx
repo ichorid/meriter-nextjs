@@ -43,6 +43,7 @@ import {
 } from '@/lib/utils/vote-cta-label';
 import { ticketHasWorkAccepted } from '@/lib/utils/project-ticket';
 import { toastMessageForVoteDisabledReason } from '@/lib/i18n/vote-disabled-toast';
+import { smartBack } from '@/lib/routing';
 
 interface PostPageClientProps {
     communityId: string;
@@ -199,7 +200,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                 </button>
             }
             showBack={true}
-            onBack={() => router.push(`/meriter/communities/${chatId}`)}
+            onBack={() => smartBack(router, `/meriter/communities/${chatId}`)}
             rightAction={
                 <SortToggle
                     value={commentSort as 'recent' | 'voted'}
@@ -526,7 +527,7 @@ export function PostPageClient({ communityId: chatId, slug }: PostPageClientProp
                                     </CollapsibleSection>
                                 )}
 
-                                {!isProjectDiscussion && (
+                                {investingEnabled && !isProjectDiscussion && (
                                     <CollapsibleSection
                                         title={tPublicationsCreate('postParamsReadOnly')}
                                         open={postSettingsOpen}
