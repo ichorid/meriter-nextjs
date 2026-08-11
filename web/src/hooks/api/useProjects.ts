@@ -4,6 +4,7 @@ import { keepPreviousData } from '@tanstack/react-query';
 import type { Community } from '@meriter/shared-types';
 import { resolveApiErrorToastMessage } from '@/lib/i18n/api-error-toast';
 import { trpc } from '@/lib/trpc/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useToastStore } from '@/shared/stores/toast.store';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -108,7 +109,10 @@ export function usePilotDreamUpvote() {
 }
 
 export function usePilotMeritsStats() {
+  const { isAuthenticated } = useAuth();
+
   return trpc.pilotDreams.getStats.useQuery(undefined, {
+    enabled: isAuthenticated,
     staleTime: STALE_TIME.VERY_SHORT,
     refetchOnWindowFocus: false,
     retry: false,
