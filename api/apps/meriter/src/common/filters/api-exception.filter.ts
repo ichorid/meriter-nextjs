@@ -72,16 +72,22 @@ export class ApiExceptionFilter implements ExceptionFilter {
       };
     }
 
-    // Log error details
-    this.logger.error(
-      `${request.method} ${request.url} - ${status} - ${errorResponse.error.message}`,
-      exception instanceof Error ? exception.stack : undefined,
-    );
+    // Expected client errors (4xx) are not actionable as Sentry issues —
+    // scanners probing unknown routes (e.g. POST /api/auth) are the usual source.
+    if (status < 500) {
+      this.logger.warn(
+        `${request.method} ${request.url} - ${status} - ${errorResponse.error.message}`,
+      );
+    } else {
+      this.logger.error(
+        `${request.method} ${request.url} - ${status} - ${errorResponse.error.message}`,
+        exception instanceof Error ? exception.stack : undefined,
+      );
+    }
 
-    // Capture error to Sentry with request context
-    if (process.env.SENTRY_DSN) {
+    // Capture only server failures to Sentry (parity with tRPC client-error filtering)
+    if (process.env.SENTRY_DSN && status >= 500) {
       Sentry.withScope((scope) => {
-        // Set request context
         scope.setContext('request', {
           method: request.method,
           url: request.url,
@@ -94,7 +100,6 @@ export class ApiExceptionFilter implements ExceptionFilter {
           body: this.sanitizeRequestBody(request.body),
         });
 
-        // Set user context if available
         if (request.user && (request.user as any).id) {
           scope.setUser({
             id: String((request.user as any).id),
@@ -103,22 +108,12 @@ export class ApiExceptionFilter implements ExceptionFilter {
           });
         }
 
-        // Set tags
         scope.setTag('platform', 'backend');
         scope.setTag('http.status_code', status.toString());
         scope.setTag('http.method', request.method);
         scope.setTag('error.code', errorResponse.error.code);
+        scope.setLevel('error');
 
-        // Set level based on status code
-        if (status >= 500) {
-          scope.setLevel('error');
-        } else if (status >= 400) {
-          scope.setLevel('warning');
-        } else {
-          scope.setLevel('info');
-        }
-
-        // Capture exception
         if (exception instanceof Error) {
           Sentry.captureException(exception);
         } else {

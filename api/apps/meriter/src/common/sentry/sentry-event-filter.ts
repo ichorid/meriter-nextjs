@@ -1,3 +1,4 @@
+import { HttpException } from '@nestjs/common';
 import type { ErrorEvent, EventHint } from '@sentry/node';
 import { TRPCError } from '@trpc/server';
 
@@ -7,6 +8,17 @@ const IGNORED_TRPC_ERROR_CODES: ReadonlySet<TRPCError['code']> = new Set([
   'FORBIDDEN',
   'NOT_FOUND',
   'BAD_REQUEST',
+]);
+
+/** Nest default 404 from unmatched routes: `Cannot POST /api/auth`. */
+const NEST_ROUTE_NOT_FOUND =
+  /^Cannot (GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) \//;
+
+const NEST_HTTP_CLIENT_EXCEPTION_TYPES = new Set([
+  'NotFoundException',
+  'BadRequestException',
+  'UnauthorizedException',
+  'ForbiddenException',
 ]);
 
 function readTrpcCode(value: unknown): TRPCError['code'] | null {
@@ -68,8 +80,37 @@ function isIgnoredTrpcClientError(event: ErrorEvent, hint: EventHint): boolean {
   });
 }
 
+function isExpectedHttpClientError(event: ErrorEvent, hint: EventHint): boolean {
+  const original = hint.originalException;
+  if (original instanceof HttpException) {
+    const status = original.getStatus();
+    if (status >= 400 && status < 500) {
+      return true;
+    }
+  }
+
+  const values = event.exception?.values;
+  if (!values?.length) {
+    return false;
+  }
+
+  return values.some((entry) => {
+    const message = entry.value ?? '';
+    if (entry.type === 'NotFoundException' && NEST_ROUTE_NOT_FOUND.test(message)) {
+      return true;
+    }
+    if (entry.type && NEST_HTTP_CLIENT_EXCEPTION_TYPES.has(entry.type) && message.length > 0) {
+      return true;
+    }
+    return false;
+  });
+}
+
 export function sentryBeforeSend(event: ErrorEvent, hint: EventHint): ErrorEvent | null {
   if (isIgnoredTrpcClientError(event, hint)) {
+    return null;
+  }
+  if (isExpectedHttpClientError(event, hint)) {
     return null;
   }
   return event;

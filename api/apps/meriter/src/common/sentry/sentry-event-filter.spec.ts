@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { TRPCError } from '@trpc/server';
 import { sentryBeforeSend } from './sentry-event-filter';
 
@@ -15,6 +16,32 @@ describe('sentryBeforeSend', () => {
         message: 'You must be logged in to access this resource',
       }),
     });
+
+    expect(result).toBeNull();
+  });
+
+  it('drops Nest route-not-found (scanner probes like POST /api/auth)', () => {
+    const event = {
+      exception: {
+        values: [{ type: 'NotFoundException', value: 'Cannot POST /api/auth' }],
+      },
+    };
+
+    const result = sentryBeforeSend(event as never, {
+      originalException: new NotFoundException('Cannot POST /api/auth'),
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it('drops Nest NotFoundException via exception values alone', () => {
+    const event = {
+      exception: {
+        values: [{ type: 'NotFoundException', value: 'Cannot GET /wp-admin' }],
+      },
+    };
+
+    const result = sentryBeforeSend(event as never, {});
 
     expect(result).toBeNull();
   });
