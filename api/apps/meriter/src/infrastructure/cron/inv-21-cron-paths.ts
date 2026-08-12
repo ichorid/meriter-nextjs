@@ -44,4 +44,10 @@ export const INV_21_CRON_PATHS = {
     method: 'sweepExpiredWaves',
     legacyModule: 'domain/services/document-wave-cron.module.ts',
   },
+  uzzDemurrage: {
+    schedule: '0 1 * * *',
+    entrypoint: 'infrastructure/cron/uzz-demurrage.cron.ts',
+    domainLogic: 'domain/services/uzz/uzz.service.ts',
+    method: 'applyDemurrage',
+  },
 } as const;

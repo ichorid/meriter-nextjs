@@ -21,6 +21,7 @@ import { CommunityWalletService } from '../../domain/services/community-wallet.s
 import { DocumentService } from '../../domain/services/document.service';
 import { DocumentVariantService } from '../../domain/services/document-variant.service';
 import { TicketService } from '../../domain/services/ticket.service';
+import { UzzService } from '../../domain/services/uzz/uzz.service';
 import type { Community } from '../../domain/models/community/community.schema';
 import {
   CommunitySchemaClass,
@@ -221,6 +222,7 @@ export class TelegramBotOrchestratorService {
     @InjectModel(TelegramBotPendingActionSchemaClass.name)
     private readonly pendingModel: Model<TelegramBotPendingActionDocument>,
     private readonly chatResolver: TelegramCommunityChatResolver,
+    private readonly uzzService: UzzService,
   ) {}
 
   async handleUpdate(body: TelegramTypes.Update): Promise<void> {
@@ -575,6 +577,11 @@ export class TelegramBotOrchestratorService {
         await this.handleMemberJoinDeepLink(tgUserId, from, joinCommunityId, triggerMessageId);
         return;
       }
+      if (referal.startsWith('uzz_link_')) {
+        await this.handleUzzTelegramLink(tgUserId, referal.slice('uzz_link_'.length).trim());
+        this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
+        return;
+      }
       if (referal.startsWith('relink:')) {
         await this.handleRelinkStart(tgUserId, from, referal.slice('relink:'.length).trim());
         return;
@@ -607,6 +614,21 @@ export class TelegramBotOrchestratorService {
     }
     if (trimmed === '/guide' || trimmed === '/гайд') {
       await this.handleDirectBotCommand(tgUserId, from, 'guide', '', triggerMessageId);
+      return;
+    }
+    if (/^\/email(?:@\w+)?(?:\s|$)/i.test(trimmed) || /^\/почта(?:@\w+)?(?:\s|$)/i.test(trimmed)) {
+      const arg = trimmed.replace(/^\/(?:email|почта)(?:@\w+)?\s*/i, '').trim();
+      await this.handleUzzEmailCommand(tgUserId, arg);
+      this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
+      return;
+    }
+    if (
+      /^\/email_code(?:@\w+)?(?:\s|$)/i.test(trimmed) ||
+      /^\/код(?:@\w+)?(?:\s|$)/i.test(trimmed)
+    ) {
+      const arg = trimmed.replace(/^\/(?:email_code|код)(?:@\w+)?\s*/i, '').trim();
+      await this.handleUzzEmailCodeCommand(tgUserId, arg);
+      this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
       return;
     }
 
@@ -2311,6 +2333,71 @@ export class TelegramBotOrchestratorService {
     }
 
     return null;
+  }
+
+  private async handleUzzTelegramLink(tgUserId: string, code: string): Promise<void> {
+    if (!code) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: 'Код привязки пуст. Откройте ссылку ещё раз в профиле «Услуги за заслуги».',
+      });
+      return;
+    }
+    try {
+      await this.uzzService.confirmTelegramLink(code, tgUserId);
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text:
+          'Telegram привязан к аккаунту на площадке «Услуги за заслуги». Можно смотреть банки и сделки на сайте.',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Не удалось привязать Telegram';
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: message });
+    }
+  }
+
+  private async handleUzzEmailCommand(tgUserId: string, emailArg: string): Promise<void> {
+    if (!emailArg || !emailArg.includes('@')) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text:
+          'Чтобы связать площадку с Telegram, напишите:\n/email you@example.com\n\nЗатем подтвердите код: /email_code 123456',
+      });
+      return;
+    }
+    try {
+      const result = await this.uzzService.startEmailLinkByTelegram(tgUserId, emailArg);
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text:
+          `Код для привязки ${result.email}:\n\n${result.code}\n\n` +
+          `Введите: /email_code ${result.code}\n` +
+          `(Код также можно ввести на сайте, если уже вошли по почте.)`,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Не удалось начать привязку';
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: message });
+    }
+  }
+
+  private async handleUzzEmailCodeCommand(tgUserId: string, code: string): Promise<void> {
+    if (!code) {
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: 'Укажите код: /email_code 123456',
+      });
+      return;
+    }
+    try {
+      await this.uzzService.confirmEmailLinkByTelegram(tgUserId, code);
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: 'Почта привязана. Аккаунт Telegram и площадка «Услуги за заслуги» связаны.',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Неверный код';
+      await this.tgBots.tgSend({ tgChatId: tgUserId, text: message });
+    }
   }
 
   private async handleRelinkStart(

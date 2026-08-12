@@ -113,6 +113,18 @@ import {
   TelegramChatMemberDirectorySchemaClass,
   TelegramChatMemberDirectorySchema,
 } from './domain/models/telegram/telegram-chat-member-directory.schema';
+import {
+  UzzSettingsSchemaClass,
+  UzzSettingsSchema,
+} from './domain/models/uzz/uzz-settings.schema';
+import { UzzBankSchemaClass, UzzBankSchema } from './domain/models/uzz/uzz-bank.schema';
+import { UzzLotSchemaClass, UzzLotSchema } from './domain/models/uzz/uzz-lot.schema';
+import { UzzDealSchemaClass, UzzDealSchema } from './domain/models/uzz/uzz-deal.schema';
+import { UzzLedgerSchemaClass, UzzLedgerSchema } from './domain/models/uzz/uzz-ledger.schema';
+import {
+  UzzIdentityLinkSchemaClass,
+  UzzIdentityLinkSchema,
+} from './domain/models/uzz/uzz-identity-link.schema';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -178,6 +190,7 @@ import { DocumentVariantService } from './domain/services/document-variant.servi
 import { DocumentStructureService } from './domain/services/document-structure.service';
 import { DocumentHtmlSyncService } from './domain/services/document-html-sync.service';
 import { DocumentLiveUpdatesService } from './domain/services/document-live-updates.service';
+import { UzzService } from './domain/services/uzz/uzz.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -238,6 +251,12 @@ import { EventBus } from './domain/events/event-bus';
         name: TelegramChatMemberDirectorySchemaClass.name,
         schema: TelegramChatMemberDirectorySchema,
       },
+      { name: UzzSettingsSchemaClass.name, schema: UzzSettingsSchema },
+      { name: UzzBankSchemaClass.name, schema: UzzBankSchema },
+      { name: UzzLotSchemaClass.name, schema: UzzLotSchema },
+      { name: UzzDealSchemaClass.name, schema: UzzDealSchema },
+      { name: UzzLedgerSchemaClass.name, schema: UzzLedgerSchema },
+      { name: UzzIdentityLinkSchemaClass.name, schema: UzzIdentityLinkSchema },
     ]),
   ],
   providers: [
@@ -308,6 +327,7 @@ import { EventBus } from './domain/events/event-bus';
     DocumentStructureService,
     DocumentHtmlSyncService,
     DocumentLiveUpdatesService,
+    UzzService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -383,6 +403,7 @@ import { EventBus } from './domain/events/event-bus';
     DocumentStructureService,
     DocumentHtmlSyncService,
     DocumentLiveUpdatesService,
+    UzzService,
 
     // Export vote factor services
     RoleHierarchyFactor,

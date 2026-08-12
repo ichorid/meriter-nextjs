@@ -220,6 +220,8 @@ export interface AppConfig {
     productMode: 'full' | 'telegram_mvp';
     /** Public base URL for community-web (deep links, bot /help). */
     communityWebBaseUrl: string;
+    /** Public base URL for uzz-web (magic-link redirect, cookie domain). */
+    uzzWebBaseUrl: string;
     /** Dev/pilot fallback when resolving TG user's community. */
     defaultTelegramCommunityId?: string;
   };
@@ -362,6 +364,7 @@ export default (): AppConfig => {
         env.MERITER_PRODUCT_MODE === 'telegram_mvp' ? 'telegram_mvp' : 'full',
       communityWebBaseUrl:
         env.COMMUNITY_WEB_BASE_URL?.trim() || deriveAppUrl(),
+      uzzWebBaseUrl: env.UZZ_WEB_BASE_URL?.trim() || deriveAppUrl(),
       defaultTelegramCommunityId: env.DEFAULT_TELEGRAM_COMMUNITY_ID?.trim() || undefined,
     },
     jwt: {

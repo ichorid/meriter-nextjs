@@ -42,7 +42,7 @@ export class AuthMagicLinkService {
   async createToken(
     channel: 'sms' | 'email',
     target: string,
-    options?: { linkToUserId?: string },
+    options?: { linkToUserId?: string; baseUrl?: string; path?: string },
   ): Promise<CreateMagicLinkResult> {
     const magicConfig = this.configService.getOrThrow('magicLink');
     const ttlMs = magicConfig.ttlMinutes * 60 * 1000;
@@ -57,8 +57,8 @@ export class AuthMagicLinkService {
       linkToUserId: options?.linkToUserId,
     });
 
-    const baseUrl = magicConfig.baseUrl.replace(/\/$/, '');
-    const path = (magicConfig.path || '/a').replace(/\/$/, '');
+    const baseUrl = (options?.baseUrl || magicConfig.baseUrl).replace(/\/$/, '');
+    const path = (options?.path || magicConfig.path || '/a').replace(/\/$/, '');
     const linkUrl = `${baseUrl}${path}/${token}`;
 
     this.logger.log(`Magic link created for ${channel} target (expires ${expiresAt.toISOString()})`);

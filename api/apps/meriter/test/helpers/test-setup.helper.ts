@@ -93,6 +93,15 @@ export class TestSetupHelper {
     });
     app.use('/trpc/community', communityTrpcMiddleware);
 
+    const uzzTrpcMiddleware = createExpressMiddleware({
+      router: trpcService.getUzzAppRouter(),
+      createContext: ({ req, res }) => trpcService.createContext(req, res),
+      onError({ error, path }) {
+        console.error(`tRPC uzz error on '${path}':`, error);
+      },
+    });
+    app.use('/trpc/uzz', uzzTrpcMiddleware);
+
     const trpcMiddleware = createExpressMiddleware({
       router: trpcService.getRouter(),
       createContext: ({ req, res }) => trpcService.createContext(req, res),

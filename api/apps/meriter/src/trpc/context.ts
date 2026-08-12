@@ -63,6 +63,9 @@ import { PermissionRuleEngine } from '../domain/services/permission-rule-engine.
 import { resolveMeriterProductFromRequest } from '../domain/common/constants/product.constants';
 import { SeedCommunityWebDevUseCase } from '../application/use-cases/dev/seed-community-web-dev.use-case';
 import type { ManageYougileIntegrationUseCase } from '../application/use-cases/integrations/manage-yougile-integration.use-case';
+import { UzzService } from '../domain/services/uzz/uzz.service';
+import { EmailLoginLinkService } from '../infrastructure/auth/email-login-link.service';
+import { AuthMagicLinkService } from '../infrastructure/auth/magic-link-auth.service';
 
 export interface CreateContextOptions {
   req: any;
@@ -128,6 +131,9 @@ export interface CreateContextOptions {
   authenticationService: JwtVerificationService;
   seedCommunityWebDevUseCase: SeedCommunityWebDevUseCase;
   manageYougile: ManageYougileIntegrationUseCase;
+  uzzService: UzzService;
+  emailLoginLinkService: EmailLoginLinkService;
+  authMagicLinkService: AuthMagicLinkService;
 }
 
 /**
@@ -202,6 +208,9 @@ export async function createContext(opts: CreateContextOptions) {
     authenticationService,
     seedCommunityWebDevUseCase,
     manageYougile,
+    uzzService,
+    emailLoginLinkService,
+    authMagicLinkService,
   } = opts;
 
   const logger = new Logger('tRPC-Context');
@@ -323,6 +332,9 @@ export async function createContext(opts: CreateContextOptions) {
     cookieManager,
     seedCommunityWebDevUseCase,
     manageYougile,
+    uzzService,
+    emailLoginLinkService,
+    authMagicLinkService,
   };
 }
 

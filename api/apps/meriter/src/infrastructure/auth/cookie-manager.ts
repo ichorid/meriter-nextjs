@@ -1,7 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../../config/configuration';
-import { COMMUNITY_SESSION_COOKIE } from '../../domain/common/constants/product.constants';
+import {
+  COMMUNITY_SESSION_COOKIE,
+  UZZ_SESSION_COOKIE,
+} from '../../domain/common/constants/product.constants';
 
 const AUTH_SESSION_SAME_SITE = 'lax' as const;
 
@@ -396,6 +399,48 @@ export class CookieManager {
     if (request) {
       const host = this.getRequestHostname(request);
       if (host?.includes('community')) {
+        return host.startsWith('.') ? host : `.${host}`;
+      }
+    }
+    return undefined;
+  }
+
+  /** UZZ-web session cookie (isolated from full Meriter `jwt` and community). */
+  establishUzzJwtAuth(response: any, jwtToken: string, request: any): void {
+    this.clearCookieVariants(
+      response,
+      UZZ_SESSION_COOKIE,
+      this.getUzzCookieDomain(request),
+      this.resolveIsProduction(request),
+    );
+    this.setNamedJwtCookie(
+      response,
+      UZZ_SESSION_COOKIE,
+      jwtToken,
+      this.getUzzCookieDomain(request),
+      this.resolveIsProduction(request),
+      request,
+    );
+  }
+
+  logoutUzzJwt(response: any, request?: unknown): void {
+    this.clearCookieVariants(
+      response,
+      UZZ_SESSION_COOKIE,
+      request ? this.getUzzCookieDomain(request) : this.getUzzCookieDomain(),
+      this.resolveIsProduction(request),
+    );
+  }
+
+  getUzzCookieDomain(request?: unknown): string | undefined {
+    const configured = this.configService.get('app')?.uzzWebBaseUrl;
+    if (configured) {
+      const fromUrl = this.normalizeHostname(configured);
+      if (fromUrl) return fromUrl.startsWith('.') ? fromUrl : `.${fromUrl}`;
+    }
+    if (request) {
+      const host = this.getRequestHostname(request);
+      if (host && (host.includes('uzz') || host.includes('cw.ru'))) {
         return host.startsWith('.') ? host : `.${host}`;
       }
     }

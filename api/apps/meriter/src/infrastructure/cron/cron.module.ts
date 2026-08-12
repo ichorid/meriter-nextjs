@@ -6,13 +6,13 @@ import { DocumentWaveCronModule } from '../../domain/services/document-wave-cron
 import { QuotaResetCronEntrypoint } from './quota-reset.cron';
 import { PostClosingCronEntrypoint } from './post-closing.cron';
 import { DocumentWaveCronEntrypoint } from './document-wave.cron';
+import { DomainModule } from '../../domain.module';
+import { UzzDemurrageCronEntrypoint } from './uzz-demurrage.cron';
 
 /**
  * BC-14 cron composition root (Phase 2 shell).
  *
- * Registers quota-reset, post-closing, and document-wave entrypoints. Import this
- * module from `meriter.module.ts` instead of the three per-job modules when wiring
- * is complete; remove interim `@Cron` decorators from domain services then.
+ * Registers quota-reset, post-closing, document-wave, and uzz-demurrage entrypoints.
  */
 @Module({
   imports: [
@@ -20,16 +20,19 @@ import { DocumentWaveCronEntrypoint } from './document-wave.cron';
     QuotaResetModule,
     PostClosingCronModule,
     DocumentWaveCronModule,
+    DomainModule,
   ],
   providers: [
     QuotaResetCronEntrypoint,
     PostClosingCronEntrypoint,
     DocumentWaveCronEntrypoint,
+    UzzDemurrageCronEntrypoint,
   ],
   exports: [
     QuotaResetCronEntrypoint,
     PostClosingCronEntrypoint,
     DocumentWaveCronEntrypoint,
+    UzzDemurrageCronEntrypoint,
   ],
 })
 export class CronInfrastructureModule {}

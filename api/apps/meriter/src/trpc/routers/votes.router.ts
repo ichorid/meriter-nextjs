@@ -129,7 +129,7 @@ export const votesRouter = router({
   create: protectedProcedure
     .input(CreateVoteDtoSchema)
     .mutation(async ({ ctx, input }) => {
-      return createCreateVoteUseCaseFromContext(ctx).execute({
+      const vote = await createCreateVoteUseCaseFromContext(ctx).execute({
         userId: ctx.user.id,
         targetType: input.targetType,
         targetId: input.targetId,
@@ -137,6 +137,14 @@ export const votesRouter = router({
         walletAmount: input.walletAmount,
         comment: '',
       });
+      if (input.targetType === 'publication') {
+        try {
+          await ctx.uzzService.maybeEmitBankForPublication(input.targetId);
+        } catch {
+          // Emission must not fail the vote path
+        }
+      }
+      return vote;
     }),
 
   /**
@@ -178,6 +186,13 @@ export const votesRouter = router({
       });
       if (isDocumentVoteTargetType(input.targetType)) {
         publishDocumentVoteLiveEvent(ctx, input.targetType, input.targetId!, ctx.user.id);
+      }
+      if (input.targetType === 'publication') {
+        try {
+          await ctx.uzzService.maybeEmitBankForPublication(input.targetId!);
+        } catch {
+          // Emission must not fail the vote path
+        }
       }
       return vote;
     }),

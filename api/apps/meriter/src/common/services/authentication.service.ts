@@ -8,6 +8,7 @@ import { JwtPayload } from '../helpers/jwt';
 import {
   COMMUNITY_SESSION_COOKIE,
   FULL_SESSION_COOKIE,
+  UZZ_SESSION_COOKIE,
   resolveMeriterProductFromRequest,
   type MeriterProduct,
 } from '../../domain/common/constants/product.constants';
@@ -102,9 +103,13 @@ export class JwtVerificationService {
     const communityJwt = req.cookies?.[COMMUNITY_SESSION_COOKIE] as
       | string
       | undefined;
+    const uzzJwt = req.cookies?.[UZZ_SESSION_COOKIE] as string | undefined;
 
     if (product === 'community') {
       return communityJwt;
+    }
+    if (product === 'uzz') {
+      return uzzJwt;
     }
     return fullJwt;
   }

@@ -145,10 +145,12 @@ async function bootstrap() {
       const devOrigins = new Set([
         'http://localhost:8001',
         'http://localhost:8003',
+        'http://localhost:8004',
         'http://localhost:3000',
         'http://localhost:8080',
         'http://127.0.0.1:8001',
         'http://127.0.0.1:8003',
+        'http://127.0.0.1:8004',
         'http://127.0.0.1:3000',
       ]);
       expressApp.use((req: any, res: any, next: () => void) => {
@@ -176,7 +178,7 @@ async function bootstrap() {
     }
 
     const trpcService = app.get(TrpcService);
-    // Community router must mount BEFORE /trpc — otherwise /trpc catches /trpc/community/*.
+    // Product routers must mount BEFORE /trpc — otherwise /trpc catches /trpc/community|uzz/*.
     const communityTrpcMiddleware = createExpressMiddleware({
       router: trpcService.getCommunityAppRouter(),
       createContext: ({ req, res }) => trpcService.createContext(req, res),
@@ -186,6 +188,15 @@ async function bootstrap() {
     });
     expressApp.use('/trpc/community', communityTrpcMiddleware);
 
+    const uzzTrpcMiddleware = createExpressMiddleware({
+      router: trpcService.getUzzAppRouter(),
+      createContext: ({ req, res }) => trpcService.createContext(req, res),
+      onError({ error, path }) {
+        logger.error(`tRPC uzz error on '${path}':`, error);
+      },
+    });
+    expressApp.use('/trpc/uzz', uzzTrpcMiddleware);
+
     const trpcMiddleware = createExpressMiddleware({
       router: trpcService.getRouter(),
       createContext: ({ req, res }) => trpcService.createContext(req, res),
@@ -194,7 +205,7 @@ async function bootstrap() {
       },
     });
     expressApp.use('/trpc', trpcMiddleware);
-    logger.log('✅ tRPC middleware mounted at /trpc/community and /trpc');
+    logger.log('✅ tRPC middleware mounted at /trpc/uzz, /trpc/community and /trpc');
   } catch (error) {
     logger.error('❌ Failed to mount tRPC middleware at /trpc', error as any);
     throw error;
@@ -214,10 +225,12 @@ async function bootstrap() {
       origin: [
         'http://localhost:8001',
         'http://localhost:8003',
+        'http://localhost:8004',
         'http://localhost:3000',
         'http://localhost:8080',
         'http://127.0.0.1:8001',
         'http://127.0.0.1:8003',
+        'http://127.0.0.1:8004',
         'http://127.0.0.1:3000',
       ],
       credentials: true,
