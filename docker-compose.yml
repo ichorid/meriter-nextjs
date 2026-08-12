@@ -249,6 +249,42 @@ services:
       - /tmp
       - /var/tmp
 
+  uzz-web:
+    image: ghcr.io/ichorid/meriter-nextjs-uzz-web:${VERSION_UZZ_WEB:-latest}
+    container_name: meriter-uzz-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - PORT=8004
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=
+      - NEXT_PUBLIC_APP_URL=${UZZ_WEB_BASE_URL:-}
+      - NEXT_PUBLIC_DEFAULT_COMMUNITY_ID=${NEXT_PUBLIC_DEFAULT_COMMUNITY_ID:-}
+    networks:
+      - meriter-frontend-network
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget --quiet --tries=1 --spider http://127.0.0.1:8004/login || exit 1",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/tmp
+
   caddy:
     image: caddy:2.7-alpine
     container_name: meriter-caddy
@@ -270,6 +306,8 @@ services:
       web:
         condition: service_healthy
       community-web:
+        condition: service_healthy
+      uzz-web:
         condition: service_healthy
       api:
         condition: service_healthy

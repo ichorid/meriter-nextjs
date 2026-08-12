@@ -129,3 +129,44 @@
 
     encode gzip
 }
+
+# UZZ «Услуги за заслуги» — set UZZ_DOMAIN=cw.ru only after dev acceptance
+{$UZZ_DOMAIN:uzz-dev.meriter.pro} {
+    log {
+        output stdout
+        level INFO
+    }
+
+    import meriter_security_headers
+
+    handle /api* {
+        reverse_proxy api:8002 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+        encode gzip
+    }
+
+    handle /trpc* {
+        reverse_proxy api:8002 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+        encode gzip
+    }
+
+    handle {
+        reverse_proxy uzz-web:8004 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    encode gzip
+}
