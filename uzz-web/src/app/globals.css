@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    max-width: 100vw;
+    overflow-x: hidden;
+    min-height: 100%;
+  }
+
+  [data-theme='dark'] {
+    --stitch-sidebar-rgb: 2 6 23;
+    --stitch-canvas-rgb: 15 23 42;
+    --stitch-surface-rgb: 30 41 59;
+    --stitch-accent-rgb: 168 85 247;
+    --stitch-text-rgb: 241 245 249;
+    --stitch-muted-rgb: 148 163 184;
+    --stitch-border-rgb: 51 65 85;
+    --shell-bottom-nav-height: 3.5rem;
+    --background: rgb(var(--stitch-canvas-rgb));
+    --foreground: rgb(var(--stitch-text-rgb));
+    --card: rgb(var(--stitch-surface-rgb));
+    --card-foreground: rgb(var(--stitch-text-rgb));
+    --primary: #a855f7;
+    --primary-foreground: #ffffff;
+    --muted: rgb(var(--stitch-surface-rgb));
+    --muted-foreground: rgb(var(--stitch-muted-rgb));
+    --border: rgb(var(--stitch-border-rgb));
+    --radius: 12px;
+  }
+
+  body {
+    @apply bg-stitch-canvas text-stitch-text font-sans antialiased;
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-extrabold tracking-tight;
+  }
+}
+
+@layer utilities {
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

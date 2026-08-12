@@ -2,6 +2,7 @@ packages:
   - api
   - web
   - community-web
+  - uzz-web
   - libs/shared-types
 
 onlyBuiltDependencies:
