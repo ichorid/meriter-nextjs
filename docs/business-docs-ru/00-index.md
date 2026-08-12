@@ -37,6 +37,8 @@
 | 11 | `11-telegram-bot-runbook-ru.md` | **Telegram-бот:** установка, webhook, команды, чеклист пилота |
 | 12 | `12-community-web-mvp.md`, `12-community-web-runbook-ru.md` | **Community-web (фаза 2):** scope, изоляция, деплой subdomain |
 | 13 | `13-telegram-stack-deployment-ru.md` | **Полный стек TG:** развёртывание бота + community-web, интеграция, чеклисты |
+| 16 | `16-uslugi-za-zaslugi-mvp.md` | **«Услуги за заслуги»:** продуктовое ТЗ пилота (uzz-web, банки, каталог, email↔TG) |
+| 17 | `17-uzz-stack-deployment-ru.md` | **UZZ стек:** dev → cw.ru, env, Caddy, чеклист приёмки |
 
 ---
 
