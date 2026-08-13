@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { bankHeadline } from '@/lib/utils';
+import { bankHeadline, formatWhen, ledgerTypeLabel } from '@/lib/utils';
 
 export default function AdminPage() {
   const { communityId, isUzzAdmin, loggedIn } = useUzzCommunityId();
@@ -292,7 +292,10 @@ export default function AdminPage() {
                   key={row.id}
                   className="rounded-lg border border-stitch-border/60 px-3 py-2 text-stitch-muted"
                 >
-                  <span className="text-stitch-text">{row.type}</span>
+                  <span className="text-stitch-text">{ledgerTypeLabel(row.type)}</span>
+                  {row.createdAt ? (
+                    <span className="ml-2 text-xs">{formatWhen(row.createdAt)}</span>
+                  ) : null}
                 </li>
               ))}
             </ul>

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 export default function DeedsRedirectPage() {
   const router = useRouter();
   useEffect(() => {
-    router.replace('/');
+    router.replace('/?tab=deeds');
   }, [router]);
   return null;
 }

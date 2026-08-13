@@ -4,9 +4,11 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { CommunityIdBanner } from '@/components/community-id-banner';
-import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui';
+import { config } from '@/config';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
+import { cn, dealNeedsAction } from '@/lib/utils';
 
 const NAV = [
   { href: '/catalog', label: 'Обмен' },
@@ -15,17 +17,22 @@ const NAV = [
   { href: '/profile', label: 'Профиль' },
 ] as const;
 
-const SESSION_PATHS = new Set(['/', '/deals', '/wallet', '/lots', '/deeds', '/admin', '/profile']);
-const LINK_OPTIONAL_PATHS = new Set(['/catalog', '/login']);
+const SESSION_PATHS = new Set(['/deals', '/wallet', '/lots', '/deeds', '/admin', '/profile']);
+const LINK_GATE_PATHS = new Set(['/', '/deals', '/wallet', '/lots', '/deeds', '/admin']);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isUzzAdmin, loggedIn, sessionLoading, sessionError } = useUzzCommunityId();
+  const { communityId, isUzzAdmin, loggedIn, sessionLoading, sessionError } =
+    useUzzCommunityId();
   const linkStatus = trpc.identity.getLinkStatus.useQuery(undefined, {
     enabled: loggedIn,
     retry: false,
   });
+  const deals = trpc.deals.list.useQuery(
+    { communityId, mineOnly: true },
+    { enabled: loggedIn && Boolean(communityId), retry: false },
+  );
 
   useEffect(() => {
     if (sessionLoading) return;
@@ -34,91 +41,141 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [pathname, sessionError, sessionLoading, router]);
 
-  const needsLinkGate =
+  const hardGate =
     loggedIn &&
+    !config.development.fakeDataMode &&
     linkStatus.data?.linked === false &&
-    !LINK_OPTIONAL_PATHS.has(pathname) &&
-    pathname !== '/a';
+    LINK_GATE_PATHS.has(pathname);
+
+  const actionCount = deals.data?.filter(dealNeedsAction).length ?? 0;
 
   return (
     <div className="min-h-screen bg-stitch-canvas text-stitch-text">
       <CommunityIdBanner />
       <header className="sticky top-0 z-20 border-b border-stitch-border bg-stitch-sidebar/95 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-5xl items-center gap-3 px-4 py-3">
           <Link href="/catalog" className="text-lg font-extrabold tracking-tight text-stitch-accent">
             Услуги за заслуги
           </Link>
-          <nav className="flex flex-1 flex-wrap gap-1">
-            {NAV.map((item) => {
-              const active =
-                item.href === '/'
-                  ? pathname === '/' || pathname === '/lots' || pathname === '/deeds' || pathname === '/wallet'
-                  : pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'rounded-lg px-2.5 py-1.5 text-sm transition-colors',
-                    active
-                      ? 'bg-stitch-accent/20 text-stitch-text'
-                      : 'text-stitch-muted hover:bg-stitch-surface hover:text-stitch-text',
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
+          <nav className="hidden flex-1 flex-wrap gap-1 md:flex" aria-label="Разделы">
+            {NAV.map((item) => (
+              <NavLink
+                key={item.href}
+                item={item}
+                pathname={pathname}
+                badge={item.href === '/deals' ? actionCount : 0}
+              />
+            ))}
             {isUzzAdmin ? (
-              <Link
-                href="/admin"
-                className={cn(
-                  'rounded-lg px-2.5 py-1.5 text-sm transition-colors',
-                  pathname === '/admin'
-                    ? 'bg-stitch-accent/20 text-stitch-text'
-                    : 'text-stitch-muted hover:bg-stitch-surface hover:text-stitch-text',
-                )}
-              >
-                Админ
-              </Link>
+              <NavLink item={{ href: '/admin', label: 'Админ' }} pathname={pathname} />
             ) : null}
           </nav>
+          {!loggedIn && !sessionLoading ? (
+            <Link
+              href="/login"
+              className="ml-auto rounded-lg bg-stitch-accent px-3 py-1.5 text-sm font-medium text-white md:ml-0"
+            >
+              Войти
+            </Link>
+          ) : null}
         </div>
       </header>
-      {needsLinkGate ? <TelegramLinkGate /> : (
-        <main className="mx-auto max-w-5xl px-4 py-6 safe-area-pb">{children}</main>
+      {hardGate ? (
+        <TelegramLinkGate />
+      ) : (
+        <main className="mx-auto max-w-5xl px-4 py-6 pb-24 md:pb-6">{children}</main>
       )}
+      <nav
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-stitch-border bg-stitch-sidebar/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+        aria-label="Разделы"
+      >
+        <div className="mx-auto grid max-w-5xl grid-cols-4">
+          {NAV.map((item) => (
+            <NavLink
+              key={item.href}
+              item={item}
+              pathname={pathname}
+              badge={item.href === '/deals' ? actionCount : 0}
+              stacked
+            />
+          ))}
+        </div>
+      </nav>
     </div>
+  );
+}
+
+function NavLink({
+  item,
+  pathname,
+  badge = 0,
+  stacked = false,
+}: {
+  item: { href: string; label: string };
+  pathname: string;
+  badge?: number;
+  stacked?: boolean;
+}) {
+  const active =
+    item.href === '/'
+      ? pathname === '/' || pathname === '/lots' || pathname === '/deeds' || pathname === '/wallet'
+      : pathname === item.href || pathname.startsWith(`${item.href}/`);
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? 'page' : undefined}
+      aria-label={badge > 0 ? `${item.label}, ${badge}` : item.label}
+      className={cn(
+        'relative rounded-lg px-2.5 py-1.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent',
+        stacked && 'flex min-h-12 flex-col items-center justify-center py-2 text-xs',
+        active
+          ? 'bg-stitch-accent/20 text-stitch-text'
+          : 'text-stitch-muted hover:bg-stitch-surface hover:text-stitch-text',
+      )}
+    >
+      {item.label}
+      {badge > 0 ? (
+        <span
+          className="absolute right-1 top-1 min-w-4 rounded-full bg-stitch-accent px-1 text-center text-[10px] font-bold text-white"
+          aria-hidden
+        >
+          {badge}
+        </span>
+      ) : null}
+    </Link>
   );
 }
 
 function TelegramLinkGate() {
   const [error, setError] = useState<string | null>(null);
+  const logout = trpc.auth.logout.useMutation({
+    onSuccess: () => {
+      window.location.href = '/catalog';
+    },
+  });
   const startTg = trpc.identity.startTelegramLink.useMutation({
     onSuccess: (data) => {
-      if (data.deepLink) {
-        window.location.href = data.deepLink;
-      }
+      if (data.deepLink) window.location.href = data.deepLink;
     },
     onError: (err) => setError(err.message || 'Не удалось начать привязку'),
   });
 
   return (
-    <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-10">
-      <div className="space-y-4 rounded-xl border border-stitch-border bg-stitch-surface p-6 text-center">
+    <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-10 pb-24">
+      <div className="space-y-4 rounded-xl border border-stitch-border bg-stitch-surface p-6 text-center shadow-[0_8px_30px_rgb(2_6_23_/_0.45)]">
         <h1 className="text-2xl font-extrabold tracking-tight">Привяжите Telegram</h1>
         <p className="text-sm text-stitch-muted">
-          Так площадка узнает ваши добрые дела и права на обмен. Каталог услуг можно смотреть и без
-          привязки.
+          Права на обмен появляются из добрых дел в чате сообщества. Одна кнопка — и площадка вас
+          узнает. Каталог можно смотреть и без этого.
         </p>
-        <button
+        <Button
           type="button"
           disabled={startTg.isPending}
+          className="w-full py-2.5"
           onClick={() => startTg.mutate()}
-          className="w-full rounded-lg bg-stitch-accent px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
         >
           {startTg.isPending ? 'Готовим ссылку…' : 'Открыть Telegram'}
-        </button>
+        </Button>
         {startTg.data?.deepLink ? (
           <a
             href={startTg.data.deepLink}
@@ -129,14 +186,21 @@ function TelegramLinkGate() {
             Перейти в бота
           </a>
         ) : startTg.data && !startTg.data.deepLink ? (
-          <p className="text-sm text-amber-200">
-            Ссылка на бота не настроена. Напишите администратору.
-          </p>
+          <p className="text-sm text-amber-200">Ссылка на бота не настроена. Напишите администратору.</p>
         ) : null}
         {error ? <p className="text-sm text-red-400">{error}</p> : null}
-        <Link href="/catalog" className="inline-block text-sm text-stitch-accent hover:underline">
-          Пока посмотреть обмен
-        </Link>
+        <div className="flex flex-col gap-2 text-sm">
+          <Link href="/catalog" className="text-stitch-accent hover:underline">
+            Пока посмотреть обмен
+          </Link>
+          <button
+            type="button"
+            className="text-stitch-muted hover:text-stitch-text"
+            onClick={() => logout.mutate()}
+          >
+            Выйти
+          </button>
+        </div>
       </div>
     </main>
   );

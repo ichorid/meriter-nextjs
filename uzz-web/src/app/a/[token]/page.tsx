@@ -13,7 +13,7 @@ export default function RedeemMagicLinkPage() {
 
   const redeem = trpc.auth.redeemEmailLoginLink.useMutation({
     onSuccess: () => {
-      router.replace('/');
+      router.replace('/catalog');
     },
     onError: (err) => {
       setError(err.message || 'Ссылка недействительна или устарела');
@@ -39,7 +39,7 @@ export default function RedeemMagicLinkPage() {
             </a>
           </>
         ) : (
-          <p className="text-sm text-stitch-muted">Вход…</p>
+          <p className="text-sm text-stitch-muted">Входим по ссылке из письма…</p>
         )}
       </div>
     </div>

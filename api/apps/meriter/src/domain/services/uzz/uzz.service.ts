@@ -111,6 +111,7 @@ export type UzzDealView = {
   lotTitle: string;
   counterpartyName: string;
   myRole: 'buyer' | 'seller' | 'other';
+  expiresAt: Date | null;
   createdAt: Date;
 };
 
@@ -233,6 +234,7 @@ export class UzzService {
       linked
         ? 'Появилось право на обмен. Администратор скоро назначит номинал в рублях.'
         : 'Появилось право на обмен, но нужна привязка Telegram и почты, чтобы им пользоваться.',
+      '/',
     );
     return bank;
   }
@@ -480,11 +482,13 @@ export class UzzService {
       bank.id,
       deal.id,
     );
+    const settings = await this.getOrCreateSettings(input.communityId);
     await this.notifyUser(
       lot.authorId,
       input.communityId,
       'dealRequested',
-      `Новый запрос на услугу «${lot.title}». Откройте сделки на площадке.`,
+      `Новый запрос на услугу «${lot.title}». Ответьте в течение ${settings.dealRequestTtlHours} ч.`,
+      '/deals',
     );
     return deal;
   }
@@ -531,6 +535,7 @@ export class UzzService {
       deal.communityId,
       'dealAccepted',
       'Исполнитель принял вашу заявку. Дождитесь отметки «сделано».',
+      '/deals',
     );
     return deal;
   }
@@ -560,6 +565,7 @@ export class UzzService {
       deal.communityId,
       'dealRequested',
       'Исполнитель отклонил заявку. Комиссия возвращена, право на обмен снова у вас.',
+      '/deals',
     );
     return deal;
   }
@@ -588,6 +594,7 @@ export class UzzService {
       deal.communityId,
       'dealAccepted',
       'Исполнитель отметил услугу как сделанную. Подтвердите закрытие на площадке.',
+      '/deals',
     );
     return deal;
   }
@@ -661,12 +668,14 @@ export class UzzService {
       deal.communityId,
       'dealClosed',
       'Сделка закрыта. Право на обмен перешло к вам.',
+      '/deals',
     );
     await this.notifyUser(
       deal.buyerId,
       deal.communityId,
       'dealClosed',
       'Сделка закрыта. Можно оставить благодарность на площадке.',
+      '/deals',
     );
     return deal;
   }
@@ -720,12 +729,14 @@ export class UzzService {
       deal.communityId,
       'dealRequested',
       'Сделка отменена. Комиссия возвращена, право на обмен снова свободно.',
+      '/deals',
     );
     await this.notifyUser(
       deal.sellerId,
       deal.communityId,
       'dealRequested',
       'Сделка отменена.',
+      '/deals',
     );
     return deal;
   }
@@ -1267,6 +1278,7 @@ export class UzzService {
     communityId: string,
     flag: keyof UzzNotifyFlags,
     text: string,
+    path = '',
   ): Promise<void> {
     try {
       const settings = await this.getOrCreateSettings(communityId);
@@ -1274,7 +1286,7 @@ export class UzzService {
       const link = await this.findIdentityLinkForUser(userId);
       if (!link?.telegramUserId) return;
       const base = this.configService.get('app')?.uzzWebBaseUrl?.replace(/\/$/, '');
-      const body = base ? `${text}\n${base}` : text;
+      const body = base ? `${text}\n${base}${path}` : text;
       await this.eventBus.publish(
         new UzzNotifyEvent(communityId, String(link.telegramUserId), body),
       );
@@ -1336,6 +1348,12 @@ export class UzzService {
     const viewerIds = viewerUserId
       ? await this.resolveLinkedUserIds(viewerUserId)
       : [];
+    const communityIds = [...new Set(deals.map((d) => d.communityId))];
+    const settingsByCommunity = new Map(
+      await Promise.all(
+        communityIds.map(async (id) => [id, await this.getOrCreateSettings(id)] as const),
+      ),
+    );
 
     return deals.map((deal) => {
       const isBuyer = viewerIds.includes(deal.buyerId);
@@ -1344,6 +1362,7 @@ export class UzzService {
       let myRole: UzzDealView['myRole'] = 'other';
       if (isBuyer) myRole = 'buyer';
       else if (isSeller) myRole = 'seller';
+      const settings = settingsByCommunity.get(deal.communityId);
       return {
         id: deal.id,
         communityId: deal.communityId,
@@ -1365,9 +1384,36 @@ export class UzzService {
         lotTitle: lotById.get(deal.lotId)?.title ?? 'Услуга',
         counterpartyName: this.friendlyName(names.get(counterpartyId), counterpartyId),
         myRole,
+        expiresAt: this.dealExpiresAt(deal, settings),
         createdAt: deal.createdAt,
       };
     });
+  }
+
+  private dealExpiresAt(
+    deal: UzzDealDocument,
+    settings:
+      | { dealRequestTtlHours: number; dealFulfillmentDays: number }
+      | undefined,
+  ): Date | null {
+    if (
+      deal.status === 'closed' ||
+      deal.status === 'rejected' ||
+      deal.status === 'cancelled'
+    ) {
+      return null;
+    }
+    if (!settings) return null;
+    if (deal.status === 'requested') {
+      return new Date(
+        deal.requestedAt.getTime() + settings.dealRequestTtlHours * 60 * 60 * 1000,
+      );
+    }
+    const from =
+      deal.acceptedAt?.getTime() ??
+      deal.completedBySellerAt?.getTime() ??
+      deal.requestedAt.getTime();
+    return new Date(from + settings.dealFulfillmentDays * 24 * 60 * 60 * 1000);
   }
 
   private async hasFullIdentityLink(userId: string): Promise<boolean> {

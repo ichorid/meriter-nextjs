@@ -189,6 +189,10 @@ describe('UzzService (integration)', () => {
       lotId: lot.id,
       bankId: bank!.id,
     });
+    const listed = await uzzService.listDeals(communityId, sellerId);
+    const view = listed.find((row) => row.id === deal.id);
+    expect(view?.expiresAt).toBeInstanceOf(Date);
+    expect(view?.expiresAt!.getTime()).toBeGreaterThan(Date.now());
     await uzzService.acceptDeal(deal.id, sellerId);
     await uzzService.completeDeal(deal.id, sellerId);
     const closed = await uzzService.closeDeal(deal.id, authorId);

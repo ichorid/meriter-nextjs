@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 export default function LotsRedirectPage() {
   const router = useRouter();
   useEffect(() => {
-    router.replace('/');
+    router.replace('/?tab=lots');
   }, [router]);
   return null;
 }

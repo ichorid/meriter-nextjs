@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { config } from '@/config';
@@ -8,9 +8,14 @@ import { trpc } from '@/lib/trpc/client';
 
 export default function LoginPage() {
   const router = useRouter();
+  const me = trpc.auth.me.useQuery(undefined, { retry: false });
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (me.data) router.replace('/catalog');
+  }, [me.data, router]);
 
   const sendLink = trpc.auth.sendEmailLoginLink.useMutation({
     onSuccess: () => {
@@ -25,7 +30,7 @@ export default function LoginPage() {
 
   const fakeAuth = trpc.auth.authenticateFake.useMutation({
     onSuccess: () => {
-      router.replace('/');
+      router.replace('/catalog');
     },
     onError: (err) => {
       setError(err.message || 'Fake auth недоступен');
@@ -44,7 +49,7 @@ export default function LoginPage() {
         <div className="space-y-2 text-center">
           <h1 className="text-2xl font-extrabold tracking-tight">Услуги за заслуги</h1>
           <p className="text-sm text-stitch-muted">
-            Вход по ссылке на email. Telegram Login не используется.
+            Пришлём одноразовую ссылку на почту. Пароль не нужен.
           </p>
         </div>
 
