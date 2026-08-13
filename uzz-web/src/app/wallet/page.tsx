@@ -1,113 +1,16 @@
 'use client';
-
 import { AppShell } from '@/components/app-shell';
-import { Card, EmptyState, QueryFailed } from '@/components/ui';
+import { Card, EmptyState, PageHeader, QueryFailed, Skeleton } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import {
-  feeSourceFromWallet,
-  feeWalletPhrase,
-  formatWhen,
-  ledgerTypeLabel,
-  meritsLabel,
-  meritsWord,
-} from '@/lib/utils';
+import { formatWhen, ledgerTypeLabel, meritsWord } from '@/lib/utils';
 
 export default function WalletPage() {
-  const { communityId, loggedIn } = useUzzCommunityId();
-  const enabled = Boolean(communityId) && loggedIn;
-
-  const balance = trpc.wallet.getBalance.useQuery({ communityId }, { enabled, retry: false });
-  const ledger = trpc.ledger.listMine.useQuery(
-    { communityId, limit: 50 },
-    { enabled, retry: false },
-  );
-
-  return (
-    <AppShell>
-      <div className="space-y-6">
-        <header className="space-y-2">
-          <h1 className="text-2xl font-extrabold tracking-tight">Кошелёк</h1>
-          <p className="text-sm text-stitch-muted">
-            Заслуги для комиссии и благодарностей. Права на обмен — не баланс, они во вкладке «Моё».
-          </p>
-        </header>
-
-        <Card>
-          <p className="text-xs uppercase tracking-wide text-stitch-muted">Сейчас</p>
-          {balance.isError ? (
-            <QueryFailed onRetry={() => void balance.refetch()} />
-          ) : (
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs text-stitch-muted">Сообщество</p>
-                <p className="mt-1 text-3xl font-extrabold text-stitch-accent">
-                  {balance.isLoading ? '…' : (balance.data?.localBalance ?? 0)}
-                </p>
-                <p className="mt-1 text-sm text-stitch-muted">
-                  {meritsWord(balance.data?.localBalance ?? 0)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-stitch-muted">Общий кошелёк</p>
-                <p className="mt-1 text-3xl font-extrabold text-stitch-accent">
-                  {balance.isLoading ? '…' : (balance.data?.globalBalance ?? 0)}
-                </p>
-                <p className="mt-1 text-sm text-stitch-muted">
-                  {meritsWord(balance.data?.globalBalance ?? 0)}
-                </p>
-              </div>
-            </div>
-          )}
-          <p className="mt-3 text-sm text-stitch-muted">
-            Комиссия сделки: сначала сообщество, если не хватит — общий кошелёк.
-          </p>
-        </Card>
-
-        <section className="space-y-3">
-          <h2 className="font-extrabold">История</h2>
-          {ledger.isError ? (
-            <QueryFailed onRetry={() => void ledger.refetch()} />
-          ) : !ledger.data?.length && !ledger.isLoading ? (
-            <EmptyState title="Пока нет операций">
-              Комиссия сделки, таяние номинала и переход права появятся здесь.
-            </EmptyState>
-          ) : ledger.isLoading ? (
-            <p className="text-sm text-stitch-muted">Загрузка…</p>
-          ) : (
-            <ul className="space-y-2">
-              {ledger.data.map((row) => (
-                <li key={row.id}>
-                  <Card className="py-3">
-                    <p className="font-medium">{ledgerTypeLabel(row.type)}</p>
-                    <p className="text-xs text-stitch-muted">{formatWhen(row.createdAt)}</p>
-                    {typeof row.payload?.from === 'number' && typeof row.payload?.to === 'number' ? (
-                      <p className="text-sm text-stitch-muted">
-                        {row.payload.from} ₽ → {row.payload.to} ₽
-                      </p>
-                    ) : null}
-                    {typeof row.payload?.merits === 'number' ? (
-                      <p className="text-sm text-stitch-muted">{meritsLabel(row.payload.merits)}</p>
-                    ) : typeof row.payload?.amount === 'number' ? (
-                      <p className="text-sm text-stitch-muted">
-                        {meritsLabel(row.payload.amount)}
-                        {feeWalletPhrase(feeSourceFromWallet(row.payload.wallet))
-                          ? ` · ${feeWalletPhrase(feeSourceFromWallet(row.payload.wallet))}`
-                          : ''}
-                      </p>
-                    ) : null}
-                    {typeof row.payload?.dealAmountRub === 'number' ? (
-                      <p className="text-sm text-stitch-muted">
-                        сделка на {row.payload.dealAmountRub} ₽
-                      </p>
-                    ) : null}
-                  </Card>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-    </AppShell>
-  );
+  const { communityId, loggedIn } = useUzzCommunityId(); const enabled = Boolean(communityId) && loggedIn;
+  const balance = trpc.wallet.getBalance.useQuery({ communityId }, { enabled, retry: false }); const ledger = trpc.ledger.listMine.useQuery({ communityId, limit: 50 }, { enabled, retry: false });
+  return <AppShell><div className="space-y-8"><PageHeader eyebrow="Заслуги для комиссии" title="Кошелёк">Это не номинал права на обмен. При создании сделки 1 заслуга резервируется сначала здесь, в сообществе, и только затем — в общем кошельке.</PageHeader>
+    {balance.isError ? <QueryFailed onRetry={() => void balance.refetch()} /> : balance.isLoading || !balance.data ? <Skeleton className="h-40" /> : <div className="grid gap-4 sm:grid-cols-2"><BalanceCard label="В этом сообществе" value={balance.data.localBalance} priority="Списывается первым" /><BalanceCard label="Общий кошелёк" value={balance.data.globalBalance} priority="Резервный источник" /></div>}
+    <section className="space-y-4"><h2 className="text-xl font-black">История</h2>{ledger.isError ? <QueryFailed onRetry={() => void ledger.refetch()} /> : ledger.isLoading ? <div className="space-y-2"><Skeleton className="h-20" /><Skeleton className="h-20" /></div> : !ledger.data?.length ? <EmptyState title="Операций пока нет">Здесь появятся резерв и возврат комиссии, таяние номинала, передача права и благодарности.</EmptyState> : <ul className="divide-y divide-stitch-border overflow-hidden rounded-2xl border border-stitch-border bg-stitch-surface">{ledger.data.map((row) => <li key={row.id} className="flex items-start justify-between gap-4 p-4"><div><p className="font-semibold">{ledgerTypeLabel(row.type)}</p><p className="mt-1 text-xs text-stitch-muted">{formatWhen(row.createdAt)}</p>{typeof row.metadata?.reason === 'string' ? <p className="mt-1 text-xs text-stitch-muted">{row.metadata.reason}</p> : null}</div>{row.amount !== 0 ? <strong className={row.amount > 0 ? 'text-emerald-300' : 'text-stitch-text'}>{row.amount > 0 ? '+' : ''}{row.amount}</strong> : null}</li>)}</ul>}</section>
+  </div></AppShell>;
 }
+function BalanceCard({ label, value, priority }: { label: string; value: number; priority: string }) { return <Card><p className="text-sm text-stitch-muted">{label}</p><p className="mt-2 text-4xl font-black text-stitch-accent">{value.toLocaleString('ru-RU')}</p><p className="mt-1 text-sm text-stitch-muted">{meritsWord(value)} · {priority}</p></Card>; }

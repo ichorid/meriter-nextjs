@@ -64,8 +64,15 @@ export class UzzApplicationFacade {
   updateListing(input: Parameters<UpdateListingUseCase['execute']>[0]) {
     return this.commands.updateListing.execute(input);
   }
-  listCatalog(input: Parameters<ListCatalogUseCase['execute']>[0]) {
-    return this.commands.listCatalog.execute(input);
+  async listCatalog(input: Parameters<ListCatalogUseCase['execute']>[0]) {
+    const listings = await this.commands.listCatalog.execute(input);
+    const names = await this.platform.getDisplayNames(
+      listings.map((listing) => listing.authorId),
+    );
+    return listings.map((listing) => ({
+      ...listing,
+      ownerName: displayName(names.get(listing.authorId)),
+    }));
   }
   checkPurchaseGate(input: Parameters<CheckPurchaseGateUseCase['execute']>[0]) {
     return this.commands.checkPurchaseGate.execute(input);
@@ -166,6 +173,13 @@ export class UzzApplicationFacade {
       repositories.deals.listByParticipants(communityId, userIds),
     );
     const snapshots = deals.map((deal) => deal.snapshot());
+    const rights = await this.unitOfWork.run((repositories) =>
+      Promise.all(snapshots.map((deal) => repositories.rights.findById(deal.exchangeRightId))),
+    );
+    const rightNominalById = new Map(rights.filter(Boolean).map((right) => [
+      right!.snapshot().id,
+      right!.snapshot().nominalRub,
+    ]));
     const names = await this.platform.getDisplayNames(
       snapshots.flatMap((deal) => [deal.buyerId, deal.sellerId]),
     );
@@ -177,6 +191,7 @@ export class UzzApplicationFacade {
         ...deal,
         myRole: isBuyer ? 'buyer' as const : isSeller ? 'seller' as const : 'other' as const,
         counterpartyName: displayName(names.get(counterpartyId)),
+        currentNominalRub: rightNominalById.get(deal.exchangeRightId) ?? null,
         expiresAt: deal.status === 'requested' ? deal.requestExpiresAt
           : deal.status === 'accepted' ? deal.fulfillmentExpiresAt
             : deal.status === 'completed_by_seller' ? deal.confirmationExpiresAt : null,
