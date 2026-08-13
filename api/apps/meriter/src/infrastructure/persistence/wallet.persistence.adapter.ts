@@ -54,8 +54,11 @@ export class WalletPersistenceAdapter implements WalletPersistencePort {
   async findWalletByUserAndCommunity(
     userId: string,
     communityId: string,
+    session?: WalletPersistenceSession,
   ): Promise<WalletSnapshot | null> {
-    const doc = await this.walletModel.findOne({ userId, communityId }).lean().exec();
+    const query = this.walletModel.findOne({ userId, communityId }).lean();
+    if (session) query.session(session as ClientSession);
+    const doc = await query.exec();
     return doc ? mapWalletDocumentToSnapshot(doc) : null;
   }
 

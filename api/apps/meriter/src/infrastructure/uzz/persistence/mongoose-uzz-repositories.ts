@@ -18,6 +18,7 @@ import {
   UzzSettingsRepository,
 } from '../../../application/uzz/ports/uzz-repositories';
 import { UzzConflictError } from '../../../domain/uzz/errors';
+import { MeriterUzzWalletAdapter } from '../wallet/meriter-uzz-wallet.adapter';
 import { UZZ_COMMAND_MODEL, UzzCommandPersistenceSchema } from './schemas/uzz-command.schema';
 import { UZZ_DEAL_MODEL, UzzDealPersistenceSchema } from './schemas/uzz-deal.schema';
 import {
@@ -310,7 +311,22 @@ function createRepositories(
     },
   };
 
-  return { rights, listings, deals, settings, identities, ledger, commands, outbox };
+  const wallet = new MeriterUzzWalletAdapter(
+    models.rights.db,
+    session,
+  );
+
+  return {
+    rights,
+    listings,
+    deals,
+    settings,
+    identities,
+    ledger,
+    commands,
+    outbox,
+    wallet,
+  };
 }
 
 function model(connection: Connection, name: string, schema: any): PersistenceModel {

@@ -1,0 +1,140 @@
+import { randomUUID } from 'crypto';
+import { ClientSession, Connection } from 'mongoose';
+import {
+  UzzWalletOperationInput,
+  UzzWalletPort,
+  UzzWalletReservation,
+} from '../../../application/uzz/ports/uzz-wallet.port';
+import { UzzConflictError } from '../../../domain/uzz/errors';
+
+export class MeriterUzzWalletAdapter implements UzzWalletPort {
+  constructor(
+    private readonly connection: Connection,
+    private readonly session: ClientSession | null,
+  ) {}
+
+  async reservePreferLocal(
+    input: UzzWalletOperationInput,
+  ): Promise<UzzWalletReservation> {
+    validateOperation(input.amount, input.operationId);
+    const existing = await this.findEffect(input.operationId, 'uzz_fee_reserve');
+    if (existing) {
+      return {
+        operationId: input.operationId,
+        walletId: String(existing.walletId),
+        sourceCommunityId: String(existing.description).split(':').at(-1) ?? '',
+        amount: Number(existing.amount),
+      };
+    }
+
+    for (const communityId of [
+      input.localCommunityId,
+      input.globalCommunityId,
+    ]) {
+      const wallet = await this.connection.collection('wallets').findOneAndUpdate(
+        {
+          userId: input.userId,
+          communityId,
+          balance: { $gte: input.amount },
+        },
+        { $inc: { balance: -input.amount }, $set: { lastUpdated: new Date() } },
+        { returnDocument: 'after', session: this.session ?? undefined },
+      );
+      if (!wallet) continue;
+
+      await this.insertEffect({
+        walletId: String(wallet.id),
+        amount: input.amount,
+        type: 'withdrawal',
+        referenceType: 'uzz_fee_reserve',
+        referenceId: input.operationId,
+        description: `UZZ fee reserve:${communityId}`,
+      });
+      return {
+        operationId: input.operationId,
+        walletId: String(wallet.id),
+        sourceCommunityId: communityId,
+        amount: input.amount,
+      };
+    }
+
+    throw new UzzConflictError('WALLET_INSUFFICIENT_FUNDS');
+  }
+
+  async refundToSource(input: {
+    userId: string;
+    sourceCommunityId: string;
+    amount: number;
+    operationId: string;
+  }): Promise<void> {
+    validateOperation(input.amount, input.operationId);
+    if (await this.findEffect(input.operationId, 'uzz_fee_refund')) return;
+    const wallet = await this.connection.collection('wallets').findOneAndUpdate(
+      { userId: input.userId, communityId: input.sourceCommunityId },
+      { $inc: { balance: input.amount }, $set: { lastUpdated: new Date() } },
+      { returnDocument: 'after', session: this.session ?? undefined },
+    );
+    if (!wallet) throw new UzzConflictError('WALLET_NOT_FOUND');
+    await this.insertEffect({
+      walletId: String(wallet.id),
+      amount: input.amount,
+      type: 'deposit',
+      referenceType: 'uzz_fee_refund',
+      referenceId: input.operationId,
+      description: `UZZ fee refund:${input.sourceCommunityId}`,
+    });
+  }
+
+  async transferPreferLocal(
+    input: UzzWalletOperationInput & { recipientUserId: string },
+  ): Promise<UzzWalletReservation> {
+    const reserved = await this.reservePreferLocal(input);
+    const recipient = await this.connection.collection('wallets').findOneAndUpdate(
+      {
+        userId: input.recipientUserId,
+        communityId: reserved.sourceCommunityId,
+      },
+      { $inc: { balance: input.amount }, $set: { lastUpdated: new Date() } },
+      { returnDocument: 'after', session: this.session ?? undefined },
+    );
+    if (!recipient) throw new UzzConflictError('WALLET_RECIPIENT_NOT_FOUND');
+    await this.insertEffect({
+      walletId: String(recipient.id),
+      amount: input.amount,
+      type: 'deposit',
+      referenceType: 'uzz_transfer_receive',
+      referenceId: input.operationId,
+      description: `UZZ transfer receive:${reserved.sourceCommunityId}`,
+    });
+    return reserved;
+  }
+
+  private async findEffect(operationId: string, referenceType: string) {
+    return this.connection.collection('transactions').findOne(
+      { referenceType, referenceId: operationId },
+      { session: this.session ?? undefined },
+    );
+  }
+
+  private async insertEffect(input: {
+    walletId: string;
+    type: 'withdrawal' | 'deposit';
+    amount: number;
+    description: string;
+    referenceType: string;
+    referenceId: string;
+  }): Promise<void> {
+    const now = new Date();
+    await this.connection.collection('transactions').insertOne(
+      { id: randomUUID(), ...input, createdAt: now, updatedAt: now },
+      { session: this.session ?? undefined },
+    );
+  }
+}
+
+function validateOperation(amount: number, operationId: string): void {
+  if (!Number.isSafeInteger(amount) || amount <= 0 || !operationId.trim()) {
+    throw new UzzConflictError('WALLET_OPERATION_INVALID');
+  }
+}
+

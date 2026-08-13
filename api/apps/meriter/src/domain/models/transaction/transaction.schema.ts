@@ -68,3 +68,19 @@ TransactionSchema.index({ referenceType: 1, referenceId: 1 });
 TransactionSchema.index({ createdAt: -1 });
 /** Merit history dashboard + dated wallet feeds */
 TransactionSchema.index({ walletId: 1, createdAt: -1 });
+TransactionSchema.index(
+  { referenceType: 1, referenceId: 1 },
+  {
+    unique: true,
+    name: 'uzz_wallet_effect_unique',
+    partialFilterExpression: {
+      referenceType: {
+        $in: [
+          'uzz_fee_reserve',
+          'uzz_fee_refund',
+          'uzz_transfer_receive',
+        ],
+      },
+    },
+  },
+);

@@ -1,6 +1,7 @@
 import { Deal } from '../../../domain/uzz/entities/deal';
 import { ExchangeRight } from '../../../domain/uzz/entities/exchange-right';
 import { Listing } from '../../../domain/uzz/entities/listing';
+import { UzzWalletPort } from './uzz-wallet.port';
 
 export interface UzzSettingsRecord {
   communityId: string;
@@ -157,4 +158,5 @@ export interface UzzRepositories {
   ledger: UzzLedgerRepository;
   commands: UzzCommandRepository;
   outbox: UzzOutboxRepository;
+  wallet: UzzWalletPort;
 }

@@ -60,10 +60,15 @@ export class WalletService {
     return this.walletPersistence.startSession();
   }
 
-  async getWallet(userId: string, communityId: string): Promise<Wallet | null> {
+  async getWallet(
+    userId: string,
+    communityId: string,
+    session?: WalletPersistenceSession,
+  ): Promise<Wallet | null> {
     const snapshot = await this.walletPersistence.findWalletByUserAndCommunity(
       userId,
       communityId,
+      session,
     );
     return snapshot ? Wallet.fromSnapshot(snapshot) : null;
   }
@@ -73,8 +78,9 @@ export class WalletService {
     communityId: string,
     currency: { singular: string; plural: string; genitive: string },
     options?: { startingMeritsIfNewWallet?: number },
+    session?: WalletPersistenceSession,
   ): Promise<Wallet> {
-    let wallet = await this.getWallet(userId, communityId);
+    let wallet = await this.getWallet(userId, communityId, session);
 
     if (!wallet) {
       wallet = Wallet.create(
@@ -83,7 +89,7 @@ export class WalletService {
         currency,
       );
 
-      await this.walletPersistence.insertWallet(wallet.toSnapshot());
+      await this.walletPersistence.insertWallet(wallet.toSnapshot(), session);
     }
 
     const start =
@@ -129,7 +135,7 @@ export class WalletService {
     session?: WalletPersistenceSession,
     options?: { allowNegativeBalance?: boolean },
   ): Promise<Wallet> {
-    let wallet = await this.getWallet(userId, communityId);
+    let wallet = await this.getWallet(userId, communityId, session);
     const isNewWallet = !wallet;
 
     if (!wallet) {
@@ -217,6 +223,7 @@ export class WalletService {
     referenceType: string,
     referenceId: string,
     description?: string,
+    session?: WalletPersistenceSession,
   ): Promise<boolean> {
     if (amount <= 0) {
       return true;
@@ -225,6 +232,7 @@ export class WalletService {
       userId,
       communityId,
       amount,
+      session,
     );
     if (!updated) {
       return false;
@@ -241,7 +249,7 @@ export class WalletService {
       referenceId,
       createdAt: now,
       updatedAt: now,
-    });
+    }, session);
 
     await this.eventBus.publish(
       new WalletBalanceChangedEvent(updated.id, userId, communityId, amount, 'debit'),

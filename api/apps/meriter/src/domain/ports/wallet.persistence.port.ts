@@ -81,6 +81,7 @@ export interface WalletPersistencePort {
   findWalletByUserAndCommunity(
     userId: string,
     communityId: string,
+    session?: WalletPersistenceSession,
   ): Promise<WalletSnapshot | null>;
 
   insertWallet(snapshot: WalletSnapshot, session?: WalletPersistenceSession): Promise<void>;
