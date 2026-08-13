@@ -136,6 +136,7 @@ export const uzzAppRouter = router({
     get: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
+        await ctx.uzzService.assertCommunityParticipant(input.communityId, ctx.user.id);
         return ctx.uzzService.getOrCreateSettings(input.communityId);
       }),
     update: protectedProcedure

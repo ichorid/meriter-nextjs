@@ -61,6 +61,7 @@ export type UzzSettingsPatch = Partial<{
 }>;
 
 const LINK_CODE_TTL_MS = 30 * 60 * 1000;
+const EMAIL_CODE_MAX_ATTEMPTS = 5;
 const DEAL_FEE_MERITS = 1;
 const OPEN_DEAL_STATUSES: UzzDealStatus[] = [
   'requested',
@@ -83,6 +84,25 @@ function isMongoDuplicateKey(error: unknown): boolean {
   );
 }
 
+function stripHtml(value: string): string {
+  return value.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function publicationHeadline(pub: {
+  title?: string;
+  content?: string;
+}): string {
+  const title = (pub.title ?? '').trim();
+  if (title) return title.slice(0, 160);
+  const text = stripHtml(String(pub.content ?? ''));
+  if (text) return text.slice(0, 160);
+  return 'Доброе дело';
+}
+
+function isDeedPublication(pub: { postType?: string | null }): boolean {
+  return !pub.postType || pub.postType === 'basic';
+}
+
 export type UzzBankView = {
   id: string;
   communityId: string;
@@ -94,6 +114,8 @@ export type UzzBankView = {
   lastDemurrageAt?: Date;
   createdAt: Date;
   ownerName: string;
+  sourceTitle?: string;
+  sourceScore?: number;
 };
 
 export type UzzLotView = {
@@ -214,6 +236,7 @@ export class UzzService {
   async maybeEmitBankForPublication(publicationId: string): Promise<UzzBankDocument | null> {
     const publication = await this.publicationModel.findOne({ id: publicationId }).exec();
     if (!publication || publication.deleted) return null;
+    if (!isDeedPublication(publication)) return null;
 
     const uzzCommunity =
       this.configService.get('app')?.defaultTelegramCommunityId?.trim() || '';
@@ -338,10 +361,10 @@ export class UzzService {
     priceRub: number;
   }): Promise<UzzLotDocument> {
     if (!input.title.trim()) {
-      throw new BadRequestException('title is required');
+      throw new BadRequestException('Укажите название услуги');
     }
     if (!Number.isFinite(input.priceRub) || input.priceRub <= 0) {
-      throw new BadRequestException('priceRub must be positive');
+      throw new BadRequestException('Укажите цену в рублях');
     }
     return this.lotModel.create({
       id: uid(),
@@ -368,7 +391,7 @@ export class UzzService {
     if (patch.description !== undefined) lot.description = patch.description.trim();
     if (patch.priceRub !== undefined) {
       if (!Number.isFinite(patch.priceRub) || patch.priceRub <= 0) {
-        throw new BadRequestException('priceRub must be positive');
+        throw new BadRequestException('Укажите цену в рублях');
       }
       lot.priceRub = Math.round(patch.priceRub);
     }
@@ -698,6 +721,8 @@ export class UzzService {
       throw new BadRequestException('У права ещё нет номинала');
     }
 
+    let extraFeeDebited = false;
+    let extraFeeWalletUserId: string | null = null;
     if (!deal.feeReserved) {
       const walletUserId = await this.pickWalletUserId(deal.buyerId, deal.communityId);
       const walletCommunityId = await this.walletScope(deal.communityId);
@@ -712,6 +737,8 @@ export class UzzService {
       if (!debited) {
         throw new BadRequestException('Не хватает заслуг, чтобы закрыть сделку');
       }
+      extraFeeDebited = true;
+      extraFeeWalletUserId = walletUserId;
       deal.feeReserved = true;
     }
 
@@ -733,6 +760,9 @@ export class UzzService {
       { new: true },
     );
     if (!claimed) {
+      if (extraFeeDebited && extraFeeWalletUserId) {
+        await this.creditDealFee(extraFeeWalletUserId, deal.communityId, deal.id);
+      }
       throw new BadRequestException('Эту сделку уже нельзя закрыть');
     }
 
@@ -1212,12 +1242,15 @@ export class UzzService {
     link.pendingTelegramExpiresAt = undefined;
     const email = await this.resolveUserEmail(link.userId);
     if (email) link.email = email;
-    await link.save();
     try {
       await this.userService.linkIdentity(link.userId, 'telegram', String(telegramUserId));
     } catch (error) {
-      if (!(error instanceof ConflictException)) throw error;
+      if (error instanceof ConflictException) {
+        throw new BadRequestException('Этот Telegram уже привязан к другому аккаунту');
+      }
+      throw error;
     }
+    await link.save();
     await this.promoteHoldingBanksIfLinked(link.userId);
     return link;
   }
@@ -1239,6 +1272,7 @@ export class UzzService {
           pendingEmail: normalized,
           pendingEmailCode: code,
           pendingEmailExpiresAt: expiresAt,
+          pendingEmailAttempts: 0,
         },
         $setOnInsert: { userId },
       },
@@ -1291,27 +1325,55 @@ export class UzzService {
 
   async confirmEmailLink(userId: string, code: string): Promise<UzzIdentityLinkDocument> {
     const link = await this.identityModel.findOne({ userId }).exec();
-    if (
-      !link ||
-      !link.pendingEmailCode ||
-      link.pendingEmailCode !== code ||
-      !link.pendingEmailExpiresAt ||
-      link.pendingEmailExpiresAt < new Date()
-    ) {
+    if (!link) {
       throw new BadRequestException('Код из письма устарел. Запросите новый через бота');
     }
-    link.email = link.pendingEmail;
+    if ((link.pendingEmailAttempts ?? 0) >= EMAIL_CODE_MAX_ATTEMPTS) {
+      throw new BadRequestException('Слишком много попыток. Запросите новый код через бота');
+    }
+    if (!link.pendingEmailCode || !link.pendingEmailExpiresAt) {
+      throw new BadRequestException('Код из письма устарел. Запросите новый через бота');
+    }
+    if (link.pendingEmailExpiresAt < new Date()) {
+      throw new BadRequestException('Код из письма устарел. Запросите новый через бота');
+    }
+    if (link.pendingEmailCode !== code) {
+      const attempts = (link.pendingEmailAttempts ?? 0) + 1;
+      link.pendingEmailAttempts = attempts;
+      if (attempts >= EMAIL_CODE_MAX_ATTEMPTS) {
+        link.pendingEmailCode = undefined;
+        link.pendingEmailExpiresAt = undefined;
+        await link.save();
+        throw new BadRequestException('Слишком много попыток. Запросите новый код через бота');
+      }
+      await link.save();
+      throw new BadRequestException('Неверный код');
+    }
+    const email = (link.pendingEmail ?? '').trim().toLowerCase();
+    if (!email.includes('@')) {
+      throw new BadRequestException('Код из письма устарел. Запросите новый через бота');
+    }
+    const taken = await this.identityModel
+      .findOne({ email, userId: { $ne: userId } })
+      .lean()
+      .exec();
+    if (taken) {
+      throw new BadRequestException('Эта почта уже привязана к другому аккаунту');
+    }
+    try {
+      await this.userService.linkIdentity(userId, 'email', email);
+    } catch (error) {
+      if (error instanceof ConflictException) {
+        throw new BadRequestException('Эта почта уже привязана к другому аккаунту');
+      }
+      throw error;
+    }
+    link.email = email;
     link.pendingEmail = undefined;
     link.pendingEmailCode = undefined;
     link.pendingEmailExpiresAt = undefined;
+    link.pendingEmailAttempts = 0;
     await link.save();
-    if (link.email) {
-      try {
-        await this.userService.linkIdentity(userId, 'email', link.email);
-      } catch (error) {
-        if (!(error instanceof ConflictException)) throw error;
-      }
-    }
     await this.promoteHoldingBanksIfLinked(userId);
     return link;
   }
@@ -1390,6 +1452,11 @@ export class UzzService {
         authorId: { $in: authorIds },
         communityId,
         deleted: { $ne: true },
+        $or: [
+          { postType: { $exists: false } },
+          { postType: null },
+          { postType: 'basic' },
+        ],
       })
       .sort({ createdAt: -1 })
       .limit(100)
@@ -1408,7 +1475,7 @@ export class UzzService {
       const bank = byPub.get(p.id);
       return {
         publicationId: p.id,
-        title: p.title,
+        title: publicationHeadline(p),
         score,
         emissionThreshold: settings.emissionThreshold,
         progress: Math.min(1, score / Math.max(1, settings.emissionThreshold)),
@@ -1447,6 +1514,16 @@ export class UzzService {
     const walletCommunityId = await this.walletScope(communityId);
     const wallet = await this.walletService.getWallet(walletUserId, walletCommunityId);
     return wallet?.getBalance?.() ?? 0;
+  }
+
+  async assertCommunityParticipant(communityId: string, userId: string): Promise<void> {
+    const ids = await this.resolveLinkedUserIds(userId);
+    for (const id of ids) {
+      const user = await this.userService.getUserById(id);
+      if (user?.globalRole === 'superadmin') return;
+      if (await this.communityService.isUserMember(communityId, id)) return;
+    }
+    throw new ForbiddenException('Нет доступа к этому сообществу');
   }
 
   async assertCommunityAdmin(communityId: string, userId: string): Promise<void> {
@@ -1561,18 +1638,29 @@ export class UzzService {
     const names = await this.userService.getDisplayNamesByUserIds(
       banks.map((b) => b.ownerId),
     );
-    return banks.map((bank) => ({
-      id: bank.id,
-      communityId: bank.communityId,
-      ownerId: bank.ownerId,
-      sourcePublicationId: bank.sourcePublicationId,
-      hopsLeft: bank.hopsLeft,
-      nominalRub: bank.nominalRub,
-      status: bank.status,
-      lastDemurrageAt: bank.lastDemurrageAt,
-      createdAt: bank.createdAt,
-      ownerName: this.friendlyName(names.get(bank.ownerId), bank.ownerId),
-    }));
+    const pubs = await this.publicationModel
+      .find({ id: { $in: banks.map((b) => b.sourcePublicationId) } })
+      .select({ id: 1, title: 1, content: 1, metrics: 1 })
+      .lean()
+      .exec();
+    const pubById = new Map(pubs.map((p) => [p.id, p]));
+    return banks.map((bank) => {
+      const pub = pubById.get(bank.sourcePublicationId);
+      return {
+        id: bank.id,
+        communityId: bank.communityId,
+        ownerId: bank.ownerId,
+        sourcePublicationId: bank.sourcePublicationId,
+        hopsLeft: bank.hopsLeft,
+        nominalRub: bank.nominalRub,
+        status: bank.status,
+        lastDemurrageAt: bank.lastDemurrageAt,
+        createdAt: bank.createdAt,
+        ownerName: this.friendlyName(names.get(bank.ownerId), bank.ownerId),
+        sourceTitle: pub ? publicationHeadline(pub) : undefined,
+        sourceScore: pub?.metrics?.score,
+      };
+    });
   }
 
   private async toLotViews(lots: UzzLotDocument[]): Promise<UzzLotView[]> {

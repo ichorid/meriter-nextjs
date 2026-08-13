@@ -14,6 +14,7 @@ const NAV = [
   { href: '/catalog', label: 'Обмен' },
   { href: '/', label: 'Моё' },
   { href: '/deals', label: 'Сделки' },
+  { href: '/wallet', label: 'Кошелёк' },
   { href: '/profile', label: 'Профиль' },
 ] as const;
 
@@ -31,7 +32,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   });
   const deals = trpc.deals.list.useQuery(
     { communityId, mineOnly: true },
-    { enabled: loggedIn && Boolean(communityId), retry: false },
+    {
+      enabled: loggedIn && Boolean(communityId),
+      retry: false,
+      refetchInterval: loggedIn ? 15_000 : false,
+    },
   );
 
   useEffect(() => {
@@ -125,7 +130,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className="fixed inset-x-0 bottom-0 z-20 border-t border-stitch-border bg-stitch-sidebar/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
         aria-label="Разделы"
       >
-        <div className="mx-auto grid max-w-5xl grid-cols-4">
+        <div className="mx-auto grid max-w-5xl grid-cols-5">
           {NAV.map((item) => (
             <NavLink
               key={item.href}
@@ -154,7 +159,7 @@ function NavLink({
 }) {
   const active =
     item.href === '/'
-      ? pathname === '/' || pathname === '/lots' || pathname === '/deeds' || pathname === '/wallet'
+      ? pathname === '/' || pathname === '/lots' || pathname === '/deeds'
       : pathname === item.href || pathname.startsWith(`${item.href}/`);
   return (
     <Link

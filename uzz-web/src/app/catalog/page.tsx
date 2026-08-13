@@ -56,7 +56,9 @@ export default function CatalogPage() {
   });
   const activeBanks =
     banks.data?.filter((b) => b.status === 'active' && b.nominalRub != null) ?? [];
-  const banksReady = !loggedIn || (!banks.isLoading && Boolean(banks.data));
+  const banksReady = !loggedIn || (!banks.isLoading && !banks.isError && Boolean(banks.data));
+  const banksPending = loggedIn && banks.isLoading;
+  const banksFailed = loggedIn && banks.isError;
   const maxNominal = Math.max(0, ...activeBanks.map((b) => b.nominalRub ?? 0));
   const myLotIds = new Set(myLots.data?.map((l) => l.id) ?? []);
   const q = query.trim().toLowerCase();
@@ -82,7 +84,7 @@ export default function CatalogPage() {
           </p>
         </header>
 
-        {!loggedIn && !sessionLoading ? (
+        {!loggedIn && !sessionLoading && communityId ? (
           <Notice>
             Витрина открыта без входа.{' '}
             <Link href="/login?next=/catalog" className="font-medium text-stitch-accent underline">
@@ -158,7 +160,14 @@ export default function CatalogPage() {
           <QueryFailed onRetry={() => void canBuy.refetch()} />
         ) : null}
 
-        {lots.isLoading ? (
+        {!sessionLoading && !communityId ? (
+          <EmptyState title="Не удалось открыть каталог сообщества">
+            <Link href="/login?next=/catalog" className="text-stitch-accent underline">
+              Войдите по почте
+            </Link>
+            {' '}или напишите администратору.
+          </EmptyState>
+        ) : lots.isLoading ? (
           <div className="space-y-3" aria-busy>
             <Skeleton className="h-28 w-full" />
             <Skeleton className="h-28 w-full" />
@@ -201,8 +210,10 @@ export default function CatalogPage() {
                         ) : null}
                         {loggedIn && !own ? (
                           <p className="mt-2 text-xs">
-                            {!banksReady ? (
+                            {!banksReady && banksPending ? (
                               <span className="text-stitch-muted">Проверяем права…</span>
+                            ) : banksFailed ? (
+                              <span className="text-amber-200">Не удалось проверить права</span>
                             ) : covered ? (
                               <span className="text-stitch-accent">Ваше право покрывает цену</span>
                             ) : (
@@ -219,7 +230,8 @@ export default function CatalogPage() {
                           disabled={
                             canBuy.data?.allowed === false ||
                             myLots.isLoading ||
-                            !banksReady
+                            banksPending ||
+                            banksFailed
                           }
                           onClick={() => {
                             if (gap) {

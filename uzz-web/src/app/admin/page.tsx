@@ -132,6 +132,7 @@ export default function AdminPage() {
     isLoading,
     isError,
     onRetry,
+    floorRub,
   }: {
     title: string;
     empty: string;
@@ -139,6 +140,7 @@ export default function AdminPage() {
     isLoading: boolean;
     isError: boolean;
     onRetry: () => void;
+    floorRub: number;
   }) {
     return (
       <section className="space-y-3 rounded-xl border border-stitch-border bg-stitch-surface p-5">
@@ -158,12 +160,20 @@ export default function AdminPage() {
               >
                 <div className="min-w-[8rem] flex-1 text-sm">
                   <p className="font-medium">{bank.ownerName}</p>
+                  {bank.sourceTitle ? (
+                    <p className="mt-1 text-stitch-text">{bank.sourceTitle}</p>
+                  ) : null}
                   <p className="text-stitch-muted">{bankHeadline(bank)}</p>
-                  <p className="text-xs text-stitch-muted">{bankHopsLabel(bank.hopsLeft)}</p>
+                  <p className="text-xs text-stitch-muted">
+                    {typeof bank.sourceScore === 'number'
+                      ? `${bank.sourceScore} заслуг · `
+                      : ''}
+                    {bankHopsLabel(bank.hopsLeft)}
+                  </p>
                 </div>
                 <input
                   type="number"
-                  min={1}
+                  min={floorRub}
                   placeholder="₽"
                   value={nominalByBank[bank.id] ?? ''}
                   onChange={(e) =>
@@ -178,6 +188,10 @@ export default function AdminPage() {
                     const n = Number(nominalByBank[bank.id]);
                     if (!Number.isFinite(n) || n <= 0) {
                       setMessage('Укажите положительный номинал');
+                      return;
+                    }
+                    if (n < floorRub) {
+                      setMessage(`Номинал не ниже ${floorRub} ₽`);
                       return;
                     }
                     setNominal.mutate({ bankId: bank.id, nominalRub: n });
@@ -217,6 +231,7 @@ export default function AdminPage() {
           isLoading={awaiting.isLoading}
           isError={awaiting.isError}
           onRetry={() => void awaiting.refetch()}
+          floorRub={settings.data?.nominalFloorRub ?? 100}
         />
         <section className="space-y-3 rounded-xl border border-stitch-border bg-stitch-surface p-5">
           <h2 className="font-extrabold">Ждут привязку</h2>
@@ -233,6 +248,12 @@ export default function AdminPage() {
               {holding.data.map((bank) => (
                 <li key={bank.id} className="rounded-lg border border-stitch-border p-3">
                   <p className="font-medium">{bank.ownerName}</p>
+                  {bank.sourceTitle ? (
+                    <p className="mt-1 text-sm">{bank.sourceTitle}</p>
+                  ) : null}
+                  {typeof bank.sourceScore === 'number' ? (
+                    <p className="text-xs text-stitch-muted">{bank.sourceScore} заслуг на деле</p>
+                  ) : null}
                   <p className="text-stitch-muted">Право появилось, но человек ещё не привязал Telegram и почту.</p>
                 </li>
               ))}

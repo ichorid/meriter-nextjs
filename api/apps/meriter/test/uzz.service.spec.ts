@@ -660,4 +660,66 @@ describe('UzzService (integration)', () => {
     });
     expect(await uzzService.maybeEmitBankForPublication(pubId)).toBeNull();
   });
+
+  it('does not emit a bank for a poll', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Poll not a deed',
+      type: 'text',
+      postType: 'poll',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    expect(await uzzService.maybeEmitBankForPublication(pubId)).toBeNull();
+  });
+
+  it('uses publication content as the deed title when title is empty', async () => {
+    const deeds = await uzzService.listDeeds(authorId, communityId);
+    const row = deeds.find((d) => d.publicationId === publicationId);
+    expect(row?.title).toBe('Good deed');
+  });
+
+  it('shows deed text and score on banks awaiting a nominal', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Helped a neighbour',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 12, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    const views = await uzzService.adminListAwaitingNominal(communityId);
+    const row = views.find((b) => b.id === bank!.id);
+    expect(row?.sourceTitle).toBe('Helped a neighbour');
+    expect(row?.sourceScore).toBe(12);
+  });
+
+  it('locks email OTP after too many wrong codes', async () => {
+    const { code } = await uzzService.startEmailLinkFromBot(authorId, 'otp@example.com');
+    for (let i = 0; i < 4; i += 1) {
+      await expect(uzzService.confirmEmailLink(authorId, '000000')).rejects.toThrow(/Неверный код/);
+    }
+    await expect(uzzService.confirmEmailLink(authorId, '000000')).rejects.toThrow(
+      /Слишком много попыток/,
+    );
+    await expect(uzzService.confirmEmailLink(authorId, code)).rejects.toThrow(
+      /новый код/,
+    );
+  });
+
+  it('rejects email link when the address already belongs to another user', async () => {
+    const { code } = await uzzService.startEmailLinkFromBot(authorId, 'seller@example.com');
+    await expect(uzzService.confirmEmailLink(authorId, code)).rejects.toThrow(/уже привязана/);
+  });
 });

@@ -10,6 +10,7 @@ export interface UzzIdentityLink {
   pendingEmailCode?: string;
   pendingEmailExpiresAt?: Date;
   pendingEmail?: string;
+  pendingEmailAttempts?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -41,6 +42,9 @@ export class UzzIdentityLinkSchemaClass
 
   @Prop()
   pendingEmail?: string;
+
+  @Prop({ type: Number, default: 0 })
+  pendingEmailAttempts?: number;
 }
 
 export const UzzIdentityLinkSchema = SchemaFactory.createForClass(

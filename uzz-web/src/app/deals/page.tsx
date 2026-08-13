@@ -16,7 +16,7 @@ export default function DealsPage() {
 
   const deals = trpc.deals.list.useQuery(
     { communityId, mineOnly: true },
-    { enabled, retry: false },
+    { enabled, retry: false, refetchInterval: enabled ? 15_000 : false },
   );
 
   const invalidate = () => {
@@ -72,7 +72,7 @@ export default function DealsPage() {
       invalidate();
       setThanksDealId(null);
       setThanksComment('');
-      setThanksMerits('0');
+      setThanksMerits('');
       setThanksError(null);
       setFlash('Благодарность отправлена.');
     },
@@ -221,7 +221,7 @@ export default function DealsPage() {
                     {expired && deal.status === 'requested' ? (
                       <p className="mt-2 text-sm text-amber-200">
                         {deal.myRole === 'seller'
-                          ? 'Срок ответа вышел. Заявка снимется в течение часа, если не успеете принять.'
+                          ? 'Срок ответа вышел. Принять уже нельзя — заявка снимется в течение часа.'
                           : 'Срок истёк. Можете отменить заявку — иначе она снимется в течение часа.'}
                       </p>
                     ) : expired && deal.status === 'accepted' ? (

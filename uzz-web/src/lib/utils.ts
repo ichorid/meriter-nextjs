@@ -185,7 +185,8 @@ export function uzzErrorMessage(err: { message?: string } | null | undefined): s
   const mapped: Record<string, string> = {
     'You must be logged in to access this resource': 'Нужно войти',
     'Email already linked to another user': 'Эта почта уже привязана к другому аккаунту',
-    'Lot not found': 'Услуга не найдена',
+    'title is required': 'Укажите название услуги',
+    'priceRub must be positive': 'Укажите цену в рублях',
     'Bank not found': 'Право на обмен не найдено',
     'Deal not found': 'Сделка не найдена',
     'Invalid or expired login link': 'Ссылка недействительна или устарела',
