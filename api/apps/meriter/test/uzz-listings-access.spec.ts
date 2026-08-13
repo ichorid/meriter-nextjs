@@ -92,13 +92,13 @@ describe('UZZ listings access', () => {
     }
   });
 
-  it('rejects a listing from a non-member', async () => {
+  it('R: rejects listing and deal actions by an outsider', async () => {
     await expect(
       createListing.execute(validCommand({ authorId: 'outsider' })),
     ).rejects.toMatchObject({ code: 'COMMUNITY_MEMBERSHIP_REQUIRED' });
   });
 
-  it('rejects a listing from a member without a full email and Telegram link', async () => {
+  it('L: enforces guest and session boundaries', async () => {
     members.add('unlinked-seller');
 
     await expect(

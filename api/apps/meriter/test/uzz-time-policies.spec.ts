@@ -143,7 +143,7 @@ describe('UZZ time policies', () => {
     expect(right?.snapshot()).toMatchObject({ nominalRub: 400, status: 'in_deal' });
   });
 
-  it('does not move an existing request deadline after settings change', async () => {
+  it('W: preserves stored deadlines after settings change', async () => {
     const deal = await createRequest();
     await updateSettings.execute({
       commandId: 'settings-request-ttl', communityId: 'community-1',
@@ -179,7 +179,7 @@ describe('UZZ time policies', () => {
     expect(wallet?.balance).toBe(1);
   });
 
-  it('automatically closes after the stored confirmation deadline', async () => {
+  it('M: auto-closes after seller completion', async () => {
     const deal = await createRequest();
     await accept.execute({
       commandId: 'accept-for-expiry', dealId: deal.id, sellerId: 'seller-1',

@@ -166,6 +166,44 @@ jobs:
       - name: Run E2E tests
         run: pnpm --filter @meriter/api test:e2e:ci
 
+  test-uzz:
+    name: UZZ acceptance and browser tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CI: "true"
+      MONGOMS_VERSION: "7.0.24"
+      MONGOMS_DOWNLOAD_DIR: /home/runner/.cache/mongodb-binaries
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10.26.2
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Cache mongodb-memory-server binaries
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.MONGOMS_DOWNLOAD_DIR }}
+          key: mongoms-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
+      - name: Run backend A-X acceptance gate
+        run: pnpm --dir api exec jest --config apps/meriter/test/jest-e2e.json apps/meriter/test/uzz-acceptance.e2e-spec.ts --runInBand --forceExit
+      - name: Install Chromium
+        run: pnpm --dir uzz-web exec playwright install --with-deps chromium
+      - name: Run UZZ browser acceptance gate
+        run: pnpm --dir uzz-web test:e2e
+      - name: Lint and build UZZ web
+        run: pnpm --dir uzz-web lint && pnpm --dir uzz-web build --webpack
+
   determine-target:
     name: Select deployment target
     runs-on: ubuntu-latest
@@ -236,6 +274,7 @@ jobs:
       - check-shell-eol
       - determine-target
       - build-base
+      - test-uzz
     strategy:
       matrix:
         component: [web, api, community-web, uzz-web]

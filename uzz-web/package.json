@@ -9,6 +9,7 @@
     "start": "next start -p 8004",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
+    "test:e2e": "playwright test",
     "check:isolation": "node scripts/check-no-main-app-links.mjs",
     "check:product-scope": "node scripts/check-product-scope.mjs",
     "test:smoke": "pnpm check:isolation && pnpm check:product-scope && pnpm build"
@@ -30,6 +31,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
+    "@playwright/test": "1.51.1",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

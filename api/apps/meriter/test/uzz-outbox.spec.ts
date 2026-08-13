@@ -65,12 +65,17 @@ describe('UZZ notification outbox', () => {
       .toMatchObject({ attempts: 1, processedAt: NOW, lastError: null });
   });
 
-  it('schedules retry without losing the event when delivery fails', async () => {
+  it('V: keeps committed business state after notification failure', async () => {
+    await rawDb.collection('uzz_deals').insertOne({
+      id: 'deal-1', status: 'requested', version: 0, createdAt: NOW, updatedAt: NOW,
+    });
     sender.failure = new Error('telegram unavailable');
     expect(await deliver.executeBatch({ limit: 10 })).toEqual({ delivered: 0, failed: 1, deadLettered: 0 });
     const event = await rawDb.collection('uzz_outbox').findOne({ id: 'event-1' });
     expect(event).toMatchObject({ attempts: 1, processedAt: null, lastError: 'telegram unavailable' });
     expect(event?.availableAt.getTime()).toBeGreaterThan(NOW.getTime());
+    expect(await rawDb.collection('uzz_deals').findOne({ id: 'deal-1' }))
+      .toMatchObject({ status: 'requested', version: 0 });
   });
 
   it('moves a repeatedly failing event to dead letter visibility', async () => {

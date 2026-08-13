@@ -3,6 +3,7 @@ import { Connection, createConnection } from 'mongoose';
 import { UzzAccessPolicy } from '../src/application/uzz/policies/uzz-access-policy';
 import { AcceptDealUseCase } from '../src/application/uzz/use-cases/accept-deal.use-case';
 import { AdminResolveDealUseCase } from '../src/application/uzz/use-cases/admin-resolve-deal.use-case';
+import { CancelDealUseCase } from '../src/application/uzz/use-cases/cancel-deal.use-case';
 import { CloseDealUseCase } from '../src/application/uzz/use-cases/close-deal.use-case';
 import { MarkDealCompletedUseCase } from '../src/application/uzz/use-cases/mark-deal-completed.use-case';
 import { RequestDealUseCase } from '../src/application/uzz/use-cases/request-deal.use-case';
@@ -31,6 +32,7 @@ describe('UZZ deal use cases', () => {
   let complete: MarkDealCompletedUseCase;
   let close: CloseDealUseCase;
   let adminResolve: AdminResolveDealUseCase;
+  let cancel: CancelDealUseCase;
 
   beforeAll(async () => {
     replSet = await createMongoMemoryReplSetWithRetry();
@@ -56,6 +58,7 @@ describe('UZZ deal use cases', () => {
         if (userId !== 'admin-1') throw new Error('ADMIN_REQUIRED');
       },
     });
+    cancel = new CancelDealUseCase(uow);
   });
 
   beforeEach(async () => {
@@ -109,7 +112,7 @@ describe('UZZ deal use cases', () => {
     await replSet.stop();
   });
 
-  it('rejects accept after requestExpiresAt even before cron', async () => {
+  it('S: rejects expired accept before cron', async () => {
     const deal = await createRequest();
     await expect(
       accept.execute({
@@ -120,7 +123,7 @@ describe('UZZ deal use cases', () => {
     ).rejects.toMatchObject({ code: 'DEAL_REQUEST_EXPIRED' });
   });
 
-  it('requires nominal reconfirmation after demurrage', async () => {
+  it('X: requires nominal reconfirmation after demurrage', async () => {
     const deal = await createRequest();
     await rawDb.collection('uzz_rights').updateOne(
       { id: 'right-1' }, { $set: { nominalRub: 400 } },
@@ -135,7 +138,7 @@ describe('UZZ deal use cases', () => {
     });
   });
 
-  it('atomically closes the deal, transfers the right, and decrements one hop', async () => {
+  it('D: closes a local-fee happy-path deal', async () => {
     const deal = await createRequest();
     await accept.execute({
       commandId: 'accept-1', dealId: deal.id, sellerId: 'seller-1',
@@ -159,6 +162,52 @@ describe('UZZ deal use cases', () => {
       'fee_reserved', 'deal_requested', 'deal_accepted', 'deal_completed',
       'right_sent', 'right_received', 'deal_closed',
     ]));
+  });
+
+  it('E: charges and refunds a global fee', async () => {
+    await rawDb.collection('wallets').updateOne(
+      { id: 'wallet-1' },
+      { $set: { balance: 0 } },
+    );
+    await rawDb.collection('wallets').insertOne({
+      id: 'global-wallet-1', userId: 'buyer-1', communityId: 'global', balance: 1,
+      currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+      lastUpdated: NOW, createdAt: NOW, updatedAt: NOW,
+    });
+
+    const deal = await createRequest();
+    expect(deal.feeSourceCommunityId).toBe('global');
+    expect((await rawDb.collection('wallets').findOne({ id: 'global-wallet-1' }))?.balance).toBe(0);
+
+    await cancel.execute({
+      commandId: 'cancel-global-fee', dealId: deal.id, buyerId: 'buyer-1',
+      now: new Date('2026-08-14T00:30:00.000Z'),
+    });
+    expect((await rawDb.collection('wallets').findOne({ id: 'global-wallet-1' }))?.balance).toBe(1);
+  });
+
+  it('H: cancels a pending request and restores its fee', async () => {
+    const deal = await createRequest();
+    await cancel.execute({
+      commandId: 'cancel-pending', dealId: deal.id, buyerId: 'buyer-1',
+      now: new Date('2026-08-14T00:30:00.000Z'),
+    });
+    const persisted = await createMongooseUzzRepositories(connection, null).deals.findById(deal.id);
+    expect(persisted?.snapshot()).toMatchObject({ status: 'cancelled', feeReserved: false });
+    expect((await rawDb.collection('wallets').findOne({ id: 'wallet-1' }))?.balance).toBe(1);
+  });
+
+  it('I: forbids buyer cancellation after accept', async () => {
+    const deal = await createRequest();
+    await accept.execute({
+      commandId: 'accept-before-cancel', dealId: deal.id, sellerId: 'seller-1',
+      expectedNominalRub: 500, agreedDeadlineAt: null,
+      now: new Date('2026-08-14T00:30:00.000Z'),
+    });
+    await expect(cancel.execute({
+      commandId: 'cancel-after-accept', dealId: deal.id, buyerId: 'buyer-1',
+      now: new Date('2026-08-14T01:00:00.000Z'),
+    })).rejects.toMatchObject({ code: 'DEAL_CANNOT_CANCEL' });
   });
 
   it('uses a pre-existing Telegram alias right and wallet from the email account', async () => {

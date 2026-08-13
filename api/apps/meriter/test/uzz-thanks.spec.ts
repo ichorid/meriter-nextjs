@@ -54,7 +54,7 @@ describe('UZZ deal thanks', () => {
     await replSet.stop();
   });
 
-  it('transfers local merits and writes visible ledger rows for both parties', async () => {
+  it('N: transfers thanks from the local wallet', async () => {
     await thanks.execute({
       commandId: 'thanks-local-transfer', dealId: 'deal-1', actorUserId: 'buyer-1',
       merits: 2, comment: 'Thank you', now: NOW,
@@ -71,6 +71,20 @@ describe('UZZ deal thanks', () => {
       expect.objectContaining({ userId: 'buyer-1', type: 'thanks_sent', amount: -2 }),
       expect.objectContaining({ userId: 'seller-1', type: 'thanks_received', amount: 2 }),
     ]));
+  });
+
+  it('U: records incoming thanks for the recipient', async () => {
+    await thanks.execute({
+      commandId: 'thanks-recipient-ledger', dealId: 'deal-1', actorUserId: 'buyer-1',
+      merits: 1, comment: 'Thank you', now: NOW,
+    });
+    await expect(
+      rawDb.collection('uzz_ledger').findOne({
+        operationId: 'thanks-recipient-ledger',
+        userId: 'seller-1',
+        type: 'thanks_received',
+      }),
+    ).resolves.toMatchObject({ amount: 1 });
   });
 
   it('falls back to the global wallet without touching the local wallet', async () => {

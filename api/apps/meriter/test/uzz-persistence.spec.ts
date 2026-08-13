@@ -108,7 +108,7 @@ describe('UZZ persistence boundary', () => {
     ).toBe(0);
   });
 
-  it('enforces unique sources, one open deal per right, and command idempotency', async () => {
+  it('G: refuses a second request for one right', async () => {
     const repositories = createMongooseUzzRepositories(connection, null);
     const right = ExchangeRight.restore({
       id: 'right-1',

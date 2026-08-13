@@ -67,7 +67,7 @@ describe('UZZ identity security', () => {
     }
   });
 
-  it('allows only one of two concurrent email magic-link redeems', async () => {
+  it('Q: redeems a magic link only once under concurrency', async () => {
     const { token } = await magicLinks.createToken('email', 'user@example.com');
     const gateway = createIdentityGateway();
     const redeem = new RedeemUzzMagicLinkUseCase(
@@ -94,7 +94,7 @@ describe('UZZ identity security', () => {
     expect(JSON.stringify(stored)).not.toContain(token);
   });
 
-  it('stores only a hash for a 128-bit Telegram link token and consumes it once', async () => {
+  it('A: links an existing Telegram participant from the site', async () => {
     const repositories = createMongooseUzzRepositories(connection, null);
     await repositories.identities.insert({
       id: 'identity-1',
@@ -144,6 +144,76 @@ describe('UZZ identity security', () => {
     await expect(repositories.identities.listAliases('identity-1')).resolves.toEqual([
       expect.objectContaining({ aliasUserId: 'telegram-meriter-user-1' }),
     ]);
+  });
+
+  it('B: links a new Telegram participant from the site', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({
+      id: 'identity-new-telegram',
+      canonicalUserId: 'email-user-2',
+      normalizedEmail: 'new@example.com',
+      telegramUserId: null,
+      telegramUsername: null,
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    });
+    const limiter = new InMemoryUzzRateLimiter();
+    const start = new StartTelegramLinkUseCase(uow, hasher, limiter);
+    const confirm = new ConfirmTelegramLinkUseCase(uow, hasher, limiter);
+
+    const { token } = await start.execute({ userId: 'email-user-2', now: NOW });
+    await expect(
+      confirm.execute({
+        token,
+        telegramUserId: '2002',
+        telegramUsername: '@new_participant',
+        now: new Date('2026-08-14T00:01:00.000Z'),
+      }),
+    ).resolves.toEqual({ canonicalUserId: 'email-user-2' });
+
+    expect(await repositories.identities.findByTelegramUserId('2002')).toMatchObject({
+      canonicalUserId: 'email-user-2',
+      telegramUsername: 'new_participant',
+    });
+    await expect(
+      repositories.identities.listAliases('identity-new-telegram'),
+    ).resolves.toEqual([]);
+  });
+
+  it('C: requires an email magic-link session before Telegram linking', async () => {
+    const { token: emailToken } = await magicLinks.createToken(
+      'email',
+      'user@example.com',
+    );
+    const limiter = new InMemoryUzzRateLimiter();
+    const redeem = new RedeemUzzMagicLinkUseCase(
+      magicLinks,
+      createIdentityGateway(),
+      uow,
+      hasher,
+      limiter,
+    );
+    const session = await redeem.execute({
+      token: emailToken,
+      ip: '127.0.0.1',
+      now: NOW,
+    });
+    const start = new StartTelegramLinkUseCase(uow, hasher, limiter);
+    const confirm = new ConfirmTelegramLinkUseCase(uow, hasher, limiter);
+    const { token: telegramToken } = await start.execute({
+      userId: session.user.id,
+      now: NOW,
+    });
+
+    await expect(
+      confirm.execute({
+        token: telegramToken,
+        telegramUserId: '3003',
+        telegramUsername: 'email_first',
+        now: new Date('2026-08-14T00:01:00.000Z'),
+      }),
+    ).resolves.toEqual({ canonicalUserId: session.user.id });
   });
 
   it('rate-limits repeated invalid magic-link attempts inside the use case', async () => {

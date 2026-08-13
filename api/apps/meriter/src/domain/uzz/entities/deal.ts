@@ -230,7 +230,9 @@ export class Deal {
 
   cancel(buyerId: string, now: Date): void {
     this.requireActor(buyerId, this.state.buyerId);
-    this.requireStatus('requested');
+    if (this.state.status !== 'requested') {
+      throw new UzzConflictError('DEAL_CANNOT_CANCEL');
+    }
     this.requireRequestOpen(now);
     this.state.status = 'cancelled';
     this.state.cancelledAt = new Date(now);

@@ -52,6 +52,9 @@ desktop.ini
 
 # Testing
 coverage/
+.playwright/
+playwright-report/
+test-results/
 .nyc_output/
 *.lcov
 

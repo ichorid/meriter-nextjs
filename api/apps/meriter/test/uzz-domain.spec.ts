@@ -57,7 +57,7 @@ describe('UZZ domain', () => {
   });
 
   describe('demurrage', () => {
-    it('never increases a nominal that is already below a raised floor', () => {
+    it('T: never increases nominal after a floor raise', () => {
       expect(
         applyDemurrage({
           nominalRub: 80,
@@ -68,7 +68,7 @@ describe('UZZ domain', () => {
       ).toEqual({ nominalRub: 70, appliedDays: 1 });
     });
 
-    it('stops at the floor for a right that started above it', () => {
+    it('J: applies demurrage without crossing the floor', () => {
       expect(
         applyDemurrage({
           nominalRub: 150,
@@ -101,6 +101,19 @@ describe('UZZ domain', () => {
       right.lockForDeal('deal-1', NOW);
 
       expect(() => right.lockForDeal('deal-2', NOW)).toThrow(UzzConflictError);
+    });
+
+    it('K: rejects nominal below the floor', () => {
+      const right = ExchangeRight.restore({
+        ...activeRight(),
+        nominalRub: null,
+        nominalAssignedAt: null,
+        status: 'awaiting_nominal',
+      });
+
+      expect(() =>
+        right.assignNominal(Rubles.create(99), Rubles.create(100), NOW),
+      ).toThrow(UzzValidationError);
     });
   });
 

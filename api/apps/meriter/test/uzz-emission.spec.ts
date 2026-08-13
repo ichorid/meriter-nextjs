@@ -26,7 +26,7 @@ describe('UZZ exchange-right emission', () => {
   afterEach(async () => { if (!connection.db) return; const collections = await connection.db.listCollections().toArray(); await Promise.all(collections.map(({ name }) => connection.db!.collection(name).deleteMany({}))); });
   afterAll(async () => { await connection.close(); unregisterReplSet(replSet); await replSet.stop(); });
 
-  it('emits one awaiting-nominal right for one eligible linked deed', async () => {
+  it('O: emits one right only for an eligible deed', async () => {
     const repositories = createMongooseUzzRepositories(connection, null);
     await repositories.identities.insert({ id: 'identity-1', canonicalUserId: 'author-1', normalizedEmail: 'author@example.com', telegramUserId: '1001', telegramUsername: 'author', createdAt: NOW, updatedAt: NOW, version: 0 });
     const first = await useCase.execute({ publicationId: publication.id }); const replay = await useCase.execute({ publicationId: publication.id });

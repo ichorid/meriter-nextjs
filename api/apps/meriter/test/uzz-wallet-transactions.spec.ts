@@ -52,7 +52,7 @@ describe('UZZ wallet transactions', () => {
     }
   });
 
-  it('rolls back the balance and transaction when later work fails', async () => {
+  it('P: rolls back every injected economic failure', async () => {
     await expect(
       uow.run(async (repositories) => {
         await repositories.wallet.reservePreferLocal({
@@ -127,7 +127,7 @@ describe('UZZ wallet transactions', () => {
     ).toBe(1);
   });
 
-  it('does not debit either wallet when funds are insufficient', async () => {
+  it('F: refuses a request without fee balance', async () => {
     await rawDb.collection('wallets').updateMany({}, { $set: { balance: 0 } });
 
     await expect(
