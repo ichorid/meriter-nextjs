@@ -76,6 +76,9 @@ lerna-debug.log*
 # Codegraph
 .codegraph/
 
+# Local isolated feature worktrees
+.worktrees/
+
 # Local ops: Mongo dumps and one-off repair scripts (never commit data)
 backups/
 
