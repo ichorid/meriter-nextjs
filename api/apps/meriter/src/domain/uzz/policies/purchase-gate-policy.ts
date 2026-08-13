@@ -40,4 +40,3 @@ export function evaluatePurchaseGate(
 
   return { allowed: true, nudge: true, missingListingCount };
 }
-

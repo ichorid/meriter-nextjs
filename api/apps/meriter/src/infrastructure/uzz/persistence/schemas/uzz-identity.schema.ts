@@ -38,4 +38,3 @@ UzzIdentityPersistenceSchema.index(
     partialFilterExpression: { telegramUserId: { $type: 'string' } },
   },
 );
-

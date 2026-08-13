@@ -11,4 +11,3 @@ export class Rubles {
     return new Rubles(value);
   }
 }
-

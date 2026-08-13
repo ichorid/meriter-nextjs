@@ -28,4 +28,3 @@ UzzIdentityTokenPersistenceSchema.index(
   { expiresAt: 1 },
   { expireAfterSeconds: 0, name: 'uzz_identity_tokens_expiry_ttl' },
 );
-

@@ -10,4 +10,3 @@ export function unregisterReplSet(replSet: MongoMemoryReplSet): void;
 export function stopAllRegistered(options?: { force?: boolean }): Promise<void>;
 export function registerSignalHandlers(): void;
 export function registerWorkerTeardown(): void;
-

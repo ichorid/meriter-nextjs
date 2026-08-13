@@ -11,4 +11,3 @@ export class MeritAmount {
     return new MeritAmount(value);
   }
 }
-

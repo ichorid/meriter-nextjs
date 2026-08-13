@@ -21,4 +21,3 @@ UzzIdentityAliasPersistenceSchema.index(
   { unique: true, name: 'uzz_identity_aliases_user_unique' },
 );
 UzzIdentityAliasPersistenceSchema.index({ identityId: 1 });
-

@@ -23,4 +23,3 @@ UzzCommandPersistenceSchema.index(
   { unique: true, name: 'uzz_commands_id_unique' },
 );
 UzzCommandPersistenceSchema.index({ actorId: 1, createdAt: -1 });
-

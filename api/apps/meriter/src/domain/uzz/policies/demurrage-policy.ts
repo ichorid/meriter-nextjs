@@ -33,4 +33,3 @@ export function applyDemurrage(input: DemurrageInput): DemurrageResult {
 
   return { nominalRub: nominalAfterDemurrage, appliedDays: days };
 }
-

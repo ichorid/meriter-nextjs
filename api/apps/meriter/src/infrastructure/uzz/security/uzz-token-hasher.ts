@@ -11,4 +11,3 @@ export class UzzTokenHasher implements UzzTokenHasherPort {
     return createHash('sha256').update(token, 'utf8').digest('hex');
   }
 }
-
