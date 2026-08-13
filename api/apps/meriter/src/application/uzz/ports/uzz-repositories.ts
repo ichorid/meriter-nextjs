@@ -66,7 +66,9 @@ export interface UzzLedgerEntry {
     | 'deal_completed'
     | 'deal_closed'
     | 'deal_rejected'
-    | 'deal_cancelled';
+    | 'deal_cancelled'
+    | 'demurrage'
+    | 'nominal_assigned';
   amount: number;
   createdAt: Date;
   metadata: Record<string, unknown>;
@@ -98,6 +100,7 @@ export interface UzzOutboxRecord {
 export interface ExchangeRightRepository {
   findById(id: string): Promise<ExchangeRight | null>;
   findBySourcePublicationId(sourcePublicationId: string): Promise<ExchangeRight | null>;
+  listDemurrageCandidates(before: Date, afterId: string | null, limit: number): Promise<ExchangeRight[]>;
   insert(right: ExchangeRight): Promise<void>;
   update(right: ExchangeRight): Promise<void>;
 }
@@ -114,13 +117,14 @@ export interface ListingRepository {
 export interface DealRepository {
   findById(id: string): Promise<Deal | null>;
   findOpenByRightId(exchangeRightId: string): Promise<Deal | null>;
+  listDue(now: Date, afterId: string | null, limit: number): Promise<Deal[]>;
   insert(deal: Deal): Promise<void>;
   update(deal: Deal): Promise<void>;
 }
 
 export interface UzzSettingsRepository {
   findByCommunityId(communityId: string): Promise<UzzSettingsRecord | null>;
-  upsert(settings: UzzSettingsRecord): Promise<void>;
+  upsert(settings: UzzSettingsRecord, expectedVersion?: number | null): Promise<void>;
 }
 
 export interface UzzIdentityRepository {

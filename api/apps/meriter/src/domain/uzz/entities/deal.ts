@@ -289,6 +289,38 @@ export class Deal {
     this.state.updatedAt = new Date(now);
   }
 
+  expire(now: Date): 'cancelled' | 'closed' {
+    if (this.state.status === 'requested') {
+      if (now.getTime() < this.state.requestExpiresAt.getTime()) {
+        throw new UzzConflictError('DEAL_NOT_DUE');
+      }
+      this.state.status = 'cancelled';
+      this.state.cancelledAt = new Date(now);
+    } else if (this.state.status === 'accepted') {
+      if (!this.state.fulfillmentExpiresAt || now.getTime() < this.state.fulfillmentExpiresAt.getTime()) {
+        throw new UzzConflictError('DEAL_NOT_DUE');
+      }
+      this.state.status = 'cancelled';
+      this.state.cancelledAt = new Date(now);
+    } else if (this.state.status === 'completed_by_seller') {
+      if (!this.state.confirmationExpiresAt || now.getTime() < this.state.confirmationExpiresAt.getTime()) {
+        throw new UzzConflictError('DEAL_NOT_DUE');
+      }
+      this.state.status = 'closed';
+      this.state.closedAt = new Date(now);
+    } else {
+      throw new UzzConflictError('DEAL_STATUS_INVALID');
+    }
+    this.state.updatedAt = new Date(now);
+    return this.state.status as 'cancelled' | 'closed';
+  }
+
+  setDealAmount(amount: Rubles, now: Date): void {
+    this.requireStatus('closed');
+    this.state.dealAmountRub = amount.value;
+    this.state.updatedAt = new Date(now);
+  }
+
   thank(input: {
     actorId: string;
     merits: MeritAmount | null;

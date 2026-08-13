@@ -93,3 +93,6 @@ UzzDealPersistenceSchema.index(
 UzzDealPersistenceSchema.index({ communityId: 1, status: 1, createdAt: -1 });
 UzzDealPersistenceSchema.index({ buyerId: 1, communityId: 1, createdAt: -1 });
 UzzDealPersistenceSchema.index({ sellerId: 1, communityId: 1, createdAt: -1 });
+UzzDealPersistenceSchema.index({ status: 1, requestExpiresAt: 1, id: 1 });
+UzzDealPersistenceSchema.index({ status: 1, fulfillmentExpiresAt: 1, id: 1 });
+UzzDealPersistenceSchema.index({ status: 1, confirmationExpiresAt: 1, id: 1 });

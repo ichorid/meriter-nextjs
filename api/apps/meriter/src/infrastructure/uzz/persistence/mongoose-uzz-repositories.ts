@@ -115,6 +115,18 @@ function createRepositories(
       );
       return raw ? exchangeRightFromPersistence(raw) : null;
     },
+    async listDemurrageCandidates(before, afterId, limit) {
+      const rows = await execute(
+        models.rights.find({
+          ...(afterId ? { id: { $gt: afterId } } : {}),
+          status: { $in: ['active', 'in_deal'] },
+          nominalRub: { $ne: null },
+          lastDemurrageAt: { $ne: null, $lte: before },
+        }).sort({ id: 1 }).limit(limit).lean(),
+        session,
+      );
+      return (rows as unknown[]).map(exchangeRightFromPersistence);
+    },
     async insert(right) {
       await models.rights.create([exchangeRightToPersistence(right)], options);
     },
@@ -181,6 +193,20 @@ function createRepositories(
       );
       return raw ? dealFromPersistence(raw) : null;
     },
+    async listDue(now, afterId, limit) {
+      const rows = await execute(
+        models.deals.find({
+          ...(afterId ? { id: { $gt: afterId } } : {}),
+          $or: [
+            { status: 'requested', requestExpiresAt: { $lte: now } },
+            { status: 'accepted', fulfillmentExpiresAt: { $lte: now } },
+            { status: 'completed_by_seller', confirmationExpiresAt: { $lte: now } },
+          ],
+        }).sort({ id: 1 }).limit(limit).lean(),
+        session,
+      );
+      return (rows as unknown[]).map(dealFromPersistence);
+    },
     async insert(deal) {
       await models.deals.create([dealToPersistence(deal)], options);
     },
@@ -192,11 +218,23 @@ function createRepositories(
 
   const settings: UzzSettingsRepository = {
     async findByCommunityId(communityId) {
-      return execute(models.settings.findOne({ communityId }).lean(), session) as Promise<
-        UzzSettingsRecord | null
-      >;
+      const raw = await execute(models.settings.findOne({ communityId }).lean(), session);
+      return raw ? mapSettings(raw) : null;
     },
-    async upsert(record) {
+    async upsert(record, expectedVersion) {
+      if (expectedVersion === null) {
+        await models.settings.create([record], options);
+        return;
+      }
+      if (expectedVersion !== undefined) {
+        const result = await models.settings.updateOne(
+          { communityId: record.communityId, version: expectedVersion },
+          { $set: record },
+          options,
+        );
+        if (result.matchedCount !== 1) throw new UzzConflictError('SETTINGS_VERSION_CONFLICT');
+        return;
+      }
       await models.settings.updateOne(
         { communityId: record.communityId },
         { $set: record },
@@ -375,6 +413,28 @@ function mapIdentity(raw: unknown): UzzIdentityRecord {
     createdAt: new Date(record.createdAt as Date),
     updatedAt: new Date(record.updatedAt as Date),
     version: Number(record.version),
+  };
+}
+
+function mapSettings(raw: unknown): UzzSettingsRecord {
+  const record = asPersistenceRecord(raw);
+  const createdAt = record.createdAt ? new Date(record.createdAt as Date) : new Date(0);
+  const updatedAt = record.updatedAt ? new Date(record.updatedAt as Date) : createdAt;
+  return {
+    communityId: String(record.communityId),
+    emissionThreshold: Number(record.emissionThreshold ?? 10),
+    initialHops: Number(record.initialHops ?? record.bankInitialHops ?? 10),
+    demurrageRubPerDay: Number(record.demurrageRubPerDay ?? 100),
+    nominalFloorRub: Number(record.nominalFloorRub ?? 100),
+    minimumListingsToBuy: Number(record.minimumListingsToBuy ?? record.minLotsToBuy ?? 3),
+    purchaseGateMode: record.purchaseGateMode === 'require_min_lots' ||
+      record.purchaseGate === 'require_min_lots' ? 'require_min_lots' : 'nudge',
+    requestTtlHours: Number(record.requestTtlHours ?? record.dealRequestTtlHours ?? 48),
+    fulfillmentTtlDays: Number(record.fulfillmentTtlDays ?? record.dealFulfillmentDays ?? 7),
+    confirmationTtlDays: Number(record.confirmationTtlDays ?? 7),
+    createdAt,
+    updatedAt,
+    version: Number(record.version ?? 0),
   };
 }
 

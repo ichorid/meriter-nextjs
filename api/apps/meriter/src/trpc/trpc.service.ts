@@ -86,6 +86,9 @@ import { CancelDealUseCase } from '../application/uzz/use-cases/cancel-deal.use-
 import { MarkDealCompletedUseCase } from '../application/uzz/use-cases/mark-deal-completed.use-case';
 import { CloseDealUseCase } from '../application/uzz/use-cases/close-deal.use-case';
 import { AdminResolveDealUseCase } from '../application/uzz/use-cases/admin-resolve-deal.use-case';
+import { GetSettingsUseCase } from '../application/uzz/use-cases/get-settings.use-case';
+import { UpdateSettingsUseCase } from '../application/uzz/use-cases/update-settings.use-case';
+import { AssignRightNominalUseCase } from '../application/uzz/use-cases/assign-right-nominal.use-case';
 
 @Injectable()
 export class TrpcService {
@@ -168,6 +171,9 @@ export class TrpcService {
     private markDealCompletedUseCase: MarkDealCompletedUseCase,
     private closeDealUseCase: CloseDealUseCase,
     private adminResolveDealUseCase: AdminResolveDealUseCase,
+    private getSettingsUseCase: GetSettingsUseCase,
+    private updateSettingsUseCase: UpdateSettingsUseCase,
+    private assignRightNominalUseCase: AssignRightNominalUseCase,
   ) {}
 
   getRouter(): AppRouter {
@@ -263,6 +269,9 @@ export class TrpcService {
       markDealCompletedUseCase: this.markDealCompletedUseCase,
       closeDealUseCase: this.closeDealUseCase,
       adminResolveDealUseCase: this.adminResolveDealUseCase,
+      getSettingsUseCase: this.getSettingsUseCase,
+      updateSettingsUseCase: this.updateSettingsUseCase,
+      assignRightNominalUseCase: this.assignRightNominalUseCase,
     });
   }
 }

@@ -187,6 +187,12 @@ import { CancelDealUseCase } from './application/uzz/use-cases/cancel-deal.use-c
 import { MarkDealCompletedUseCase } from './application/uzz/use-cases/mark-deal-completed.use-case';
 import { CloseDealUseCase } from './application/uzz/use-cases/close-deal.use-case';
 import { AdminResolveDealUseCase } from './application/uzz/use-cases/admin-resolve-deal.use-case';
+import { GetSettingsUseCase } from './application/uzz/use-cases/get-settings.use-case';
+import { UpdateSettingsUseCase } from './application/uzz/use-cases/update-settings.use-case';
+import { AssignRightNominalUseCase } from './application/uzz/use-cases/assign-right-nominal.use-case';
+import { ApplyDemurrageUseCase } from './application/uzz/use-cases/apply-demurrage.use-case';
+import { ExpireDealsUseCase } from './application/uzz/use-cases/expire-deals.use-case';
+import { SYSTEM_CLOCK } from './application/uzz/ports/clock.port';
 import { GLOBAL_COMMUNITY_ID } from './domain/common/constants/global.constant';
 
 // Import repositories (only those with valuable logic)
@@ -445,6 +451,34 @@ import { EventBus } from './domain/events/event-bus';
       useFactory: (unitOfWork, uzzService: UzzService) =>
         new AdminResolveDealUseCase(unitOfWork, uzzService),
     },
+    {
+      provide: GetSettingsUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzService],
+      useFactory: (unitOfWork, uzzService: UzzService) =>
+        new GetSettingsUseCase(unitOfWork, uzzService),
+    },
+    {
+      provide: UpdateSettingsUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzService],
+      useFactory: (unitOfWork, uzzService: UzzService) =>
+        new UpdateSettingsUseCase(unitOfWork, uzzService, SYSTEM_CLOCK),
+    },
+    {
+      provide: AssignRightNominalUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzService],
+      useFactory: (unitOfWork, uzzService: UzzService) =>
+        new AssignRightNominalUseCase(unitOfWork, uzzService, SYSTEM_CLOCK),
+    },
+    {
+      provide: ApplyDemurrageUseCase,
+      inject: [UZZ_UNIT_OF_WORK],
+      useFactory: (unitOfWork) => new ApplyDemurrageUseCase(unitOfWork, SYSTEM_CLOCK),
+    },
+    {
+      provide: ExpireDealsUseCase,
+      inject: [UZZ_UNIT_OF_WORK],
+      useFactory: (unitOfWork) => new ExpireDealsUseCase(unitOfWork, SYSTEM_CLOCK),
+    },
 
     // Domain Services
     PublicationService,
@@ -541,6 +575,11 @@ import { EventBus } from './domain/events/event-bus';
     MarkDealCompletedUseCase,
     CloseDealUseCase,
     AdminResolveDealUseCase,
+    GetSettingsUseCase,
+    UpdateSettingsUseCase,
+    AssignRightNominalUseCase,
+    ApplyDemurrageUseCase,
+    ExpireDealsUseCase,
 
     // Export domain services
     PublicationService,

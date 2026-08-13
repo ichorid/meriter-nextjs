@@ -133,43 +133,35 @@ export const uzzAppRouter = router({
     get: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        await ctx.uzzService.assertCommunityParticipant(input.communityId, ctx.user.id);
-        return ctx.uzzService.getOrCreateSettings(input.communityId);
+        return ctx.getSettingsUseCase.execute({
+          communityId: input.communityId, userId: ctx.user.id,
+        });
       }),
     update: protectedProcedure
       .input(
         z.object({
+          commandId: z.string().min(8).max(200),
           communityId: z.string().min(1),
           patch: z
             .object({
-              emissionThreshold: z.number().positive().optional(),
-              bankInitialHops: z.number().int().positive().optional(),
-              demurrageRubPerDay: z.number().nonnegative().optional(),
-              nominalFloorRub: z.number().nonnegative().optional(),
-              minLotsToBuy: z.number().int().nonnegative().optional(),
-              purchaseGate: z.enum(['nudge', 'require_min_lots']).optional(),
-              bankTransferMode: z
-                .enum(['escrow_until_close', 'on_accept_locked', 'on_close_only'])
-                .optional(),
-              dealRequestTtlHours: z.number().positive().optional(),
-              dealFulfillmentDays: z.number().positive().optional(),
-              notifyFlags: z
-                .object({
-                  bankEmitted: z.boolean().optional(),
-                  dealRequested: z.boolean().optional(),
-                  dealAccepted: z.boolean().optional(),
-                  dealClosed: z.boolean().optional(),
-                  demurrageDaily: z.boolean().optional(),
-                  linkReminder: z.boolean().optional(),
-                })
-                .optional(),
+              emissionThreshold: z.number().int().optional(),
+              initialHops: z.number().int().optional(),
+              demurrageRubPerDay: z.number().int().optional(),
+              nominalFloorRub: z.number().int().optional(),
+              minimumListingsToBuy: z.number().int().optional(),
+              purchaseGateMode: z.enum(['nudge', 'require_min_lots']).optional(),
+              requestTtlHours: z.number().int().optional(),
+              fulfillmentTtlDays: z.number().int().optional(),
+              confirmationTtlDays: z.number().int().optional(),
             })
             .default({}),
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
-        return ctx.uzzService.updateSettings(input.communityId, input.patch);
+        return executeUzz(() => ctx.updateSettingsUseCase.execute({
+          commandId: input.commandId, communityId: input.communityId,
+          adminId: ctx.user.id, patch: input.patch,
+        }));
       }),
   }),
 
@@ -194,14 +186,16 @@ export const uzzAppRouter = router({
     setNominal: protectedProcedure
       .input(
         z.object({
+          commandId: z.string().min(8).max(200),
           bankId: z.string().min(1),
-          nominalRub: z.number().positive(),
+          nominalRub: z.number().int().positive(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        const bank = await ctx.uzzService.getBankById(input.bankId);
-        await ctx.uzzService.assertCommunityAdmin(bank.communityId, ctx.user.id);
-        return ctx.uzzService.setBankNominal(input.bankId, input.nominalRub, ctx.user.id);
+        return executeUzz(() => ctx.assignRightNominalUseCase.execute({
+          commandId: input.commandId, rightId: input.bankId,
+          adminId: ctx.user.id, nominalRub: input.nominalRub,
+        }));
       }),
     checkEmission: protectedProcedure
       .input(z.object({ publicationId: z.string().min(1) }))

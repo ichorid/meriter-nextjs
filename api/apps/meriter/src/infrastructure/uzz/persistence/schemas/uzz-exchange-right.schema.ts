@@ -54,4 +54,4 @@ UzzExchangeRightPersistenceSchema.index(
 );
 UzzExchangeRightPersistenceSchema.index({ communityId: 1, status: 1 });
 UzzExchangeRightPersistenceSchema.index({ ownerId: 1, communityId: 1 });
-
+UzzExchangeRightPersistenceSchema.index({ status: 1, lastDemurrageAt: 1, id: 1 });
