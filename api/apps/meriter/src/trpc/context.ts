@@ -82,6 +82,7 @@ import { AdminResolveDealUseCase } from '../application/uzz/use-cases/admin-reso
 import { GetSettingsUseCase } from '../application/uzz/use-cases/get-settings.use-case';
 import { UpdateSettingsUseCase } from '../application/uzz/use-cases/update-settings.use-case';
 import { AssignRightNominalUseCase } from '../application/uzz/use-cases/assign-right-nominal.use-case';
+import { SendDealThanksUseCase } from '../application/uzz/use-cases/send-deal-thanks.use-case';
 
 export interface CreateContextOptions {
   req: any;
@@ -166,6 +167,7 @@ export interface CreateContextOptions {
   getSettingsUseCase: GetSettingsUseCase;
   updateSettingsUseCase: UpdateSettingsUseCase;
   assignRightNominalUseCase: AssignRightNominalUseCase;
+  sendDealThanksUseCase: SendDealThanksUseCase;
 }
 
 /**
@@ -259,6 +261,7 @@ export async function createContext(opts: CreateContextOptions) {
     getSettingsUseCase,
     updateSettingsUseCase,
     assignRightNominalUseCase,
+    sendDealThanksUseCase,
   } = opts;
 
   const logger = new Logger('tRPC-Context');
@@ -399,6 +402,7 @@ export async function createContext(opts: CreateContextOptions) {
     getSettingsUseCase,
     updateSettingsUseCase,
     assignRightNominalUseCase,
+    sendDealThanksUseCase,
   };
 }
 

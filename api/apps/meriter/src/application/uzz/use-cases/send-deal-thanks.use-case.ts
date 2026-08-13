@@ -1,0 +1,77 @@
+import { MeritAmount } from '../../../domain/uzz/value-objects/merit-amount';
+import { UzzNotFoundError } from '../../../domain/uzz/errors';
+import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
+import { CommandExecutor } from './command-executor';
+import { appendDealLedger, appendTelegramNotification } from './deal-use-case.helpers';
+
+export class SendDealThanksUseCase {
+  private readonly commands: CommandExecutor;
+  constructor(unitOfWork: UzzUnitOfWork, private readonly globalCommunityId: string) {
+    this.commands = new CommandExecutor(unitOfWork);
+  }
+
+  execute(input: {
+    commandId: string;
+    dealId: string;
+    actorUserId: string;
+    merits: number;
+    comment: string;
+    now?: Date;
+  }) {
+    const now = input.now ?? new Date();
+    const merits = input.merits > 0 ? MeritAmount.create(input.merits) : null;
+    return this.commands.execute({
+      commandId: input.commandId,
+      actorId: input.actorUserId,
+      type: 'send_deal_thanks',
+      work: async (repositories) => {
+        const deal = await repositories.deals.findById(input.dealId);
+        if (!deal) throw new UzzNotFoundError('DEAL_NOT_FOUND');
+        const before = deal.snapshot();
+        deal.thank({ actorId: input.actorUserId, merits, comment: input.comment, now });
+        const recipientUserId = input.actorUserId === before.buyerId
+          ? before.sellerId
+          : before.buyerId;
+        let sourceCommunityId: string | null = null;
+        if (merits) {
+          const transfer = await repositories.wallet.transferPreferLocal({
+            userId: input.actorUserId,
+            recipientUserId,
+            localCommunityId: before.communityId,
+            globalCommunityId: this.globalCommunityId,
+            amount: merits.value,
+            operationId: `${input.commandId}:transfer`,
+          });
+          sourceCommunityId = transfer.sourceCommunityId;
+        }
+        await repositories.deals.update(deal);
+        const metadata = {
+          dealId: before.id,
+          comment: input.comment.trim(),
+          counterpartyId: recipientUserId,
+          sourceCommunityId,
+        };
+        await appendDealLedger(repositories, {
+          operationId: input.commandId, communityId: before.communityId,
+          userId: input.actorUserId, type: 'thanks_sent',
+          amount: -(merits?.value ?? 0), createdAt: now, metadata,
+        });
+        await appendDealLedger(repositories, {
+          operationId: input.commandId, communityId: before.communityId,
+          userId: recipientUserId, type: 'thanks_received',
+          amount: merits?.value ?? 0, createdAt: now,
+          metadata: { ...metadata, counterpartyId: input.actorUserId },
+        });
+        await appendTelegramNotification(repositories, {
+          operationId: input.commandId, aggregateId: before.id,
+          targetUserId: recipientUserId, kind: 'deal_thanks',
+          text: merits
+            ? `Вам отправили благодарность: ${merits.value} засл.`
+            : 'Вам оставили благодарность по сделке',
+          now,
+        });
+        return deal.snapshot();
+      },
+    });
+  }
+}

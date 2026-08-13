@@ -8,7 +8,7 @@ import {
 import { UzzAccessPolicy } from '../policies/uzz-access-policy';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
-import { addHours, appendDealLedger, assertReadyMember } from './deal-use-case.helpers';
+import { addHours, appendDealLedger, appendTelegramNotification, assertReadyMember } from './deal-use-case.helpers';
 
 export class RequestDealUseCase {
   private readonly commands: CommandExecutor;
@@ -103,6 +103,11 @@ export class RequestDealUseCase {
           operationId: input.commandId, communityId: input.communityId,
           userId: input.buyerId, type: 'deal_requested', amount: 0, createdAt: now,
           metadata: { dealId: state.id, listingId: input.listingId },
+        });
+        await appendTelegramNotification(repositories, {
+          operationId: input.commandId, aggregateId: state.id,
+          targetUserId: state.sellerId, kind: 'deal_requested',
+          text: `Новый запрос по услуге «${state.listingSnapshot.title}»`, now,
         });
         return deal.snapshot();
       },

@@ -347,6 +347,43 @@ function createRepositories(
     async append(event: UzzOutboxRecord) {
       await models.outbox.create([event], options);
     },
+    async claimAvailable(now, limit, lockedUntil) {
+      const claimed: UzzOutboxRecord[] = [];
+      for (let index = 0; index < limit; index += 1) {
+        const raw = await models.outbox.findOneAndUpdate(
+          {
+            processedAt: null,
+            deadLetteredAt: null,
+            availableAt: { $lte: now },
+            $or: [{ lockedUntil: null }, { lockedUntil: { $lte: now } }],
+          },
+          { $set: { lockedUntil }, $inc: { attempts: 1 } },
+          { ...options, new: true, sort: { availableAt: 1, id: 1 } },
+        ).lean();
+        if (!raw) break;
+        claimed.push(mapOutbox(raw));
+      }
+      return claimed;
+    },
+    async markProcessed(id, processedAt) {
+      await models.outbox.updateOne(
+        { id },
+        { $set: { processedAt, lockedUntil: null, lastError: null } },
+        options,
+      );
+    },
+    async markFailed(input) {
+      await models.outbox.updateOne(
+        { id: input.id },
+        { $set: {
+          lastError: input.error,
+          availableAt: input.availableAt,
+          lockedUntil: null,
+          deadLetteredAt: input.deadLetteredAt,
+        } },
+        options,
+      );
+    },
   };
 
   const wallet = new MeriterUzzWalletAdapter(
@@ -460,6 +497,23 @@ function mapIdentityAlias(raw: unknown): UzzIdentityAliasRecord {
     id: String(record.id),
     identityId: String(record.identityId),
     aliasUserId: String(record.aliasUserId),
+    createdAt: new Date(record.createdAt as Date),
+  };
+}
+
+function mapOutbox(raw: unknown): UzzOutboxRecord {
+  const record = asPersistenceRecord(raw);
+  return {
+    id: String(record.id),
+    topic: String(record.topic),
+    aggregateId: String(record.aggregateId),
+    payload: (record.payload ?? {}) as Record<string, unknown>,
+    attempts: Number(record.attempts ?? 0),
+    availableAt: new Date(record.availableAt as Date),
+    processedAt: record.processedAt ? new Date(record.processedAt as Date) : null,
+    lockedUntil: record.lockedUntil ? new Date(record.lockedUntil as Date) : null,
+    deadLetteredAt: record.deadLetteredAt ? new Date(record.deadLetteredAt as Date) : null,
+    lastError: typeof record.lastError === 'string' ? record.lastError : null,
     createdAt: new Date(record.createdAt as Date),
   };
 }

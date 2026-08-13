@@ -1,7 +1,7 @@
 import { UzzNotFoundError } from '../../../domain/uzz/errors';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
-import { addDays, appendDealLedger } from './deal-use-case.helpers';
+import { addDays, appendDealLedger, appendTelegramNotification } from './deal-use-case.helpers';
 
 export class MarkDealCompletedUseCase {
   private readonly commands: CommandExecutor;
@@ -31,6 +31,11 @@ export class MarkDealCompletedUseCase {
           operationId: input.commandId, communityId: state.communityId,
           userId: input.sellerId, type: 'deal_completed', amount: 0, createdAt: now,
           metadata: { dealId: state.id },
+        });
+        await appendTelegramNotification(repositories, {
+          operationId: input.commandId, aggregateId: state.id,
+          targetUserId: state.buyerId, kind: 'deal_completed',
+          text: `Исполнитель отметил «${state.listingSnapshot.title}» как выполненное`, now,
         });
         return deal.snapshot();
       },

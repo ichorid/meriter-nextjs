@@ -2,7 +2,7 @@ import { UzzNotFoundError } from '../../../domain/uzz/errors';
 import { Rubles } from '../../../domain/uzz/value-objects/rubles';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
-import { appendDealLedger } from './deal-use-case.helpers';
+import { appendDealLedger, appendTelegramNotification } from './deal-use-case.helpers';
 
 export class CloseDealUseCase {
   private readonly commands: CommandExecutor;
@@ -41,6 +41,11 @@ export class CloseDealUseCase {
           operationId: input.commandId, communityId: state.communityId,
           userId: state.buyerId, type: 'deal_closed', amount: 0, createdAt: now,
           metadata: { dealId: state.id },
+        });
+        await appendTelegramNotification(repositories, {
+          operationId: input.commandId, aggregateId: state.id,
+          targetUserId: state.sellerId, kind: 'deal_closed',
+          text: `Сделка «${state.listingSnapshot.title}» закрыта`, now,
         });
         return deal.snapshot();
       },

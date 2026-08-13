@@ -93,6 +93,8 @@ export interface UzzOutboxRecord {
   attempts: number;
   availableAt: Date;
   processedAt: Date | null;
+  lockedUntil: Date | null;
+  deadLetteredAt: Date | null;
   lastError: string | null;
   createdAt: Date;
 }
@@ -157,6 +159,14 @@ export interface UzzCommandRepository {
 
 export interface UzzOutboxRepository {
   append(event: UzzOutboxRecord): Promise<void>;
+  claimAvailable(now: Date, limit: number, lockedUntil: Date): Promise<UzzOutboxRecord[]>;
+  markProcessed(id: string, processedAt: Date): Promise<void>;
+  markFailed(input: {
+    id: string;
+    error: string;
+    availableAt: Date;
+    deadLetteredAt: Date | null;
+  }): Promise<void>;
 }
 
 export interface UzzRepositories {

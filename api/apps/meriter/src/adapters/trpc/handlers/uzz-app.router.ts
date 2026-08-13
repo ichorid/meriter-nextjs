@@ -358,16 +358,17 @@ export const uzzAppRouter = router({
     thank: protectedProcedure
       .input(
         z.object({
+          commandId: z.string().min(8).max(200),
           dealId: z.string().min(1),
-          comment: z.string().max(2000).optional(),
+          comment: z.string().max(1000).optional(),
           merits: z.number().int().nonnegative().max(10_000).optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.thankDeal(input.dealId, ctx.user.id, {
-          comment: input.comment,
-          merits: input.merits,
-        });
+        return executeUzz(() => ctx.sendDealThanksUseCase.execute({
+          commandId: input.commandId, dealId: input.dealId,
+          actorUserId: ctx.user.id, comment: input.comment ?? '', merits: input.merits ?? 0,
+        }));
       }),
     list: protectedProcedure
       .input(

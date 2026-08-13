@@ -192,6 +192,7 @@ import { UpdateSettingsUseCase } from './application/uzz/use-cases/update-settin
 import { AssignRightNominalUseCase } from './application/uzz/use-cases/assign-right-nominal.use-case';
 import { ApplyDemurrageUseCase } from './application/uzz/use-cases/apply-demurrage.use-case';
 import { ExpireDealsUseCase } from './application/uzz/use-cases/expire-deals.use-case';
+import { SendDealThanksUseCase } from './application/uzz/use-cases/send-deal-thanks.use-case';
 import { SYSTEM_CLOCK } from './application/uzz/ports/clock.port';
 import { GLOBAL_COMMUNITY_ID } from './domain/common/constants/global.constant';
 
@@ -479,6 +480,11 @@ import { EventBus } from './domain/events/event-bus';
       inject: [UZZ_UNIT_OF_WORK],
       useFactory: (unitOfWork) => new ExpireDealsUseCase(unitOfWork, SYSTEM_CLOCK),
     },
+    {
+      provide: SendDealThanksUseCase,
+      inject: [UZZ_UNIT_OF_WORK],
+      useFactory: (unitOfWork) => new SendDealThanksUseCase(unitOfWork, GLOBAL_COMMUNITY_ID),
+    },
 
     // Domain Services
     PublicationService,
@@ -580,6 +586,7 @@ import { EventBus } from './domain/events/event-bus';
     AssignRightNominalUseCase,
     ApplyDemurrageUseCase,
     ExpireDealsUseCase,
+    SendDealThanksUseCase,
 
     // Export domain services
     PublicationService,

@@ -11,6 +11,8 @@ export const UzzOutboxPersistenceSchema = new Schema(
     attempts: { type: Number, required: true, default: 0 },
     availableAt: { type: Date, required: true },
     processedAt: { type: Date, default: null },
+    lockedUntil: { type: Date, default: null },
+    deadLetteredAt: { type: Date, default: null },
     lastError: { type: String, default: null },
     createdAt: { type: Date, required: true },
   },
@@ -22,4 +24,4 @@ UzzOutboxPersistenceSchema.index(
   { unique: true, name: 'uzz_outbox_id_unique' },
 );
 UzzOutboxPersistenceSchema.index({ processedAt: 1, availableAt: 1 });
-
+UzzOutboxPersistenceSchema.index({ deadLetteredAt: 1, lockedUntil: 1, availableAt: 1 });

@@ -6,7 +6,7 @@ import {
 import { UzzAccessPolicy } from '../policies/uzz-access-policy';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
-import { addDays, appendDealLedger, assertReadyMember } from './deal-use-case.helpers';
+import { addDays, appendDealLedger, appendTelegramNotification, assertReadyMember } from './deal-use-case.helpers';
 
 export class AcceptDealUseCase {
   private readonly commands: CommandExecutor;
@@ -66,6 +66,11 @@ export class AcceptDealUseCase {
           operationId: input.commandId, communityId: state.communityId,
           userId: input.sellerId, type: 'deal_accepted', amount: 0, createdAt: now,
           metadata: { dealId: state.id, nominalRub: input.expectedNominalRub },
+        });
+        await appendTelegramNotification(repositories, {
+          operationId: input.commandId, aggregateId: state.id,
+          targetUserId: state.buyerId, kind: 'deal_accepted',
+          text: `Запрос по услуге «${state.listingSnapshot.title}» принят`, now,
         });
         return deal.snapshot();
       },

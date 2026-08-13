@@ -16,8 +16,16 @@ export class MeriterUzzWalletAdapter implements UzzWalletPort {
   async reservePreferLocal(
     input: UzzWalletOperationInput,
   ): Promise<UzzWalletReservation> {
+    return this.debitPreferLocal(input, 'uzz_fee_reserve', 'UZZ fee reserve');
+  }
+
+  private async debitPreferLocal(
+    input: UzzWalletOperationInput,
+    referenceType: 'uzz_fee_reserve' | 'uzz_transfer_send',
+    description: string,
+  ): Promise<UzzWalletReservation> {
     validateOperation(input.amount, input.operationId);
-    const existing = await this.findEffect(input.operationId, 'uzz_fee_reserve');
+    const existing = await this.findEffect(input.operationId, referenceType);
     if (existing) {
       return {
         operationId: input.operationId,
@@ -46,9 +54,9 @@ export class MeriterUzzWalletAdapter implements UzzWalletPort {
         walletId: String(wallet.id),
         amount: input.amount,
         type: 'withdrawal',
-        referenceType: 'uzz_fee_reserve',
+        referenceType,
         referenceId: input.operationId,
-        description: `UZZ fee reserve:${communityId}`,
+        description: `${description}:${communityId}`,
       });
       return {
         operationId: input.operationId,
@@ -88,7 +96,14 @@ export class MeriterUzzWalletAdapter implements UzzWalletPort {
   async transferPreferLocal(
     input: UzzWalletOperationInput & { recipientUserId: string },
   ): Promise<UzzWalletReservation> {
-    const reserved = await this.reservePreferLocal(input);
+    const reserved = await this.debitPreferLocal(
+      input,
+      'uzz_transfer_send',
+      'UZZ transfer send',
+    );
+    if (await this.findEffect(input.operationId, 'uzz_transfer_receive')) {
+      return reserved;
+    }
     const recipient = await this.connection.collection('wallets').findOneAndUpdate(
       {
         userId: input.recipientUserId,
@@ -137,4 +152,3 @@ function validateOperation(amount: number, operationId: string): void {
     throw new UzzConflictError('WALLET_OPERATION_INVALID');
   }
 }
-

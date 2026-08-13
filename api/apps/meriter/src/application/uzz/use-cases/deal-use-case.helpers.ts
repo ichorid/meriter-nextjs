@@ -34,3 +34,36 @@ export function appendDealLedger(
 ): Promise<void> {
   return repositories.ledger.append({ id: randomUUID(), ...entry });
 }
+
+export async function appendTelegramNotification(
+  repositories: UzzRepositories,
+  input: {
+    operationId: string;
+    aggregateId: string;
+    targetUserId: string;
+    kind: string;
+    text: string;
+    now: Date;
+  },
+): Promise<void> {
+  const identity = await repositories.identities.findByCanonicalUserId(input.targetUserId);
+  if (!identity?.telegramUserId) return;
+  await repositories.outbox.append({
+    id: `${input.operationId}:telegram:${input.targetUserId}:${input.kind}`,
+    topic: 'uzz.telegram',
+    aggregateId: input.aggregateId,
+    payload: {
+      telegramUserId: identity.telegramUserId,
+      text: input.text,
+      kind: input.kind,
+      targetUserId: input.targetUserId,
+    },
+    attempts: 0,
+    availableAt: new Date(input.now),
+    processedAt: null,
+    lockedUntil: null,
+    deadLetteredAt: null,
+    lastError: null,
+    createdAt: new Date(input.now),
+  });
+}

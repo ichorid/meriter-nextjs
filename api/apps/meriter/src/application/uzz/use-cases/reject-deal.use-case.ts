@@ -1,7 +1,7 @@
 import { UzzNotFoundError } from '../../../domain/uzz/errors';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
-import { appendDealLedger } from './deal-use-case.helpers';
+import { appendDealLedger, appendTelegramNotification } from './deal-use-case.helpers';
 
 export class RejectDealUseCase {
   private readonly commands: CommandExecutor;
@@ -36,6 +36,11 @@ export class RejectDealUseCase {
           operationId: input.commandId, communityId: state.communityId,
           userId: input.sellerId, type: 'deal_rejected', amount: 0, createdAt: now,
           metadata: { dealId: state.id },
+        });
+        await appendTelegramNotification(repositories, {
+          operationId: input.commandId, aggregateId: state.id,
+          targetUserId: state.buyerId, kind: 'deal_rejected',
+          text: `Запрос по услуге «${state.listingSnapshot.title}» отклонён`, now,
         });
         return deal.snapshot();
       },
