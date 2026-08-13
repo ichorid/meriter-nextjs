@@ -102,8 +102,8 @@ export default function LoginPage() {
         ) : null}
 
         <p className="text-center text-xs text-stitch-muted">
-          <Link href="/" className="text-stitch-accent hover:underline">
-            На главную
+          <Link href="/catalog" className="text-stitch-accent hover:underline">
+            Смотреть обмен без входа
           </Link>
         </p>
       </div>
