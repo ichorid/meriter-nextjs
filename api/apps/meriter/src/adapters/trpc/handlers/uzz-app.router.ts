@@ -296,43 +296,70 @@ export const uzzAppRouter = router({
     request: protectedProcedure
       .input(
         z.object({
+          commandId: z.string().min(8).max(200),
           communityId: z.string().min(1),
           lotId: z.string().min(1),
           bankId: z.string().min(1),
+          requestMessage: z.string().trim().min(1).max(1000),
+          requestedDeadlineAt: z.coerce.date().nullable().optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.requestDeal({
-          communityId: input.communityId,
-          buyerId: ctx.user.id,
-          lotId: input.lotId,
-          bankId: input.bankId,
-        });
+        return executeUzz(() =>
+          ctx.requestDealUseCase.execute({
+            commandId: input.commandId,
+            communityId: input.communityId,
+            buyerId: ctx.user.id,
+            listingId: input.lotId,
+            exchangeRightId: input.bankId,
+            requestMessage: input.requestMessage,
+            requestedDeadlineAt: input.requestedDeadlineAt ?? null,
+          }),
+        );
       }),
     accept: protectedProcedure
-      .input(z.object({ dealId: z.string().min(1) }))
+      .input(z.object({
+        commandId: z.string().min(8).max(200),
+        dealId: z.string().min(1),
+        expectedNominalRub: z.number().int().positive(),
+        agreedDeadlineAt: z.coerce.date().nullable().optional(),
+      }))
       .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.acceptDeal(input.dealId, ctx.user.id);
+        return executeUzz(() => ctx.acceptDealUseCase.execute({
+          commandId: input.commandId,
+          dealId: input.dealId,
+          sellerId: ctx.user.id,
+          expectedNominalRub: input.expectedNominalRub,
+          agreedDeadlineAt: input.agreedDeadlineAt ?? null,
+        }));
       }),
     reject: protectedProcedure
-      .input(z.object({ dealId: z.string().min(1) }))
+      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.rejectDeal(input.dealId, ctx.user.id);
+        return executeUzz(() => ctx.rejectDealUseCase.execute({
+          commandId: input.commandId, dealId: input.dealId, sellerId: ctx.user.id,
+        }));
       }),
     complete: protectedProcedure
-      .input(z.object({ dealId: z.string().min(1) }))
+      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.completeDeal(input.dealId, ctx.user.id);
+        return executeUzz(() => ctx.markDealCompletedUseCase.execute({
+          commandId: input.commandId, dealId: input.dealId, sellerId: ctx.user.id,
+        }));
       }),
     close: protectedProcedure
-      .input(z.object({ dealId: z.string().min(1) }))
+      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.closeDeal(input.dealId, ctx.user.id);
+        return executeUzz(() => ctx.closeDealUseCase.execute({
+          commandId: input.commandId, dealId: input.dealId, buyerId: ctx.user.id,
+        }));
       }),
     cancel: protectedProcedure
-      .input(z.object({ dealId: z.string().min(1) }))
+      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.cancelDeal(input.dealId, ctx.user.id);
+        return executeUzz(() => ctx.cancelDealUseCase.execute({
+          commandId: input.commandId, dealId: input.dealId, buyerId: ctx.user.id,
+        }));
       }),
     thank: protectedProcedure
       .input(
@@ -365,14 +392,20 @@ export const uzzAppRouter = router({
         return ctx.uzzService.listOpenDeals(input.communityId);
       }),
     adminClose: protectedProcedure
-      .input(z.object({ dealId: z.string().min(1) }))
+      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1), reason: z.string().trim().min(10).max(1000) }))
       .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.adminCloseDeal(input.dealId, ctx.user.id);
+        return executeUzz(() => ctx.adminResolveDealUseCase.execute({
+          commandId: input.commandId, dealId: input.dealId, adminId: ctx.user.id,
+          outcome: 'close', reason: input.reason,
+        }));
       }),
     adminCancel: protectedProcedure
-      .input(z.object({ dealId: z.string().min(1) }))
+      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1), reason: z.string().trim().min(10).max(1000) }))
       .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.adminCancelDeal(input.dealId, ctx.user.id);
+        return executeUzz(() => ctx.adminResolveDealUseCase.execute({
+          commandId: input.commandId, dealId: input.dealId, adminId: ctx.user.id,
+          outcome: 'cancel', reason: input.reason,
+        }));
       }),
   }),
 

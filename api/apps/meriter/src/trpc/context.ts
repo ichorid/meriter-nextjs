@@ -72,6 +72,13 @@ import { CreateListingUseCase } from '../application/uzz/use-cases/create-listin
 import { UpdateListingUseCase } from '../application/uzz/use-cases/update-listing.use-case';
 import { ListCatalogUseCase } from '../application/uzz/use-cases/list-catalog.use-case';
 import { CheckPurchaseGateUseCase } from '../application/uzz/use-cases/check-purchase-gate.use-case';
+import { RequestDealUseCase } from '../application/uzz/use-cases/request-deal.use-case';
+import { AcceptDealUseCase } from '../application/uzz/use-cases/accept-deal.use-case';
+import { RejectDealUseCase } from '../application/uzz/use-cases/reject-deal.use-case';
+import { CancelDealUseCase } from '../application/uzz/use-cases/cancel-deal.use-case';
+import { MarkDealCompletedUseCase } from '../application/uzz/use-cases/mark-deal-completed.use-case';
+import { CloseDealUseCase } from '../application/uzz/use-cases/close-deal.use-case';
+import { AdminResolveDealUseCase } from '../application/uzz/use-cases/admin-resolve-deal.use-case';
 
 export interface CreateContextOptions {
   req: any;
@@ -146,6 +153,13 @@ export interface CreateContextOptions {
   updateListingUseCase: UpdateListingUseCase;
   listCatalogUseCase: ListCatalogUseCase;
   checkPurchaseGateUseCase: CheckPurchaseGateUseCase;
+  requestDealUseCase: RequestDealUseCase;
+  acceptDealUseCase: AcceptDealUseCase;
+  rejectDealUseCase: RejectDealUseCase;
+  cancelDealUseCase: CancelDealUseCase;
+  markDealCompletedUseCase: MarkDealCompletedUseCase;
+  closeDealUseCase: CloseDealUseCase;
+  adminResolveDealUseCase: AdminResolveDealUseCase;
 }
 
 /**
@@ -229,6 +243,13 @@ export async function createContext(opts: CreateContextOptions) {
     updateListingUseCase,
     listCatalogUseCase,
     checkPurchaseGateUseCase,
+    requestDealUseCase,
+    acceptDealUseCase,
+    rejectDealUseCase,
+    cancelDealUseCase,
+    markDealCompletedUseCase,
+    closeDealUseCase,
+    adminResolveDealUseCase,
   } = opts;
 
   const logger = new Logger('tRPC-Context');
@@ -359,6 +380,13 @@ export async function createContext(opts: CreateContextOptions) {
     updateListingUseCase,
     listCatalogUseCase,
     checkPurchaseGateUseCase,
+    requestDealUseCase,
+    acceptDealUseCase,
+    rejectDealUseCase,
+    cancelDealUseCase,
+    markDealCompletedUseCase,
+    closeDealUseCase,
+    adminResolveDealUseCase,
   };
 }
 

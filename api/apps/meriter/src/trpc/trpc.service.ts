@@ -79,6 +79,13 @@ import { CreateListingUseCase } from '../application/uzz/use-cases/create-listin
 import { UpdateListingUseCase } from '../application/uzz/use-cases/update-listing.use-case';
 import { ListCatalogUseCase } from '../application/uzz/use-cases/list-catalog.use-case';
 import { CheckPurchaseGateUseCase } from '../application/uzz/use-cases/check-purchase-gate.use-case';
+import { RequestDealUseCase } from '../application/uzz/use-cases/request-deal.use-case';
+import { AcceptDealUseCase } from '../application/uzz/use-cases/accept-deal.use-case';
+import { RejectDealUseCase } from '../application/uzz/use-cases/reject-deal.use-case';
+import { CancelDealUseCase } from '../application/uzz/use-cases/cancel-deal.use-case';
+import { MarkDealCompletedUseCase } from '../application/uzz/use-cases/mark-deal-completed.use-case';
+import { CloseDealUseCase } from '../application/uzz/use-cases/close-deal.use-case';
+import { AdminResolveDealUseCase } from '../application/uzz/use-cases/admin-resolve-deal.use-case';
 
 @Injectable()
 export class TrpcService {
@@ -154,6 +161,13 @@ export class TrpcService {
     private updateListingUseCase: UpdateListingUseCase,
     private listCatalogUseCase: ListCatalogUseCase,
     private checkPurchaseGateUseCase: CheckPurchaseGateUseCase,
+    private requestDealUseCase: RequestDealUseCase,
+    private acceptDealUseCase: AcceptDealUseCase,
+    private rejectDealUseCase: RejectDealUseCase,
+    private cancelDealUseCase: CancelDealUseCase,
+    private markDealCompletedUseCase: MarkDealCompletedUseCase,
+    private closeDealUseCase: CloseDealUseCase,
+    private adminResolveDealUseCase: AdminResolveDealUseCase,
   ) {}
 
   getRouter(): AppRouter {
@@ -242,6 +256,13 @@ export class TrpcService {
       updateListingUseCase: this.updateListingUseCase,
       listCatalogUseCase: this.listCatalogUseCase,
       checkPurchaseGateUseCase: this.checkPurchaseGateUseCase,
+      requestDealUseCase: this.requestDealUseCase,
+      acceptDealUseCase: this.acceptDealUseCase,
+      rejectDealUseCase: this.rejectDealUseCase,
+      cancelDealUseCase: this.cancelDealUseCase,
+      markDealCompletedUseCase: this.markDealCompletedUseCase,
+      closeDealUseCase: this.closeDealUseCase,
+      adminResolveDealUseCase: this.adminResolveDealUseCase,
     });
   }
 }

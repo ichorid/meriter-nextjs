@@ -60,7 +60,13 @@ export interface UzzLedgerEntry {
     | 'right_sent'
     | 'thanks_sent'
     | 'thanks_received'
-    | 'admin_resolution';
+    | 'admin_resolution'
+    | 'deal_requested'
+    | 'deal_accepted'
+    | 'deal_completed'
+    | 'deal_closed'
+    | 'deal_rejected'
+    | 'deal_cancelled';
   amount: number;
   createdAt: Date;
   metadata: Record<string, unknown>;

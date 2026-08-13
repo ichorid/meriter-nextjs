@@ -61,6 +61,7 @@ export interface DealSnapshot {
   buyerContact: DealContactSnapshot | null;
   sellerContact: DealContactSnapshot | null;
   feeReserved: boolean;
+  feeSourceCommunityId: string | null;
   adminResolutionReason: string | null;
   requestedAt: Date;
   acceptedAt: Date | null;
@@ -136,6 +137,7 @@ export class Deal {
       buyerContact: null,
       sellerContact: null,
       feeReserved: false,
+      feeSourceCommunityId: null,
       adminResolutionReason: null,
       requestedAt: now,
       acceptedAt: null,
@@ -186,6 +188,29 @@ export class Deal {
     this.state.updatedAt = new Date(input.now);
   }
 
+  reserveFee(sourceCommunityId: string, now: Date): void {
+    this.requireStatus('requested');
+    if (this.state.feeReserved) {
+      throw new UzzConflictError('DEAL_FEE_ALREADY_RESERVED');
+    }
+    this.state.feeReserved = true;
+    this.state.feeSourceCommunityId = requireText(
+      sourceCommunityId,
+      1,
+      200,
+      'DEAL_FEE_SOURCE_INVALID',
+    );
+    this.state.updatedAt = new Date(now);
+  }
+
+  clearReservedFee(now: Date): void {
+    if (!this.state.feeReserved || !this.state.feeSourceCommunityId) {
+      throw new UzzConflictError('DEAL_FEE_NOT_RESERVED');
+    }
+    this.state.feeReserved = false;
+    this.state.updatedAt = new Date(now);
+  }
+
   reject(sellerId: string, now: Date): void {
     this.requireActor(sellerId, this.state.sellerId);
     this.requireStatus('requested');
@@ -231,6 +256,36 @@ export class Deal {
     this.state.status = 'closed';
     this.state.dealAmountRub = amount.value;
     this.state.closedAt = new Date(now);
+    this.state.updatedAt = new Date(now);
+  }
+
+  resolveByAdmin(
+    outcome: 'close' | 'cancel',
+    reason: string,
+    amount: Rubles | null,
+    now: Date,
+  ): void {
+    const normalizedReason = requireText(
+      reason,
+      10,
+      1000,
+      'ADMIN_RESOLUTION_REASON_INVALID',
+    );
+    if (!['requested', 'accepted', 'completed_by_seller'].includes(this.state.status)) {
+      throw new UzzConflictError('DEAL_STATUS_INVALID');
+    }
+    if (outcome === 'close') {
+      if (this.state.status === 'requested' || !amount) {
+        throw new UzzConflictError('DEAL_CANNOT_ADMIN_CLOSE');
+      }
+      this.state.status = 'closed';
+      this.state.dealAmountRub = amount.value;
+      this.state.closedAt = new Date(now);
+    } else {
+      this.state.status = 'cancelled';
+      this.state.cancelledAt = new Date(now);
+    }
+    this.state.adminResolutionReason = normalizedReason;
     this.state.updatedAt = new Date(now);
   }
 
@@ -396,4 +451,3 @@ function cloneSnapshot(snapshot: DealSnapshot): DealSnapshot {
     updatedAt: new Date(snapshot.updatedAt),
   };
 }
-

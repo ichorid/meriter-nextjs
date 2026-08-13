@@ -8,16 +8,16 @@ export const UzzListingPersistenceSchema = new Schema(
     communityId: { type: String, required: true },
     authorId: { type: String, required: true },
     title: { type: String, required: true },
-    description: { type: String, required: true, default: '' },
+    description: { type: String, default: '' },
     priceRub: { type: Number, required: true },
     deliveryMode: {
       type: String,
       enum: ['online', 'offline', 'both'],
       required: true,
     },
-    locationText: { type: String, required: true, default: '' },
-    durationText: { type: String, required: true, default: '' },
-    availabilityText: { type: String, required: true, default: '' },
+    locationText: { type: String, default: '' },
+    durationText: { type: String, default: '' },
+    availabilityText: { type: String, default: '' },
     active: { type: Boolean, required: true, default: true },
     version: { type: Number, required: true, default: 0 },
   },
@@ -30,4 +30,3 @@ UzzListingPersistenceSchema.index(
 );
 UzzListingPersistenceSchema.index({ communityId: 1, active: 1, createdAt: -1 });
 UzzListingPersistenceSchema.index({ authorId: 1, communityId: 1, active: 1 });
-

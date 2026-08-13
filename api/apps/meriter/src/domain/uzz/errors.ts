@@ -2,6 +2,7 @@ export class UzzDomainError extends Error {
   constructor(
     readonly code: string,
     message = code,
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = new.target.name;
@@ -23,3 +24,9 @@ export class UzzIdentityConflictError extends UzzDomainError {}
 export class UzzRateLimitedError extends UzzDomainError {}
 
 export class UzzNotFoundError extends UzzDomainError {}
+
+export class UzzNominalChangedError extends UzzConflictError {
+  constructor(currentNominalRub: number) {
+    super('NOMINAL_CHANGED', 'NOMINAL_CHANGED', { currentNominalRub });
+  }
+}

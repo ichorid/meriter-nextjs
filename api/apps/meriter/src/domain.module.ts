@@ -180,6 +180,14 @@ import { CreateListingUseCase } from './application/uzz/use-cases/create-listing
 import { UpdateListingUseCase } from './application/uzz/use-cases/update-listing.use-case';
 import { ListCatalogUseCase } from './application/uzz/use-cases/list-catalog.use-case';
 import { CheckPurchaseGateUseCase } from './application/uzz/use-cases/check-purchase-gate.use-case';
+import { RequestDealUseCase } from './application/uzz/use-cases/request-deal.use-case';
+import { AcceptDealUseCase } from './application/uzz/use-cases/accept-deal.use-case';
+import { RejectDealUseCase } from './application/uzz/use-cases/reject-deal.use-case';
+import { CancelDealUseCase } from './application/uzz/use-cases/cancel-deal.use-case';
+import { MarkDealCompletedUseCase } from './application/uzz/use-cases/mark-deal-completed.use-case';
+import { CloseDealUseCase } from './application/uzz/use-cases/close-deal.use-case';
+import { AdminResolveDealUseCase } from './application/uzz/use-cases/admin-resolve-deal.use-case';
+import { GLOBAL_COMMUNITY_ID } from './domain/common/constants/global.constant';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -399,6 +407,44 @@ import { EventBus } from './domain/events/event-bus';
       useFactory: (unitOfWork, accessPolicy) =>
         new CheckPurchaseGateUseCase(unitOfWork, accessPolicy),
     },
+    {
+      provide: RequestDealUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzAccessPolicy],
+      useFactory: (unitOfWork, accessPolicy) =>
+        new RequestDealUseCase(unitOfWork, accessPolicy, GLOBAL_COMMUNITY_ID),
+    },
+    {
+      provide: AcceptDealUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzAccessPolicy],
+      useFactory: (unitOfWork, accessPolicy) =>
+        new AcceptDealUseCase(unitOfWork, accessPolicy),
+    },
+    {
+      provide: RejectDealUseCase,
+      inject: [UZZ_UNIT_OF_WORK],
+      useFactory: (unitOfWork) => new RejectDealUseCase(unitOfWork),
+    },
+    {
+      provide: CancelDealUseCase,
+      inject: [UZZ_UNIT_OF_WORK],
+      useFactory: (unitOfWork) => new CancelDealUseCase(unitOfWork),
+    },
+    {
+      provide: MarkDealCompletedUseCase,
+      inject: [UZZ_UNIT_OF_WORK],
+      useFactory: (unitOfWork) => new MarkDealCompletedUseCase(unitOfWork),
+    },
+    {
+      provide: CloseDealUseCase,
+      inject: [UZZ_UNIT_OF_WORK],
+      useFactory: (unitOfWork) => new CloseDealUseCase(unitOfWork),
+    },
+    {
+      provide: AdminResolveDealUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzService],
+      useFactory: (unitOfWork, uzzService: UzzService) =>
+        new AdminResolveDealUseCase(unitOfWork, uzzService),
+    },
 
     // Domain Services
     PublicationService,
@@ -488,6 +534,13 @@ import { EventBus } from './domain/events/event-bus';
     UpdateListingUseCase,
     ListCatalogUseCase,
     CheckPurchaseGateUseCase,
+    RequestDealUseCase,
+    AcceptDealUseCase,
+    RejectDealUseCase,
+    CancelDealUseCase,
+    MarkDealCompletedUseCase,
+    CloseDealUseCase,
+    AdminResolveDealUseCase,
 
     // Export domain services
     PublicationService,
