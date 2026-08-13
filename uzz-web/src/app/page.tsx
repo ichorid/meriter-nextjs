@@ -9,6 +9,7 @@ import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import {
   bankHeadline,
   bankStatusLabel,
+  linkGap,
   tomorrowNominal,
   uzzErrorMessage,
 } from '@/lib/utils';
@@ -137,6 +138,7 @@ function MinePanel({
   const [priceRub, setPriceRub] = useState('500');
   const [description, setDescription] = useState('');
   const [lotError, setLotError] = useState<string | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editPrice, setEditPrice] = useState('');
@@ -156,11 +158,11 @@ function MinePanel({
   const updateLot = trpc.lots.update.useMutation({
     onSuccess: () => {
       setEditingId(null);
-      setLotError(null);
+      setEditError(null);
       void utils.lots.myLots.invalidate();
       void utils.lots.list.invalidate();
     },
-    onError: (err) => setLotError(uzzErrorMessage(err)),
+    onError: (err) => setEditError(uzzErrorMessage(err)),
   });
 
   function onCreateLot(e: FormEvent) {
@@ -197,9 +199,17 @@ function MinePanel({
         </Notice>
       ) : null}
 
-      {linkStatus.data && !linkStatus.data.linked && !config.development.fakeDataMode ? (
+      {linkGap(linkStatus.data) === 'telegram' && !config.development.fakeDataMode ? (
         <Notice tone="warn">
           Привяжите Telegram в профиле, чтобы видеть права на обмен.{' '}
+          <Link href="/profile" className="underline">
+            Профиль
+          </Link>
+        </Notice>
+      ) : null}
+      {linkGap(linkStatus.data) === 'email' && !config.development.fakeDataMode ? (
+        <Notice tone="warn">
+          В боте сообщества отправьте /email и код из письма.{' '}
           <Link href="/profile" className="underline">
             Профиль
           </Link>
@@ -347,6 +357,7 @@ function MinePanel({
                     <div className="flex gap-2">
                       <Button
                         type="button"
+                        disabled={updateLot.isPending}
                         onClick={() =>
                           updateLot.mutate({
                             lotId: lot.id,
@@ -358,10 +369,18 @@ function MinePanel({
                       >
                         Сохранить
                       </Button>
-                      <Button type="button" variant="ghost" onClick={() => setEditingId(null)}>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditError(null);
+                        }}
+                      >
                         Отмена
                       </Button>
                     </div>
+                    {editError ? <p className="text-sm text-red-400">{editError}</p> : null}
                   </>
                 ) : (
                   <>
@@ -382,6 +401,7 @@ function MinePanel({
                           setEditTitle(lot.title);
                           setEditPrice(String(lot.priceRub));
                           setEditDescription(lot.description ?? '');
+                          setEditError(null);
                         }}
                       >
                         Изменить

@@ -4,7 +4,7 @@ import { AppShell } from '@/components/app-shell';
 import { Card, EmptyState, QueryFailed } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { formatWhen, ledgerTypeLabel } from '@/lib/utils';
+import { formatWhen, ledgerTypeLabel, meritsLabel } from '@/lib/utils';
 
 export default function WalletPage() {
   const { communityId, loggedIn } = useUzzCommunityId();
@@ -31,7 +31,11 @@ export default function WalletPage() {
           <p className="mt-1 text-3xl font-extrabold text-stitch-accent">
             {balance.isLoading ? '…' : balance.isError ? '—' : (balance.data?.balance ?? 0)}
           </p>
-          <p className="mt-1 text-sm text-stitch-muted">заслуг</p>
+          {balance.isError ? (
+            <QueryFailed onRetry={() => void balance.refetch()} />
+          ) : (
+            <p className="mt-1 text-sm text-stitch-muted">заслуг</p>
+          )}
         </Card>
 
         <section className="space-y-3">
@@ -56,8 +60,10 @@ export default function WalletPage() {
                         {row.payload.from} ₽ → {row.payload.to} ₽
                       </p>
                     ) : null}
-                    {typeof row.payload?.amount === 'number' ? (
-                      <p className="text-sm text-stitch-muted">{row.payload.amount} заслуг</p>
+                    {typeof row.payload?.merits === 'number' ? (
+                      <p className="text-sm text-stitch-muted">{meritsLabel(row.payload.merits)}</p>
+                    ) : typeof row.payload?.amount === 'number' ? (
+                      <p className="text-sm text-stitch-muted">{meritsLabel(row.payload.amount)}</p>
                     ) : null}
                     {typeof row.payload?.dealAmountRub === 'number' ? (
                       <p className="text-sm text-stitch-muted">

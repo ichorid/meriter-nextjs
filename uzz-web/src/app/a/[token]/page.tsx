@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { trpc } from '@/lib/trpc/client';
-import { uzzErrorMessage } from '@/lib/utils';
+import { consumeReturnTo, uzzErrorMessage } from '@/lib/utils';
 
 export default function RedeemMagicLinkPage() {
   const params = useParams<{ token: string }>();
@@ -14,7 +14,7 @@ export default function RedeemMagicLinkPage() {
 
   const redeem = trpc.auth.redeemEmailLoginLink.useMutation({
     onSuccess: () => {
-      router.replace('/catalog');
+      router.replace(consumeReturnTo());
     },
     onError: (err) => {
       setError(uzzErrorMessage(err) || 'Ссылка недействительна или устарела');

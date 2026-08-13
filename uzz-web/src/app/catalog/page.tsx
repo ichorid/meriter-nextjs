@@ -7,7 +7,7 @@ import { AppShell } from '@/components/app-shell';
 import { Button, Card, EmptyState, Notice, QueryFailed, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { bankHeadline, uzzErrorMessage } from '@/lib/utils';
+import { bankHeadline, linkGap, meritsLabel, uzzErrorMessage } from '@/lib/utils';
 
 export default function CatalogPage() {
   const router = useRouter();
@@ -87,13 +87,21 @@ export default function CatalogPage() {
           </Notice>
         ) : null}
 
-        {loggedIn && linkStatus.data && !linkStatus.data.linked ? (
+        {loggedIn && linkGap(linkStatus.data) === 'telegram' ? (
           <Notice>
             Чтобы пользоваться правами на обмен,{' '}
             <Link href="/profile" className="font-medium text-stitch-accent underline">
               привяжите Telegram
             </Link>
             .
+          </Notice>
+        ) : null}
+        {loggedIn && linkGap(linkStatus.data) === 'email' ? (
+          <Notice>
+            Telegram уже есть. В боте отправьте /email и код из письма.{' '}
+            <Link href="/profile" className="font-medium text-stitch-accent underline">
+              Профиль
+            </Link>
           </Notice>
         ) : null}
 
@@ -142,6 +150,10 @@ export default function CatalogPage() {
           </div>
         ) : lots.isError ? (
           <QueryFailed onRetry={() => void lots.refetch()} />
+        ) : banks.isError ? (
+          <QueryFailed onRetry={() => void banks.refetch()} />
+        ) : canBuy.isError ? (
+          <QueryFailed onRetry={() => void canBuy.refetch()} />
         ) : !visibleLots.length ? (
           <EmptyState
             title={
@@ -224,7 +236,7 @@ export default function CatalogPage() {
                           С кошелька уйдёт 1 заслуга. Вернём, если исполнитель откажется или вы
                           отмените заявку.
                           {typeof balance.data?.balance === 'number'
-                            ? ` Сейчас у вас ${balance.data.balance} заслуг.`
+                            ? ` Сейчас у вас ${meritsLabel(balance.data.balance)}.`
                             : ''}
                         </p>
                         <label className="block space-y-1 text-sm">

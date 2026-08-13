@@ -87,7 +87,9 @@ export default function ProfilePage() {
 
         <Card className="space-y-3">
           <h2 className="font-extrabold">Связка</h2>
-          {linkStatus.isError ? (
+          {linkStatus.isLoading ? (
+            <p className="text-sm text-stitch-muted">Проверяем связку…</p>
+          ) : linkStatus.isError ? (
             <Notice tone="warn">
               Не удалось проверить связку.{' '}
               <button
@@ -99,45 +101,47 @@ export default function ProfilePage() {
               </button>
             </Notice>
           ) : (
-            <ul className="space-y-2 text-sm">
-              <li className="flex justify-between gap-3">
-                <span className="text-stitch-muted">Почта</span>
-                <span className="truncate">{email || 'не указана'}</span>
-              </li>
-              <li className="flex justify-between gap-3">
-                <span className="text-stitch-muted">Telegram</span>
-                <span>{hasTelegram ? 'привязан' : 'не привязан'}</span>
-              </li>
-            </ul>
-          )}
-          {linked ? (
-            <p className="text-sm text-stitch-accent">Можно пользоваться правами на обмен.</p>
-          ) : !hasTelegram ? (
             <>
-              <p className="text-sm text-stitch-muted">
-                Остался Telegram — без него площадка не увидит добрые дела из чата.
-              </p>
-              <Button
-                type="button"
-                disabled={startTg.isPending || me.isError || linkStatus.isError}
-                onClick={() => {
-                  setBotMissing(false);
-                  startTg.mutate();
-                }}
-              >
-                {startTg.isPending ? 'Готовим ссылку…' : 'Привязать Telegram'}
-              </Button>
-              {botMissing ? (
-                <p className="text-sm text-amber-200">
-                  Ссылка на бота не настроена. Напишите администратору.
+              <ul className="space-y-2 text-sm">
+                <li className="flex justify-between gap-3">
+                  <span className="text-stitch-muted">Почта</span>
+                  <span className="truncate">{email || 'не указана'}</span>
+                </li>
+                <li className="flex justify-between gap-3">
+                  <span className="text-stitch-muted">Telegram</span>
+                  <span>{hasTelegram ? 'привязан' : 'не привязан'}</span>
+                </li>
+              </ul>
+              {linked ? (
+                <p className="text-sm text-stitch-accent">Можно пользоваться правами на обмен.</p>
+              ) : !hasTelegram ? (
+                <>
+                  <p className="text-sm text-stitch-muted">
+                    Остался Telegram — без него площадка не увидит добрые дела из чата.
+                  </p>
+                  <Button
+                    type="button"
+                    disabled={startTg.isPending || me.isError}
+                    onClick={() => {
+                      setBotMissing(false);
+                      startTg.mutate();
+                    }}
+                  >
+                    {startTg.isPending ? 'Готовим ссылку…' : 'Привязать Telegram'}
+                  </Button>
+                  {botMissing ? (
+                    <p className="text-sm text-amber-200">
+                      Ссылка на бота не настроена. Напишите администратору.
+                    </p>
+                  ) : null}
+                  {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                </>
+              ) : (
+                <p className="text-sm text-stitch-muted">
+                  Почта ещё не в связке. В боте сообщества отправьте /email и код из письма.
                 </p>
-              ) : null}
-              {error ? <p className="text-sm text-red-400">{error}</p> : null}
+              )}
             </>
-          ) : (
-            <p className="text-sm text-stitch-muted">
-              Почта ещё не в связке. В боте сообщества отправьте /email и код из письма.
-            </p>
           )}
         </Card>
       </div>

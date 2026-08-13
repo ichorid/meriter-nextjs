@@ -8,7 +8,7 @@ import { Button } from '@/components/ui';
 import { config } from '@/config';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { cn, dealNeedsAction, uzzErrorMessage } from '@/lib/utils';
+import { cn, dealNeedsAction, rememberReturnTo, uzzErrorMessage } from '@/lib/utils';
 
 const NAV = [
   { href: '/catalog', label: 'Обмен' },
@@ -37,6 +37,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (sessionLoading) return;
     if (SESSION_PATHS.has(pathname) && sessionError) {
+      rememberReturnTo(pathname);
       router.replace('/login');
     }
   }, [pathname, sessionError, sessionLoading, router]);
@@ -221,6 +222,13 @@ function IdentityLinkGate({
             Telegram уже есть. В боте сообщества отправьте /email и код из письма — тогда откроются
             сделки и кошелёк.
           </p>
+          <button
+            type="button"
+            className="text-stitch-muted hover:text-stitch-text"
+            onClick={() => logout.mutate()}
+          >
+            Выйти
+          </button>
           <Link href="/catalog" className="block text-sm text-stitch-accent hover:underline">
             Пока посмотреть обмен
           </Link>

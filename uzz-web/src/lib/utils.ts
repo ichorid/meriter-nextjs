@@ -65,15 +65,59 @@ export function ledgerTypeLabel(type: string): string {
 export function bankHeadline(bank: {
   status: string;
   nominalRub: number | null;
-  hopsLeft: number;
+  hopsLeft?: number;
   createdAt?: Date | string;
 }): string {
-  const exchanges = Math.max(0, bank.hopsLeft);
   const since = bank.createdAt ? ` · с ${formatWhen(bank.createdAt)}` : '';
   if (bank.nominalRub == null) {
-    return `Право на обмен · номинал ещё не назначен · ещё ${exchanges} обменов${since}`;
+    return `Право на обмен · номинал ещё не назначен${since}`;
   }
-  return `Право на обмен · сегодня до ${bank.nominalRub} ₽ · ещё ${exchanges} обменов${since}`;
+  return `Право на обмен · сегодня до ${bank.nominalRub} ₽${since}`;
+}
+
+export function bankHopsLabel(hopsLeft: number): string {
+  return `осталось обменов: ${Math.max(0, hopsLeft)}`;
+}
+
+export function meritsLabel(n: number): string {
+  const abs = Math.abs(Math.round(n));
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (mod10 === 1 && mod100 !== 11) return `${n} заслуга`;
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} заслуги`;
+  return `${n} заслуг`;
+}
+
+export function linkGap(
+  status?: { linked?: boolean; telegramUserId?: string; email?: string } | null,
+): 'telegram' | 'email' | null {
+  if (!status || status.linked) return null;
+  return status.telegramUserId ? 'email' : 'telegram';
+}
+
+const RETURN_TO_KEY = 'uzz-return-to';
+
+export function isSafeAppPath(path: string): boolean {
+  return (
+    path.startsWith('/') &&
+    !path.startsWith('//') &&
+    !path.startsWith('/login') &&
+    !path.startsWith('/a')
+  );
+}
+
+export function rememberReturnTo(path: string): void {
+  if (typeof window === 'undefined') return;
+  if (!isSafeAppPath(path)) return;
+  sessionStorage.setItem(RETURN_TO_KEY, path);
+}
+
+export function consumeReturnTo(): string {
+  if (typeof window === 'undefined') return '/catalog';
+  const stored = sessionStorage.getItem(RETURN_TO_KEY);
+  sessionStorage.removeItem(RETURN_TO_KEY);
+  if (stored && isSafeAppPath(stored)) return stored;
+  return '/catalog';
 }
 
 export function tomorrowNominal(
@@ -89,7 +133,7 @@ export function formatDeadline(expiresAt: Date | string | null | undefined): str
   if (!expiresAt) return null;
   const at = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
   const ms = at.getTime() - Date.now();
-  if (ms <= 0) return 'Срок истекает';
+  if (ms <= 0) return 'Срок истёк';
   const hours = Math.floor(ms / (60 * 60 * 1000));
   if (hours < 1) return 'Осталось меньше часа';
   if (hours < 48) return `Осталось ${hours} ч`;

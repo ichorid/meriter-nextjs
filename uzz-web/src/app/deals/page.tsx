@@ -213,7 +213,7 @@ export default function DealsPage() {
                     {expired ? (
                       <p className="mt-2 text-sm text-amber-200">
                         {deal.status === 'requested'
-                          ? 'Срок истёк — заявка снимется автоматически.'
+                          ? 'Срок истёк. Можете отменить заявку — иначе она снимется в течение часа.'
                           : 'Срок исполнения вышел. Если услуга оказана — закройте сделку, иначе заявка отменится.'}
                       </p>
                     ) : null}
@@ -247,7 +247,7 @@ export default function DealsPage() {
                         <Button
                           type="button"
                           variant="danger"
-                          disabled={pending || requestExpired}
+                          disabled={pending}
                           onClick={() =>
                             confirm?.id === deal.id && confirm.kind === 'cancel'
                               ? cancel.mutate({ dealId: deal.id })

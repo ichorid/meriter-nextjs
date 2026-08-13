@@ -559,48 +559,49 @@ export class UzzService {
     }
 
     const now = new Date();
-    deal.status = 'accepted';
-    deal.acceptedAt = now;
-    try {
-      await deal.save();
-    } catch (error) {
+    const claimed = await this.dealModel.findOneAndUpdate(
+      { id: deal.id, status: 'requested' },
+      { $set: { status: 'accepted', acceptedAt: now } },
+      { new: true },
+    );
+    if (!claimed) {
       if (settings.bankTransferMode !== 'on_close_only') {
         await this.bankModel.updateOne(
           { id: bank.id, status: 'in_deal' },
           { $set: { status: 'active' } },
         );
       }
-      throw error;
+      throw new BadRequestException('Заявка уже не ждёт ответа');
     }
 
     if (settings.bankTransferMode === 'on_accept_locked') {
-      const lockedBank = await this.requireBank(deal.bankId);
+      const lockedBank = await this.requireBank(claimed.bankId);
       await this.transferBankOwnership(
         lockedBank,
-        deal.sellerId,
+        claimed.sellerId,
         'accept_locked',
-        deal.id,
+        claimed.id,
       );
       lockedBank.status = 'in_deal';
       await lockedBank.save();
     }
 
     await this.appendLedger(
-      deal.communityId,
+      claimed.communityId,
       'deal_accepted',
       { mode: settings.bankTransferMode },
       sellerId,
       bank.id,
-      deal.id,
+      claimed.id,
     );
     await this.notifyUser(
-      deal.buyerId,
-      deal.communityId,
+      claimed.buyerId,
+      claimed.communityId,
       'dealAccepted',
       'Исполнитель принял вашу заявку. Дождитесь отметки «сделано».',
       '/deals',
     );
-    return deal;
+    return claimed;
   }
 
   async rejectDeal(dealId: string, sellerId: string): Promise<UzzDealDocument> {
@@ -608,29 +609,31 @@ export class UzzService {
     if (!(await this.isSameLinkedActor(deal.sellerId, sellerId))) {
       throw new ForbiddenException('Отклонить заявку может только исполнитель');
     }
-    if (deal.status !== 'requested') {
+    const claimed = await this.dealModel.findOneAndUpdate(
+      { id: deal.id, status: 'requested' },
+      { $set: { status: 'rejected', rejectedAt: new Date() } },
+      { new: true },
+    );
+    if (!claimed) {
       throw new BadRequestException('Заявка уже не ждёт ответа');
     }
-    deal.status = 'rejected';
-    deal.rejectedAt = new Date();
-    await deal.save();
-    await this.refundDealFeeIfReserved(deal);
+    await this.refundDealFeeIfReserved(claimed);
     await this.appendLedger(
-      deal.communityId,
+      claimed.communityId,
       'deal_rejected',
       {},
       sellerId,
-      deal.bankId,
-      deal.id,
+      claimed.bankId,
+      claimed.id,
     );
     await this.notifyUser(
-      deal.buyerId,
-      deal.communityId,
+      claimed.buyerId,
+      claimed.communityId,
       'dealRequested',
       'Исполнитель отклонил заявку. Комиссия возвращена, право на обмен снова у вас.',
       '/deals',
     );
-    return deal;
+    return claimed;
   }
 
   async completeDeal(dealId: string, sellerId: string): Promise<UzzDealDocument> {
@@ -638,28 +641,30 @@ export class UzzService {
     if (!(await this.isSameLinkedActor(deal.sellerId, sellerId))) {
       throw new ForbiddenException('Отметить «сделано» может только исполнитель');
     }
-    if (deal.status !== 'accepted') {
+    const claimed = await this.dealModel.findOneAndUpdate(
+      { id: deal.id, status: 'accepted' },
+      { $set: { status: 'completed_by_seller', completedBySellerAt: new Date() } },
+      { new: true },
+    );
+    if (!claimed) {
       throw new BadRequestException('Сначала примите заявку');
     }
-    deal.status = 'completed_by_seller';
-    deal.completedBySellerAt = new Date();
-    await deal.save();
     await this.appendLedger(
-      deal.communityId,
+      claimed.communityId,
       'deal_completed_by_seller',
       {},
       sellerId,
-      deal.bankId,
-      deal.id,
+      claimed.bankId,
+      claimed.id,
     );
     await this.notifyUser(
-      deal.buyerId,
-      deal.communityId,
+      claimed.buyerId,
+      claimed.communityId,
       'dealAccepted',
       'Исполнитель отметил услугу как сделанную. Подтвердите закрытие на площадке.',
       '/deals',
     );
-    return deal;
+    return claimed;
   }
 
   async closeDeal(
@@ -736,7 +741,7 @@ export class UzzService {
         ];
       }
       bank.hopsLeft = Math.max(0, bank.hopsLeft - 1);
-      bank.status = this.statusAfterBankReleased(bank, settings);
+      bank.status = this.statusAfterBankReleased(bank);
       await bank.save();
     } catch (error) {
       await this.dealModel.updateOne(
@@ -819,53 +824,70 @@ export class UzzService {
       }
     }
 
-    const bank = await this.requireBank(deal.bankId);
-    deal.status = 'cancelled';
-    deal.cancelledAt = new Date();
-    await deal.save();
-    await this.refundDealFeeIfReserved(deal);
+    const allowedStatuses = opts?.asAdmin
+      ? { $in: ['requested', 'accepted', 'completed_by_seller'] }
+      : 'requested';
+    const claimed = await this.dealModel.findOneAndUpdate(
+      { id: deal.id, status: allowedStatuses },
+      { $set: { status: 'cancelled', cancelledAt: new Date() } },
+      { new: true },
+    );
+    if (!claimed) {
+      throw new BadRequestException('Сделка уже завершена');
+    }
+
+    const bank = await this.requireBank(claimed.bankId);
+    await this.refundDealFeeIfReserved(claimed);
 
     if (bank.status === 'in_deal') {
-      const settings = await this.getOrCreateSettings(deal.communityId);
+      const settings = await this.getOrCreateSettings(claimed.communityId);
       const otherOpen = await this.dealModel
         .findOne({
           bankId: bank.id,
-          id: { $ne: deal.id },
+          id: { $ne: claimed.id },
           status: { $in: OPEN_DEAL_STATUSES },
         })
         .exec();
       if (!otherOpen) {
-        if (settings.bankTransferMode === 'on_accept_locked' && bank.ownerId === deal.sellerId) {
-          await this.transferBankOwnership(bank, deal.buyerId, 'deal_cancel_return', deal.id);
+        if (
+          settings.bankTransferMode === 'on_accept_locked' &&
+          bank.ownerId === claimed.sellerId
+        ) {
+          await this.transferBankOwnership(
+            bank,
+            claimed.buyerId,
+            'deal_cancel_return',
+            claimed.id,
+          );
         }
-        bank.status = this.statusAfterBankReleased(bank, settings);
+        bank.status = this.statusAfterBankReleased(bank);
         await bank.save();
       }
     }
 
     await this.appendLedger(
-      deal.communityId,
+      claimed.communityId,
       'deal_cancelled',
       {},
       actorUserId,
       bank.id,
-      deal.id,
+      claimed.id,
     );
     await this.notifyUser(
-      deal.buyerId,
-      deal.communityId,
+      claimed.buyerId,
+      claimed.communityId,
       'dealRequested',
       'Сделка отменена. Комиссия возвращена, право на обмен снова свободно.',
       '/deals',
     );
     await this.notifyUser(
-      deal.sellerId,
-      deal.communityId,
+      claimed.sellerId,
+      claimed.communityId,
       'dealRequested',
       'Сделка отменена.',
       '/deals',
     );
-    return deal;
+    return claimed;
   }
 
   async applyDemurrage(): Promise<{ updated: number }> {
@@ -896,31 +918,14 @@ export class UzzService {
         bank.nominalRub - settings.demurrageRubPerDay * days,
       );
       if (next === bank.nominalRub) {
-        if (next <= settings.nominalFloorRub && bank.status === 'active') {
-          bank.status = 'exhausted';
-          bank.lastDemurrageAt = now;
-          await bank.save();
-          await this.appendLedger(
-            bank.communityId,
-            'bank_exhausted',
-            { reason: 'nominal_floor', nominalRub: next },
-            bank.ownerId,
-            bank.id,
-          );
-          updated += 1;
-        } else {
-          bank.lastDemurrageAt = now;
-          await bank.save();
-        }
+        bank.lastDemurrageAt = now;
+        await bank.save();
         continue;
       }
 
       const prev = bank.nominalRub;
       bank.nominalRub = next;
       bank.lastDemurrageAt = now;
-      if (next <= settings.nominalFloorRub && bank.status === 'active') {
-        bank.status = 'exhausted';
-      }
       await bank.save();
       await this.appendLedger(
         bank.communityId,
@@ -943,7 +948,7 @@ export class UzzService {
   async expireStaleDeals(): Promise<{ expired: number }> {
     const now = Date.now();
     const open = await this.dealModel
-      .find({ status: { $in: ['requested', 'accepted', 'completed_by_seller'] } })
+      .find({ status: { $in: ['requested', 'accepted'] } })
       .exec();
     let expired = 0;
     for (const deal of open) {
@@ -1659,8 +1664,6 @@ export class UzzService {
     if (user.authProvider === 'email' && user.authId?.includes('@')) {
       return user.authId.trim().toLowerCase();
     }
-    const fromProfile = user.profile?.contacts?.email?.trim().toLowerCase();
-    if (fromProfile?.includes('@')) return fromProfile;
     return undefined;
   }
 
@@ -1769,14 +1772,8 @@ export class UzzService {
     );
   }
 
-  private statusAfterBankReleased(
-    bank: UzzBankDocument,
-    settings: { nominalFloorRub: number },
-  ): UzzBankStatus {
+  private statusAfterBankReleased(bank: UzzBankDocument): UzzBankStatus {
     if (bank.hopsLeft === 0) return 'exhausted';
-    if (bank.nominalRub != null && bank.nominalRub <= settings.nominalFloorRub) {
-      return 'exhausted';
-    }
     return 'active';
   }
 

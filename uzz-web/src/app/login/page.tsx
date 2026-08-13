@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { config } from '@/config';
 import { trpc } from '@/lib/trpc/client';
-import { uzzErrorMessage } from '@/lib/utils';
+import { consumeReturnTo, rememberReturnTo, uzzErrorMessage } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -15,7 +15,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (me.data) router.replace('/catalog');
+    const next = new URLSearchParams(window.location.search).get('next');
+    if (next) rememberReturnTo(next);
+  }, []);
+
+  useEffect(() => {
+    if (me.data) router.replace(consumeReturnTo());
   }, [me.data, router]);
 
   const sendLink = trpc.auth.sendEmailLoginLink.useMutation({
@@ -31,7 +36,7 @@ export default function LoginPage() {
 
   const fakeAuth = trpc.auth.authenticateFake.useMutation({
     onSuccess: () => {
-      router.replace('/catalog');
+      router.replace(consumeReturnTo());
     },
     onError: (err) => {
       setError(uzzErrorMessage(err));
@@ -59,13 +64,17 @@ export default function LoginPage() {
             <p>
               Ссылка отправлена на <span className="font-medium text-stitch-accent">{email}</span>.
             </p>
-            <p className="text-stitch-muted">Проверьте почту и перейдите по ссылке.</p>
+            <p className="text-stitch-muted">
+              Проверьте почту и перейдите по ссылке. Если письма нет — загляните в спам и
+              «Промоакции».
+            </p>
             <button
               type="button"
               className="text-stitch-accent underline"
-              onClick={() => setSent(false)}
+              disabled={sendLink.isPending}
+              onClick={() => sendLink.mutate({ email: email.trim() })}
             >
-              Отправить ещё раз
+              {sendLink.isPending ? 'Отправка…' : 'Отправить ещё раз'}
             </button>
           </div>
         ) : (

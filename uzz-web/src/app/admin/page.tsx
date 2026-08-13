@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { bankHeadline, dealStatusLabel, formatWhen, ledgerTypeLabel, uzzErrorMessage } from '@/lib/utils';
+import { bankHeadline, bankHopsLabel, dealStatusLabel, formatWhen, ledgerTypeLabel, uzzErrorMessage } from '@/lib/utils';
 
 export default function AdminPage() {
   const { communityId, isUzzAdmin, loggedIn } = useUzzCommunityId();
@@ -148,6 +148,7 @@ export default function AdminPage() {
                 <div className="min-w-[8rem] flex-1 text-sm">
                   <p className="font-medium">{bank.ownerName}</p>
                   <p className="text-stitch-muted">{bankHeadline(bank)}</p>
+                  <p className="text-xs text-stitch-muted">{bankHopsLabel(bank.hopsLeft)}</p>
                 </div>
                 <input
                   type="number"
@@ -283,14 +284,16 @@ export default function AdminPage() {
                       </>
                     ) : (
                       <>
-                        <button
-                          type="button"
-                          disabled={adminClose.isPending || adminCancel.isPending}
-                          onClick={() => setAdminConfirm({ id: deal.id, kind: 'close' })}
-                          className="rounded-lg bg-stitch-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-                        >
-                          Закрыть
-                        </button>
+                        {deal.status === 'accepted' || deal.status === 'completed_by_seller' ? (
+                          <button
+                            type="button"
+                            disabled={adminClose.isPending || adminCancel.isPending}
+                            onClick={() => setAdminConfirm({ id: deal.id, kind: 'close' })}
+                            className="rounded-lg bg-stitch-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                          >
+                            Закрыть
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           disabled={adminClose.isPending || adminCancel.isPending}
@@ -423,7 +426,7 @@ export default function AdminPage() {
           </fieldset>
           <button
             type="submit"
-            disabled={updateSettings.isPending || !enabled}
+            disabled={updateSettings.isPending || !enabled || !settings.data || settings.isError}
             className="rounded-lg bg-stitch-accent px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
           >
             {updateSettings.isPending ? 'Сохранение…' : 'Сохранить'}

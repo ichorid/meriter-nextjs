@@ -325,7 +325,7 @@ describe('UzzService (integration)', () => {
     expect(after!.status).toBe('active');
   });
 
-  it('exhausts an active bank when demurrage hits the floor', async () => {
+  it('keeps an active bank at the nominal floor while hops remain', async () => {
     const bank = await bankModel.create({
       id: uid(),
       communityId,
@@ -341,7 +341,7 @@ describe('UzzService (integration)', () => {
     await uzzService.applyDemurrage();
     const after = await bankModel.findOne({ id: bank.id }).exec();
     expect(after!.nominalRub).toBe(100);
-    expect(after!.status).toBe('exhausted');
+    expect(after!.status).toBe('active');
   });
 
   it('rejects a second open deal on the same bank', async () => {
@@ -506,5 +506,46 @@ describe('UzzService (integration)', () => {
     });
     const updated = await uzzService.updateLot(lot.id, siteId, { title: 'Edited from email' });
     expect(updated.title).toBe('Edited from email');
+  });
+
+  it('does not expire a deal after the seller marked it done', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Deed for done TTL',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    await uzzService.setBankNominal(bank!.id, 500, authorId);
+    const lot = await uzzService.createLot({
+      communityId,
+      authorId: sellerId,
+      title: 'Done TTL',
+      description: '',
+      priceRub: 100,
+    });
+    const deal = await uzzService.requestDeal({
+      communityId,
+      buyerId: authorId,
+      lotId: lot.id,
+      bankId: bank!.id,
+    });
+    await uzzService.acceptDeal(deal.id, sellerId);
+    await uzzService.completeDeal(deal.id, sellerId);
+    await dealModel.updateOne(
+      { id: deal.id },
+      { $set: { acceptedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) } },
+    );
+
+    await uzzService.expireStaleDeals();
+    const still = await dealModel.findOne({ id: deal.id }).exec();
+    expect(still!.status).toBe('completed_by_seller');
   });
 });
