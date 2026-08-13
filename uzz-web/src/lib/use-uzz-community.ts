@@ -6,6 +6,7 @@ import { trpc } from '@/lib/trpc/client';
 export function useUzzCommunityId(): {
   communityId: string;
   communityName: string | null;
+  userId: string | null;
   isUzzAdmin: boolean;
   loggedIn: boolean;
   sessionLoading: boolean;
@@ -16,6 +17,7 @@ export function useUzzCommunityId(): {
   return {
     communityId,
     communityName: me.data?.communityName ?? null,
+    userId: me.data?.id ?? null,
     isUzzAdmin: Boolean(me.data?.isUzzAdmin),
     loggedIn: Boolean(me.data),
     sessionLoading: me.isLoading,

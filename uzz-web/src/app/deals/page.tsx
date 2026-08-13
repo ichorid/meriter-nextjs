@@ -6,7 +6,7 @@ import { AppShell } from '@/components/app-shell';
 import { Button, Card, EmptyState, Notice, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { dealNeedsAction, dealStatusLabel, formatDeadline } from '@/lib/utils';
+import { dealNeedsAction, dealStatusLabel, formatDeadline, isDeadlinePassed, uzzErrorMessage } from '@/lib/utils';
 
 export default function DealsPage() {
   const { communityId, loggedIn } = useUzzCommunityId();
@@ -76,7 +76,7 @@ export default function DealsPage() {
       setThanksError(null);
       setFlash('Благодарность отправлена.');
     },
-    onError: (err) => setThanksError(err.message || 'Не отправилось'),
+    onError: (err) => setThanksError(uzzErrorMessage(err)),
   });
 
   const [thanksDealId, setThanksDealId] = useState<string | null>(null);
@@ -127,7 +127,8 @@ export default function DealsPage() {
           <h1 className="text-2xl font-extrabold tracking-tight">Сделки</h1>
           <p className="text-sm text-stitch-muted">
             Сначала ответ исполнителя, потом «сделано», потом закрытие. 1 заслуга держится до
-            финала и возвращается при отказе.
+            финала и возвращается при отказе. После закрытия можно сказать спасибо — это не
+            обязательно.
           </p>
         </header>
 
@@ -141,7 +142,7 @@ export default function DealsPage() {
         </label>
 
         {flash ? <Notice tone="ok">{flash}</Notice> : null}
-        {actionError ? <Notice tone="warn">{actionError.message}</Notice> : null}
+        {actionError ? <Notice tone="warn">{uzzErrorMessage(actionError)}</Notice> : null}
 
         {deals.isLoading ? (
           <div className="space-y-3" aria-busy>
@@ -172,6 +173,8 @@ export default function DealsPage() {
                   ? Boolean(deal.buyerThankedAt)
                   : Boolean(deal.sellerThankedAt);
               const deadline = formatDeadline(deal.expiresAt);
+              const expired = isDeadlinePassed(deal.expiresAt);
+              const priceRub = deal.lotPriceRub ?? deal.dealAmountRub;
               return (
                 <li key={deal.id}>
                   <Card className={dealNeedsAction(deal) ? 'ring-1 ring-stitch-accent/70' : undefined}>
@@ -188,15 +191,20 @@ export default function DealsPage() {
                     <p className="mt-2 text-sm">{dealStatusLabel(deal.status, deal.myRole)}</p>
                     <p className="mt-1 text-sm text-stitch-muted">
                       {deal.counterpartyName ? `с ${deal.counterpartyName}` : ''}
-                      {deal.dealAmountRub != null ? ` · ${deal.dealAmountRub} ₽` : ''}
+                      {priceRub != null ? ` · ${priceRub} ₽` : ''}
                       {deadline ? ` · ${deadline}` : ''}
                     </p>
+                    {expired ? (
+                      <p className="mt-2 text-sm text-amber-200">
+                        Срок истёк — заявка снимется автоматически.
+                      </p>
+                    ) : null}
                     <div className="mt-4 flex flex-wrap gap-2">
                       {deal.status === 'requested' && deal.myRole === 'seller' ? (
                         <>
                           <Button
                             type="button"
-                            disabled={pending}
+                            disabled={pending || expired}
                             onClick={() => accept.mutate({ dealId: deal.id })}
                           >
                             Принять
@@ -204,7 +212,7 @@ export default function DealsPage() {
                           <Button
                             type="button"
                             variant="danger"
-                            disabled={pending}
+                            disabled={pending || expired}
                             onClick={() =>
                               confirm?.id === deal.id && confirm.kind === 'reject'
                                 ? reject.mutate({ dealId: deal.id })
@@ -221,7 +229,7 @@ export default function DealsPage() {
                         <Button
                           type="button"
                           variant="danger"
-                          disabled={pending}
+                          disabled={pending || expired}
                           onClick={() =>
                             confirm?.id === deal.id && confirm.kind === 'cancel'
                               ? cancel.mutate({ dealId: deal.id })
@@ -236,7 +244,7 @@ export default function DealsPage() {
                       {deal.status === 'accepted' && deal.myRole === 'seller' ? (
                         <Button
                           type="button"
-                          disabled={pending}
+                          disabled={pending || expired}
                           onClick={() => complete.mutate({ dealId: deal.id })}
                         >
                           Сделано
@@ -257,7 +265,7 @@ export default function DealsPage() {
                             <div className="flex flex-wrap gap-2">
                               <Button
                                 type="button"
-                                disabled={pending}
+                                disabled={pending || expired}
                                 onClick={() => close.mutate({ dealId: deal.id })}
                               >
                                 Да, закрыть
@@ -274,7 +282,7 @@ export default function DealsPage() {
                         ) : (
                           <Button
                             type="button"
-                            disabled={pending}
+                            disabled={pending || expired}
                             onClick={() => setConfirm({ id: deal.id, kind: 'close' })}
                           >
                             Подтвердить закрытие

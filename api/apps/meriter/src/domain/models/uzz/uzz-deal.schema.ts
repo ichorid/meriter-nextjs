@@ -119,3 +119,13 @@ export type UzzDealDocument = UzzDealSchemaClass &
 UzzDealSchema.index({ communityId: 1, status: 1, createdAt: -1 });
 UzzDealSchema.index({ buyerId: 1, communityId: 1 });
 UzzDealSchema.index({ sellerId: 1, communityId: 1 });
+UzzDealSchema.index(
+  { bankId: 1 },
+  {
+    unique: true,
+    name: 'uzz_deals_one_open_per_bank',
+    partialFilterExpression: {
+      status: { $in: ['requested', 'accepted', 'completed_by_seller'] },
+    },
+  },
+);

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { trpc } from '@/lib/trpc/client';
+import { uzzErrorMessage } from '@/lib/utils';
 
 export default function RedeemMagicLinkPage() {
   const params = useParams<{ token: string }>();
@@ -16,7 +17,7 @@ export default function RedeemMagicLinkPage() {
       router.replace('/catalog');
     },
     onError: (err) => {
-      setError(err.message || 'Ссылка недействительна или устарела');
+      setError(uzzErrorMessage(err) || 'Ссылка недействительна или устарела');
     },
   });
 

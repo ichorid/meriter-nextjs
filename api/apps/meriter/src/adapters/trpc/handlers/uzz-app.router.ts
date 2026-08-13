@@ -205,6 +205,7 @@ export const uzzAppRouter = router({
     checkEmission: protectedProcedure
       .input(z.object({ publicationId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
+        await ctx.uzzService.assertCanTriggerEmission(input.publicationId, ctx.user.id);
         return ctx.uzzService.maybeEmitBankForPublication(input.publicationId);
       }),
   }),
@@ -323,22 +324,23 @@ export const uzzAppRouter = router({
         }),
       )
       .query(async ({ ctx, input }) => {
-        return ctx.uzzService.listDeals(
-          input.communityId,
-          input.mineOnly === false ? undefined : ctx.user.id,
-        );
+        return ctx.uzzService.listDeals(input.communityId, ctx.user.id);
+      }),
+    adminList: protectedProcedure
+      .input(z.object({ communityId: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
+        return ctx.uzzService.listOpenDeals(input.communityId);
       }),
     adminClose: protectedProcedure
-      .input(z.object({ dealId: z.string().min(1), communityId: z.string().min(1) }))
+      .input(z.object({ dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
-        return ctx.uzzService.closeDeal(input.dealId, ctx.user.id, { asAdmin: true });
+        return ctx.uzzService.adminCloseDeal(input.dealId, ctx.user.id);
       }),
     adminCancel: protectedProcedure
-      .input(z.object({ dealId: z.string().min(1), communityId: z.string().min(1) }))
+      .input(z.object({ dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
-        return ctx.uzzService.cancelDeal(input.dealId, ctx.user.id, { asAdmin: true });
+        return ctx.uzzService.adminCancelDeal(input.dealId, ctx.user.id);
       }),
   }),
 
@@ -356,11 +358,6 @@ export const uzzAppRouter = router({
           : undefined,
       };
     }),
-    startEmailLinkFromBot: protectedProcedure
-      .input(z.object({ email: z.string().email() }))
-      .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.startEmailLinkFromBot(ctx.user.id, input.email);
-      }),
     confirmEmailLink: protectedProcedure
       .input(z.object({ code: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {

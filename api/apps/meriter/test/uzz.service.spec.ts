@@ -343,4 +343,104 @@ describe('UzzService (integration)', () => {
     expect(after!.nominalRub).toBe(100);
     expect(after!.status).toBe('exhausted');
   });
+
+  it('rejects a second open deal on the same bank', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Deed for unique deal',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    await uzzService.setBankNominal(bank!.id, 900, authorId);
+    const lotA = await uzzService.createLot({
+      communityId,
+      authorId: sellerId,
+      title: 'Lot A',
+      description: '',
+      priceRub: 100,
+    });
+    const lotB = await uzzService.createLot({
+      communityId,
+      authorId: sellerId,
+      title: 'Lot B',
+      description: '',
+      priceRub: 100,
+    });
+    const results = await Promise.allSettled([
+      uzzService.requestDeal({
+        communityId,
+        buyerId: authorId,
+        lotId: lotA.id,
+        bankId: bank!.id,
+      }),
+      uzzService.requestDeal({
+        communityId,
+        buyerId: authorId,
+        lotId: lotB.id,
+        bankId: bank!.id,
+      }),
+    ]);
+    const fulfilled = results.filter((row) => row.status === 'fulfilled');
+    expect(fulfilled.length).toBe(1);
+  });
+
+  it('does not let the buyer cancel after the seller accepted', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Deed for cancel lock',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    await uzzService.setBankNominal(bank!.id, 600, authorId);
+    const lot = await uzzService.createLot({
+      communityId,
+      authorId: sellerId,
+      title: 'Cancel lock',
+      description: '',
+      priceRub: 100,
+    });
+    const deal = await uzzService.requestDeal({
+      communityId,
+      buyerId: authorId,
+      lotId: lot.id,
+      bankId: bank!.id,
+    });
+    await uzzService.acceptDeal(deal.id, sellerId);
+    await expect(uzzService.cancelDeal(deal.id, authorId)).rejects.toThrow(
+      /администратор/,
+    );
+  });
+
+  it('catches up missed demurrage days', async () => {
+    const bank = await bankModel.create({
+      id: uid(),
+      communityId,
+      ownerId: authorId,
+      sourcePublicationId: uid(),
+      hopsLeft: 8,
+      nominalRub: 400,
+      status: 'active',
+      ownerHistory: [],
+      lastDemurrageAt: new Date(Date.now() - 50 * 60 * 60 * 1000),
+    });
+    await uzzService.applyDemurrage();
+    const after = await bankModel.findOne({ id: bank.id }).exec();
+    expect(after!.nominalRub).toBe(200);
+  });
 });

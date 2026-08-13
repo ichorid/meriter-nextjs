@@ -8,7 +8,7 @@ import { Button } from '@/components/ui';
 import { config } from '@/config';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { cn, dealNeedsAction } from '@/lib/utils';
+import { cn, dealNeedsAction, uzzErrorMessage } from '@/lib/utils';
 
 const NAV = [
   { href: '/catalog', label: 'Обмен' },
@@ -18,7 +18,7 @@ const NAV = [
 ] as const;
 
 const SESSION_PATHS = new Set(['/deals', '/wallet', '/lots', '/deeds', '/admin', '/profile']);
-const LINK_GATE_PATHS = new Set(['/', '/deals', '/wallet', '/lots', '/deeds', '/admin']);
+const LINK_GATE_PATHS = new Set(['/deals', '/wallet', '/admin']);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -44,9 +44,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const hardGate =
     loggedIn &&
     !config.development.fakeDataMode &&
-    linkStatus.data?.linked === false &&
-    LINK_GATE_PATHS.has(pathname);
+    LINK_GATE_PATHS.has(pathname) &&
+    !linkStatus.isLoading &&
+    (linkStatus.isError || linkStatus.data?.linked !== true);
 
+  const sessionGate =
+    (SESSION_PATHS.has(pathname) && (sessionLoading || Boolean(sessionError))) ||
+    (loggedIn &&
+      !config.development.fakeDataMode &&
+      LINK_GATE_PATHS.has(pathname) &&
+      linkStatus.isLoading);
   const actionCount = deals.data?.filter(dealNeedsAction).length ?? 0;
 
   return (
@@ -82,6 +89,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
       {hardGate ? (
         <TelegramLinkGate />
+      ) : sessionGate ? (
+        <main className="mx-auto max-w-5xl px-4 py-6 pb-24 md:pb-6">
+          <div className="space-y-3" aria-busy>
+            <div className="h-10 w-40 animate-pulse rounded-xl bg-stitch-surface" />
+            <div className="h-28 w-full animate-pulse rounded-xl bg-stitch-surface" />
+          </div>
+        </main>
       ) : (
         <main className="mx-auto max-w-5xl px-4 py-6 pb-24 md:pb-6">{children}</main>
       )}
@@ -157,7 +171,7 @@ function TelegramLinkGate() {
     onSuccess: (data) => {
       if (data.deepLink) window.location.href = data.deepLink;
     },
-    onError: (err) => setError(err.message || 'Не удалось начать привязку'),
+    onError: (err) => setError(uzzErrorMessage(err)),
   });
 
   return (

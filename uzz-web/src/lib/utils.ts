@@ -106,6 +106,26 @@ export function formatWhen(value: Date | string | undefined): string {
   });
 }
 
+export function isDeadlinePassed(expiresAt: Date | string | null | undefined): boolean {
+  if (!expiresAt) return false;
+  const at = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
+  return at.getTime() <= Date.now();
+}
+
+export function uzzErrorMessage(err: { message?: string } | null | undefined): string {
+  const message = err?.message?.trim() || '';
+  if (!message) return 'Не получилось. Попробуйте ещё раз.';
+  if (/[А-Яа-яЁё]/.test(message)) return message;
+  const mapped: Record<string, string> = {
+    'You must be logged in to access this resource': 'Нужно войти',
+    'Invalid or expired login link': 'Ссылка недействительна или устарела',
+    'Email authentication is not enabled': 'Вход по почте сейчас выключен',
+    UNAUTHORIZED: 'Нужно войти',
+    FORBIDDEN: 'Недостаточно прав',
+  };
+  return mapped[message] ?? 'Не получилось. Попробуйте ещё раз.';
+}
+
 export function dealNeedsAction(deal: {
   status: string;
   myRole: 'buyer' | 'seller' | 'other';
@@ -116,9 +136,7 @@ export function dealNeedsAction(deal: {
   if (deal.status === 'accepted' && deal.myRole === 'seller') return true;
   if (deal.status === 'completed_by_seller' && deal.myRole === 'buyer') return true;
   if (deal.status === 'closed') {
-    const thanked =
-      deal.myRole === 'buyer' ? Boolean(deal.buyerThankedAt) : Boolean(deal.sellerThankedAt);
-    return !thanked && deal.myRole !== 'other';
+    return false;
   }
   return false;
 }

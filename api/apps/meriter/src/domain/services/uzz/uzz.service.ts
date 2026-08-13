@@ -39,6 +39,7 @@ import {
 import { WalletService } from '../wallet.service';
 import { UserService } from '../user.service';
 import { CommunityService } from '../community.service';
+import { MeritResolverService } from '../merit-resolver.service';
 import { EventBus } from '../../events/event-bus';
 import { UzzNotifyEvent } from '../../events/uzz.events';
 import { ConfigService } from '@nestjs/config';
@@ -59,11 +60,26 @@ export type UzzSettingsPatch = Partial<{
 
 const LINK_CODE_TTL_MS = 30 * 60 * 1000;
 const DEAL_FEE_MERITS = 1;
+const OPEN_DEAL_STATUSES: UzzDealStatus[] = [
+  'requested',
+  'accepted',
+  'completed_by_seller',
+];
+const DAY_MS = 24 * 60 * 60 * 1000;
 const DEFAULT_CURRENCY = {
   singular: 'заслуга',
   plural: 'заслуги',
   genitive: 'заслуг',
 } as const;
+
+function isMongoDuplicateKey(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as { code: number }).code === 11000,
+  );
+}
 
 export type UzzBankView = {
   id: string;
@@ -109,6 +125,7 @@ export type UzzDealView = {
   buyerThankedAt?: Date;
   sellerThankedAt?: Date;
   lotTitle: string;
+  lotPriceRub: number | null;
   counterpartyName: string;
   myRole: 'buyer' | 'seller' | 'other';
   expiresAt: Date | null;
@@ -135,6 +152,7 @@ export class UzzService {
     private readonly walletService: WalletService,
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
+    private readonly meritResolver: MeritResolverService,
     private readonly eventBus: EventBus,
     private readonly configService: ConfigService<AppConfig>,
   ) {}
@@ -192,6 +210,12 @@ export class UzzService {
   async maybeEmitBankForPublication(publicationId: string): Promise<UzzBankDocument | null> {
     const publication = await this.publicationModel.findOne({ id: publicationId }).exec();
     if (!publication || publication.deleted) return null;
+
+    const uzzCommunity =
+      this.configService.get('app')?.defaultTelegramCommunityId?.trim() || '';
+    if (uzzCommunity && publication.communityId !== uzzCommunity) {
+      return null;
+    }
 
     const existing = await this.bankModel.findOne({ sourcePublicationId: publicationId }).exec();
     if (existing) return existing;
@@ -398,7 +422,18 @@ export class UzzService {
   }): Promise<UzzDealDocument> {
     const gate = await this.canBuy(input.buyerId, input.communityId);
     if (!gate.allowed) {
-      throw new ForbiddenException('Purchase gate blocked: create more lots first');
+      throw new ForbiddenException(
+        'Сначала опубликуйте свои услуги, чтобы запрашивать чужие',
+      );
+    }
+
+    if (
+      !this.configService.get('dev')?.fakeDataMode &&
+      !(await this.hasFullIdentityLink(input.buyerId))
+    ) {
+      throw new ForbiddenException(
+        'Сначала привяжите Telegram и почту в профиле',
+      );
     }
 
     const lot = await this.lotModel.findOne({ id: input.lotId }).exec();
@@ -406,44 +441,45 @@ export class UzzService {
       throw new NotFoundException('Lot not found');
     }
     if (await this.isSameLinkedActor(lot.authorId, input.buyerId)) {
-      throw new BadRequestException('Cannot buy your own lot');
+      throw new BadRequestException('Нельзя запросить свою услугу');
     }
 
     const bank = await this.requireBank(input.bankId);
     if (bank.communityId !== input.communityId) {
-      throw new BadRequestException('Bank community mismatch');
+      throw new BadRequestException('Право на обмен из другого сообщества');
     }
     if (!(await this.isSameLinkedActor(bank.ownerId, input.buyerId))) {
-      throw new ForbiddenException('Only bank owner can spend the bank');
+      throw new ForbiddenException('Этим правом можете распоряжаться только вы');
     }
     if (bank.status !== 'active') {
-      throw new BadRequestException('Bank is not active');
+      throw new BadRequestException('Право сейчас нельзя обменять');
     }
     if (bank.nominalRub == null || lot.priceRub > bank.nominalRub) {
-      throw new BadRequestException('Lot price exceeds bank nominal');
+      throw new BadRequestException('Цена выше сегодняшнего номинала');
     }
 
     const openDeal = await this.dealModel
       .findOne({
         bankId: bank.id,
-        status: { $in: ['requested', 'accepted', 'completed_by_seller'] },
+        status: { $in: OPEN_DEAL_STATUSES },
       })
       .exec();
     if (openDeal) {
-      throw new BadRequestException('Bank already has an open deal');
+      throw new BadRequestException('Это право уже в сделке');
     }
 
     const walletUserId = await this.pickWalletUserId(input.buyerId, input.communityId);
+    const walletCommunityId = await this.walletScope(input.communityId);
     const reserved = await this.walletService.debitIfSufficient(
       walletUserId,
-      input.communityId,
+      walletCommunityId,
       DEAL_FEE_MERITS,
       'uzz_deal_fee',
       input.bankId,
       'UZZ deal fee reserved',
     );
     if (!reserved) {
-      throw new BadRequestException('Insufficient wallet balance (need 1 заслуга)');
+      throw new BadRequestException('Не хватает 1 заслуги на комиссию');
     }
 
     const now = new Date();
@@ -463,6 +499,9 @@ export class UzzService {
       });
     } catch (error) {
       await this.creditDealFee(walletUserId, input.communityId, input.bankId);
+      if (isMongoDuplicateKey(error)) {
+        throw new BadRequestException('Это право уже в сделке');
+      }
       throw error;
     }
 
@@ -496,30 +535,50 @@ export class UzzService {
   async acceptDeal(dealId: string, sellerId: string): Promise<UzzDealDocument> {
     const deal = await this.requireDeal(dealId);
     if (!(await this.isSameLinkedActor(deal.sellerId, sellerId))) {
-      throw new ForbiddenException('Only seller can accept');
+      throw new ForbiddenException('Принять заявку может только исполнитель');
     }
     if (deal.status !== 'requested') {
-      throw new BadRequestException('Deal is not in requested status');
+      throw new BadRequestException('Заявка уже не ждёт ответа');
     }
 
     const settings = await this.getOrCreateSettings(deal.communityId);
     const bank = await this.requireBank(deal.bankId);
-    if (bank.status !== 'active') {
-      throw new BadRequestException('Bank is not active');
+    if (settings.bankTransferMode !== 'on_close_only') {
+      const locked = await this.bankModel.findOneAndUpdate(
+        { id: bank.id, status: 'active' },
+        { $set: { status: 'in_deal' } },
+        { new: true },
+      );
+      if (!locked) {
+        throw new BadRequestException('Право уже занято другой сделкой');
+      }
     }
 
     const now = new Date();
     deal.status = 'accepted';
     deal.acceptedAt = now;
-    await deal.save();
+    try {
+      await deal.save();
+    } catch (error) {
+      if (settings.bankTransferMode !== 'on_close_only') {
+        await this.bankModel.updateOne(
+          { id: bank.id, status: 'in_deal' },
+          { $set: { status: 'active' } },
+        );
+      }
+      throw error;
+    }
 
-    if (settings.bankTransferMode === 'escrow_until_close') {
-      bank.status = 'in_deal';
-      await bank.save();
-    } else if (settings.bankTransferMode === 'on_accept_locked') {
-      await this.transferBankOwnership(bank, deal.sellerId, 'accept_locked', deal.id);
-      bank.status = 'in_deal';
-      await bank.save();
+    if (settings.bankTransferMode === 'on_accept_locked') {
+      const lockedBank = await this.requireBank(deal.bankId);
+      await this.transferBankOwnership(
+        lockedBank,
+        deal.sellerId,
+        'accept_locked',
+        deal.id,
+      );
+      lockedBank.status = 'in_deal';
+      await lockedBank.save();
     }
 
     await this.appendLedger(
@@ -543,10 +602,10 @@ export class UzzService {
   async rejectDeal(dealId: string, sellerId: string): Promise<UzzDealDocument> {
     const deal = await this.requireDeal(dealId);
     if (!(await this.isSameLinkedActor(deal.sellerId, sellerId))) {
-      throw new ForbiddenException('Only seller can reject');
+      throw new ForbiddenException('Отклонить заявку может только исполнитель');
     }
     if (deal.status !== 'requested') {
-      throw new BadRequestException('Deal is not in requested status');
+      throw new BadRequestException('Заявка уже не ждёт ответа');
     }
     deal.status = 'rejected';
     deal.rejectedAt = new Date();
@@ -573,10 +632,10 @@ export class UzzService {
   async completeDeal(dealId: string, sellerId: string): Promise<UzzDealDocument> {
     const deal = await this.requireDeal(dealId);
     if (!(await this.isSameLinkedActor(deal.sellerId, sellerId))) {
-      throw new ForbiddenException('Only seller can mark complete');
+      throw new ForbiddenException('Отметить «сделано» может только исполнитель');
     }
     if (deal.status !== 'accepted') {
-      throw new BadRequestException('Deal is not accepted');
+      throw new BadRequestException('Сначала примите заявку');
     }
     deal.status = 'completed_by_seller';
     deal.completedBySellerAt = new Date();
@@ -607,30 +666,34 @@ export class UzzService {
     const deal = await this.requireDeal(dealId);
     const isBuyer = await this.isSameLinkedActor(deal.buyerId, actorUserId);
     if (!isBuyer && !opts?.asAdmin) {
-      throw new ForbiddenException('Only buyer or admin can close');
+      throw new ForbiddenException('Закрыть сделку может заказчик или администратор');
+    }
+    if (!opts?.asAdmin && deal.status !== 'completed_by_seller') {
+      throw new BadRequestException('Дождитесь отметки «сделано»');
     }
     if (deal.status !== 'accepted' && deal.status !== 'completed_by_seller') {
-      throw new BadRequestException('Deal cannot be closed in current status');
+      throw new BadRequestException('Эту сделку уже нельзя закрыть');
     }
 
     const settings = await this.getOrCreateSettings(deal.communityId);
     const bank = await this.requireBank(deal.bankId);
     if (bank.nominalRub == null) {
-      throw new BadRequestException('Bank has no nominal');
+      throw new BadRequestException('У права ещё нет номинала');
     }
 
     if (!deal.feeReserved) {
       const walletUserId = await this.pickWalletUserId(deal.buyerId, deal.communityId);
+      const walletCommunityId = await this.walletScope(deal.communityId);
       const debited = await this.walletService.debitIfSufficient(
         walletUserId,
-        deal.communityId,
+        walletCommunityId,
         DEAL_FEE_MERITS,
         'uzz_deal_fee',
         deal.id,
         'UZZ deal fee',
       );
       if (!debited) {
-        throw new BadRequestException('Insufficient wallet balance to close deal');
+        throw new BadRequestException('Не хватает заслуг, чтобы закрыть сделку');
       }
       deal.feeReserved = true;
     }
@@ -648,7 +711,7 @@ export class UzzService {
     }
 
     bank.hopsLeft = Math.max(0, bank.hopsLeft - 1);
-    bank.status = bank.hopsLeft === 0 ? 'exhausted' : 'active';
+    bank.status = this.statusAfterBankReleased(bank, settings);
     await bank.save();
 
     await this.appendLedger(
@@ -686,19 +749,28 @@ export class UzzService {
     opts?: { asAdmin?: boolean },
   ): Promise<UzzDealDocument> {
     const deal = await this.requireDeal(dealId);
-    const canCancel =
-      opts?.asAdmin ||
-      (await this.isSameLinkedActor(deal.buyerId, actorUserId)) ||
-      (await this.isSameLinkedActor(deal.sellerId, actorUserId));
+    const isBuyer = await this.isSameLinkedActor(deal.buyerId, actorUserId);
+    const isSeller = await this.isSameLinkedActor(deal.sellerId, actorUserId);
+    const canCancel = Boolean(opts?.asAdmin || isBuyer || isSeller);
     if (!canCancel) {
-      throw new ForbiddenException('Not allowed to cancel deal');
+      throw new ForbiddenException('Нельзя отменить чужую сделку');
     }
     if (
       deal.status === 'closed' ||
       deal.status === 'rejected' ||
       deal.status === 'cancelled'
     ) {
-      throw new BadRequestException('Deal already terminal');
+      throw new BadRequestException('Сделка уже завершена');
+    }
+    if (!opts?.asAdmin) {
+      if (deal.status !== 'requested') {
+        throw new BadRequestException(
+          'После ответа исполнителя отменить может только администратор',
+        );
+      }
+      if (!isBuyer) {
+        throw new ForbiddenException('Заявку отменяет заказчик, исполнитель — отклоняет');
+      }
     }
 
     const bank = await this.requireBank(deal.bankId);
@@ -709,11 +781,20 @@ export class UzzService {
 
     if (bank.status === 'in_deal') {
       const settings = await this.getOrCreateSettings(deal.communityId);
-      if (settings.bankTransferMode === 'on_accept_locked' && bank.ownerId === deal.sellerId) {
-        await this.transferBankOwnership(bank, deal.buyerId, 'deal_cancel_return', deal.id);
+      const otherOpen = await this.dealModel
+        .findOne({
+          bankId: bank.id,
+          id: { $ne: deal.id },
+          status: { $in: OPEN_DEAL_STATUSES },
+        })
+        .exec();
+      if (!otherOpen) {
+        if (settings.bankTransferMode === 'on_accept_locked' && bank.ownerId === deal.sellerId) {
+          await this.transferBankOwnership(bank, deal.buyerId, 'deal_cancel_return', deal.id);
+        }
+        bank.status = this.statusAfterBankReleased(bank, settings);
+        await bank.save();
       }
-      bank.status = bank.hopsLeft === 0 ? 'exhausted' : 'active';
-      await bank.save();
     }
 
     await this.appendLedger(
@@ -758,16 +839,17 @@ export class UzzService {
         await bank.save();
         continue;
       }
-      if (now.getTime() - last < 20 * 60 * 60 * 1000) {
+      const days = Math.floor((now.getTime() - last) / DAY_MS);
+      if (days < 1) {
         continue;
       }
 
       const next = Math.max(
         settings.nominalFloorRub,
-        bank.nominalRub - settings.demurrageRubPerDay,
+        bank.nominalRub - settings.demurrageRubPerDay * days,
       );
       if (next === bank.nominalRub) {
-        if (next === settings.nominalFloorRub && bank.status === 'active') {
+        if (next <= settings.nominalFloorRub && bank.status === 'active') {
           bank.status = 'exhausted';
           bank.lastDemurrageAt = now;
           await bank.save();
@@ -789,7 +871,7 @@ export class UzzService {
       const prev = bank.nominalRub;
       bank.nominalRub = next;
       bank.lastDemurrageAt = now;
-      if (next === settings.nominalFloorRub && bank.status === 'active') {
+      if (next <= settings.nominalFloorRub && bank.status === 'active') {
         bank.status = 'exhausted';
       }
       await bank.save();
@@ -819,14 +901,8 @@ export class UzzService {
       let stale = false;
       if (deal.status === 'requested') {
         stale = now - deal.requestedAt.getTime() > requestTtlMs;
-      } else if (deal.status === 'accepted') {
+      } else {
         const from = deal.acceptedAt?.getTime() ?? deal.requestedAt.getTime();
-        stale = now - from > fulfillMs;
-      } else if (deal.status === 'completed_by_seller') {
-        const from =
-          deal.completedBySellerAt?.getTime() ??
-          deal.acceptedAt?.getTime() ??
-          deal.requestedAt.getTime();
         stale = now - from > fulfillMs;
       }
       if (!stale) continue;
@@ -847,24 +923,52 @@ export class UzzService {
   ): Promise<UzzDealDocument> {
     const deal = await this.requireDeal(dealId);
     if (deal.status !== 'closed') {
-      throw new BadRequestException('Thanks are only available after the deal is closed');
+      throw new BadRequestException('Благодарность — только после закрытия сделки');
     }
     const isBuyer = await this.isSameLinkedActor(deal.buyerId, actorUserId);
     const isSeller = await this.isSameLinkedActor(deal.sellerId, actorUserId);
     if (!isBuyer && !isSeller) {
-      throw new ForbiddenException('Only deal parties can send thanks');
-    }
-    if (isBuyer && deal.buyerThankedAt) {
-      throw new BadRequestException('You already sent thanks');
-    }
-    if (isSeller && deal.sellerThankedAt) {
-      throw new BadRequestException('You already sent thanks');
+      throw new ForbiddenException('Благодарить могут только стороны сделки');
     }
 
     const merits = Math.max(0, Math.round(input.merits ?? 0));
     const comment = (input.comment ?? '').trim();
     if (!comment && merits <= 0) {
-      throw new BadRequestException('Add a comment or at least 1 заслуга');
+      throw new BadRequestException('Напишите пару слов или отправьте хотя бы 1 заслугу');
+    }
+
+    const now = new Date();
+    const claimed = isBuyer
+      ? await this.dealModel.findOneAndUpdate(
+          {
+            id: deal.id,
+            $or: [{ buyerThankedAt: { $exists: false } }, { buyerThankedAt: null }],
+          },
+          {
+            $set: {
+              buyerThankedAt: now,
+              buyerThanksComment: comment || undefined,
+              buyerThanksMerits: merits,
+            },
+          },
+          { new: true },
+        )
+      : await this.dealModel.findOneAndUpdate(
+          {
+            id: deal.id,
+            $or: [{ sellerThankedAt: { $exists: false } }, { sellerThankedAt: null }],
+          },
+          {
+            $set: {
+              sellerThankedAt: now,
+              sellerThanksComment: comment || undefined,
+              sellerThanksMerits: merits,
+            },
+          },
+          { new: true },
+        );
+    if (!claimed) {
+      throw new BadRequestException('Вы уже отправили благодарность');
     }
 
     if (merits > 0) {
@@ -873,22 +977,33 @@ export class UzzService {
         isBuyer ? deal.sellerId : deal.buyerId,
         deal.communityId,
       );
+      const walletCommunityId = await this.walletScope(deal.communityId);
       const currency = await this.communityCurrency(deal.communityId);
       const debited = await this.walletService.debitIfSufficient(
         payerId,
-        deal.communityId,
+        walletCommunityId,
         merits,
         'uzz_thanks',
         deal.id,
         'UZZ thanks',
       );
       if (!debited) {
-        throw new BadRequestException('Insufficient wallet balance for thanks');
+        if (isBuyer) {
+          claimed.buyerThankedAt = undefined;
+          claimed.buyerThanksComment = undefined;
+          claimed.buyerThanksMerits = undefined;
+        } else {
+          claimed.sellerThankedAt = undefined;
+          claimed.sellerThanksComment = undefined;
+          claimed.sellerThanksMerits = undefined;
+        }
+        await claimed.save();
+        throw new BadRequestException('Не хватает заслуг для благодарности');
       }
-      await this.walletService.createOrGetWallet(payeeId, deal.communityId, currency);
+      await this.walletService.createOrGetWallet(payeeId, walletCommunityId, currency);
       await this.walletService.addTransaction(
         payeeId,
-        deal.communityId,
+        walletCommunityId,
         'credit',
         merits,
         'personal',
@@ -899,17 +1014,6 @@ export class UzzService {
       );
     }
 
-    const now = new Date();
-    if (isBuyer) {
-      deal.buyerThankedAt = now;
-      deal.buyerThanksComment = comment || undefined;
-      deal.buyerThanksMerits = merits;
-    } else {
-      deal.sellerThankedAt = now;
-      deal.sellerThanksComment = comment || undefined;
-      deal.sellerThanksMerits = merits;
-    }
-    await deal.save();
     await this.appendLedger(
       deal.communityId,
       'deal_thanks',
@@ -918,7 +1022,7 @@ export class UzzService {
       deal.bankId,
       deal.id,
     );
-    return deal;
+    return claimed;
   }
 
   async bootstrap(userId: string): Promise<{
@@ -1155,6 +1259,14 @@ export class UzzService {
     return this.toDealViews(deals, userId);
   }
 
+  async listOpenDeals(communityId: string): Promise<UzzDealView[]> {
+    const deals = await this.dealModel
+      .find({ communityId, status: { $in: OPEN_DEAL_STATUSES } })
+      .sort({ createdAt: -1 })
+      .exec();
+    return this.toDealViews(deals);
+  }
+
   async listDeeds(
     userId: string,
     communityId: string,
@@ -1202,13 +1314,35 @@ export class UzzService {
     });
   }
 
+  async assertCanTriggerEmission(publicationId: string, userId: string): Promise<void> {
+    const publication = await this.publicationModel.findOne({ id: publicationId }).exec();
+    if (!publication) {
+      throw new NotFoundException('Публикация не найдена');
+    }
+    if (await this.isSameLinkedActor(publication.authorId, userId)) return;
+    await this.assertCommunityAdmin(publication.communityId, userId);
+  }
+
+  async adminCloseDeal(dealId: string, adminUserId: string): Promise<UzzDealDocument> {
+    const deal = await this.requireDeal(dealId);
+    await this.assertCommunityAdmin(deal.communityId, adminUserId);
+    return this.closeDeal(dealId, adminUserId, { asAdmin: true });
+  }
+
+  async adminCancelDeal(dealId: string, adminUserId: string): Promise<UzzDealDocument> {
+    const deal = await this.requireDeal(dealId);
+    await this.assertCommunityAdmin(deal.communityId, adminUserId);
+    return this.cancelDeal(dealId, adminUserId, { asAdmin: true });
+  }
+
   async getBankById(bankId: string): Promise<UzzBankDocument> {
     return this.requireBank(bankId);
   }
 
   async getSpendableBalance(userId: string, communityId: string): Promise<number> {
     const walletUserId = await this.pickWalletUserId(userId, communityId);
-    const wallet = await this.walletService.getWallet(walletUserId, communityId);
+    const walletCommunityId = await this.walletScope(communityId);
+    const wallet = await this.walletService.getWallet(walletUserId, walletCommunityId);
     return wallet?.getBalance?.() ?? 0;
   }
 
@@ -1217,7 +1351,7 @@ export class UzzService {
     if (user?.globalRole === 'superadmin') return;
     const isAdmin = await this.communityService.isUserAdmin(communityId, userId);
     if (!isAdmin) {
-      throw new ForbiddenException('Lead or superadmin required');
+      throw new ForbiddenException('Нужна роль администратора сообщества');
     }
   }
 
@@ -1244,9 +1378,10 @@ export class UzzService {
     referenceId: string,
   ): Promise<void> {
     const currency = await this.communityCurrency(communityId);
+    const walletCommunityId = await this.walletScope(communityId);
     await this.walletService.addTransaction(
       walletUserId,
-      communityId,
+      walletCommunityId,
       'credit',
       DEAL_FEE_MERITS,
       'personal',
@@ -1382,6 +1517,7 @@ export class UzzService {
         buyerThankedAt: deal.buyerThankedAt,
         sellerThankedAt: deal.sellerThankedAt,
         lotTitle: lotById.get(deal.lotId)?.title ?? 'Услуга',
+        lotPriceRub: lotById.get(deal.lotId)?.priceRub ?? deal.dealAmountRub,
         counterpartyName: this.friendlyName(names.get(counterpartyId), counterpartyId),
         myRole,
         expiresAt: this.dealExpiresAt(deal, settings),
@@ -1409,11 +1545,8 @@ export class UzzService {
         deal.requestedAt.getTime() + settings.dealRequestTtlHours * 60 * 60 * 1000,
       );
     }
-    const from =
-      deal.acceptedAt?.getTime() ??
-      deal.completedBySellerAt?.getTime() ??
-      deal.requestedAt.getTime();
-    return new Date(from + settings.dealFulfillmentDays * 24 * 60 * 60 * 1000);
+    const from = deal.acceptedAt?.getTime() ?? deal.requestedAt.getTime();
+    return new Date(from + settings.dealFulfillmentDays * DAY_MS);
   }
 
   private async hasFullIdentityLink(userId: string): Promise<boolean> {
@@ -1514,6 +1647,25 @@ export class UzzService {
     const deal = await this.dealModel.findOne({ id: dealId }).exec();
     if (!deal) throw new NotFoundException('Deal not found');
     return deal;
+  }
+
+  private async walletScope(communityId: string): Promise<string> {
+    const community = await this.communityService.getCommunity(communityId);
+    return this.meritResolver.getWalletCommunityId(
+      community ?? { id: communityId },
+      'voting',
+    );
+  }
+
+  private statusAfterBankReleased(
+    bank: UzzBankDocument,
+    settings: { nominalFloorRub: number },
+  ): UzzBankStatus {
+    if (bank.hopsLeft === 0) return 'exhausted';
+    if (bank.nominalRub != null && bank.nominalRub <= settings.nominalFloorRub) {
+      return 'exhausted';
+    }
+    return 'active';
   }
 
   private async appendLedger(

@@ -7,11 +7,11 @@ import { AppShell } from '@/components/app-shell';
 import { Button, Card, EmptyState, Notice, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { bankHeadline } from '@/lib/utils';
+import { bankHeadline, uzzErrorMessage } from '@/lib/utils';
 
 export default function CatalogPage() {
   const router = useRouter();
-  const { communityId, loggedIn, sessionLoading } = useUzzCommunityId();
+  const { communityId, loggedIn, sessionLoading, userId } = useUzzCommunityId();
   const enabled = Boolean(communityId);
   const utils = trpc.useUtils();
 
@@ -46,9 +46,13 @@ export default function CatalogPage() {
       void utils.banks.listMine.invalidate();
       router.push('/deals?requested=1');
     },
-    onError: (err) => setMessage(err.message || 'Не удалось создать запрос'),
+    onError: (err) => setMessage(uzzErrorMessage(err)),
   });
 
+  const linkStatus = trpc.identity.getLinkStatus.useQuery(undefined, {
+    enabled: loggedIn,
+    retry: false,
+  });
   const activeBanks =
     banks.data?.filter((b) => b.status === 'active' && b.nominalRub != null) ?? [];
   const maxNominal = Math.max(0, ...activeBanks.map((b) => b.nominalRub ?? 0));
@@ -80,6 +84,16 @@ export default function CatalogPage() {
               Войдите по почте
             </Link>
             , чтобы запросить услугу.
+          </Notice>
+        ) : null}
+
+        {loggedIn && linkStatus.data && !linkStatus.data.linked ? (
+          <Notice>
+            Чтобы пользоваться правами на обмен,{' '}
+            <Link href="/profile" className="font-medium text-stitch-accent underline">
+              привяжите Telegram
+            </Link>
+            .
           </Notice>
         ) : null}
 
@@ -128,7 +142,13 @@ export default function CatalogPage() {
           </div>
         ) : !visibleLots.length ? (
           <EmptyState
-            title={q || affordableOnly ? 'Ничего не нашлось' : 'Пока нет подходящих услуг'}
+            title={
+              affordableOnly && !activeBanks.length
+                ? 'Нет активного права на обмен'
+                : q || affordableOnly
+                  ? 'Ничего не нашлось'
+                  : 'Пока нет подходящих услуг'
+            }
           >
             {loggedIn ? (
               <Link href="/" className="text-stitch-accent underline">
@@ -141,7 +161,7 @@ export default function CatalogPage() {
         ) : (
           <ul className="space-y-3">
             {visibleLots.map((lot) => {
-              const own = myLotIds.has(lot.id);
+              const own = Boolean(userId && lot.authorId === userId) || myLotIds.has(lot.id);
               const covered = maxNominal >= lot.priceRub && maxNominal > 0;
               return (
                 <li key={lot.id}>
@@ -171,7 +191,10 @@ export default function CatalogPage() {
                       ) : loggedIn ? (
                         <Button
                           type="button"
-                          disabled={canBuy.data?.allowed === false}
+                          disabled={
+                            canBuy.data?.allowed === false ||
+                            (loggedIn && myLots.isLoading && !own)
+                          }
                           onClick={() => {
                             setSelectedLotId(lot.id);
                             setMessage(null);
@@ -239,6 +262,7 @@ export default function CatalogPage() {
                             disabled={
                               !bankId ||
                               requestDeal.isPending ||
+                              balance.isLoading ||
                               (typeof balance.data?.balance === 'number' &&
                                 balance.data.balance < 1)
                             }

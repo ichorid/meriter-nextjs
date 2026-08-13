@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { config } from '@/config';
 import { trpc } from '@/lib/trpc/client';
+import { uzzErrorMessage } from '@/lib/utils';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function LoginPage() {
       setError(null);
     },
     onError: (err) => {
-      setError(err.message || 'Не удалось отправить ссылку');
+      setError(uzzErrorMessage(err));
       setSent(false);
     },
   });
@@ -33,7 +34,7 @@ export default function LoginPage() {
       router.replace('/catalog');
     },
     onError: (err) => {
-      setError(err.message || 'Fake auth недоступен');
+      setError(uzzErrorMessage(err));
     },
   });
 
@@ -78,7 +79,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full rounded-lg border border-stitch-border bg-stitch-canvas px-3 py-2 text-stitch-text outline-none ring-stitch-accent focus:ring-2"
-                placeholder="you@example.com"
+                placeholder="почта@пример.ру"
               />
             </label>
             {error ? <p className="text-sm text-red-400">{error}</p> : null}

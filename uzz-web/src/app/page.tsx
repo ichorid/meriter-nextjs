@@ -10,6 +10,7 @@ import {
   bankHeadline,
   bankStatusLabel,
   tomorrowNominal,
+  uzzErrorMessage,
 } from '@/lib/utils';
 import { config } from '@/config';
 
@@ -150,7 +151,7 @@ function MinePanel({
       void utils.lots.list.invalidate();
       void utils.lots.canBuy.invalidate();
     },
-    onError: (err) => setLotError(err.message || 'Не удалось создать'),
+    onError: (err) => setLotError(uzzErrorMessage(err)),
   });
   const updateLot = trpc.lots.update.useMutation({
     onSuccess: () => {
@@ -159,7 +160,7 @@ function MinePanel({
       void utils.lots.myLots.invalidate();
       void utils.lots.list.invalidate();
     },
-    onError: (err) => setLotError(err.message || 'Не удалось сохранить'),
+    onError: (err) => setLotError(uzzErrorMessage(err)),
   });
 
   function onCreateLot(e: FormEvent) {
