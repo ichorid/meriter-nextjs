@@ -39,6 +39,8 @@
 | 13 | `13-telegram-stack-deployment-ru.md` | **Полный стек TG:** развёртывание бота + community-web, интеграция, чеклисты |
 | 16 | `16-uslugi-za-zaslugi-mvp.md` | **«Услуги за заслуги»:** продуктовое ТЗ пилота (uzz-web, банки, каталог, email↔TG) |
 | 17 | `17-uzz-stack-deployment-ru.md` | **UZZ стек:** dev → cw.ru, env, Caddy, чеклист приёмки |
+| 18 | `18-uzz-pilot-runbook.md` | **UZZ runbook:** предстартовая проверка, наблюдение, инциденты, безопасный reset и откат |
+| 19 | `19-uzz-a-x-acceptance-report.md` | **UZZ acceptance:** трассировка требований A–X и доказательства релизного прогона |
 
 ---
 

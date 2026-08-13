@@ -7,6 +7,22 @@
 - UUID API совпадает с `NEXT_PUBLIC_DEFAULT_COMMUNITY_ID` web-сборки.
 - В production выключены fake auth и debug endpoints.
 - Пройдены UZZ-тесты, web lint/build и сценарии приёмки из отчёта 19.
+- В админке проверены четыре флага Telegram-уведомлений; тестовое сообщение открывает абсолютную ссылку на текущий UZZ-домен.
+
+Рекомендуемый локальный release gate:
+
+```bash
+pnpm --dir api exec jest apps/meriter/test/uzz-*.spec.ts --runInBand --forceExit
+pnpm --dir api exec jest --config apps/meriter/test/jest-e2e.json apps/meriter/test/uzz-acceptance.e2e-spec.ts --runInBand --forceExit
+pnpm --dir uzz-web test:unit
+pnpm --dir uzz-web test:e2e
+pnpm --dir uzz-web lint
+pnpm --dir uzz-web exec tsc --noEmit
+pnpm --dir uzz-web build --webpack
+pnpm --dir api exec nest build meriter
+```
+
+В текущем общем Jest harness MongoMemoryServer может удерживать дочерний процесс после зелёного результата; для этих интеграционных команд используется `--forceExit`. Это не заменяет проверку exit code и числа прошедших тестов.
 
 ## Ежедневный контроль
 
