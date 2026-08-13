@@ -16,6 +16,7 @@
 ```
 UZZ_WEB_BASE_URL=https://uzz-dev.example.com
 # prod later: https://cw.ru
+DEFAULT_TELEGRAM_COMMUNITY_ID=<pilot-community-id>
 MERITER_PRODUCT_MODE=telegram_mvp
 EMAIL_ENABLED=true
 # … существующие BOT_TOKEN, JWT_SECRET, Mongo …
@@ -51,12 +52,14 @@ pnpm dev:uzz-web
 
 ## Чеклист приёмки перед cw.ru
 
-1. Email magic link ставит сессию uzz (не полный Meriter).
-2. Привязка TG↔email: сайт → deep-link `uzz_link_*`; бот → `/email` + `/email_code`.
-3. Доброе дело в TG → порог → банк `awaiting_nominal` → админ номинал.
-4. Лот → сделка → закрытие → банк у исполнителя, −1 ход, −1 заслуга.
-5. Суточное таяние номинала видно в карточке банка.
-6. `pnpm --filter @meriter/uzz-web test:smoke` и `pnpm --filter @meriter/api test -- uzz.service`.
+1. Email magic link ставит сессию uzz (не полный Meriter). Fake auth только на `/login`.
+2. Привязка TG↔email: сайт → deep-link `uzz_link_*`; бот → `/email` шлёт код **на почту**, в чат «проверьте почту»; `/email_code`.
+3. Доброе дело в **Telegram** (голос ботом) → порог → банк; если нет связки — `holding`.
+4. Админ назначает номинал → лот → запрос (резерв 1 заслуги) → пинг в TG → принятие → «сделано» → закрытие → банк у исполнителя, −1 обмен, комиссия списана.
+5. «Отменить» на своей заявке возвращает комиссию; заявка без ответа 48ч и принятая без закрытия 7 суток — то же.
+6. На карточке права: «сегодня до N ₽», таяние от даты номинала; у пола право исчерпывается.
+7. Гость видит каталог; «Моё»/«Сделки» без сессии → `/login`.
+8. `pnpm --filter @meriter/uzz-web test:smoke` и `pnpm --filter @meriter/api test -- uzz.service`.
 
 ## Cutover на cw.ru (после приёмки)
 
@@ -72,5 +75,5 @@ pnpm dev:uzz-web
 | Команда | Действие |
 |---------|----------|
 | `/start uzz_link_<code>` | Подтвердить привязку TG из профиля сайта |
-| `/email you@x.com` | Начать привязку почты из бота (код в личку) |
+| `/email you@x.com` | Отправить код привязки **письмом** (в чат код не пишется) |
 | `/email_code 123456` | Подтвердить код |
