@@ -59,7 +59,7 @@ export function Notice({
       className={cn(
         'rounded-xl border p-4 text-sm',
         tone === 'warn' && 'border-amber-500/40 bg-amber-500/10 text-amber-100',
-        tone === 'ok' && 'border-emerald-500/30 bg-emerald-500/10 text-emerald-100',
+        tone === 'ok' && 'border-stitch-accent/40 bg-stitch-accent/10 text-stitch-text',
         tone === 'info' && 'border-stitch-accent/30 bg-stitch-accent/10 text-stitch-text',
       )}
     >
@@ -89,6 +89,23 @@ export function EmptyState({
       <p className="font-extrabold">{title}</p>
       {children ? <div className="mt-2 text-sm text-stitch-muted">{children}</div> : null}
     </Card>
+  );
+}
+
+export function QueryFailed({
+  onRetry,
+}: {
+  onRetry?: () => void;
+}) {
+  return (
+    <Notice tone="warn">
+      Не удалось загрузить.{' '}
+      {onRetry ? (
+        <button type="button" className="underline" onClick={onRetry}>
+          Попробовать ещё раз
+        </button>
+      ) : null}
+    </Notice>
   );
 }
 

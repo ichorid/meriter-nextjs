@@ -443,4 +443,68 @@ describe('UzzService (integration)', () => {
     const after = await bankModel.findOne({ id: bank.id }).exec();
     expect(after!.nominalRub).toBe(200);
   });
+
+  it('marks an email-login user linked after Telegram confirm', async () => {
+    const siteId = uid();
+    await userModel.create({
+      id: siteId,
+      authProvider: 'email',
+      authId: 'site-first@example.com',
+      displayName: 'Site First',
+      communityMemberships: [communityId],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const before = await uzzService.getLinkStatus(siteId);
+    expect(before.linked).toBe(false);
+    expect(before.email).toBe('site-first@example.com');
+
+    const { code } = await uzzService.startTelegramLink(siteId);
+    await uzzService.confirmTelegramLink(code, '555001');
+    const after = await uzzService.getLinkStatus(siteId);
+    expect(after.linked).toBe(true);
+    expect(after.telegramUserId).toBe('555001');
+  });
+
+  it('resolves a split telegram identity by the site email', async () => {
+    const siteId = uid();
+    const tgId = uid();
+    await userModel.create({
+      id: siteId,
+      authProvider: 'email',
+      authId: 'shared-link@example.com',
+      displayName: 'Site Twin',
+      communityMemberships: [communityId],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await userModel.create({
+      id: tgId,
+      authProvider: 'telegram',
+      authId: '777001',
+      displayName: 'TG Twin',
+      communityMemberships: [communityId],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    await identityModel.create({
+      userId: tgId,
+      telegramUserId: '777001',
+      email: 'shared-link@example.com',
+    });
+
+    const status = await uzzService.getLinkStatus(siteId);
+    expect(status.linked).toBe(true);
+    expect(status.telegramUserId).toBe('777001');
+
+    const lot = await uzzService.createLot({
+      communityId,
+      authorId: tgId,
+      title: 'Linked lot',
+      description: '',
+      priceRub: 150,
+    });
+    const updated = await uzzService.updateLot(lot.id, siteId, { title: 'Edited from email' });
+    expect(updated.title).toBe('Edited from email');
+  });
 });

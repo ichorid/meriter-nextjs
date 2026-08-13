@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
-import { Button, Card, EmptyState, Notice, Skeleton, inputClass } from '@/components/ui';
+import { Button, Card, EmptyState, Notice, QueryFailed, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { dealNeedsAction, dealStatusLabel, formatDeadline, isDeadlinePassed, uzzErrorMessage } from '@/lib/utils';
@@ -97,13 +97,23 @@ export default function DealsPage() {
   const visible = useMemo(() => {
     const rows = deals.data ?? [];
     if (!onlyOpen) return rows;
-    return rows.filter(
-      (deal) =>
+    return rows.filter((deal) => {
+      if (
         deal.status === 'requested' ||
         deal.status === 'accepted' ||
-        deal.status === 'completed_by_seller' ||
-        dealNeedsAction(deal),
-    );
+        deal.status === 'completed_by_seller'
+      ) {
+        return true;
+      }
+      if (deal.status !== 'closed') return false;
+      const thanked =
+        deal.myRole === 'buyer'
+          ? Boolean(deal.buyerThankedAt)
+          : deal.myRole === 'seller'
+            ? Boolean(deal.sellerThankedAt)
+            : true;
+      return !thanked;
+    });
   }, [deals.data, onlyOpen]);
 
   function onThanks(e: FormEvent) {
@@ -138,7 +148,7 @@ export default function DealsPage() {
             checked={onlyOpen}
             onChange={(e) => setOnlyOpen(e.target.checked)}
           />
-          Только незакрытые
+          Только открытые и без «спасибо»
         </label>
 
         {flash ? <Notice tone="ok">{flash}</Notice> : null}
@@ -149,6 +159,8 @@ export default function DealsPage() {
             <Skeleton className="h-28 w-full" />
             <Skeleton className="h-28 w-full" />
           </div>
+        ) : deals.isError ? (
+          <QueryFailed onRetry={() => void deals.refetch()} />
         ) : !deals.data?.length ? (
           <EmptyState title="Сделок пока нет">
             <Link href="/catalog" className="text-stitch-accent underline">
@@ -156,7 +168,7 @@ export default function DealsPage() {
             </Link>
           </EmptyState>
         ) : onlyOpen && !visible.length ? (
-          <EmptyState title="Незакрытых сделок нет">
+          <EmptyState title="Сейчас ничего не требует действия">
             <button
               type="button"
               className="text-stitch-accent underline"
@@ -174,7 +186,11 @@ export default function DealsPage() {
                   : Boolean(deal.sellerThankedAt);
               const deadline = formatDeadline(deal.expiresAt);
               const expired = isDeadlinePassed(deal.expiresAt);
-              const priceRub = deal.lotPriceRub ?? deal.dealAmountRub;
+              const requestExpired = expired && deal.status === 'requested';
+              const priceRub =
+                deal.status === 'closed' && deal.dealAmountRub != null
+                  ? deal.dealAmountRub
+                  : (deal.lotPriceRub ?? deal.dealAmountRub);
               return (
                 <li key={deal.id}>
                   <Card className={dealNeedsAction(deal) ? 'ring-1 ring-stitch-accent/70' : undefined}>
@@ -196,7 +212,9 @@ export default function DealsPage() {
                     </p>
                     {expired ? (
                       <p className="mt-2 text-sm text-amber-200">
-                        Срок истёк — заявка снимется автоматически.
+                        {deal.status === 'requested'
+                          ? 'Срок истёк — заявка снимется автоматически.'
+                          : 'Срок исполнения вышел. Если услуга оказана — закройте сделку, иначе заявка отменится.'}
                       </p>
                     ) : null}
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -204,7 +222,7 @@ export default function DealsPage() {
                         <>
                           <Button
                             type="button"
-                            disabled={pending || expired}
+                            disabled={pending || requestExpired}
                             onClick={() => accept.mutate({ dealId: deal.id })}
                           >
                             Принять
@@ -212,7 +230,7 @@ export default function DealsPage() {
                           <Button
                             type="button"
                             variant="danger"
-                            disabled={pending || expired}
+                            disabled={pending || requestExpired}
                             onClick={() =>
                               confirm?.id === deal.id && confirm.kind === 'reject'
                                 ? reject.mutate({ dealId: deal.id })
@@ -229,7 +247,7 @@ export default function DealsPage() {
                         <Button
                           type="button"
                           variant="danger"
-                          disabled={pending || expired}
+                          disabled={pending || requestExpired}
                           onClick={() =>
                             confirm?.id === deal.id && confirm.kind === 'cancel'
                               ? cancel.mutate({ dealId: deal.id })
@@ -244,7 +262,7 @@ export default function DealsPage() {
                       {deal.status === 'accepted' && deal.myRole === 'seller' ? (
                         <Button
                           type="button"
-                          disabled={pending || expired}
+                          disabled={pending || requestExpired}
                           onClick={() => complete.mutate({ dealId: deal.id })}
                         >
                           Сделано
@@ -265,7 +283,7 @@ export default function DealsPage() {
                             <div className="flex flex-wrap gap-2">
                               <Button
                                 type="button"
-                                disabled={pending || expired}
+                                disabled={pending || requestExpired}
                                 onClick={() => close.mutate({ dealId: deal.id })}
                               >
                                 Да, закрыть
@@ -282,7 +300,7 @@ export default function DealsPage() {
                         ) : (
                           <Button
                             type="button"
-                            disabled={pending || expired}
+                            disabled={pending || requestExpired}
                             onClick={() => setConfirm({ id: deal.id, kind: 'close' })}
                           >
                             Подтвердить закрытие
@@ -323,7 +341,8 @@ export default function DealsPage() {
                           placeholder="Заслуг (необязательно)"
                         />
                         <p className="text-xs text-stitch-muted">
-                          Заслуги спишутся с кошелька, не из права на обмен. Можно 0.
+                          Заслуги спишутся с кошелька, не из права на обмен. Нужен короткий текст
+                          или хотя бы 1 заслуга.
                         </p>
                         {thanksError ? <p className="text-sm text-red-400">{thanksError}</p> : null}
                         <div className="flex gap-2">

@@ -3,7 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
-import { Button, Card, EmptyState, Field, Notice, Skeleton, inputClass } from '@/components/ui';
+import { Button, Card, EmptyState, Field, Notice, QueryFailed, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import {
@@ -241,6 +241,8 @@ function MinePanel({
           </div>
           {banks.isLoading ? (
             <p className="text-sm text-stitch-muted">Загрузка…</p>
+          ) : banks.isError ? (
+            <QueryFailed onRetry={() => void banks.refetch()} />
           ) : !banks.data?.length ? (
             <EmptyState title="Пока нет прав на обмен">
               Опубликуйте доброе дело в Telegram. Когда сообщество начислит заслуги до порога,
@@ -253,9 +255,13 @@ function MinePanel({
                 <Card key={bank.id}>
                   <p className="font-extrabold">{bankHeadline(bank)}</p>
                   <p className="mt-1 text-sm text-stitch-muted">{bankStatusLabel(bank.status)}</p>
-                  {bank.status === 'active' && next != null && next < (bank.nominalRub ?? 0) ? (
+                  {(bank.status === 'active' || bank.status === 'in_deal') &&
+                  next != null &&
+                  next < (bank.nominalRub ?? 0) ? (
                     <p className="mt-2 text-xs text-amber-200">
-                      Завтра потолок будет около {next} ₽ — успейте обменять, если планируете.
+                      {bank.status === 'in_deal'
+                        ? `Пока сделка открыта, потолок всё равно тает. Завтра около ${next} ₽.`
+                        : `Завтра потолок будет около ${next} ₽ — успейте обменять, если планируете.`}
                     </p>
                   ) : null}
                 </Card>
@@ -307,7 +313,9 @@ function MinePanel({
               </Button>
             </Card>
           </form>
-          {!myLots.isLoading && !myLots.data?.length ? (
+          {myLots.isError ? (
+            <QueryFailed onRetry={() => void myLots.refetch()} />
+          ) : !myLots.isLoading && !myLots.data?.length ? (
             <EmptyState title="Своих карточек пока нет">
               Одна услуга уже помогает обмену быть взаимным.
             </EmptyState>
@@ -396,7 +404,9 @@ function MinePanel({
 
       {tab === 'deeds' ? (
         <div className="space-y-3">
-          {!deeds.isLoading && !deeds.data?.length ? (
+          {deeds.isError ? (
+            <QueryFailed onRetry={() => void deeds.refetch()} />
+          ) : !deeds.isLoading && !deeds.data?.length ? (
             <EmptyState title="Добрых дел пока не видно">
               Напишите о деле в Telegram-чате сообщества — прогресс до права появится здесь.
             </EmptyState>

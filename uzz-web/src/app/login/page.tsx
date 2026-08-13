@@ -71,7 +71,7 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={onSubmit} className="space-y-4">
             <label className="block space-y-1.5">
-              <span className="text-sm text-stitch-muted">Email</span>
+              <span className="text-sm text-stitch-muted">Почта</span>
               <input
                 type="email"
                 required

@@ -25,6 +25,7 @@ export const uzzAppRouter = router({
           return await ctx.emailLoginLinkService.sendLoginLink(input.email, {
             baseUrl: uzzBase,
             path: '/a',
+            productLabel: 'Услуги за заслуги',
           });
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Failed to send link';
@@ -65,11 +66,13 @@ export const uzzAppRouter = router({
           }
           const authResult = await ctx.authService.authenticateEmail(tokenResult.target);
           ctx.cookieManager.establishUzzJwtAuth(ctx.res, authResult.jwt, ctx.req);
+          await ctx.uzzService.recordLoginEmail(authResult.user.id, tokenResult.target);
           return { user: authResult.user, isNewUser: false };
         }
 
         const authResult = await ctx.authService.authenticateEmail(tokenResult.target);
         ctx.cookieManager.establishUzzJwtAuth(ctx.res, authResult.jwt, ctx.req);
+        await ctx.uzzService.recordLoginEmail(authResult.user.id, tokenResult.target);
         return {
           user: authResult.user,
           isNewUser: authResult.isNewUser ?? false,
@@ -358,11 +361,6 @@ export const uzzAppRouter = router({
           : undefined,
       };
     }),
-    confirmEmailLink: protectedProcedure
-      .input(z.object({ code: z.string().min(1) }))
-      .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.confirmEmailLink(ctx.user.id, input.code);
-      }),
   }),
 
   wallet: router({

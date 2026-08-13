@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
-import { Button, Card, EmptyState, Notice, Skeleton, inputClass } from '@/components/ui';
+import { Button, Card, EmptyState, Notice, QueryFailed, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { bankHeadline, uzzErrorMessage } from '@/lib/utils';
@@ -140,6 +140,8 @@ export default function CatalogPage() {
             <Skeleton className="h-28 w-full" />
             <Skeleton className="h-28 w-full" />
           </div>
+        ) : lots.isError ? (
+          <QueryFailed onRetry={() => void lots.refetch()} />
         ) : !visibleLots.length ? (
           <EmptyState
             title={
@@ -222,7 +224,7 @@ export default function CatalogPage() {
                           С кошелька уйдёт 1 заслуга. Вернём, если исполнитель откажется или вы
                           отмените заявку.
                           {typeof balance.data?.balance === 'number'
-                            ? ` Сейчас у вас ${balance.data.balance}.`
+                            ? ` Сейчас у вас ${balance.data.balance} заслуг.`
                             : ''}
                         </p>
                         <label className="block space-y-1 text-sm">

@@ -46,7 +46,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     !config.development.fakeDataMode &&
     LINK_GATE_PATHS.has(pathname) &&
     !linkStatus.isLoading &&
-    (linkStatus.isError || linkStatus.data?.linked !== true);
+    !linkStatus.isError &&
+    linkStatus.data?.linked !== true;
+
+  const linkStatusErrorGate =
+    loggedIn &&
+    !config.development.fakeDataMode &&
+    LINK_GATE_PATHS.has(pathname) &&
+    !linkStatus.isLoading &&
+    linkStatus.isError;
 
   const sessionGate =
     (SESSION_PATHS.has(pathname) && (sessionLoading || Boolean(sessionError))) ||
@@ -87,8 +95,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ) : null}
         </div>
       </header>
-      {hardGate ? (
-        <TelegramLinkGate />
+      {linkStatusErrorGate ? (
+        <LinkStatusError onRetry={() => void linkStatus.refetch()} />
+      ) : hardGate ? (
+        <IdentityLinkGate
+          missingTelegram={!linkStatus.data?.telegramUserId}
+          email={linkStatus.data?.email}
+        />
       ) : sessionGate ? (
         <main className="mx-auto max-w-5xl px-4 py-6 pb-24 md:pb-6">
           <div className="space-y-3" aria-busy>
@@ -160,7 +173,32 @@ function NavLink({
   );
 }
 
-function TelegramLinkGate() {
+function LinkStatusError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-10 pb-24">
+      <div className="space-y-4 rounded-xl border border-stitch-border bg-stitch-surface p-6 text-center">
+        <h1 className="text-2xl font-extrabold tracking-tight">Не удалось проверить связку</h1>
+        <p className="text-sm text-stitch-muted">
+          Это не значит, что Telegram не привязан. Обновите страницу или попробуйте ещё раз.
+        </p>
+        <Button type="button" className="w-full py-2.5" onClick={onRetry}>
+          Попробовать ещё раз
+        </Button>
+        <Link href="/catalog" className="block text-sm text-stitch-accent hover:underline">
+          Пока посмотреть обмен
+        </Link>
+      </div>
+    </main>
+  );
+}
+
+function IdentityLinkGate({
+  missingTelegram,
+  email,
+}: {
+  missingTelegram: boolean;
+  email?: string;
+}) {
   const [error, setError] = useState<string | null>(null);
   const logout = trpc.auth.logout.useMutation({
     onSuccess: () => {
@@ -174,11 +212,29 @@ function TelegramLinkGate() {
     onError: (err) => setError(uzzErrorMessage(err)),
   });
 
+  if (!missingTelegram) {
+    return (
+      <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-10 pb-24">
+        <div className="space-y-4 rounded-xl border border-stitch-border bg-stitch-surface p-6 text-center">
+          <h1 className="text-2xl font-extrabold tracking-tight">Укажите почту в боте</h1>
+          <p className="text-sm text-stitch-muted">
+            Telegram уже есть. В боте сообщества отправьте /email и код из письма — тогда откроются
+            сделки и кошелёк.
+          </p>
+          <Link href="/catalog" className="block text-sm text-stitch-accent hover:underline">
+            Пока посмотреть обмен
+          </Link>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto flex min-h-[70vh] max-w-lg flex-col justify-center px-4 py-10 pb-24">
-      <div className="space-y-4 rounded-xl border border-stitch-border bg-stitch-surface p-6 text-center shadow-[0_8px_30px_rgb(2_6_23_/_0.45)]">
+      <div className="space-y-4 rounded-xl border border-stitch-border bg-stitch-surface p-6 text-center">
         <h1 className="text-2xl font-extrabold tracking-tight">Привяжите Telegram</h1>
         <p className="text-sm text-stitch-muted">
+          {email ? `Вы вошли как ${email}. ` : ''}
           Права на обмен появляются из добрых дел в чате сообщества. Одна кнопка — и площадка вас
           узнает. Каталог можно смотреть и без этого.
         </p>

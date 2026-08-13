@@ -21,7 +21,12 @@ export class EmailLoginLinkService {
 
     async sendLoginLink(
         email: string,
-        options?: { linkToUserId?: string; baseUrl?: string; path?: string },
+        options?: {
+            linkToUserId?: string;
+            baseUrl?: string;
+            path?: string;
+            productLabel?: string;
+        },
     ): Promise<EmailLoginLinkSendResult> {
         await this.checkRateLimit(email);
 
@@ -31,22 +36,23 @@ export class EmailLoginLinkService {
             path: options?.path,
         });
         const ttlMinutes = this.configService.getOrThrow('magicLink').ttlMinutes;
+        const product = options?.productLabel?.trim() || 'Meriter';
 
         const html = [
             '<p>Здравствуйте!</p>',
-            `<p>Чтобы войти в Meriter, нажмите на ссылку:</p>`,
-            `<p><a href="${linkUrl}" style="display:inline-block;padding:10px 20px;background:#A855F7;color:#ffffff;text-decoration:none;border-radius:8px;">Войти в Meriter</a></p>`,
+            `<p>Чтобы войти в ${product}, нажмите на ссылку:</p>`,
+            `<p><a href="${linkUrl}" style="display:inline-block;padding:10px 20px;background:#A855F7;color:#ffffff;text-decoration:none;border-radius:8px;">Войти в ${product}</a></p>`,
             `<p>Или скопируйте адрес в браузер: <a href="${linkUrl}">${linkUrl}</a></p>`,
             `<p>Ссылка действует ${ttlMinutes} минут и сработает только один раз.</p>`,
             '<p>Если вы не запрашивали вход, просто проигнорируйте это письмо.</p>',
         ].join('');
         const plaintext =
-            `Чтобы войти в Meriter, перейдите по ссылке: ${linkUrl}\n` +
+            `Чтобы войти в ${product}, перейдите по ссылке: ${linkUrl}\n` +
             `Ссылка действует ${ttlMinutes} минут и сработает только один раз.\n` +
             `Если вы не запрашивали вход, просто проигнорируйте это письмо.`;
 
         try {
-            const sent = await this.sendHtmlEmail(email, 'Вход в Meriter', html, plaintext);
+            const sent = await this.sendHtmlEmail(email, `Вход в ${product}`, html, plaintext);
             if (!sent) {
                 this.logger.warn(`Email provider not configured, login link for ${email}: ${linkUrl}`);
             }

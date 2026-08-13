@@ -1,7 +1,7 @@
 'use client';
 
 import { AppShell } from '@/components/app-shell';
-import { Card, EmptyState } from '@/components/ui';
+import { Card, EmptyState, QueryFailed } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { formatWhen, ledgerTypeLabel } from '@/lib/utils';
@@ -29,14 +29,16 @@ export default function WalletPage() {
         <Card>
           <p className="text-xs uppercase tracking-wide text-stitch-muted">Сейчас</p>
           <p className="mt-1 text-3xl font-extrabold text-stitch-accent">
-            {balance.isLoading ? '…' : (balance.data?.balance ?? 0)}
+            {balance.isLoading ? '…' : balance.isError ? '—' : (balance.data?.balance ?? 0)}
           </p>
           <p className="mt-1 text-sm text-stitch-muted">заслуг</p>
         </Card>
 
         <section className="space-y-3">
           <h2 className="font-extrabold">История</h2>
-          {!ledger.data?.length && !ledger.isLoading ? (
+          {ledger.isError ? (
+            <QueryFailed onRetry={() => void ledger.refetch()} />
+          ) : !ledger.data?.length && !ledger.isLoading ? (
             <EmptyState title="Пока нет операций">
               Комиссия сделки, таяние номинала и переход права появятся здесь.
             </EmptyState>

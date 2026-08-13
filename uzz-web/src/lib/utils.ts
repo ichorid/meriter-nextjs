@@ -66,12 +66,14 @@ export function bankHeadline(bank: {
   status: string;
   nominalRub: number | null;
   hopsLeft: number;
+  createdAt?: Date | string;
 }): string {
   const exchanges = Math.max(0, bank.hopsLeft);
+  const since = bank.createdAt ? ` · с ${formatWhen(bank.createdAt)}` : '';
   if (bank.nominalRub == null) {
-    return `Право на обмен · номинал ещё не назначен · ещё ${exchanges} обменов`;
+    return `Право на обмен · номинал ещё не назначен · ещё ${exchanges} обменов${since}`;
   }
-  return `Право на обмен · сегодня до ${bank.nominalRub} ₽ · ещё ${exchanges} обменов`;
+  return `Право на обмен · сегодня до ${bank.nominalRub} ₽ · ещё ${exchanges} обменов${since}`;
 }
 
 export function tomorrowNominal(

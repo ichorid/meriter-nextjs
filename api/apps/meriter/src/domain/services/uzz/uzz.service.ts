@@ -1,7 +1,9 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -134,6 +136,8 @@ export type UzzDealView = {
 
 @Injectable()
 export class UzzService {
+  private readonly logger = new Logger(UzzService.name);
+
   constructor(
     @InjectModel(UzzSettingsSchemaClass.name)
     private readonly settingsModel: Model<UzzSettingsDocument>,
@@ -349,8 +353,8 @@ export class UzzService {
   ): Promise<UzzLotDocument> {
     const lot = await this.lotModel.findOne({ id: lotId }).exec();
     if (!lot) throw new NotFoundException('Lot not found');
-    if (lot.authorId !== authorId) {
-      throw new ForbiddenException('Only the lot author can update it');
+    if (!(await this.isSameLinkedActor(lot.authorId, authorId))) {
+      throw new ForbiddenException('Править карточку может только автор');
     }
     if (patch.title !== undefined) lot.title = patch.title.trim();
     if (patch.description !== undefined) lot.description = patch.description.trim();
@@ -699,48 +703,90 @@ export class UzzService {
     }
 
     const now = new Date();
-    deal.status = 'closed';
-    deal.closedAt = now;
-    deal.dealAmountRub = bank.nominalRub;
-    await deal.save();
-
-    if (settings.bankTransferMode !== 'on_accept_locked') {
-      await this.transferBankOwnership(bank, deal.sellerId, 'deal_close', deal.id);
-    } else if (bank.ownerId !== deal.sellerId) {
-      await this.transferBankOwnership(bank, deal.sellerId, 'deal_close', deal.id);
+    const previousStatus = deal.status;
+    const claimed = await this.dealModel.findOneAndUpdate(
+      {
+        id: deal.id,
+        status: previousStatus,
+      },
+      {
+        $set: {
+          status: 'closed',
+          closedAt: now,
+          dealAmountRub: bank.nominalRub,
+          feeReserved: true,
+        },
+      },
+      { new: true },
+    );
+    if (!claimed) {
+      throw new BadRequestException('Эту сделку уже нельзя закрыть');
     }
 
-    bank.hopsLeft = Math.max(0, bank.hopsLeft - 1);
-    bank.status = this.statusAfterBankReleased(bank, settings);
-    await bank.save();
+    const previousOwner = bank.ownerId;
+    const shouldTransfer =
+      settings.bankTransferMode !== 'on_accept_locked' ||
+      bank.ownerId !== claimed.sellerId;
+    try {
+      if (shouldTransfer && bank.ownerId !== claimed.sellerId) {
+        bank.ownerId = claimed.sellerId;
+        bank.ownerHistory = [
+          ...(bank.ownerHistory ?? []),
+          { userId: claimed.sellerId, at: now, reason: 'deal_close' },
+        ];
+      }
+      bank.hopsLeft = Math.max(0, bank.hopsLeft - 1);
+      bank.status = this.statusAfterBankReleased(bank, settings);
+      await bank.save();
+    } catch (error) {
+      await this.dealModel.updateOne(
+        { id: claimed.id },
+        {
+          $set: { status: previousStatus, feeReserved: claimed.feeReserved },
+          $unset: { closedAt: 1, dealAmountRub: 1 },
+        },
+      );
+      throw error;
+    }
+
+    if (shouldTransfer && previousOwner !== claimed.sellerId) {
+      await this.appendLedger(
+        claimed.communityId,
+        'bank_transferred',
+        { reason: 'deal_close', dealId: claimed.id },
+        claimed.sellerId,
+        bank.id,
+        claimed.id,
+      );
+    }
 
     await this.appendLedger(
-      deal.communityId,
+      claimed.communityId,
       'deal_closed',
       {
-        dealAmountRub: deal.dealAmountRub,
+        dealAmountRub: claimed.dealAmountRub,
         hopsLeft: bank.hopsLeft,
         fee: DEAL_FEE_MERITS,
       },
       actorUserId,
       bank.id,
-      deal.id,
+      claimed.id,
     );
     await this.notifyUser(
-      deal.sellerId,
-      deal.communityId,
+      claimed.sellerId,
+      claimed.communityId,
       'dealClosed',
       'Сделка закрыта. Право на обмен перешло к вам.',
       '/deals',
     );
     await this.notifyUser(
-      deal.buyerId,
-      deal.communityId,
+      claimed.buyerId,
+      claimed.communityId,
       'dealClosed',
       'Сделка закрыта. Можно оставить благодарность на площадке.',
       '/deals',
     );
-    return deal;
+    return claimed;
   }
 
   async cancelDeal(
@@ -830,6 +876,7 @@ export class UzzService {
     const now = new Date();
 
     for (const bank of banks) {
+      try {
       const settings = await this.getOrCreateSettings(bank.communityId);
       if (bank.nominalRub == null) continue;
 
@@ -883,6 +930,11 @@ export class UzzService {
         bank.id,
       );
       updated += 1;
+      } catch (error) {
+        this.logger.warn(
+          `Demurrage skipped for bank ${bank.id}: ${error instanceof Error ? error.message : error}`,
+        );
+      }
     }
 
     return { updated };
@@ -988,16 +1040,18 @@ export class UzzService {
         'UZZ thanks',
       );
       if (!debited) {
-        if (isBuyer) {
-          claimed.buyerThankedAt = undefined;
-          claimed.buyerThanksComment = undefined;
-          claimed.buyerThanksMerits = undefined;
-        } else {
-          claimed.sellerThankedAt = undefined;
-          claimed.sellerThanksComment = undefined;
-          claimed.sellerThanksMerits = undefined;
-        }
-        await claimed.save();
+        const unset = isBuyer
+          ? {
+              buyerThankedAt: 1,
+              buyerThanksComment: 1,
+              buyerThanksMerits: 1,
+            }
+          : {
+              sellerThankedAt: 1,
+              sellerThanksComment: 1,
+              sellerThanksMerits: 1,
+            };
+        await this.dealModel.updateOne({ id: claimed.id }, { $unset: unset });
         throw new BadRequestException('Не хватает заслуг для благодарности');
       }
       await this.walletService.createOrGetWallet(payeeId, walletCommunityId, currency);
@@ -1076,18 +1130,31 @@ export class UzzService {
   async startTelegramLink(userId: string): Promise<{ code: string; expiresAt: Date }> {
     const code = randomBytes(4).toString('hex');
     const expiresAt = new Date(Date.now() + LINK_CODE_TTL_MS);
+    const email = await this.resolveUserEmail(userId);
     await this.identityModel.findOneAndUpdate(
       { userId },
       {
         $set: {
           pendingTelegramCode: code,
           pendingTelegramExpiresAt: expiresAt,
+          ...(email ? { email } : {}),
         },
         $setOnInsert: { userId },
       },
       { upsert: true, new: true },
     );
     return { code, expiresAt };
+  }
+
+  async recordLoginEmail(userId: string, email: string): Promise<void> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized.includes('@')) return;
+    await this.identityModel.findOneAndUpdate(
+      { userId },
+      { $set: { email: normalized }, $setOnInsert: { userId } },
+      { upsert: true },
+    );
+    await this.promoteHoldingBanksIfLinked(userId);
   }
 
   async confirmTelegramLink(
@@ -1098,7 +1165,7 @@ export class UzzService {
       .findOne({ pendingTelegramCode: code })
       .exec();
     if (!link || !link.pendingTelegramExpiresAt || link.pendingTelegramExpiresAt < new Date()) {
-      throw new BadRequestException('Invalid or expired Telegram link code');
+      throw new BadRequestException('Код привязки Telegram устарел. Запросите новую ссылку');
     }
     const taken = await this.identityModel
       .findOne({
@@ -1113,11 +1180,13 @@ export class UzzService {
     link.telegramUserId = String(telegramUserId);
     link.pendingTelegramCode = undefined;
     link.pendingTelegramExpiresAt = undefined;
+    const email = await this.resolveUserEmail(link.userId);
+    if (email) link.email = email;
     await link.save();
     try {
       await this.userService.linkIdentity(link.userId, 'telegram', String(telegramUserId));
-    } catch {
-      // May already exist on the TG-provisioned user; UZZ link table is source of truth for pilot.
+    } catch (error) {
+      if (!(error instanceof ConflictException)) throw error;
     }
     await this.promoteHoldingBanksIfLinked(link.userId);
     return link;
@@ -1129,7 +1198,7 @@ export class UzzService {
   ): Promise<{ code: string; expiresAt: Date; email: string }> {
     const normalized = email.trim().toLowerCase();
     if (!normalized.includes('@')) {
-      throw new BadRequestException('Invalid email');
+      throw new BadRequestException('Укажите почту в формате имя@домен');
     }
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const expiresAt = new Date(Date.now() + LINK_CODE_TTL_MS);
@@ -1199,7 +1268,7 @@ export class UzzService {
       !link.pendingEmailExpiresAt ||
       link.pendingEmailExpiresAt < new Date()
     ) {
-      throw new BadRequestException('Invalid or expired email link code');
+      throw new BadRequestException('Код из письма устарел. Запросите новый через бота');
     }
     link.email = link.pendingEmail;
     link.pendingEmail = undefined;
@@ -1209,8 +1278,8 @@ export class UzzService {
     if (link.email) {
       try {
         await this.userService.linkIdentity(userId, 'email', link.email);
-      } catch {
-        // Identity may already exist; ignore for MVP link table.
+      } catch (error) {
+        if (!(error instanceof ConflictException)) throw error;
       }
     }
     await this.promoteHoldingBanksIfLinked(userId);
@@ -1222,9 +1291,13 @@ export class UzzService {
     telegramUserId?: string;
     email?: string;
   }> {
+    await this.persistKnownEmail(userId);
     const link = await this.findIdentityLinkForUser(userId);
-    const telegramUserId = link?.telegramUserId;
-    const email = link?.email;
+    const user = await this.userService.getUserById(userId);
+    const telegramUserId =
+      link?.telegramUserId ||
+      (user?.authProvider === 'telegram' && user.authId ? String(user.authId) : undefined);
+    const email = link?.email ?? (await this.resolveUserEmail(userId));
     return {
       linked: Boolean(telegramUserId && email),
       telegramUserId,
@@ -1347,12 +1420,13 @@ export class UzzService {
   }
 
   async assertCommunityAdmin(communityId: string, userId: string): Promise<void> {
-    const user = await this.userService.getUserById(userId);
-    if (user?.globalRole === 'superadmin') return;
-    const isAdmin = await this.communityService.isUserAdmin(communityId, userId);
-    if (!isAdmin) {
-      throw new ForbiddenException('Нужна роль администратора сообщества');
+    const ids = await this.resolveLinkedUserIds(userId);
+    for (const id of ids) {
+      const user = await this.userService.getUserById(id);
+      if (user?.globalRole === 'superadmin') return;
+      if (await this.communityService.isUserAdmin(communityId, id)) return;
     }
+    throw new ForbiddenException('Нужна роль администратора сообщества');
   }
 
   private async communityCurrency(communityId: string): Promise<{
@@ -1557,29 +1631,66 @@ export class UzzService {
   private async findIdentityLinkForUser(
     userId: string,
   ): Promise<{ userId: string; telegramUserId?: string; email?: string } | null> {
-    const direct = await this.identityModel.findOne({ userId }).lean().exec();
-    if (direct) return direct;
+    const rows = await this.findIdentityLinksForUser(userId);
+    if (!rows.length) return null;
+    return {
+      userId: rows[0].userId,
+      telegramUserId: rows.find((row) => row.telegramUserId)?.telegramUserId,
+      email: rows.find((row) => row.email)?.email,
+    };
+  }
+
+  private async findIdentityLinksForUser(
+    userId: string,
+  ): Promise<Array<{ userId: string; telegramUserId?: string; email?: string }>> {
     const user = await this.userService.getUserById(userId);
+    const or: Array<Record<string, string>> = [{ userId }];
     if (user?.authProvider === 'telegram' && user.authId) {
-      return this.identityModel
-        .findOne({ telegramUserId: String(user.authId) })
-        .lean()
-        .exec();
+      or.push({ telegramUserId: String(user.authId) });
     }
-    return null;
+    const email = await this.resolveUserEmail(userId);
+    if (email) or.push({ email });
+    return this.identityModel.find({ $or: or }).lean().exec();
+  }
+
+  private async resolveUserEmail(userId: string): Promise<string | undefined> {
+    const user = await this.userService.getUserById(userId);
+    if (!user) return undefined;
+    if (user.authProvider === 'email' && user.authId?.includes('@')) {
+      return user.authId.trim().toLowerCase();
+    }
+    const fromProfile = user.profile?.contacts?.email?.trim().toLowerCase();
+    if (fromProfile?.includes('@')) return fromProfile;
+    return undefined;
+  }
+
+  private async persistKnownEmail(userId: string): Promise<void> {
+    const email = await this.resolveUserEmail(userId);
+    if (!email) return;
+    await this.identityModel.findOneAndUpdate(
+      { userId },
+      { $set: { email }, $setOnInsert: { userId } },
+      { upsert: true },
+    );
   }
 
   /** Email-session user and Telegram-provisioned user must both see shared UZZ assets. */
   private async resolveLinkedUserIds(userId: string): Promise<string[]> {
     const ids = new Set<string>([userId]);
-    const link = await this.findIdentityLinkForUser(userId);
-    if (link?.userId) ids.add(link.userId);
-    if (link?.telegramUserId) {
-      const tgUser = await this.userService.getUserByAuthId(
-        'telegram',
-        String(link.telegramUserId),
-      );
-      if (tgUser?.id) ids.add(tgUser.id);
+    const rows = await this.findIdentityLinksForUser(userId);
+    for (const link of rows) {
+      if (link.userId) ids.add(link.userId);
+      if (link.telegramUserId) {
+        const tgUser = await this.userService.getUserByAuthId(
+          'telegram',
+          String(link.telegramUserId),
+        );
+        if (tgUser?.id) ids.add(tgUser.id);
+      }
+      if (link.email) {
+        const emailUser = await this.userService.getUserByAuthId('email', link.email);
+        if (emailUser?.id) ids.add(emailUser.id);
+      }
     }
     return [...ids];
   }
@@ -1593,10 +1704,11 @@ export class UzzService {
   /** Prefer the linked identity that actually holds wallet balance (usually TG user). */
   private async pickWalletUserId(userId: string, communityId: string): Promise<string> {
     const ids = await this.resolveLinkedUserIds(userId);
+    const walletCommunityId = await this.walletScope(communityId);
     let bestId = userId;
     let bestBalance = -1;
     for (const id of ids) {
-      const wallet = await this.walletService.getWallet(id, communityId);
+      const wallet = await this.walletService.getWallet(id, walletCommunityId);
       const balance = wallet?.getBalance?.() ?? 0;
       if (balance > bestBalance) {
         bestBalance = balance;

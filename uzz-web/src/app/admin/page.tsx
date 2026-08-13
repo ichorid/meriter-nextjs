@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { bankHeadline, formatWhen, ledgerTypeLabel, uzzErrorMessage } from '@/lib/utils';
+import { bankHeadline, dealStatusLabel, formatWhen, ledgerTypeLabel, uzzErrorMessage } from '@/lib/utils';
 
 export default function AdminPage() {
   const { communityId, isUzzAdmin, loggedIn } = useUzzCommunityId();
@@ -42,6 +42,10 @@ export default function AdminPage() {
   const [notifyDealClosed, setNotifyDealClosed] = useState(true);
   const [nominalByBank, setNominalByBank] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<string | null>(null);
+  const [adminConfirm, setAdminConfirm] = useState<{
+    id: string;
+    kind: 'close' | 'return';
+  } | null>(null);
 
   useEffect(() => {
     if (!settings.data) return;
@@ -80,6 +84,7 @@ export default function AdminPage() {
   const adminClose = trpc.deals.adminClose.useMutation({
     onSuccess: () => {
       setMessage('Сделка закрыта');
+      setAdminConfirm(null);
       void utils.deals.adminList.invalidate();
       void utils.ledger.list.invalidate();
     },
@@ -88,6 +93,7 @@ export default function AdminPage() {
   const adminCancel = trpc.deals.adminCancel.useMutation({
     onSuccess: () => {
       setMessage('Сделка возвращена');
+      setAdminConfirm(null);
       void utils.deals.adminList.invalidate();
       void utils.ledger.list.invalidate();
     },
@@ -219,6 +225,8 @@ export default function AdminPage() {
           <h2 className="font-extrabold">Открытые сделки</h2>
           {openDeals.isLoading ? (
             <p className="text-sm text-stitch-muted">Загрузка…</p>
+          ) : openDeals.isError ? (
+            <p className="text-sm text-amber-200">Не удалось загрузить сделки.</p>
           ) : !openDeals.data?.length ? (
             <p className="text-sm text-stitch-muted">Открытых сделок нет.</p>
           ) : (
@@ -231,27 +239,68 @@ export default function AdminPage() {
                   <div className="min-w-[8rem] flex-1 text-sm">
                     <p className="font-medium">{deal.lotTitle}</p>
                     <p className="text-stitch-muted">
-                      {deal.counterpartyName}
+                      {dealStatusLabel(deal.status)}
+                      {deal.counterpartyName ? ` · ${deal.counterpartyName}` : ''}
                       {deal.lotPriceRub != null ? ` · ${deal.lotPriceRub} ₽` : ''}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={adminClose.isPending || adminCancel.isPending}
-                      onClick={() => adminClose.mutate({ dealId: deal.id })}
-                      className="rounded-lg bg-stitch-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
-                    >
-                      Закрыть
-                    </button>
-                    <button
-                      type="button"
-                      disabled={adminClose.isPending || adminCancel.isPending}
-                      onClick={() => adminCancel.mutate({ dealId: deal.id })}
-                      className="rounded-lg border border-stitch-border px-3 py-1.5 text-sm disabled:opacity-50"
-                    >
-                      Вернуть
-                    </button>
+                  <div className="flex flex-wrap gap-2">
+                    {adminConfirm?.id === deal.id && adminConfirm.kind === 'close' ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={adminClose.isPending || adminCancel.isPending}
+                          onClick={() => adminClose.mutate({ dealId: deal.id })}
+                          className="rounded-lg bg-stitch-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                          Точно закрыть?
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAdminConfirm(null)}
+                          className="rounded-lg border border-stitch-border px-3 py-1.5 text-sm"
+                        >
+                          Нет
+                        </button>
+                      </>
+                    ) : adminConfirm?.id === deal.id && adminConfirm.kind === 'return' ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={adminClose.isPending || adminCancel.isPending}
+                          onClick={() => adminCancel.mutate({ dealId: deal.id })}
+                          className="rounded-lg border border-stitch-border px-3 py-1.5 text-sm disabled:opacity-50"
+                        >
+                          Точно вернуть?
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAdminConfirm(null)}
+                          className="rounded-lg border border-stitch-border px-3 py-1.5 text-sm"
+                        >
+                          Нет
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          disabled={adminClose.isPending || adminCancel.isPending}
+                          onClick={() => setAdminConfirm({ id: deal.id, kind: 'close' })}
+                          className="rounded-lg bg-stitch-accent px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+                        >
+                          Закрыть
+                        </button>
+                        <button
+                          type="button"
+                          disabled={adminClose.isPending || adminCancel.isPending}
+                          onClick={() => setAdminConfirm({ id: deal.id, kind: 'return' })}
+                          className="rounded-lg border border-stitch-border px-3 py-1.5 text-sm disabled:opacity-50"
+                        >
+                          Вернуть
+                        </button>
+                      </>
+                    )}
                   </div>
                 </li>
               ))}
@@ -330,9 +379,11 @@ export default function AdminPage() {
               onChange={(e) => setBankTransferMode(e.target.value as typeof bankTransferMode)}
               className="w-full rounded-lg border border-stitch-border bg-stitch-canvas px-3 py-2"
             >
-              <option value="escrow_until_close">После закрытия сделки</option>
-              <option value="on_accept_locked">При принятии, до закрытия заблокировано</option>
-              <option value="on_close_only">Только при закрытии</option>
+              <option value="escrow_until_close">
+                При закрытии (до этого право у заказчика, в сделке заблокировано)
+              </option>
+              <option value="on_accept_locked">Сразу при принятии заявки</option>
+              <option value="on_close_only">Только в момент закрытия, без блокировки заранее</option>
             </select>
           </label>
           <fieldset className="space-y-2 text-sm">
