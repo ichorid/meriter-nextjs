@@ -1,7 +1,7 @@
 import { UzzNotFoundError } from '../../../domain/uzz/errors';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
-import { appendDealLedger, appendTelegramNotification } from './deal-use-case.helpers';
+import { appendDealLedger, appendTelegramNotification, assertEquivalentActor } from './deal-use-case.helpers';
 
 export class CancelDealUseCase {
   private readonly commands: CommandExecutor;
@@ -17,10 +17,12 @@ export class CancelDealUseCase {
       work: async (repositories) => {
         const deal = await repositories.deals.findById(input.dealId);
         if (!deal) throw new UzzNotFoundError('DEAL_NOT_FOUND');
-        deal.cancel(input.buyerId, now);
+        const before = deal.snapshot();
+        await assertEquivalentActor(repositories, input.buyerId, before.buyerId);
+        deal.cancel(before.buyerId, now);
         const state = deal.snapshot();
         await repositories.wallet.refundToSource({
-          userId: state.buyerId,
+          userId: state.feePayerUserId ?? state.buyerId,
           sourceCommunityId: state.feeSourceCommunityId!,
           amount: 1,
           operationId: `${input.commandId}:refund`,
@@ -34,7 +36,7 @@ export class CancelDealUseCase {
         });
         await appendDealLedger(repositories, {
           operationId: input.commandId, communityId: state.communityId,
-          userId: input.buyerId, type: 'deal_cancelled', amount: 0, createdAt: now,
+          userId: state.buyerId, type: 'deal_cancelled', amount: 0, createdAt: now,
           metadata: { dealId: state.id },
         });
         await appendTelegramNotification(repositories, {

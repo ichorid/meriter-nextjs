@@ -1,6 +1,27 @@
 import { randomUUID } from 'crypto';
 import { UzzAccessPolicy } from '../policies/uzz-access-policy';
 import { UzzLedgerEntry, UzzRepositories } from '../ports/uzz-repositories';
+import { UzzForbiddenError } from '../../../domain/uzz/errors';
+
+export async function resolveIdentityContext(
+  repositories: UzzRepositories,
+  userId: string,
+) {
+  const direct = await repositories.identities.findByCanonicalUserId(userId);
+  const alias = direct ? null : await repositories.identities.findAliasByUserId(userId);
+  const identity = direct ?? (alias
+    ? await repositories.identities.findById(alias.identityId)
+    : null);
+  const aliases = identity
+    ? await repositories.identities.listAliases(identity.id)
+    : [];
+  return {
+    identity,
+    userIds: identity
+      ? [...new Set([identity.canonicalUserId, ...aliases.map((entry) => entry.aliasUserId)])]
+      : [userId],
+  };
+}
 
 export async function assertReadyMember(
   repositories: UzzRepositories,
@@ -8,16 +29,40 @@ export async function assertReadyMember(
   communityId: string,
   userId: string,
 ) {
-  const identity = await repositories.identities.findByCanonicalUserId(userId);
-  const aliases = identity
-    ? await repositories.identities.listAliases(identity.id)
-    : [];
-  await access.assertMember(communityId, [
+  const context = await resolveIdentityContext(repositories, userId);
+  await access.assertMember(communityId, context.userIds);
+  access.assertIdentityReady(context.identity);
+  return { ...context, identity: context.identity! };
+}
+
+export async function assertEquivalentActor(
+  repositories: UzzRepositories,
+  actorId: string,
+  participantId: string,
+) {
+  const context = await resolveIdentityContext(repositories, actorId);
+  if (!context.userIds.includes(participantId)) {
+    throw new UzzForbiddenError('DEAL_PARTICIPANT_REQUIRED');
+  }
+  return context;
+}
+
+export async function selectWalletPayer(
+  repositories: UzzRepositories,
+  userIds: string[],
+  localCommunityId: string,
+  globalCommunityId: string,
+  amount: number,
+) {
+  const balances = await Promise.all(userIds.map(async (userId) => ({
     userId,
-    ...aliases.map((alias) => alias.aliasUserId),
-  ]);
-  access.assertIdentityReady(identity);
-  return identity!;
+    ...(await repositories.wallet.getBalances({
+      userId, localCommunityId, globalCommunityId,
+    })),
+  })));
+  return balances.find((entry) => entry.localBalance >= amount)?.userId
+    ?? balances.find((entry) => entry.globalBalance >= amount)?.userId
+    ?? userIds[0];
 }
 
 export function addDays(date: Date, days: number): Date {
@@ -46,7 +91,7 @@ export async function appendTelegramNotification(
     now: Date;
   },
 ): Promise<void> {
-  const identity = await repositories.identities.findByCanonicalUserId(input.targetUserId);
+  const { identity } = await resolveIdentityContext(repositories, input.targetUserId);
   if (!identity?.telegramUserId) return;
   await repositories.outbox.append({
     id: `${input.operationId}:telegram:${input.targetUserId}:${input.kind}`,

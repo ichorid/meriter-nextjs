@@ -49,7 +49,7 @@ export class AdminResolveDealUseCase {
           }
           if (before.feeReserved && before.feeSourceCommunityId) {
             await repositories.wallet.refundToSource({
-              userId: before.buyerId,
+              userId: before.feePayerUserId ?? before.buyerId,
               sourceCommunityId: before.feeSourceCommunityId,
               amount: 1,
               operationId: `${input.commandId}:refund`,

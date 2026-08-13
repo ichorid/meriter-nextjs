@@ -2,7 +2,7 @@ import { UzzNotFoundError } from '../../../domain/uzz/errors';
 import { Rubles } from '../../../domain/uzz/value-objects/rubles';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
-import { appendDealLedger, appendTelegramNotification } from './deal-use-case.helpers';
+import { appendDealLedger, appendTelegramNotification, assertEquivalentActor } from './deal-use-case.helpers';
 
 export class CloseDealUseCase {
   private readonly commands: CommandExecutor;
@@ -19,11 +19,12 @@ export class CloseDealUseCase {
         const deal = await repositories.deals.findById(input.dealId);
         if (!deal) throw new UzzNotFoundError('DEAL_NOT_FOUND');
         const state = deal.snapshot();
+        await assertEquivalentActor(repositories, input.buyerId, state.buyerId);
         const right = await repositories.rights.findById(state.exchangeRightId);
         if (!right) throw new UzzNotFoundError('RIGHT_NOT_FOUND');
         const nominal = right.snapshot().nominalRub;
         if (nominal === null) throw new UzzNotFoundError('RIGHT_NOMINAL_MISSING');
-        deal.close(input.buyerId, Rubles.create(nominal), now);
+        deal.close(state.buyerId, Rubles.create(nominal), now);
         right.releaseAfterDeal(state.id, state.sellerId, now);
         await repositories.deals.update(deal);
         await repositories.rights.update(right);

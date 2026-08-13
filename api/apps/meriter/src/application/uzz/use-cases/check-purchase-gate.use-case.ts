@@ -22,13 +22,17 @@ export class CheckPurchaseGateUseCase {
         ...aliases.map((alias) => alias.aliasUserId),
       ]);
       this.accessPolicy.assertIdentityReady(identity);
-      const [settings, activeListingCount] = await Promise.all([
+      const userIds = [
+        input.buyerId,
+        ...aliases.map((alias) => alias.aliasUserId),
+      ];
+      const [settings, listingCounts] = await Promise.all([
         repositories.settings.findByCommunityId(input.communityId),
-        repositories.listings.countActiveByAuthor(
-          input.communityId,
-          input.buyerId,
-        ),
+        Promise.all(userIds.map((authorId) =>
+          repositories.listings.countActiveByAuthor(input.communityId, authorId),
+        )),
       ]);
+      const activeListingCount = listingCounts.reduce((sum, count) => sum + count, 0);
       const minimumListings =
         settings?.minimumListingsToBuy ?? DEFAULT_MINIMUM_LISTINGS;
       const decision = this.accessPolicy.evaluatePurchase({

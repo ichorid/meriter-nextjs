@@ -161,6 +161,27 @@ describe('UZZ deal use cases', () => {
     ]));
   });
 
+  it('uses a pre-existing Telegram alias right and wallet from the email account', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insertAlias({
+      id: 'identity-buyer-1:telegram-buyer', identityId: 'identity-buyer-1',
+      aliasUserId: 'telegram-buyer', createdAt: NOW,
+    });
+    await rawDb.collection('uzz_rights').updateOne(
+      { id: 'right-1' }, { $set: { ownerId: 'telegram-buyer' } },
+    );
+    await rawDb.collection('wallets').updateOne(
+      { id: 'wallet-1' }, { $set: { userId: 'telegram-buyer' } },
+    );
+
+    const deal = await createRequest();
+    expect(deal).toMatchObject({ buyerId: 'telegram-buyer', feePayerUserId: 'telegram-buyer' });
+    await accept.execute({ commandId: 'alias-accept', dealId: deal.id, sellerId: 'seller-1', expectedNominalRub: 500, agreedDeadlineAt: null, now: new Date('2026-08-14T01:00:00Z') });
+    await complete.execute({ commandId: 'alias-complete', dealId: deal.id, sellerId: 'seller-1', now: new Date('2026-08-14T02:00:00Z') });
+    await expect(close.execute({ commandId: 'alias-close', dealId: deal.id, buyerId: 'buyer-1', now: new Date('2026-08-14T03:00:00Z') })).resolves.toMatchObject({ status: 'closed' });
+    expect((await repositories.rights.findById('right-1'))?.snapshot()).toMatchObject({ ownerId: 'seller-1' });
+  });
+
   it('requires a meaningful reason for an administrative resolution', async () => {
     const deal = await createRequest();
     await expect(adminResolve.execute({

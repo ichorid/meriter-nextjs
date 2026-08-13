@@ -47,7 +47,8 @@ export class ExpireDealsUseCase {
             }
             if (before.feeReserved && before.feeSourceCommunityId) {
               await repositories.wallet.refundToSource({
-                userId: before.buyerId, sourceCommunityId: before.feeSourceCommunityId,
+                userId: before.feePayerUserId ?? before.buyerId,
+                sourceCommunityId: before.feeSourceCommunityId,
                 amount: 1, operationId: `${commandId}:refund`,
               });
               deal.clearReservedFee(now);

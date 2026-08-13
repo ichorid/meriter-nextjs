@@ -366,7 +366,7 @@ function createRepositories(
       const rows = await execute(
         models.ledger.find({
           communityId: input.communityId,
-          ...(input.userId ? { userId: input.userId } : {}),
+          ...(input.userIds?.length ? { userId: { $in: input.userIds } } : {}),
         }).sort({ createdAt: -1 }).skip(input.skip).limit(input.limit).lean(),
         session,
       );

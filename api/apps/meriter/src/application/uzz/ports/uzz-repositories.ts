@@ -157,7 +157,7 @@ export interface UzzLedgerRepository {
   append(entry: UzzLedgerEntry): Promise<void>;
   list(input: {
     communityId: string;
-    userId?: string;
+    userIds?: string[];
     limit: number;
     skip: number;
   }): Promise<UzzLedgerEntry[]>;

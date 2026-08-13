@@ -2,7 +2,7 @@ import { MeritAmount } from '../../../domain/uzz/value-objects/merit-amount';
 import { UzzNotFoundError } from '../../../domain/uzz/errors';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
-import { appendDealLedger, appendTelegramNotification } from './deal-use-case.helpers';
+import { appendDealLedger, appendTelegramNotification, resolveIdentityContext, selectWalletPayer } from './deal-use-case.helpers';
 
 export class SendDealThanksUseCase {
   private readonly commands: CommandExecutor;
@@ -28,14 +28,24 @@ export class SendDealThanksUseCase {
         const deal = await repositories.deals.findById(input.dealId);
         if (!deal) throw new UzzNotFoundError('DEAL_NOT_FOUND');
         const before = deal.snapshot();
-        deal.thank({ actorId: input.actorUserId, merits, comment: input.comment, now });
-        const recipientUserId = input.actorUserId === before.buyerId
+        const actor = await resolveIdentityContext(repositories, input.actorUserId);
+        const actorUserId = actor.userIds.includes(before.buyerId)
+          ? before.buyerId
+          : actor.userIds.includes(before.sellerId)
+            ? before.sellerId
+            : input.actorUserId;
+        deal.thank({ actorId: actorUserId, merits, comment: input.comment, now });
+        const recipientUserId = actorUserId === before.buyerId
           ? before.sellerId
           : before.buyerId;
         let sourceCommunityId: string | null = null;
         if (merits) {
+          const payerUserId = await selectWalletPayer(
+            repositories, actor.userIds, before.communityId,
+            this.globalCommunityId, merits.value,
+          );
           const transfer = await repositories.wallet.transferPreferLocal({
-            userId: input.actorUserId,
+            userId: payerUserId,
             recipientUserId,
             localCommunityId: before.communityId,
             globalCommunityId: this.globalCommunityId,
@@ -53,14 +63,14 @@ export class SendDealThanksUseCase {
         };
         await appendDealLedger(repositories, {
           operationId: input.commandId, communityId: before.communityId,
-          userId: input.actorUserId, type: 'thanks_sent',
+          userId: actorUserId, type: 'thanks_sent',
           amount: -(merits?.value ?? 0), createdAt: now, metadata,
         });
         await appendDealLedger(repositories, {
           operationId: input.commandId, communityId: before.communityId,
           userId: recipientUserId, type: 'thanks_received',
           amount: merits?.value ?? 0, createdAt: now,
-          metadata: { ...metadata, counterpartyId: input.actorUserId },
+          metadata: { ...metadata, counterpartyId: actorUserId },
         });
         await appendTelegramNotification(repositories, {
           operationId: input.commandId, aggregateId: before.id,

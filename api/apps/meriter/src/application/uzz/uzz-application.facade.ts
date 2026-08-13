@@ -65,11 +65,19 @@ export class UzzApplicationFacade {
     return this.commands.updateListing.execute(input);
   }
   async listCatalog(input: Parameters<ListCatalogUseCase['execute']>[0]) {
-    const listings = await this.commands.listCatalog.execute(input);
+    const authorIds = input.authorId
+      ? await this.authorization.resolveUserIds(input.authorId)
+      : [undefined];
+    const listings = (await Promise.all(authorIds.map((authorId) =>
+      this.commands.listCatalog.execute({ ...input, authorId }),
+    ))).flat();
+    const uniqueListings = [...new Map(listings.map((listing) => [
+      listing.id, listing,
+    ])).values()];
     const names = await this.platform.getDisplayNames(
-      listings.map((listing) => listing.authorId),
+      uniqueListings.map((listing) => listing.authorId),
     );
-    return listings.map((listing) => ({
+    return uniqueListings.map((listing) => ({
       ...listing,
       ownerName: displayName(names.get(listing.authorId)),
     }));
@@ -209,9 +217,20 @@ export class UzzApplicationFacade {
 
   async getFeeBalances(userId: string, communityId: string) {
     await this.authorization.assertCommunityParticipant(communityId, userId);
-    return this.unitOfWork.run((repositories) => repositories.wallet.getBalances({
-      userId, localCommunityId: communityId, globalCommunityId: this.globalCommunityId,
-    }));
+    const userIds = await this.authorization.resolveUserIds(userId);
+    return this.unitOfWork.run(async (repositories) => {
+      const balances = await Promise.all(userIds.map((resolvedUserId) =>
+        repositories.wallet.getBalances({
+          userId: resolvedUserId,
+          localCommunityId: communityId,
+          globalCommunityId: this.globalCommunityId,
+        }),
+      ));
+      return balances.reduce((total, current) => ({
+        localBalance: total.localBalance + current.localBalance,
+        globalBalance: total.globalBalance + current.globalBalance,
+      }), { localBalance: 0, globalBalance: 0 });
+    });
   }
 
   async listLedger(input: {
@@ -226,9 +245,12 @@ export class UzzApplicationFacade {
     } else {
       await this.authorization.assertCommunityAdmin(input.communityId, input.viewerId);
     }
+    const userIds = input.mineOnly
+      ? await this.authorization.resolveUserIds(input.viewerId)
+      : undefined;
     return this.unitOfWork.run((repositories) => repositories.ledger.list({
       communityId: input.communityId,
-      userId: input.mineOnly ? input.viewerId : undefined,
+      userIds,
       limit: Math.min(Math.max(input.limit ?? 50, 1), 100),
       skip: Math.max(input.skip ?? 0, 0),
     }));

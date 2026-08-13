@@ -57,6 +57,7 @@ export const UzzDealPersistenceSchema = new Schema(
     sellerContact: { type: contactSchema, default: null },
     feeReserved: { type: Boolean, required: true, default: false },
     feeSourceCommunityId: { type: String, default: null },
+    feePayerUserId: { type: String, default: null },
     adminResolutionReason: { type: String, default: null },
     requestedAt: { type: Date, required: true },
     acceptedAt: { type: Date, default: null },

@@ -62,6 +62,7 @@ export interface DealSnapshot {
   sellerContact: DealContactSnapshot | null;
   feeReserved: boolean;
   feeSourceCommunityId: string | null;
+  feePayerUserId?: string | null;
   adminResolutionReason: string | null;
   requestedAt: Date;
   acceptedAt: Date | null;
@@ -138,6 +139,7 @@ export class Deal {
       sellerContact: null,
       feeReserved: false,
       feeSourceCommunityId: null,
+      feePayerUserId: null,
       adminResolutionReason: null,
       requestedAt: now,
       acceptedAt: null,
@@ -188,7 +190,7 @@ export class Deal {
     this.state.updatedAt = new Date(input.now);
   }
 
-  reserveFee(sourceCommunityId: string, now: Date): void {
+  reserveFee(sourceCommunityId: string, now: Date, payerUserId?: string): void {
     this.requireStatus('requested');
     if (this.state.feeReserved) {
       throw new UzzConflictError('DEAL_FEE_ALREADY_RESERVED');
@@ -199,6 +201,12 @@ export class Deal {
       1,
       200,
       'DEAL_FEE_SOURCE_INVALID',
+    );
+    this.state.feePayerUserId = requireText(
+      payerUserId ?? this.state.buyerId,
+      1,
+      200,
+      'DEAL_FEE_PAYER_INVALID',
     );
     this.state.updatedAt = new Date(now);
   }

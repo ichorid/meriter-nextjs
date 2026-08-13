@@ -1,5 +1,6 @@
 import { Rubles } from '../../../domain/uzz/value-objects/rubles';
 import {
+  UzzForbiddenError,
   UzzNotFoundError,
   UzzNominalChangedError,
 } from '../../../domain/uzz/errors';
@@ -49,14 +50,17 @@ export class AcceptDealUseCase {
           state.communityId,
           input.sellerId,
         );
+        if (!seller.userIds.includes(state.sellerId)) {
+          throw new UzzForbiddenError('DEAL_SELLER_REQUIRED');
+        }
         const settings = await repositories.settings.findByCommunityId(state.communityId);
         deal.accept({
-          sellerId: input.sellerId,
+          sellerId: state.sellerId,
           acceptedNominal: Rubles.create(input.expectedNominalRub),
           agreedDeadlineAt: input.agreedDeadlineAt,
           fulfillmentExpiresAt: addDays(now, settings?.fulfillmentTtlDays ?? 7),
-          buyerContact: { telegramUsername: buyer.telegramUsername! },
-          sellerContact: { telegramUsername: seller.telegramUsername! },
+          buyerContact: { telegramUsername: buyer.identity.telegramUsername! },
+          sellerContact: { telegramUsername: seller.identity.telegramUsername! },
           now,
         });
         right.lockForDeal(state.id, now);
@@ -64,7 +68,7 @@ export class AcceptDealUseCase {
         await repositories.rights.update(right);
         await appendDealLedger(repositories, {
           operationId: input.commandId, communityId: state.communityId,
-          userId: input.sellerId, type: 'deal_accepted', amount: 0, createdAt: now,
+          userId: state.sellerId, type: 'deal_accepted', amount: 0, createdAt: now,
           metadata: { dealId: state.id, nominalRub: input.expectedNominalRub },
         });
         await appendTelegramNotification(repositories, {
