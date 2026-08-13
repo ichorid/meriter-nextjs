@@ -155,9 +155,11 @@ function MinePanel({
   const updateLot = trpc.lots.update.useMutation({
     onSuccess: () => {
       setEditingId(null);
+      setLotError(null);
       void utils.lots.myLots.invalidate();
       void utils.lots.list.invalidate();
     },
+    onError: (err) => setLotError(err.message || 'Не удалось сохранить'),
   });
 
   function onCreateLot(e: FormEvent) {

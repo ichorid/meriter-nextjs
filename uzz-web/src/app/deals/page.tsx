@@ -1,9 +1,9 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AppShell } from '@/components/app-shell';
-import { Button, Card, EmptyState, Notice, inputClass } from '@/components/ui';
+import { Button, Card, EmptyState, Notice, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { dealNeedsAction, dealStatusLabel, formatDeadline } from '@/lib/utils';
@@ -12,7 +12,7 @@ export default function DealsPage() {
   const { communityId, loggedIn } = useUzzCommunityId();
   const enabled = Boolean(communityId) && loggedIn;
   const utils = trpc.useUtils();
-  const [onlyAction, setOnlyAction] = useState(true);
+  const [onlyOpen, setOnlyOpen] = useState(true);
 
   const deals = trpc.deals.list.useQuery(
     { communityId, mineOnly: true },
@@ -24,13 +24,49 @@ export default function DealsPage() {
     void utils.banks.listMine.invalidate();
     void utils.wallet.getBalance.invalidate();
     void utils.ledger.listMine.invalidate();
+    setConfirm(null);
   };
 
-  const accept = trpc.deals.accept.useMutation({ onSuccess: invalidate });
-  const reject = trpc.deals.reject.useMutation({ onSuccess: invalidate });
-  const complete = trpc.deals.complete.useMutation({ onSuccess: invalidate });
-  const close = trpc.deals.close.useMutation({ onSuccess: invalidate });
-  const cancel = trpc.deals.cancel.useMutation({ onSuccess: invalidate });
+  const [flash, setFlash] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('requested')) {
+      setFlash('Запрос отправлен. Исполнитель получит короткое сообщение в Telegram.');
+      window.history.replaceState(null, '', '/deals');
+    }
+  }, []);
+
+  const accept = trpc.deals.accept.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setFlash('Заявка принята. Когда сделаете услугу — нажмите «Сделано».');
+    },
+  });
+  const reject = trpc.deals.reject.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setFlash('Заявка отклонена. Комиссия заказчику возвращена.');
+    },
+  });
+  const complete = trpc.deals.complete.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setFlash('Отметили «сделано». Ждём подтверждения заказчика.');
+    },
+  });
+  const close = trpc.deals.close.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setFlash('Сделка закрыта. Можно сказать спасибо.');
+    },
+  });
+  const cancel = trpc.deals.cancel.useMutation({
+    onSuccess: () => {
+      invalidate();
+      setFlash('Заявка отменена. Комиссия вернулась, право снова у вас.');
+    },
+  });
   const thank = trpc.deals.thank.useMutation({
     onSuccess: () => {
       invalidate();
@@ -38,6 +74,7 @@ export default function DealsPage() {
       setThanksComment('');
       setThanksMerits('0');
       setThanksError(null);
+      setFlash('Благодарность отправлена.');
     },
     onError: (err) => setThanksError(err.message || 'Не отправилось'),
   });
@@ -59,9 +96,15 @@ export default function DealsPage() {
 
   const visible = useMemo(() => {
     const rows = deals.data ?? [];
-    if (!onlyAction) return rows;
-    return rows.filter(dealNeedsAction);
-  }, [deals.data, onlyAction]);
+    if (!onlyOpen) return rows;
+    return rows.filter(
+      (deal) =>
+        deal.status === 'requested' ||
+        deal.status === 'accepted' ||
+        deal.status === 'completed_by_seller' ||
+        dealNeedsAction(deal),
+    );
+  }, [deals.data, onlyOpen]);
 
   function onThanks(e: FormEvent) {
     e.preventDefault();
@@ -91,28 +134,32 @@ export default function DealsPage() {
         <label className="flex items-center gap-2 text-sm text-stitch-muted">
           <input
             type="checkbox"
-            checked={onlyAction}
-            onChange={(e) => setOnlyAction(e.target.checked)}
+            checked={onlyOpen}
+            onChange={(e) => setOnlyOpen(e.target.checked)}
           />
-          Сначала те, где нужен мой шаг
+          Только незакрытые
         </label>
 
+        {flash ? <Notice tone="ok">{flash}</Notice> : null}
         {actionError ? <Notice tone="warn">{actionError.message}</Notice> : null}
 
         {deals.isLoading ? (
-          <p className="text-sm text-stitch-muted">Загрузка…</p>
+          <div className="space-y-3" aria-busy>
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </div>
         ) : !deals.data?.length ? (
           <EmptyState title="Сделок пока нет">
             <Link href="/catalog" className="text-stitch-accent underline">
               Найдите услугу в «Обмене»
             </Link>
           </EmptyState>
-        ) : onlyAction && !visible.length ? (
-          <EmptyState title="Сейчас нет шагов с вашей стороны">
+        ) : onlyOpen && !visible.length ? (
+          <EmptyState title="Незакрытых сделок нет">
             <button
               type="button"
               className="text-stitch-accent underline"
-              onClick={() => setOnlyAction(false)}
+              onClick={() => setOnlyOpen(false)}
             >
               Показать все сделки
             </button>

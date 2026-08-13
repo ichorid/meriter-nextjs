@@ -2,13 +2,15 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
-import { Button, Card, EmptyState, Notice, inputClass } from '@/components/ui';
+import { Button, Card, EmptyState, Notice, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { bankHeadline } from '@/lib/utils';
 
 export default function CatalogPage() {
+  const router = useRouter();
   const { communityId, loggedIn, sessionLoading } = useUzzCommunityId();
   const enabled = Boolean(communityId);
   const utils = trpc.useUtils();
@@ -39,11 +41,10 @@ export default function CatalogPage() {
 
   const requestDeal = trpc.deals.request.useMutation({
     onSuccess: () => {
-      setMessage('Запрос отправлен. Исполнитель получит короткое сообщение в Telegram.');
-      setSelectedLotId(null);
-      setBankId('');
       void utils.deals.list.invalidate();
       void utils.wallet.getBalance.invalidate();
+      void utils.banks.listMine.invalidate();
+      router.push('/deals?requested=1');
     },
     onError: (err) => setMessage(err.message || 'Не удалось создать запрос'),
   });
@@ -121,7 +122,10 @@ export default function CatalogPage() {
         ) : null}
 
         {lots.isLoading ? (
-          <p className="text-sm text-stitch-muted">Загрузка…</p>
+          <div className="space-y-3" aria-busy>
+            <Skeleton className="h-28 w-full" />
+            <Skeleton className="h-28 w-full" />
+          </div>
         ) : !visibleLots.length ? (
           <EmptyState
             title={q || affordableOnly ? 'Ничего не нашлось' : 'Пока нет подходящих услуг'}
