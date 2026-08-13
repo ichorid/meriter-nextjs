@@ -41,7 +41,6 @@ import {
 import { WalletService } from '../wallet.service';
 import { UserService } from '../user.service';
 import { CommunityService } from '../community.service';
-import { MeritResolverService } from '../merit-resolver.service';
 import { EventBus } from '../../events/event-bus';
 import { UzzNotifyEvent } from '../../events/uzz.events';
 import { ConfigService } from '@nestjs/config';
@@ -180,7 +179,6 @@ export class UzzService {
     private readonly walletService: WalletService,
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
-    private readonly meritResolver: MeritResolverService,
     private readonly eventBus: EventBus,
     private readonly configService: ConfigService<AppConfig>,
   ) {}
@@ -256,22 +254,33 @@ export class UzzService {
     const linked = await this.hasFullIdentityLink(publication.authorId);
     const status: UzzBankStatus = linked ? 'awaiting_nominal' : 'holding';
     const now = new Date();
-    const bank = await this.bankModel.create({
-      id: uid(),
-      communityId: publication.communityId,
-      ownerId: publication.authorId,
-      sourcePublicationId: publicationId,
-      hopsLeft: settings.bankInitialHops,
-      nominalRub: null,
-      status,
-      ownerHistory: [
-        {
-          userId: publication.authorId,
-          at: now,
-          reason: linked ? 'emission' : 'emission_holding',
-        },
-      ],
-    });
+    let bank: UzzBankDocument;
+    try {
+      bank = await this.bankModel.create({
+        id: uid(),
+        communityId: publication.communityId,
+        ownerId: publication.authorId,
+        sourcePublicationId: publicationId,
+        hopsLeft: settings.bankInitialHops,
+        nominalRub: null,
+        status,
+        ownerHistory: [
+          {
+            userId: publication.authorId,
+            at: now,
+            reason: linked ? 'emission' : 'emission_holding',
+          },
+        ],
+      });
+    } catch (error) {
+      if (isMongoDuplicateKey(error)) {
+        const raced = await this.bankModel
+          .findOne({ sourcePublicationId: publicationId })
+          .exec();
+        if (raced) return raced;
+      }
+      throw error;
+    }
 
     await this.appendLedger(
       publication.communityId,
@@ -786,6 +795,14 @@ export class UzzService {
           $unset: { closedAt: 1, dealAmountRub: 1 },
         },
       );
+      if (extraFee) {
+        await this.creditDealFee(
+          extraFee.walletUserId,
+          extraFee.walletCommunityId,
+          deal.id,
+          deal.communityId,
+        );
+      }
       throw error;
     }
 
@@ -1022,6 +1039,25 @@ export class UzzService {
         );
       }
     }
+
+    const awaitingConfirm = await this.dealModel
+      .find({ status: 'completed_by_seller' })
+      .exec();
+    for (const deal of awaitingConfirm) {
+      const settings = await this.getOrCreateSettings(deal.communityId);
+      const fulfillMs = settings.dealFulfillmentDays * DAY_MS;
+      const from =
+        deal.completedBySellerAt?.getTime() ??
+        deal.acceptedAt?.getTime() ??
+        deal.requestedAt.getTime();
+      if (now - from <= fulfillMs) continue;
+      try {
+        await this.closeDeal(deal.id, 'system', { asAdmin: true });
+        expired += 1;
+      } catch {
+        // already terminal or race
+      }
+    }
     return { expired };
   }
 
@@ -1081,48 +1117,73 @@ export class UzzService {
     }
 
     if (merits > 0) {
-      const payerId = await this.pickWalletUserId(actorUserId, deal.communityId);
-      const payeeId = await this.pickWalletUserId(
-        isBuyer ? deal.sellerId : deal.buyerId,
-        deal.communityId,
-      );
-      const walletCommunityId = await this.walletScope(deal.communityId);
-      const currency = await this.communityCurrency(deal.communityId);
-      const debited = await this.walletService.debitIfSufficient(
-        payerId,
-        walletCommunityId,
-        merits,
-        'uzz_thanks',
-        deal.id,
-        'UZZ thanks',
-      );
-      if (!debited) {
-        const unset = isBuyer
-          ? {
-              buyerThankedAt: 1,
-              buyerThanksComment: 1,
-              buyerThanksMerits: 1,
-            }
-          : {
-              sellerThankedAt: 1,
-              sellerThanksComment: 1,
-              sellerThanksMerits: 1,
-            };
-        await this.dealModel.updateOne({ id: claimed.id }, { $unset: unset });
-        throw new BadRequestException('Не хватает заслуг для благодарности');
+      const unsetThanks = isBuyer
+        ? {
+            buyerThankedAt: 1,
+            buyerThanksComment: 1,
+            buyerThanksMerits: 1,
+          }
+        : {
+            sellerThankedAt: 1,
+            sellerThanksComment: 1,
+            sellerThanksMerits: 1,
+          };
+      let paid: { walletUserId: string; walletCommunityId: string };
+      try {
+        paid = await this.debitMeritsPreferLocal(
+          actorUserId,
+          deal.communityId,
+          merits,
+          'uzz_thanks',
+          deal.id,
+          'UZZ thanks',
+        );
+      } catch (error) {
+        await this.dealModel.updateOne({ id: claimed.id }, { $unset: unsetThanks });
+        if (error instanceof BadRequestException) {
+          throw new BadRequestException(
+            'Не хватает заслуг для благодарности — ни в сообществе, ни в общем кошельке',
+          );
+        }
+        throw error;
       }
-      await this.walletService.createOrGetWallet(payeeId, walletCommunityId, currency);
-      await this.walletService.addTransaction(
-        payeeId,
-        walletCommunityId,
-        'credit',
-        merits,
-        'personal',
-        'uzz_thanks',
-        deal.id,
-        currency,
-        'UZZ thanks',
+      const payeeId = await this.pickWalletUserIdFor(
+        isBuyer ? deal.sellerId : deal.buyerId,
+        paid.walletCommunityId,
       );
+      try {
+        const currency = await this.communityCurrency(deal.communityId);
+        await this.walletService.createOrGetWallet(
+          payeeId,
+          paid.walletCommunityId,
+          currency,
+        );
+        await this.walletService.addTransaction(
+          payeeId,
+          paid.walletCommunityId,
+          'credit',
+          merits,
+          'personal',
+          'uzz_thanks',
+          deal.id,
+          currency,
+          'UZZ thanks',
+        );
+      } catch (error) {
+        await this.walletService.addTransaction(
+          paid.walletUserId,
+          paid.walletCommunityId,
+          'credit',
+          merits,
+          'personal',
+          'uzz_thanks_refund',
+          deal.id,
+          await this.communityCurrency(deal.communityId),
+          'UZZ thanks refund',
+        );
+        await this.dealModel.updateOne({ id: claimed.id }, { $unset: unsetThanks });
+        throw error;
+      }
     }
 
     await this.appendLedger(
@@ -1206,11 +1267,18 @@ export class UzzService {
   async recordLoginEmail(userId: string, email: string): Promise<void> {
     const normalized = email.trim().toLowerCase();
     if (!normalized.includes('@')) return;
-    await this.identityModel.findOneAndUpdate(
-      { userId },
-      { $set: { email: normalized }, $setOnInsert: { userId } },
-      { upsert: true },
-    );
+    await this.upsertIdentityFacts(userId, { email: normalized });
+    const others = await this.identityModel
+      .find({ email: normalized, userId: { $ne: userId } })
+      .lean()
+      .exec();
+    for (const row of others) {
+      await this.pairIdentityFacts(userId, row.userId, {
+        email: normalized,
+        telegramUserId: row.telegramUserId,
+      });
+      await this.promoteHoldingBanksIfLinked(row.userId);
+    }
     await this.promoteHoldingBanksIfLinked(userId);
   }
 
@@ -1224,32 +1292,31 @@ export class UzzService {
     if (!link || !link.pendingTelegramExpiresAt || link.pendingTelegramExpiresAt < new Date()) {
       throw new BadRequestException('Код привязки Telegram устарел. Запросите новую ссылку');
     }
-    const taken = await this.identityModel
-      .findOne({
-        telegramUserId: String(telegramUserId),
-        userId: { $ne: link.userId },
-      })
-      .lean()
-      .exec();
-    if (taken) {
-      throw new BadRequestException('Этот Telegram уже привязан к другому аккаунту');
-    }
-    link.telegramUserId = String(telegramUserId);
-    link.pendingTelegramCode = undefined;
-    link.pendingTelegramExpiresAt = undefined;
+    const tgId = String(telegramUserId);
+    await this.tryLinkIdentity(link.userId, 'telegram', tgId);
     const email = await this.resolveUserEmail(link.userId);
-    if (email) link.email = email;
-    try {
-      await this.userService.linkIdentity(link.userId, 'telegram', String(telegramUserId));
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw new BadRequestException('Этот Telegram уже привязан к другому аккаунту');
-      }
-      throw error;
-    }
-    await link.save();
+    const tgUser = await this.userService.getUserByAuthId('telegram', tgId);
+    await this.pairIdentityFacts(link.userId, tgUser?.id, {
+      telegramUserId: tgId,
+      email,
+    });
+    await this.identityModel.updateOne(
+      { userId: link.userId },
+      {
+        $set: {
+          telegramUserId: tgId,
+          ...(email ? { email } : {}),
+        },
+        $unset: { pendingTelegramCode: 1, pendingTelegramExpiresAt: 1 },
+      },
+    );
     await this.promoteHoldingBanksIfLinked(link.userId);
-    return link;
+    if (tgUser?.id && tgUser.id !== link.userId) {
+      await this.promoteHoldingBanksIfLinked(tgUser.id);
+    }
+    const saved = await this.identityModel.findOne({ userId: link.userId }).exec();
+    if (!saved) throw new NotFoundException('Связка не найдена');
+    return saved;
   }
 
   async startEmailLinkFromBot(
@@ -1350,21 +1417,12 @@ export class UzzService {
     if (!email.includes('@')) {
       throw new BadRequestException('Код из письма устарел. Запросите новый через бота');
     }
-    const taken = await this.identityModel
-      .findOne({ email, userId: { $ne: userId } })
-      .lean()
-      .exec();
-    if (taken) {
-      throw new BadRequestException('Эта почта уже привязана к другому аккаунту');
-    }
-    try {
-      await this.userService.linkIdentity(userId, 'email', email);
-    } catch (error) {
-      if (error instanceof ConflictException) {
-        throw new BadRequestException('Эта почта уже привязана к другому аккаунту');
-      }
-      throw error;
-    }
+    await this.tryLinkIdentity(userId, 'email', email);
+    const emailUser = await this.userService.getUserByAuthId('email', email);
+    await this.pairIdentityFacts(userId, emailUser?.id, {
+      email,
+      telegramUserId: link.telegramUserId,
+    });
     link.email = email;
     link.pendingEmail = undefined;
     link.pendingEmailCode = undefined;
@@ -1372,6 +1430,9 @@ export class UzzService {
     link.pendingEmailAttempts = 0;
     await link.save();
     await this.promoteHoldingBanksIfLinked(userId);
+    if (emailUser?.id && emailUser.id !== userId) {
+      await this.promoteHoldingBanksIfLinked(emailUser.id);
+    }
     return link;
   }
 
@@ -1592,26 +1653,53 @@ export class UzzService {
     communityId: string,
     referenceId: string,
   ): Promise<{ walletUserId: string; walletCommunityId: string }> {
+    try {
+      return await this.debitMeritsPreferLocal(
+        buyerId,
+        communityId,
+        DEAL_FEE_MERITS,
+        'uzz_deal_fee',
+        referenceId,
+        'UZZ deal fee reserved',
+      );
+    } catch (error) {
+      if (error instanceof BadRequestException) {
+        throw new BadRequestException(
+          'Не хватает 1 заслуги на комиссию — ни в сообществе, ни в общем кошельке',
+        );
+      }
+      throw error;
+    }
+  }
+
+  private async debitMeritsPreferLocal(
+    userId: string,
+    communityId: string,
+    amount: number,
+    referenceType: string,
+    referenceId: string,
+    description: string,
+  ): Promise<{ walletUserId: string; walletCommunityId: string }> {
     const candidates = [communityId];
     if (communityId !== GLOBAL_COMMUNITY_ID) {
       candidates.push(GLOBAL_COMMUNITY_ID);
     }
     for (const walletCommunityId of candidates) {
-      const walletUserId = await this.pickWalletUserIdFor(buyerId, walletCommunityId);
+      const walletUserId = await this.pickWalletUserIdFor(userId, walletCommunityId);
       const reserved = await this.walletService.debitIfSufficient(
         walletUserId,
         walletCommunityId,
-        DEAL_FEE_MERITS,
-        'uzz_deal_fee',
+        amount,
+        referenceType,
         referenceId,
-        'UZZ deal fee reserved',
+        description,
       );
       if (reserved) {
         return { walletUserId, walletCommunityId };
       }
     }
     throw new BadRequestException(
-      'Не хватает 1 заслуги на комиссию — ни в сообществе, ни в общем кошельке',
+      'Не хватает заслуг — ни в сообществе, ни в общем кошельке',
     );
   }
 
@@ -1678,12 +1766,13 @@ export class UzzService {
     try {
       const settings = await this.getOrCreateSettings(communityId);
       if (!settings.notifyFlags?.[flag]) return;
-      const link = await this.findIdentityLinkForUser(userId);
-      if (!link?.telegramUserId) return;
+      const linkStatus = await this.getLinkStatus(userId);
+      const telegramUserId = linkStatus.telegramUserId;
+      if (!telegramUserId) return;
       const base = this.configService.get('app')?.uzzWebBaseUrl?.replace(/\/$/, '');
       const body = base ? `${text}\n${base}${path}` : text;
       await this.eventBus.publish(
-        new UzzNotifyEvent(communityId, String(link.telegramUserId), body),
+        new UzzNotifyEvent(communityId, String(telegramUserId), body),
       );
     } catch {
       // notifications must not fail the business path
@@ -1808,12 +1897,7 @@ export class UzzService {
       | { dealRequestTtlHours: number; dealFulfillmentDays: number }
       | undefined,
   ): Date | null {
-    if (
-      deal.status === 'closed' ||
-      deal.status === 'rejected' ||
-      deal.status === 'cancelled' ||
-      deal.status === 'completed_by_seller'
-    ) {
+    if (deal.status === 'closed' || deal.status === 'rejected' || deal.status === 'cancelled') {
       return null;
     }
     if (!settings) return null;
@@ -1821,6 +1905,13 @@ export class UzzService {
       return new Date(
         deal.requestedAt.getTime() + settings.dealRequestTtlHours * 60 * 60 * 1000,
       );
+    }
+    if (deal.status === 'completed_by_seller') {
+      const from =
+        deal.completedBySellerAt?.getTime() ??
+        deal.acceptedAt?.getTime() ??
+        deal.requestedAt.getTime();
+      return new Date(from + settings.dealFulfillmentDays * DAY_MS);
     }
     const from = deal.acceptedAt?.getTime() ?? deal.requestedAt.getTime();
     return new Date(from + settings.dealFulfillmentDays * DAY_MS);
@@ -1868,11 +1959,45 @@ export class UzzService {
   private async persistKnownEmail(userId: string): Promise<void> {
     const email = await this.resolveUserEmail(userId);
     if (!email) return;
+    await this.upsertIdentityFacts(userId, { email });
+  }
+
+  private async tryLinkIdentity(
+    userId: string,
+    provider: 'telegram' | 'email',
+    authId: string,
+  ): Promise<void> {
+    try {
+      await this.userService.linkIdentity(userId, provider, authId);
+    } catch (error) {
+      if (!(error instanceof ConflictException)) throw error;
+    }
+  }
+
+  private async upsertIdentityFacts(
+    userId: string,
+    facts: { telegramUserId?: string; email?: string },
+  ): Promise<void> {
+    const $set: Record<string, string> = {};
+    if (facts.telegramUserId) $set.telegramUserId = facts.telegramUserId;
+    if (facts.email) $set.email = facts.email;
+    if (!Object.keys($set).length) return;
     await this.identityModel.findOneAndUpdate(
       { userId },
-      { $set: { email }, $setOnInsert: { userId } },
+      { $set, $setOnInsert: { userId } },
       { upsert: true },
     );
+  }
+
+  private async pairIdentityFacts(
+    a: string,
+    b: string | undefined,
+    facts: { telegramUserId?: string; email?: string },
+  ): Promise<void> {
+    const ids = [...new Set([a, b].filter((id): id is string => Boolean(id)))];
+    for (const id of ids) {
+      await this.upsertIdentityFacts(id, facts);
+    }
   }
 
   /** Email-session user and Telegram-provisioned user must both see shared UZZ assets. */
@@ -1903,10 +2028,6 @@ export class UzzService {
   }
 
   /** Prefer the linked identity that actually holds wallet balance (usually TG user). */
-  private async pickWalletUserId(userId: string, communityId: string): Promise<string> {
-    return this.pickWalletUserIdFor(userId, await this.walletScope(communityId));
-  }
-
   private async pickWalletUserIdFor(
     userId: string,
     walletCommunityId: string,
@@ -1966,14 +2087,6 @@ export class UzzService {
     const deal = await this.dealModel.findOne({ id: dealId }).exec();
     if (!deal) throw new NotFoundException('Deal not found');
     return deal;
-  }
-
-  private async walletScope(communityId: string): Promise<string> {
-    const community = await this.communityService.getCommunity(communityId);
-    return this.meritResolver.getWalletCommunityId(
-      community ?? { id: communityId },
-      'fee',
-    );
   }
 
   private statusAfterBankReleased(bank: UzzBankDocument): UzzBankStatus {

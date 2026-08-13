@@ -228,6 +228,13 @@ export default function CatalogPage() {
                       </div>
                       {own ? (
                         <span className="text-xs text-stitch-muted">Ваша карточка</span>
+                      ) : loggedIn && gap ? (
+                        <Link
+                          href="/profile"
+                          className="rounded-lg border border-stitch-border px-3 py-2 text-sm"
+                        >
+                          Сначала привяжите Telegram
+                        </Link>
                       ) : loggedIn ? (
                         <Button
                           type="button"
@@ -274,7 +281,11 @@ export default function CatalogPage() {
                           должен быть не ниже цены. Сдачи нет — при закрытии исполнителю уйдёт весь
                           сегодняшний потолок.
                           {balance.data
-                            ? ` Сейчас: сообщество ${meritsLabel(balance.data.localBalance)}, общие ${meritsLabel(balance.data.globalBalance)}.`
+                            ? ` Сейчас снимем с ${
+                                balance.data.localBalance >= 1
+                                  ? 'кошелька сообщества'
+                                  : 'общего кошелька'
+                              } (сообщество ${meritsLabel(balance.data.localBalance)}, общие ${meritsLabel(balance.data.globalBalance)}).`
                             : ''}
                         </p>
                         <label className="block space-y-1 text-sm">

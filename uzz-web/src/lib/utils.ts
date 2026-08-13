@@ -112,6 +112,19 @@ export function feeChargedCopy(
   return `Списана ${meritsLabel(amount)}`;
 }
 
+export function feeReservedCopy(
+  source: 'community' | 'global' | null | undefined,
+  amount = 1,
+): string {
+  if (source === 'community') {
+    return `Зарезервирована ${meritsLabel(amount)} с кошелька сообщества`;
+  }
+  if (source === 'global') {
+    return `Зарезервирована ${meritsLabel(amount)} с общего кошелька`;
+  }
+  return `Зарезервирована ${meritsLabel(amount)}`;
+}
+
 export function feeWalletPhrase(
   source: 'community' | 'global' | null | undefined,
 ): string {
@@ -204,6 +217,13 @@ export function isDeadlinePassed(expiresAt: Date | string | null | undefined): b
   if (!expiresAt) return false;
   const at = typeof expiresAt === 'string' ? new Date(expiresAt) : expiresAt;
   return at.getTime() <= Date.now();
+}
+
+export function isUnauthorizedError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const data = (error as { data?: { code?: string } }).data;
+  const message = (error as { message?: string }).message;
+  return data?.code === 'UNAUTHORIZED' || message === 'UNAUTHORIZED';
 }
 
 export function uzzErrorMessage(err: { message?: string } | null | undefined): string {

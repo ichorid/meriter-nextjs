@@ -10,6 +10,7 @@ import {
   dealNeedsAction,
   dealStatusLabel,
   feeChargedCopy,
+  feeReservedCopy,
   feeWalletPhrase,
   formatDeadline,
   isDeadlinePassed,
@@ -43,7 +44,7 @@ export default function DealsPage() {
     if (params.get('requested')) {
       const fee = params.get('fee');
       const charged =
-        fee === 'community' || fee === 'global' ? feeChargedCopy(fee) : null;
+        fee === 'community' || fee === 'global' ? feeReservedCopy(fee) : null;
       setFlash(
         charged
           ? `Запрос отправлен. ${charged}. Исполнитель получит короткое сообщение в Telegram.`
@@ -62,7 +63,7 @@ export default function DealsPage() {
   const reject = trpc.deals.reject.useMutation({
     onSuccess: () => {
       invalidate();
-      setFlash('Заявка отклонена. Комиссия заказчику возвращена.');
+      setFlash('Заявка отклонена. Комиссия вернулась на тот кошелёк, откуда списали.');
     },
   });
   const complete = trpc.deals.complete.useMutation({
@@ -237,7 +238,9 @@ export default function DealsPage() {
                     {deal.myRole === 'buyer' && deal.feeSource ? (
                       <p className="mt-1 text-sm text-stitch-muted">
                         {deal.feeReserved
-                          ? feeChargedCopy(deal.feeSource)
+                          ? deal.status === 'closed'
+                            ? feeChargedCopy(deal.feeSource)
+                            : feeReservedCopy(deal.feeSource)
                           : `Комиссия ${meritsLabel(1)} возвращена на ${feeWalletPhrase(deal.feeSource)}`}
                       </p>
                     ) : null}
@@ -252,6 +255,12 @@ export default function DealsPage() {
                         {deal.myRole === 'seller'
                           ? 'Срок исполнения вышел. Отметьте «сделано», если услуга оказана — иначе заявка снимется в течение часа.'
                           : 'Срок исполнения вышел. Исполнитель ещё не отметил «сделано». Заявка снимется в течение часа.'}
+                      </p>
+                    ) : expired && deal.status === 'completed_by_seller' ? (
+                      <p className="mt-2 text-sm text-amber-200">
+                        {deal.myRole === 'buyer'
+                          ? 'Подтвердите, пока срок не вышел. Иначе сделка закроется сама — право перейдёт исполнителю.'
+                          : 'Заказчик ещё не подтвердил. Если не успеет, сделка закроется сама и право перейдёт вам.'}
                       </p>
                     ) : null}
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -378,8 +387,8 @@ export default function DealsPage() {
                           placeholder="Заслуг (необязательно)"
                         />
                         <p className="text-xs text-stitch-muted">
-                          Заслуги спишутся с кошелька, не из права на обмен. Нужен короткий текст
-                          или хотя бы 1 заслуга.
+                          Заслуги спишутся сначала с кошелька сообщества, если не хватит — с
+                          общего. Не из права на обмен. Нужен короткий текст или хотя бы 1 заслуга.
                         </p>
                         {thanksError ? <p className="text-sm text-red-400">{thanksError}</p> : null}
                         <div className="flex gap-2">

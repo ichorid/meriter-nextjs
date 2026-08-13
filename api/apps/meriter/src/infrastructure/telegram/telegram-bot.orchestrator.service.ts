@@ -570,6 +570,11 @@ export class TelegramBotOrchestratorService {
         });
         return;
       }
+      if (referal.startsWith('uzz_link_')) {
+        await this.handleUzzTelegramLink(tgUserId, referal.slice('uzz_link_'.length).trim());
+        this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
+        return;
+      }
       const primaryCommunityBefore = await this.resolvePrimaryTelegramCommunityForUser(tgUserId);
       const isReturning = primaryCommunityBefore
         ? await this.isReturningMeriterMember(tgUserId, primaryCommunityBefore.id)
@@ -578,11 +583,6 @@ export class TelegramBotOrchestratorService {
       const joinCommunityId = parseMemberJoinStartPayload(referal);
       if (joinCommunityId) {
         await this.handleMemberJoinDeepLink(tgUserId, from, joinCommunityId, triggerMessageId);
-        return;
-      }
-      if (referal.startsWith('uzz_link_')) {
-        await this.handleUzzTelegramLink(tgUserId, referal.slice('uzz_link_'.length).trim());
-        this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
         return;
       }
       if (referal.startsWith('relink:')) {

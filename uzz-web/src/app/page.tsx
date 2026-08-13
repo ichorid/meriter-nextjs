@@ -8,6 +8,7 @@ import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import {
   bankHeadline,
+  bankHopsLabel,
   bankStatusLabel,
   hadUzzSession,
   linkGap,
@@ -297,6 +298,9 @@ function MinePanel({
                 <Card key={bank.id}>
                   <p className="font-extrabold">{bankHeadline(bank)}</p>
                   <p className="mt-1 text-sm text-stitch-muted">{bankStatusLabel(bank.status)}</p>
+                  {typeof bank.hopsLeft === 'number' ? (
+                    <p className="mt-1 text-xs text-stitch-muted">{bankHopsLabel(bank.hopsLeft)}</p>
+                  ) : null}
                   {(bank.status === 'active' || bank.status === 'in_deal') &&
                   next != null &&
                   next < (bank.nominalRub ?? 0) ? (

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { CommunityIdBanner } from '@/components/community-id-banner';
-import { Button } from '@/components/ui';
+import { Button, QueryFailed } from '@/components/ui';
 import { config } from '@/config';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
@@ -24,7 +24,7 @@ const LINK_GATE_PATHS = new Set(['/deals', '/wallet', '/admin']);
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { communityId, isUzzAdmin, loggedIn, sessionLoading, sessionError } =
+  const { communityId, isUzzAdmin, loggedIn, sessionLoading, sessionExpired, sessionUnreachable } =
     useUzzCommunityId();
   const linkStatus = trpc.identity.getLinkStatus.useQuery(undefined, {
     enabled: loggedIn,
@@ -45,11 +45,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (sessionLoading) return;
-    if (SESSION_PATHS.has(pathname) && sessionError) {
+    if (SESSION_PATHS.has(pathname) && sessionExpired) {
       rememberReturnTo(pathname);
       router.replace('/login');
     }
-  }, [pathname, sessionError, sessionLoading, router]);
+  }, [pathname, sessionExpired, sessionLoading, router]);
 
   const hardGate =
     loggedIn &&
@@ -67,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     linkStatus.isError;
 
   const sessionGate =
-    (SESSION_PATHS.has(pathname) && (sessionLoading || Boolean(sessionError))) ||
+    (SESSION_PATHS.has(pathname) && (sessionLoading || sessionExpired)) ||
     (loggedIn &&
       !config.development.fakeDataMode &&
       LINK_GATE_PATHS.has(pathname) &&
@@ -116,6 +116,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           missingTelegram={!linkStatus.data?.telegramUserId}
           email={linkStatus.data?.email}
         />
+      ) : SESSION_PATHS.has(pathname) && sessionUnreachable ? (
+        <main className="mx-auto max-w-5xl px-4 py-6 pb-24 md:pb-6">
+          <QueryFailed onRetry={() => window.location.reload()} />
+        </main>
       ) : sessionGate ? (
         <main className="mx-auto max-w-5xl px-4 py-6 pb-24 md:pb-6">
           <div className="space-y-3" aria-busy>

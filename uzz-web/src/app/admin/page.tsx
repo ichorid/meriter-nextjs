@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { bankHeadline, bankHopsLabel, dealStatusLabel, formatWhen, ledgerTypeLabel, uzzErrorMessage } from '@/lib/utils';
+import { bankHeadline, bankHopsLabel, dealStatusLabel, feeSourceFromWallet, feeWalletPhrase, formatWhen, ledgerTypeLabel, meritsLabel, uzzErrorMessage } from '@/lib/utils';
 import { QueryFailed } from '@/components/ui';
 
 export default function AdminPage() {
@@ -266,7 +266,7 @@ export default function AdminPage() {
           {openDeals.isLoading ? (
             <p className="text-sm text-stitch-muted">Загрузка…</p>
           ) : openDeals.isError ? (
-            <p className="text-sm text-amber-200">Не удалось загрузить сделки.</p>
+            <QueryFailed onRetry={() => void openDeals.refetch()} />
           ) : !openDeals.data?.length ? (
             <p className="text-sm text-stitch-muted">Открытых сделок нет.</p>
           ) : (
@@ -490,6 +490,14 @@ export default function AdminPage() {
                   <span className="text-stitch-text">{ledgerTypeLabel(row.type)}</span>
                   {row.createdAt ? (
                     <span className="ml-2 text-xs">{formatWhen(row.createdAt)}</span>
+                  ) : null}
+                  {typeof row.payload?.amount === 'number' ? (
+                    <span className="ml-2 text-xs">
+                      {meritsLabel(row.payload.amount)}
+                      {feeWalletPhrase(feeSourceFromWallet(row.payload.wallet))
+                        ? ` · ${feeWalletPhrase(feeSourceFromWallet(row.payload.wallet))}`
+                        : ''}
+                    </span>
                   ) : null}
                 </li>
               ))}

@@ -8,6 +8,7 @@ import { createMongoMemoryReplSetWithRetry } from './mongo-memory-shared';
 import { MeriterModule } from '../src/meriter.module';
 import { UzzService } from '../src/domain/services/uzz/uzz.service';
 import { WalletService } from '../src/domain/services/wallet.service';
+import { UserService } from '../src/domain/services/user.service';
 import { Model, Connection } from 'mongoose';
 import { getConnectionToken } from '@nestjs/mongoose';
 import {
@@ -38,6 +39,7 @@ describe('UzzService (integration)', () => {
   let connection: Connection;
   let uzzService: UzzService;
   let walletService: WalletService;
+  let userService: UserService;
 
   let communityModel: Model<CommunityDocument>;
   let userModel: Model<UserDocument>;
@@ -79,6 +81,7 @@ describe('UzzService (integration)', () => {
 
     uzzService = app.get(UzzService);
     walletService = app.get(WalletService);
+    userService = app.get(UserService);
     connection = app.get(getConnectionToken());
     communityModel = connection.model<CommunityDocument>(CommunitySchemaClass.name);
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
@@ -567,7 +570,50 @@ describe('UzzService (integration)', () => {
     const still = await dealModel.findOne({ id: deal.id }).exec();
     expect(still!.status).toBe('completed_by_seller');
     const listed = await uzzService.listDeals(communityId, authorId);
-    expect(listed.find((row) => row.id === deal.id)?.expiresAt).toBeNull();
+    expect(listed.find((row) => row.id === deal.id)?.expiresAt).toBeInstanceOf(Date);
+  });
+
+  it('auto-closes a deal if the buyer never confirms after the seller is done', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Deed for auto close',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    await uzzService.setBankNominal(bank!.id, 500, authorId);
+    const lot = await uzzService.createLot({
+      communityId,
+      authorId: sellerId,
+      title: 'Auto close',
+      description: '',
+      priceRub: 100,
+    });
+    const deal = await uzzService.requestDeal({
+      communityId,
+      buyerId: authorId,
+      lotId: lot.id,
+      bankId: bank!.id,
+    });
+    await uzzService.acceptDeal(deal.id, sellerId);
+    await uzzService.completeDeal(deal.id, sellerId);
+    await dealModel.updateOne(
+      { id: deal.id },
+      { $set: { completedBySellerAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) } },
+    );
+
+    await uzzService.expireStaleDeals();
+    const closed = await dealModel.findOne({ id: deal.id }).exec();
+    expect(closed!.status).toBe('closed');
+    const moved = await bankModel.findOne({ id: bank!.id }).exec();
+    expect(moved!.ownerId).toBe(sellerId);
   });
 
   it('takes the deal fee from the community wallet first', async () => {
@@ -863,8 +909,61 @@ describe('UzzService (integration)', () => {
     );
   });
 
-  it('rejects email link when the address already belongs to another user', async () => {
-    const { code } = await uzzService.startEmailLinkFromBot(authorId, 'seller@example.com');
-    await expect(uzzService.confirmEmailLink(authorId, code)).rejects.toThrow(/уже привязана/);
+  it('links a site account to an already provisioned Telegram user', async () => {
+    const siteId = uid();
+    await userModel.create({
+      id: siteId,
+      authProvider: 'email',
+      authId: 'site-merge@example.com',
+      displayName: 'Site Merge',
+      communityMemberships: [communityId],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const tgUser = await userService.findOrCreateByIdentity('telegram', '888001', {
+      displayName: 'TG Merge',
+    });
+    await userService.addCommunityMembership(tgUser.id, communityId);
+
+    const { code } = await uzzService.startTelegramLink(siteId);
+    await uzzService.confirmTelegramLink(code, '888001');
+
+    const status = await uzzService.getLinkStatus(siteId);
+    expect(status.linked).toBe(true);
+    expect(status.telegramUserId).toBe('888001');
+
+    const lot = await uzzService.createLot({
+      communityId,
+      authorId: tgUser.id,
+      title: 'Owned by telegram user',
+      description: '',
+      priceRub: 150,
+    });
+    const updated = await uzzService.updateLot(lot.id, siteId, { title: 'Edited from email' });
+    expect(updated.title).toBe('Edited from email');
+  });
+
+  it('connects a telegram user to an existing site email', async () => {
+    const siteId = uid();
+    await userModel.create({
+      id: siteId,
+      authProvider: 'email',
+      authId: 'pair-email@example.com',
+      displayName: 'Site Pair',
+      communityMemberships: [communityId],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const tgUser = await userService.findOrCreateByIdentity('telegram', '888002', {
+      displayName: 'TG Pair',
+    });
+    const { code } = await uzzService.startEmailLinkByTelegram(
+      '888002',
+      'pair-email@example.com',
+    );
+    await uzzService.confirmEmailLinkByTelegram('888002', code);
+
+    expect((await uzzService.getLinkStatus(siteId)).linked).toBe(true);
+    expect((await uzzService.getLinkStatus(tgUser.id)).linked).toBe(true);
   });
 });
