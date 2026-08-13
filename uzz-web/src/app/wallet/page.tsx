@@ -4,7 +4,7 @@ import { AppShell } from '@/components/app-shell';
 import { Card, EmptyState, QueryFailed } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { formatWhen, ledgerTypeLabel, meritsLabel } from '@/lib/utils';
+import { formatWhen, ledgerTypeLabel, meritsLabel, meritsWord } from '@/lib/utils';
 
 export default function WalletPage() {
   const { communityId, loggedIn } = useUzzCommunityId();
@@ -34,7 +34,9 @@ export default function WalletPage() {
           {balance.isError ? (
             <QueryFailed onRetry={() => void balance.refetch()} />
           ) : (
-            <p className="mt-1 text-sm text-stitch-muted">заслуг</p>
+            <p className="mt-1 text-sm text-stitch-muted">
+              {meritsWord(balance.data?.balance ?? 0)}
+            </p>
           )}
         </Card>
 

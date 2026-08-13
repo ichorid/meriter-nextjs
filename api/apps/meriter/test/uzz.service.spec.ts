@@ -28,6 +28,7 @@ import {
 import { uid } from 'uid';
 import { TestSetupHelper } from './helpers/test-setup.helper';
 import { unregisterReplSet } from './mongo-memory-registry.js';
+import { GLOBAL_COMMUNITY_ID } from '../src/domain/common/constants/global.constant';
 
 describe('UzzService (integration)', () => {
   jest.setTimeout(60000);
@@ -53,6 +54,11 @@ describe('UzzService (integration)', () => {
   const currency = { singular: 'заслуга', plural: 'заслуги', genitive: 'заслуг' } as const;
 
   beforeAll(async () => {
+    communityId = uid();
+    authorId = uid();
+    sellerId = uid();
+    publicationId = uid();
+
     replSet = await createMongoMemoryReplSetWithRetry({
       replSet: { count: 1, dbName: 'uzz-test' },
     });
@@ -60,6 +66,7 @@ describe('UzzService (integration)', () => {
     process.env.MONGO_URL = mongoUri;
     process.env.MONGO_URL_SECONDARY = mongoUri;
     process.env.JWT_SECRET = 'test-jwt-secret-uzz';
+    process.env.DEFAULT_TELEGRAM_COMMUNITY_ID = communityId;
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [MeriterModule],
@@ -80,16 +87,12 @@ describe('UzzService (integration)', () => {
     dealModel = connection.model<UzzDealDocument>(UzzDealSchemaClass.name);
     identityModel = connection.model<UzzIdentityLinkDocument>(UzzIdentityLinkSchemaClass.name);
 
-    communityId = uid();
-    authorId = uid();
-    sellerId = uid();
-    publicationId = uid();
-
     await communityModel.create({
       id: communityId,
       name: 'UZZ Pilot',
       description: 'test',
       isActive: true,
+      typeTag: 'team',
       createdAt: new Date(),
       updatedAt: new Date(),
       settings: {
@@ -116,6 +119,18 @@ describe('UzzService (integration)', () => {
       await walletService.addTransaction(
         id,
         communityId,
+        'credit',
+        10,
+        'personal',
+        'test_seed',
+        uid(),
+        currency,
+        'seed',
+      );
+      await walletService.createOrGetWallet(id, GLOBAL_COMMUNITY_ID, currency);
+      await walletService.addTransaction(
+        id,
+        GLOBAL_COMMUNITY_ID,
         'credit',
         10,
         'personal',
@@ -547,5 +562,102 @@ describe('UzzService (integration)', () => {
     await uzzService.expireStaleDeals();
     const still = await dealModel.findOne({ id: deal.id }).exec();
     expect(still!.status).toBe('completed_by_seller');
+    const listed = await uzzService.listDeals(communityId, authorId);
+    expect(listed.find((row) => row.id === deal.id)?.expiresAt).toBeNull();
+  });
+
+  it('takes the deal fee from the global wallet, not the team wallet', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Deed for global fee',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    await uzzService.setBankNominal(bank!.id, 500, authorId);
+    const lot = await uzzService.createLot({
+      communityId,
+      authorId: sellerId,
+      title: 'Global fee lot',
+      description: '',
+      priceRub: 100,
+    });
+    const localBefore =
+      (await walletService.getWallet(authorId, communityId))?.getBalance?.() ?? 0;
+    const globalBefore = await uzzService.getSpendableBalance(authorId, communityId);
+    await uzzService.requestDeal({
+      communityId,
+      buyerId: authorId,
+      lotId: lot.id,
+      bankId: bank!.id,
+    });
+    expect(
+      (await walletService.getWallet(authorId, communityId))?.getBalance?.() ?? 0,
+    ).toBe(localBefore);
+    expect(await uzzService.getSpendableBalance(authorId, communityId)).toBe(
+      globalBefore - 1,
+    );
+  });
+
+  it('rejects a nominal below the floor', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Deed for floor',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    await expect(uzzService.setBankNominal(bank!.id, 50, authorId)).rejects.toThrow(
+      /не ниже/,
+    );
+  });
+
+  it('does not emit a bank outside the configured telegram community', async () => {
+    const otherId = uid();
+    await communityModel.create({
+      id: otherId,
+      name: 'Other',
+      description: 'test',
+      isActive: true,
+      typeTag: 'team',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      settings: {
+        currencyNames: currency,
+        dailyEmission: 10,
+        language: 'ru',
+        postCost: 1,
+        pollCost: 1,
+        forwardCost: 1,
+      },
+    });
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId: otherId,
+      authorId,
+      content: 'Other community deed',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    expect(await uzzService.maybeEmitBankForPublication(pubId)).toBeNull();
   });
 });

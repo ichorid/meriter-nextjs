@@ -79,13 +79,17 @@ export function bankHopsLabel(hopsLeft: number): string {
   return `осталось обменов: ${Math.max(0, hopsLeft)}`;
 }
 
-export function meritsLabel(n: number): string {
+export function meritsWord(n: number): string {
   const abs = Math.abs(Math.round(n));
   const mod10 = abs % 10;
   const mod100 = abs % 100;
-  if (mod10 === 1 && mod100 !== 11) return `${n} заслуга`;
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return `${n} заслуги`;
-  return `${n} заслуг`;
+  if (mod10 === 1 && mod100 !== 11) return 'заслуга';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'заслуги';
+  return 'заслуг';
+}
+
+export function meritsLabel(n: number): string {
+  return `${n} ${meritsWord(n)}`;
 }
 
 export function linkGap(
@@ -96,14 +100,15 @@ export function linkGap(
 }
 
 const RETURN_TO_KEY = 'uzz-return-to';
+const HAD_SESSION_KEY = 'uzz-had-session';
 
 export function isSafeAppPath(path: string): boolean {
-  return (
-    path.startsWith('/') &&
-    !path.startsWith('//') &&
-    !path.startsWith('/login') &&
-    !path.startsWith('/a')
-  );
+  if (!path.startsWith('/') || path.startsWith('//')) return false;
+  if (path === '/login' || path.startsWith('/login?') || path.startsWith('/login/')) {
+    return false;
+  }
+  if (path === '/a' || path.startsWith('/a/')) return false;
+  return true;
 }
 
 export function rememberReturnTo(path: string): void {
@@ -118,6 +123,21 @@ export function consumeReturnTo(): string {
   sessionStorage.removeItem(RETURN_TO_KEY);
   if (stored && isSafeAppPath(stored)) return stored;
   return '/catalog';
+}
+
+export function markUzzSession(): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(HAD_SESSION_KEY, '1');
+}
+
+export function clearUzzSessionFlag(): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.removeItem(HAD_SESSION_KEY);
+}
+
+export function hadUzzSession(): boolean {
+  if (typeof window === 'undefined') return false;
+  return sessionStorage.getItem(HAD_SESSION_KEY) === '1';
 }
 
 export function tomorrowNominal(
@@ -164,6 +184,10 @@ export function uzzErrorMessage(err: { message?: string } | null | undefined): s
   if (/[А-Яа-яЁё]/.test(message)) return message;
   const mapped: Record<string, string> = {
     'You must be logged in to access this resource': 'Нужно войти',
+    'Email already linked to another user': 'Эта почта уже привязана к другому аккаунту',
+    'Lot not found': 'Услуга не найдена',
+    'Bank not found': 'Право на обмен не найдено',
+    'Deal not found': 'Сделка не найдена',
     'Invalid or expired login link': 'Ссылка недействительна или устарела',
     'Email authentication is not enabled': 'Вход по почте сейчас выключен',
     UNAUTHORIZED: 'Нужно войти',

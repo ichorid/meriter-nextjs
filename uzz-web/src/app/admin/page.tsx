@@ -5,6 +5,7 @@ import { AppShell } from '@/components/app-shell';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { bankHeadline, bankHopsLabel, dealStatusLabel, formatWhen, ledgerTypeLabel, uzzErrorMessage } from '@/lib/utils';
+import { QueryFailed } from '@/components/ui';
 
 export default function AdminPage() {
   const { communityId, isUzzAdmin, loggedIn } = useUzzCommunityId();
@@ -128,15 +129,25 @@ export default function AdminPage() {
     title,
     empty,
     items,
+    isLoading,
+    isError,
+    onRetry,
   }: {
     title: string;
     empty: string;
     items: typeof awaiting.data;
+    isLoading: boolean;
+    isError: boolean;
+    onRetry: () => void;
   }) {
     return (
       <section className="space-y-3 rounded-xl border border-stitch-border bg-stitch-surface p-5">
         <h2 className="font-extrabold">{title}</h2>
-        {!items?.length ? (
+        {isLoading ? (
+          <p className="text-sm text-stitch-muted">Загрузка…</p>
+        ) : isError ? (
+          <QueryFailed onRetry={onRetry} />
+        ) : !items?.length ? (
           <p className="text-sm text-stitch-muted">{empty}</p>
         ) : (
           <ul className="space-y-3">
@@ -203,10 +214,17 @@ export default function AdminPage() {
           title="Ждут номинал"
           empty="Пока нет прав, готовых к номиналу."
           items={awaiting.data}
+          isLoading={awaiting.isLoading}
+          isError={awaiting.isError}
+          onRetry={() => void awaiting.refetch()}
         />
         <section className="space-y-3 rounded-xl border border-stitch-border bg-stitch-surface p-5">
           <h2 className="font-extrabold">Ждут привязку</h2>
-          {!holding.data?.length ? (
+          {holding.isLoading ? (
+            <p className="text-sm text-stitch-muted">Загрузка…</p>
+          ) : holding.isError ? (
+            <QueryFailed onRetry={() => void holding.refetch()} />
+          ) : !holding.data?.length ? (
             <p className="text-sm text-stitch-muted">
               Нет прав в ожидании связки Telegram и почты.
             </p>
@@ -435,7 +453,11 @@ export default function AdminPage() {
 
         <section className="space-y-3 rounded-xl border border-stitch-border bg-stitch-surface p-5">
           <h2 className="font-extrabold">Журнал площадки</h2>
-          {!ledger.data?.length ? (
+          {ledger.isLoading ? (
+            <p className="text-sm text-stitch-muted">Загрузка…</p>
+          ) : ledger.isError ? (
+            <QueryFailed onRetry={() => void ledger.refetch()} />
+          ) : !ledger.data?.length ? (
             <p className="text-sm text-stitch-muted">Записей нет.</p>
           ) : (
             <ul className="max-h-80 space-y-2 overflow-y-auto text-sm">

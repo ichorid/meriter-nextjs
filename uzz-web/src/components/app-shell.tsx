@@ -8,7 +8,7 @@ import { Button } from '@/components/ui';
 import { config } from '@/config';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { cn, dealNeedsAction, rememberReturnTo, uzzErrorMessage } from '@/lib/utils';
+import { cn, dealNeedsAction, isSafeAppPath, markUzzSession, rememberReturnTo, uzzErrorMessage, clearUzzSessionFlag } from '@/lib/utils';
 
 const NAV = [
   { href: '/catalog', label: 'Обмен' },
@@ -33,6 +33,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     { communityId, mineOnly: true },
     { enabled: loggedIn && Boolean(communityId), retry: false },
   );
+
+  useEffect(() => {
+    if (loggedIn) markUzzSession();
+  }, [loggedIn]);
 
   useEffect(() => {
     if (sessionLoading) return;
@@ -64,6 +68,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       LINK_GATE_PATHS.has(pathname) &&
       linkStatus.isLoading);
   const actionCount = deals.data?.filter(dealNeedsAction).length ?? 0;
+  const loginHref =
+    pathname && isSafeAppPath(pathname)
+      ? `/login?next=${encodeURIComponent(pathname)}`
+      : '/login';
 
   return (
     <div className="min-h-screen bg-stitch-canvas text-stitch-text">
@@ -88,7 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
           {!loggedIn && !sessionLoading ? (
             <Link
-              href="/login"
+              href={loginHref}
               className="ml-auto rounded-lg bg-stitch-accent px-3 py-1.5 text-sm font-medium text-white md:ml-0"
             >
               Войти
@@ -203,6 +211,7 @@ function IdentityLinkGate({
   const [error, setError] = useState<string | null>(null);
   const logout = trpc.auth.logout.useMutation({
     onSuccess: () => {
+      clearUzzSessionFlag();
       window.location.href = '/catalog';
     },
   });

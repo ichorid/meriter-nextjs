@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { randomBytes } from 'crypto';
+import { randomBytes, randomInt } from 'crypto';
 import { uid } from 'uid';
 import {
   UzzSettingsSchemaClass,
@@ -217,7 +217,7 @@ export class UzzService {
 
     const uzzCommunity =
       this.configService.get('app')?.defaultTelegramCommunityId?.trim() || '';
-    if (uzzCommunity && publication.communityId !== uzzCommunity) {
+    if (!uzzCommunity || publication.communityId !== uzzCommunity) {
       return null;
     }
 
@@ -273,15 +273,23 @@ export class UzzService {
     adminUserId: string,
   ): Promise<UzzBankDocument> {
     if (!Number.isFinite(nominalRub) || nominalRub <= 0) {
-      throw new BadRequestException('nominalRub must be a positive number');
+      throw new BadRequestException('Укажите положительный номинал в рублях');
     }
     const bank = await this.requireBank(bankId);
     if (bank.status !== 'awaiting_nominal' && bank.status !== 'holding') {
-      throw new BadRequestException('Bank is not awaiting nominal');
+      throw new BadRequestException('Этому праву сейчас нельзя назначить номинал');
+    }
+    const settings = await this.getOrCreateSettings(bank.communityId);
+    if (nominalRub < settings.nominalFloorRub) {
+      throw new BadRequestException(
+        `Номинал не ниже ${settings.nominalFloorRub} ₽`,
+      );
     }
     const linked = await this.hasFullIdentityLink(bank.ownerId);
     if (!linked) {
-      throw new BadRequestException('Owner must link Telegram and email before nominal');
+      throw new BadRequestException(
+        'Сначала владелец должен привязать Telegram и почту',
+      );
     }
     bank.nominalRub = Math.round(nominalRub);
     bank.status = 'active';
@@ -970,6 +978,23 @@ export class UzzService {
         // already terminal or race
       }
     }
+    const leftover = await this.dealModel
+      .find({
+        feeReserved: true,
+        status: { $in: ['rejected', 'cancelled'] },
+      })
+      .exec();
+    for (const deal of leftover) {
+      try {
+        await this.refundDealFeeIfReserved(deal);
+      } catch (error) {
+        this.logger.warn(
+          `UZZ leftover fee refund failed for deal ${deal.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
     return { expired };
   }
 
@@ -1205,7 +1230,7 @@ export class UzzService {
     if (!normalized.includes('@')) {
       throw new BadRequestException('Укажите почту в формате имя@домен');
     }
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = String(randomInt(100000, 1000000));
     const expiresAt = new Date(Date.now() + LINK_CODE_TTL_MS);
     await this.identityModel.findOneAndUpdate(
       { userId },
@@ -1473,18 +1498,35 @@ export class UzzService {
 
   private async refundDealFeeIfReserved(deal: UzzDealDocument): Promise<void> {
     if (!deal.feeReserved) return;
-    const walletUserId = await this.pickWalletUserId(deal.buyerId, deal.communityId);
-    await this.creditDealFee(walletUserId, deal.communityId, deal.id);
-    deal.feeReserved = false;
-    await deal.save();
-    await this.appendLedger(
-      deal.communityId,
-      'deal_fee_refunded',
-      { amount: DEAL_FEE_MERITS },
-      deal.buyerId,
-      deal.bankId,
-      deal.id,
+    const claimed = await this.dealModel.findOneAndUpdate(
+      { id: deal.id, feeReserved: true },
+      { $set: { feeReserved: false } },
+      { new: true },
     );
+    if (!claimed) return;
+    try {
+      const walletUserId = await this.pickWalletUserId(
+        claimed.buyerId,
+        claimed.communityId,
+      );
+      await this.creditDealFee(walletUserId, claimed.communityId, claimed.id);
+      deal.feeReserved = false;
+      await this.appendLedger(
+        claimed.communityId,
+        'deal_fee_refunded',
+        { amount: DEAL_FEE_MERITS },
+        claimed.buyerId,
+        claimed.bankId,
+        claimed.id,
+      );
+    } catch (error) {
+      await this.dealModel.updateOne(
+        { id: deal.id },
+        { $set: { feeReserved: true } },
+      );
+      deal.feeReserved = true;
+      throw error;
+    }
   }
 
   private async notifyUser(
@@ -1614,7 +1656,8 @@ export class UzzService {
     if (
       deal.status === 'closed' ||
       deal.status === 'rejected' ||
-      deal.status === 'cancelled'
+      deal.status === 'cancelled' ||
+      deal.status === 'completed_by_seller'
     ) {
       return null;
     }
@@ -1768,7 +1811,7 @@ export class UzzService {
     const community = await this.communityService.getCommunity(communityId);
     return this.meritResolver.getWalletCommunityId(
       community ?? { id: communityId },
-      'voting',
+      'fee',
     );
   }
 

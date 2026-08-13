@@ -6,7 +6,7 @@ import { AppShell } from '@/components/app-shell';
 import { Button, Card, Notice } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { uzzErrorMessage } from '@/lib/utils';
+import { uzzErrorMessage, clearUzzSessionFlag } from '@/lib/utils';
 
 export default function ProfilePage() {
   const { isUzzAdmin } = useUzzCommunityId();
@@ -29,6 +29,7 @@ export default function ProfilePage() {
 
   const logout = trpc.auth.logout.useMutation({
     onSuccess: () => {
+      clearUzzSessionFlag();
       window.location.href = '/catalog';
     },
   });

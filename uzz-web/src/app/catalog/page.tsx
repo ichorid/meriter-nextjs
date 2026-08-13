@@ -8,6 +8,7 @@ import { Button, Card, EmptyState, Notice, QueryFailed, Skeleton, inputClass } f
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { bankHeadline, linkGap, meritsLabel, uzzErrorMessage } from '@/lib/utils';
+import { config } from '@/config';
 
 export default function CatalogPage() {
   const router = useRouter();
@@ -55,17 +56,21 @@ export default function CatalogPage() {
   });
   const activeBanks =
     banks.data?.filter((b) => b.status === 'active' && b.nominalRub != null) ?? [];
+  const banksReady = !loggedIn || (!banks.isLoading && Boolean(banks.data));
   const maxNominal = Math.max(0, ...activeBanks.map((b) => b.nominalRub ?? 0));
   const myLotIds = new Set(myLots.data?.map((l) => l.id) ?? []);
   const q = query.trim().toLowerCase();
+  const gap = linkGap(linkStatus.data);
 
   const visibleLots = useMemo(() => {
     return (lots.data ?? []).filter((lot) => {
-      if (affordableOnly && !(maxNominal > 0 && lot.priceRub <= maxNominal)) return false;
+      if (affordableOnly && banksReady && !(maxNominal > 0 && lot.priceRub <= maxNominal)) {
+        return false;
+      }
       if (!q) return true;
       return `${lot.title} ${lot.description} ${lot.ownerName}`.toLowerCase().includes(q);
     });
-  }, [lots.data, affordableOnly, maxNominal, q]);
+  }, [lots.data, affordableOnly, banksReady, maxNominal, q]);
 
   return (
     <AppShell>
@@ -80,14 +85,14 @@ export default function CatalogPage() {
         {!loggedIn && !sessionLoading ? (
           <Notice>
             Витрина открыта без входа.{' '}
-            <Link href="/login" className="font-medium text-stitch-accent underline">
+            <Link href="/login?next=/catalog" className="font-medium text-stitch-accent underline">
               Войдите по почте
             </Link>
             , чтобы запросить услугу.
           </Notice>
         ) : null}
 
-        {loggedIn && linkGap(linkStatus.data) === 'telegram' ? (
+        {loggedIn && gap === 'telegram' && !config.development.fakeDataMode ? (
           <Notice>
             Чтобы пользоваться правами на обмен,{' '}
             <Link href="/profile" className="font-medium text-stitch-accent underline">
@@ -96,7 +101,7 @@ export default function CatalogPage() {
             .
           </Notice>
         ) : null}
-        {loggedIn && linkGap(linkStatus.data) === 'email' ? (
+        {loggedIn && gap === 'email' && !config.development.fakeDataMode ? (
           <Notice>
             Telegram уже есть. В боте отправьте /email и код из письма.{' '}
             <Link href="/profile" className="font-medium text-stitch-accent underline">
@@ -143,21 +148,25 @@ export default function CatalogPage() {
           <Notice tone={message.startsWith('Запрос отправлен') ? 'ok' : 'warn'}>{message}</Notice>
         ) : null}
 
+        {lots.isError ? (
+          <QueryFailed onRetry={() => void lots.refetch()} />
+        ) : null}
+        {loggedIn && banks.isError ? (
+          <QueryFailed onRetry={() => void banks.refetch()} />
+        ) : null}
+        {loggedIn && canBuy.isError ? (
+          <QueryFailed onRetry={() => void canBuy.refetch()} />
+        ) : null}
+
         {lots.isLoading ? (
           <div className="space-y-3" aria-busy>
             <Skeleton className="h-28 w-full" />
             <Skeleton className="h-28 w-full" />
           </div>
-        ) : lots.isError ? (
-          <QueryFailed onRetry={() => void lots.refetch()} />
-        ) : banks.isError ? (
-          <QueryFailed onRetry={() => void banks.refetch()} />
-        ) : canBuy.isError ? (
-          <QueryFailed onRetry={() => void canBuy.refetch()} />
-        ) : !visibleLots.length ? (
+        ) : lots.isError ? null : !visibleLots.length ? (
           <EmptyState
             title={
-              affordableOnly && !activeBanks.length
+              affordableOnly && banksReady && !activeBanks.length
                 ? 'Нет активного права на обмен'
                 : q || affordableOnly
                   ? 'Ничего не нашлось'
@@ -176,7 +185,7 @@ export default function CatalogPage() {
           <ul className="space-y-3">
             {visibleLots.map((lot) => {
               const own = Boolean(userId && lot.authorId === userId) || myLotIds.has(lot.id);
-              const covered = maxNominal >= lot.priceRub && maxNominal > 0;
+              const covered = banksReady && maxNominal >= lot.priceRub && maxNominal > 0;
               return (
                 <li key={lot.id}>
                   <Card>
@@ -192,7 +201,9 @@ export default function CatalogPage() {
                         ) : null}
                         {loggedIn && !own ? (
                           <p className="mt-2 text-xs">
-                            {covered ? (
+                            {!banksReady ? (
+                              <span className="text-stitch-muted">Проверяем права…</span>
+                            ) : covered ? (
                               <span className="text-stitch-accent">Ваше право покрывает цену</span>
                             ) : (
                               <span className="text-amber-200">Не хватает сегодняшнего номинала</span>
@@ -207,9 +218,18 @@ export default function CatalogPage() {
                           type="button"
                           disabled={
                             canBuy.data?.allowed === false ||
-                            (loggedIn && myLots.isLoading && !own)
+                            myLots.isLoading ||
+                            !banksReady
                           }
                           onClick={() => {
+                            if (gap) {
+                              router.push('/profile');
+                              return;
+                            }
+                            if (!covered) {
+                              setMessage('Нет права, которое покрывает цену этой услуги.');
+                              return;
+                            }
                             setSelectedLotId(lot.id);
                             setMessage(null);
                             const first = activeBanks.find(
@@ -222,7 +242,7 @@ export default function CatalogPage() {
                         </Button>
                       ) : (
                         <Link
-                          href="/login"
+                          href="/login?next=/catalog"
                           className="rounded-lg border border-stitch-border px-3 py-2 text-sm"
                         >
                           Войти
@@ -234,7 +254,8 @@ export default function CatalogPage() {
                       <div className="mt-4 space-y-3 border-t border-stitch-border pt-4">
                         <p className="text-sm text-stitch-muted">
                           С кошелька уйдёт 1 заслуга. Вернём, если исполнитель откажется или вы
-                          отмените заявку.
+                          отмените заявку. Номинал права должен быть не ниже цены. Сдачи нет — при
+                          закрытии исполнителю уйдёт весь сегодняшний потолок.
                           {typeof balance.data?.balance === 'number'
                             ? ` Сейчас у вас ${meritsLabel(balance.data.balance)}.`
                             : ''}

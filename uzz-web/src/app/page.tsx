@@ -9,6 +9,7 @@ import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import {
   bankHeadline,
   bankStatusLabel,
+  hadUzzSession,
   linkGap,
   tomorrowNominal,
   uzzErrorMessage,
@@ -19,6 +20,12 @@ type MineTab = 'rights' | 'lots' | 'deeds';
 
 export default function HomePage() {
   const { communityId, loggedIn, sessionLoading } = useUzzCommunityId();
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useEffect(() => {
+    if (!loggedIn && !sessionLoading) setSessionExpired(hadUzzSession());
+  }, [loggedIn, sessionLoading]);
+
   if (sessionLoading) {
     return (
       <AppShell>
@@ -33,7 +40,7 @@ export default function HomePage() {
   if (!loggedIn) {
     return (
       <AppShell>
-        <GuestLanding />
+        {sessionExpired ? <SessionExpiredLanding /> : <GuestLanding />}
       </AppShell>
     );
   }
@@ -41,6 +48,31 @@ export default function HomePage() {
     <AppShell>
       <MinePanel communityId={communityId} loggedIn={loggedIn} />
     </AppShell>
+  );
+}
+
+function SessionExpiredLanding() {
+  return (
+    <div className="space-y-4">
+      <h1 className="text-2xl font-extrabold tracking-tight">Сессия истекла</h1>
+      <p className="max-w-xl text-sm text-stitch-muted">
+        Войдите по почте, чтобы снова открыть «Моё», сделки и кошелёк.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/login?next=/"
+          className="rounded-lg bg-stitch-accent px-4 py-2.5 text-sm font-medium text-white"
+        >
+          Войти по почте
+        </Link>
+        <Link
+          href="/catalog"
+          className="rounded-lg border border-stitch-border px-4 py-2.5 text-sm"
+        >
+          Смотреть услуги без входа
+        </Link>
+      </div>
+    </div>
   );
 }
 
@@ -66,7 +98,7 @@ function GuestLanding() {
             Смотреть услуги
           </Link>
           <Link
-            href="/login"
+            href="/login?next=/"
             className="rounded-lg border border-stitch-border px-4 py-2.5 text-sm"
           >
             Войти по почте
@@ -287,8 +319,8 @@ function MinePanel({
             <Card className="space-y-3">
               <h2 className="font-extrabold">Новая услуга</h2>
               {canBuy.data && !canBuy.data.allowed ? (
-                <Notice tone="warn">
-                  Чтобы запрашивать чужие услуги, сначала покажите свою. Нужно ещё{' '}
+                <Notice>
+                  Опубликуйте карточку — после этого сможете запрашивать чужие услуги. Нужно ещё{' '}
                   {Math.max(0, canBuy.data.minLotsToBuy - canBuy.data.activeLotCount)}.
                 </Notice>
               ) : null}

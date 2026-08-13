@@ -81,7 +81,7 @@ export default function DealsPage() {
 
   const [thanksDealId, setThanksDealId] = useState<string | null>(null);
   const [thanksComment, setThanksComment] = useState('');
-  const [thanksMerits, setThanksMerits] = useState('0');
+  const [thanksMerits, setThanksMerits] = useState('');
   const [thanksError, setThanksError] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ id: string; kind: 'reject' | 'cancel' | 'close' } | null>(
     null,
@@ -208,13 +208,27 @@ export default function DealsPage() {
                     <p className="mt-1 text-sm text-stitch-muted">
                       {deal.counterpartyName ? `с ${deal.counterpartyName}` : ''}
                       {priceRub != null ? ` · ${priceRub} ₽` : ''}
+                      {deal.status === 'closed' &&
+                      deal.dealAmountRub != null &&
+                      deal.lotPriceRub != null &&
+                      deal.dealAmountRub !== deal.lotPriceRub
+                        ? ` · перешло целиком, без сдачи (услуга ${deal.lotPriceRub} ₽)`
+                        : deal.status === 'closed' && deal.dealAmountRub != null
+                          ? ' · право перешло целиком, без сдачи'
+                          : ''}
                       {deadline ? ` · ${deadline}` : ''}
                     </p>
-                    {expired ? (
+                    {expired && deal.status === 'requested' ? (
                       <p className="mt-2 text-sm text-amber-200">
-                        {deal.status === 'requested'
-                          ? 'Срок истёк. Можете отменить заявку — иначе она снимется в течение часа.'
-                          : 'Срок исполнения вышел. Если услуга оказана — закройте сделку, иначе заявка отменится.'}
+                        {deal.myRole === 'seller'
+                          ? 'Срок ответа вышел. Заявка снимется в течение часа, если не успеете принять.'
+                          : 'Срок истёк. Можете отменить заявку — иначе она снимется в течение часа.'}
+                      </p>
+                    ) : expired && deal.status === 'accepted' ? (
+                      <p className="mt-2 text-sm text-amber-200">
+                        {deal.myRole === 'seller'
+                          ? 'Срок исполнения вышел. Отметьте «сделано», если услуга оказана — иначе заявка снимется в течение часа.'
+                          : 'Срок исполнения вышел. Исполнитель ещё не отметил «сделано». Заявка снимется в течение часа.'}
                       </p>
                     ) : null}
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -277,8 +291,8 @@ export default function DealsPage() {
                         confirm?.id === deal.id && confirm.kind === 'close' ? (
                           <div className="space-y-2">
                             <p className="text-sm text-stitch-muted">
-                              Право на обмен перейдёт исполнителю. Комиссия 1 заслуга останется у
-                              площадки.
+                              Право на обмен целиком перейдёт исполнителю (сегодняшний потолок, без
+                              сдачи). Комиссия 1 заслуга останется у площадки.
                             </p>
                             <div className="flex flex-wrap gap-2">
                               <Button
