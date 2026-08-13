@@ -1,4 +1,5 @@
 import { Injectable, Logger, Inject } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { InjectModel, getConnectionToken } from '@nestjs/mongoose';
 import { ConfigService } from '@nestjs/config';
 import type { Connection } from 'mongoose';
@@ -22,6 +23,7 @@ import { DocumentService } from '../../domain/services/document.service';
 import { DocumentVariantService } from '../../domain/services/document-variant.service';
 import { TicketService } from '../../domain/services/ticket.service';
 import { UzzService } from '../../domain/services/uzz/uzz.service';
+import { EmailLoginLinkService } from '../auth/email-login-link.service';
 import type { Community } from '../../domain/models/community/community.schema';
 import {
   CommunitySchemaClass,
@@ -223,6 +225,7 @@ export class TelegramBotOrchestratorService {
     private readonly pendingModel: Model<TelegramBotPendingActionDocument>,
     private readonly chatResolver: TelegramCommunityChatResolver,
     private readonly uzzService: UzzService,
+    private readonly moduleRef: ModuleRef,
   ) {}
 
   async handleUpdate(body: TelegramTypes.Update): Promise<void> {
@@ -2367,12 +2370,31 @@ export class TelegramBotOrchestratorService {
     }
     try {
       const result = await this.uzzService.startEmailLinkByTelegram(tgUserId, emailArg);
+      let emailed = false;
+      try {
+        const emailService = this.moduleRef.get(EmailLoginLinkService, { strict: false });
+        emailed = await emailService.sendHtmlEmail(
+          result.email,
+          'Код привязки «Услуги за заслуги»',
+          [
+            '<p>Здравствуйте!</p>',
+            `<p>Код для привязки почты к Telegram на площадке «Услуги за заслуги»:</p>`,
+            `<p style="font-size:24px;font-weight:700;letter-spacing:0.1em">${result.code}</p>`,
+            `<p>Введите в боте: <code>/email_code ${result.code}</code></p>`,
+            '<p>Код действует 30 минут. Если вы не запрашивали привязку, проигнорируйте письмо.</p>',
+          ].join(''),
+          `Код для привязки: ${result.code}\nВведите в боте: /email_code ${result.code}\nКод действует 30 минут.`,
+        );
+      } catch (sendError) {
+        this.logger.warn('UZZ email link send failed', {
+          error: sendError instanceof Error ? sendError.message : String(sendError),
+        });
+      }
       await this.tgBots.tgSend({
         tgChatId: tgUserId,
-        text:
-          `Код для привязки ${result.email}:\n\n${result.code}\n\n` +
-          `Введите: /email_code ${result.code}\n` +
-          `(Код также можно ввести на сайте, если уже вошли по почте.)`,
+        text: emailed
+          ? `Код отправлен на ${result.email}. Проверьте почту и введите в этом чате: /email_code …`
+          : `Не удалось отправить письмо на ${result.email}. Попробуйте позже или привяжите Telegram с сайта.`,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Не удалось начать привязку';
@@ -2885,6 +2907,14 @@ export class TelegramBotOrchestratorService {
         direction,
         comment: comment?.trim() ? comment.trim() : TG_VOTE_DEFAULT_COMMENT,
       });
+      try {
+        await this.uzzService.maybeEmitBankForPublication(publicationId);
+      } catch (emitError) {
+        this.logger.warn('UZZ bank emission after Telegram vote failed', {
+          publicationId,
+          error: emitError instanceof Error ? emitError.message : String(emitError),
+        });
+      }
       if (groupFeedback) {
         const voterLabel = await this.resolveVoterLabel(voterId);
         const recipient = await this.resolveVoteRecipientLabels(publicationId);

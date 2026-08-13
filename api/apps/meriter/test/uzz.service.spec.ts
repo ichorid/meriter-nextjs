@@ -20,6 +20,7 @@ import {
   PublicationDocument,
 } from '../src/domain/models/publication/publication.schema';
 import { UzzBankSchemaClass, UzzBankDocument } from '../src/domain/models/uzz/uzz-bank.schema';
+import { UzzDealSchemaClass, UzzDealDocument } from '../src/domain/models/uzz/uzz-deal.schema';
 import {
   UzzIdentityLinkSchemaClass,
   UzzIdentityLinkDocument,
@@ -41,6 +42,7 @@ describe('UzzService (integration)', () => {
   let userModel: Model<UserDocument>;
   let publicationModel: Model<PublicationDocument>;
   let bankModel: Model<UzzBankDocument>;
+  let dealModel: Model<UzzDealDocument>;
   let identityModel: Model<UzzIdentityLinkDocument>;
 
   let communityId: string;
@@ -75,6 +77,7 @@ describe('UzzService (integration)', () => {
     userModel = connection.model<UserDocument>(UserSchemaClass.name);
     publicationModel = connection.model<PublicationDocument>(PublicationSchemaClass.name);
     bankModel = connection.model<UzzBankDocument>(UzzBankSchemaClass.name);
+    dealModel = connection.model<UzzDealDocument>(UzzDealSchemaClass.name);
     identityModel = connection.model<UzzIdentityLinkDocument>(UzzIdentityLinkSchemaClass.name);
 
     communityId = uid();
@@ -192,6 +195,7 @@ describe('UzzService (integration)', () => {
 
     expect(closed.status).toBe('closed');
     expect(closed.dealAmountRub).toBe(1000);
+    expect(await uzzService.getSpendableBalance(authorId, communityId)).toBe(9);
 
     const updatedBank = await bankModel.findOne({ id: bank!.id }).exec();
     expect(updatedBank!.ownerId).toBe(sellerId);
@@ -212,5 +216,127 @@ describe('UzzService (integration)', () => {
 
     const after = await bankModel.findOne({ id: bank!.id }).exec();
     expect(after!.nominalRub).toBe(150);
+  });
+
+  it('reserves 1 merit on request and refunds on reject', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Deed for reject',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    await uzzService.setBankNominal(bank!.id, 800, authorId);
+    const lot = await uzzService.createLot({
+      communityId,
+      authorId: sellerId,
+      title: 'Reject lot',
+      description: '',
+      priceRub: 200,
+    });
+    const before = await uzzService.getSpendableBalance(authorId, communityId);
+    const deal = await uzzService.requestDeal({
+      communityId,
+      buyerId: authorId,
+      lotId: lot.id,
+      bankId: bank!.id,
+    });
+    expect(deal.feeReserved).toBe(true);
+    expect(await uzzService.getSpendableBalance(authorId, communityId)).toBe(before - 1);
+
+    await uzzService.rejectDeal(deal.id, sellerId);
+    expect(await uzzService.getSpendableBalance(authorId, communityId)).toBe(before);
+  });
+
+  it('expires unanswered requests after TTL', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Deed for ttl',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    await uzzService.setBankNominal(bank!.id, 700, authorId);
+    const lot = await uzzService.createLot({
+      communityId,
+      authorId: sellerId,
+      title: 'TTL lot',
+      description: '',
+      priceRub: 100,
+    });
+    const before = await uzzService.getSpendableBalance(authorId, communityId);
+    const deal = await uzzService.requestDeal({
+      communityId,
+      buyerId: authorId,
+      lotId: lot.id,
+      bankId: bank!.id,
+    });
+    await dealModel.updateOne(
+      { id: deal.id },
+      { $set: { requestedAt: new Date(Date.now() - 50 * 60 * 60 * 1000) } },
+    );
+
+    const result = await uzzService.expireStaleDeals();
+    expect(result.expired).toBeGreaterThanOrEqual(1);
+
+    const expired = await dealModel.findOne({ id: deal.id }).exec();
+    expect(expired!.status).toBe('cancelled');
+    expect(await uzzService.getSpendableBalance(authorId, communityId)).toBe(before);
+
+    const freed = await bankModel.findOne({ id: bank!.id }).exec();
+    expect(freed!.status).toBe('active');
+  });
+
+  it('does not demurrage from emission createdAt before nominal is set', async () => {
+    const bank = await bankModel.create({
+      id: uid(),
+      communityId,
+      ownerId: authorId,
+      sourcePublicationId: uid(),
+      hopsLeft: 10,
+      nominalRub: 500,
+      status: 'active',
+      ownerHistory: [],
+    });
+    bank.createdAt = new Date(Date.now() - 48 * 60 * 60 * 1000);
+    await bank.save();
+
+    await uzzService.applyDemurrage();
+    const after = await bankModel.findOne({ id: bank.id }).exec();
+    expect(after!.nominalRub).toBe(500);
+    expect(after!.status).toBe('active');
+  });
+
+  it('exhausts an active bank when demurrage hits the floor', async () => {
+    const bank = await bankModel.create({
+      id: uid(),
+      communityId,
+      ownerId: authorId,
+      sourcePublicationId: uid(),
+      hopsLeft: 8,
+      nominalRub: 100,
+      status: 'active',
+      ownerHistory: [],
+      lastDemurrageAt: new Date(Date.now() - 25 * 60 * 60 * 1000),
+    });
+
+    await uzzService.applyDemurrage();
+    const after = await bankModel.findOne({ id: bank.id }).exec();
+    expect(after!.nominalRub).toBe(100);
+    expect(after!.status).toBe('exhausted');
   });
 });

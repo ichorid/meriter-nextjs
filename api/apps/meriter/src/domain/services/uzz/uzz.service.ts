@@ -39,6 +39,10 @@ import {
 import { WalletService } from '../wallet.service';
 import { UserService } from '../user.service';
 import { CommunityService } from '../community.service';
+import { EventBus } from '../../events/event-bus';
+import { UzzNotifyEvent } from '../../events/uzz.events';
+import { ConfigService } from '@nestjs/config';
+import type { AppConfig } from '../../../config/configuration';
 
 export type UzzSettingsPatch = Partial<{
   emissionThreshold: number;
@@ -55,6 +59,60 @@ export type UzzSettingsPatch = Partial<{
 
 const LINK_CODE_TTL_MS = 30 * 60 * 1000;
 const DEAL_FEE_MERITS = 1;
+const DEFAULT_CURRENCY = {
+  singular: 'заслуга',
+  plural: 'заслуги',
+  genitive: 'заслуг',
+} as const;
+
+export type UzzBankView = {
+  id: string;
+  communityId: string;
+  ownerId: string;
+  sourcePublicationId: string;
+  hopsLeft: number;
+  nominalRub: number | null;
+  status: UzzBankStatus;
+  lastDemurrageAt?: Date;
+  createdAt: Date;
+  ownerName: string;
+};
+
+export type UzzLotView = {
+  id: string;
+  communityId: string;
+  authorId: string;
+  title: string;
+  description: string;
+  priceRub: number;
+  active: boolean;
+  createdAt: Date;
+  ownerName: string;
+};
+
+export type UzzDealView = {
+  id: string;
+  communityId: string;
+  buyerId: string;
+  sellerId: string;
+  lotId: string;
+  bankId: string;
+  status: UzzDealStatus;
+  dealAmountRub: number | null;
+  feeReserved: boolean;
+  requestedAt: Date;
+  acceptedAt?: Date;
+  completedBySellerAt?: Date;
+  closedAt?: Date;
+  rejectedAt?: Date;
+  cancelledAt?: Date;
+  buyerThankedAt?: Date;
+  sellerThankedAt?: Date;
+  lotTitle: string;
+  counterpartyName: string;
+  myRole: 'buyer' | 'seller' | 'other';
+  createdAt: Date;
+};
 
 @Injectable()
 export class UzzService {
@@ -76,6 +134,8 @@ export class UzzService {
     private readonly walletService: WalletService,
     private readonly userService: UserService,
     private readonly communityService: CommunityService,
+    private readonly eventBus: EventBus,
+    private readonly configService: ConfigService<AppConfig>,
   ) {}
 
   async getOrCreateSettings(communityId: string): Promise<UzzSettingsDocument> {
@@ -166,6 +226,14 @@ export class UzzService {
       publication.authorId,
       bank.id,
     );
+    await this.notifyUser(
+      publication.authorId,
+      publication.communityId,
+      'bankEmitted',
+      linked
+        ? 'Появилось право на обмен. Администратор скоро назначит номинал в рублях.'
+        : 'Появилось право на обмен, но нужна привязка Telegram и почты, чтобы им пользоваться.',
+    );
     return bank;
   }
 
@@ -187,6 +255,7 @@ export class UzzService {
     }
     bank.nominalRub = Math.round(nominalRub);
     bank.status = 'active';
+    bank.lastDemurrageAt = new Date();
     await bank.save();
     await this.appendLedger(
       bank.communityId,
@@ -198,19 +267,29 @@ export class UzzService {
     return bank;
   }
 
-  async listMyBanks(userId: string, communityId: string): Promise<UzzBankDocument[]> {
+  async listMyBanks(userId: string, communityId: string): Promise<UzzBankView[]> {
     const ownerIds = await this.resolveLinkedUserIds(userId);
-    return this.bankModel
+    const banks = await this.bankModel
       .find({ ownerId: { $in: ownerIds }, communityId })
       .sort({ createdAt: -1 })
       .exec();
+    return this.toBankViews(banks);
   }
 
-  async adminListAwaitingNominal(communityId: string): Promise<UzzBankDocument[]> {
-    return this.bankModel
+  async adminListAwaitingNominal(communityId: string): Promise<UzzBankView[]> {
+    const banks = await this.bankModel
       .find({ communityId, status: 'awaiting_nominal' })
       .sort({ createdAt: 1 })
       .exec();
+    return this.toBankViews(banks);
+  }
+
+  async adminListHolding(communityId: string): Promise<UzzBankView[]> {
+    const banks = await this.bankModel
+      .find({ communityId, status: 'holding' })
+      .sort({ createdAt: 1 })
+      .exec();
+    return this.toBankViews(banks);
   }
 
   async createLot(input: {
@@ -260,19 +339,21 @@ export class UzzService {
     return lot;
   }
 
-  async listLots(communityId: string): Promise<UzzLotDocument[]> {
-    return this.lotModel
+  async listLots(communityId: string): Promise<UzzLotView[]> {
+    const lots = await this.lotModel
       .find({ communityId, active: true })
       .sort({ createdAt: -1 })
       .exec();
+    return this.toLotViews(lots);
   }
 
-  async myLots(userId: string, communityId: string): Promise<UzzLotDocument[]> {
+  async myLots(userId: string, communityId: string): Promise<UzzLotView[]> {
     const authorIds = await this.resolveLinkedUserIds(userId);
-    return this.lotModel
+    const lots = await this.lotModel
       .find({ authorId: { $in: authorIds }, communityId })
       .sort({ createdAt: -1 })
       .exec();
+    return this.toLotViews(lots);
   }
 
   async canBuy(
@@ -340,13 +421,6 @@ export class UzzService {
       throw new BadRequestException('Lot price exceeds bank nominal');
     }
 
-    const walletUserId = await this.pickWalletUserId(input.buyerId, input.communityId);
-    const wallet = await this.walletService.getWallet(walletUserId, input.communityId);
-    const balance = wallet?.getBalance?.() ?? 0;
-    if (balance < DEAL_FEE_MERITS) {
-      throw new BadRequestException('Insufficient wallet balance (need 1 заслуга)');
-    }
-
     const openDeal = await this.dealModel
       .findOne({
         bankId: bank.id,
@@ -357,19 +431,47 @@ export class UzzService {
       throw new BadRequestException('Bank already has an open deal');
     }
 
-    const now = new Date();
-    const deal = await this.dealModel.create({
-      id: uid(),
-      communityId: input.communityId,
-      buyerId: input.buyerId,
-      sellerId: lot.authorId,
-      lotId: lot.id,
-      bankId: bank.id,
-      status: 'requested' satisfies UzzDealStatus,
-      dealAmountRub: null,
-      requestedAt: now,
-    });
+    const walletUserId = await this.pickWalletUserId(input.buyerId, input.communityId);
+    const reserved = await this.walletService.debitIfSufficient(
+      walletUserId,
+      input.communityId,
+      DEAL_FEE_MERITS,
+      'uzz_deal_fee',
+      input.bankId,
+      'UZZ deal fee reserved',
+    );
+    if (!reserved) {
+      throw new BadRequestException('Insufficient wallet balance (need 1 заслуга)');
+    }
 
+    const now = new Date();
+    let deal;
+    try {
+      deal = await this.dealModel.create({
+        id: uid(),
+        communityId: input.communityId,
+        buyerId: input.buyerId,
+        sellerId: lot.authorId,
+        lotId: lot.id,
+        bankId: bank.id,
+        status: 'requested' satisfies UzzDealStatus,
+        dealAmountRub: null,
+        feeReserved: true,
+        requestedAt: now,
+      });
+    } catch (error) {
+      await this.creditDealFee(walletUserId, input.communityId, input.bankId);
+      throw error;
+    }
+
+    await this.appendLedger(
+      input.communityId,
+      'deal_fee_reserved',
+      { amount: DEAL_FEE_MERITS },
+      input.buyerId,
+      bank.id,
+      deal.id,
+    );
     await this.appendLedger(
       input.communityId,
       'deal_requested',
@@ -377,6 +479,12 @@ export class UzzService {
       input.buyerId,
       bank.id,
       deal.id,
+    );
+    await this.notifyUser(
+      lot.authorId,
+      input.communityId,
+      'dealRequested',
+      `Новый запрос на услугу «${lot.title}». Откройте сделки на площадке.`,
     );
     return deal;
   }
@@ -418,6 +526,12 @@ export class UzzService {
       bank.id,
       deal.id,
     );
+    await this.notifyUser(
+      deal.buyerId,
+      deal.communityId,
+      'dealAccepted',
+      'Исполнитель принял вашу заявку. Дождитесь отметки «сделано».',
+    );
     return deal;
   }
 
@@ -432,6 +546,7 @@ export class UzzService {
     deal.status = 'rejected';
     deal.rejectedAt = new Date();
     await deal.save();
+    await this.refundDealFeeIfReserved(deal);
     await this.appendLedger(
       deal.communityId,
       'deal_rejected',
@@ -439,6 +554,12 @@ export class UzzService {
       sellerId,
       deal.bankId,
       deal.id,
+    );
+    await this.notifyUser(
+      deal.buyerId,
+      deal.communityId,
+      'dealRequested',
+      'Исполнитель отклонил заявку. Комиссия возвращена, право на обмен снова у вас.',
     );
     return deal;
   }
@@ -461,6 +582,12 @@ export class UzzService {
       sellerId,
       deal.bankId,
       deal.id,
+    );
+    await this.notifyUser(
+      deal.buyerId,
+      deal.communityId,
+      'dealAccepted',
+      'Исполнитель отметил услугу как сделанную. Подтвердите закрытие на площадке.',
     );
     return deal;
   }
@@ -485,17 +612,20 @@ export class UzzService {
       throw new BadRequestException('Bank has no nominal');
     }
 
-    const walletUserId = await this.pickWalletUserId(deal.buyerId, deal.communityId);
-    const debited = await this.walletService.debitIfSufficient(
-      walletUserId,
-      deal.communityId,
-      DEAL_FEE_MERITS,
-      'uzz_deal_fee',
-      deal.id,
-      'UZZ deal fee',
-    );
-    if (!debited) {
-      throw new BadRequestException('Insufficient wallet balance to close deal');
+    if (!deal.feeReserved) {
+      const walletUserId = await this.pickWalletUserId(deal.buyerId, deal.communityId);
+      const debited = await this.walletService.debitIfSufficient(
+        walletUserId,
+        deal.communityId,
+        DEAL_FEE_MERITS,
+        'uzz_deal_fee',
+        deal.id,
+        'UZZ deal fee',
+      );
+      if (!debited) {
+        throw new BadRequestException('Insufficient wallet balance to close deal');
+      }
+      deal.feeReserved = true;
     }
 
     const now = new Date();
@@ -526,6 +656,18 @@ export class UzzService {
       bank.id,
       deal.id,
     );
+    await this.notifyUser(
+      deal.sellerId,
+      deal.communityId,
+      'dealClosed',
+      'Сделка закрыта. Право на обмен перешло к вам.',
+    );
+    await this.notifyUser(
+      deal.buyerId,
+      deal.communityId,
+      'dealClosed',
+      'Сделка закрыта. Можно оставить благодарность на площадке.',
+    );
     return deal;
   }
 
@@ -554,6 +696,7 @@ export class UzzService {
     deal.status = 'cancelled';
     deal.cancelledAt = new Date();
     await deal.save();
+    await this.refundDealFeeIfReserved(deal);
 
     if (bank.status === 'in_deal') {
       const settings = await this.getOrCreateSettings(deal.communityId);
@@ -572,6 +715,18 @@ export class UzzService {
       bank.id,
       deal.id,
     );
+    await this.notifyUser(
+      deal.buyerId,
+      deal.communityId,
+      'dealRequested',
+      'Сделка отменена. Комиссия возвращена, право на обмен снова свободно.',
+    );
+    await this.notifyUser(
+      deal.sellerId,
+      deal.communityId,
+      'dealRequested',
+      'Сделка отменена.',
+    );
     return deal;
   }
 
@@ -586,7 +741,12 @@ export class UzzService {
       const settings = await this.getOrCreateSettings(bank.communityId);
       if (bank.nominalRub == null) continue;
 
-      const last = bank.lastDemurrageAt?.getTime() ?? bank.createdAt?.getTime?.() ?? 0;
+      const last = bank.lastDemurrageAt?.getTime();
+      if (last == null) {
+        bank.lastDemurrageAt = now;
+        await bank.save();
+        continue;
+      }
       if (now.getTime() - last < 20 * 60 * 60 * 1000) {
         continue;
       }
@@ -596,14 +756,31 @@ export class UzzService {
         bank.nominalRub - settings.demurrageRubPerDay,
       );
       if (next === bank.nominalRub) {
-        bank.lastDemurrageAt = now;
-        await bank.save();
+        if (next === settings.nominalFloorRub && bank.status === 'active') {
+          bank.status = 'exhausted';
+          bank.lastDemurrageAt = now;
+          await bank.save();
+          await this.appendLedger(
+            bank.communityId,
+            'bank_exhausted',
+            { reason: 'nominal_floor', nominalRub: next },
+            bank.ownerId,
+            bank.id,
+          );
+          updated += 1;
+        } else {
+          bank.lastDemurrageAt = now;
+          await bank.save();
+        }
         continue;
       }
 
       const prev = bank.nominalRub;
       bank.nominalRub = next;
       bank.lastDemurrageAt = now;
+      if (next === settings.nominalFloorRub && bank.status === 'active') {
+        bank.status = 'exhausted';
+      }
       await bank.save();
       await this.appendLedger(
         bank.communityId,
@@ -616,6 +793,169 @@ export class UzzService {
     }
 
     return { updated };
+  }
+
+  async expireStaleDeals(): Promise<{ expired: number }> {
+    const now = Date.now();
+    const open = await this.dealModel
+      .find({ status: { $in: ['requested', 'accepted', 'completed_by_seller'] } })
+      .exec();
+    let expired = 0;
+    for (const deal of open) {
+      const settings = await this.getOrCreateSettings(deal.communityId);
+      const requestTtlMs = settings.dealRequestTtlHours * 60 * 60 * 1000;
+      const fulfillMs = settings.dealFulfillmentDays * 24 * 60 * 60 * 1000;
+      let stale = false;
+      if (deal.status === 'requested') {
+        stale = now - deal.requestedAt.getTime() > requestTtlMs;
+      } else if (deal.status === 'accepted') {
+        const from = deal.acceptedAt?.getTime() ?? deal.requestedAt.getTime();
+        stale = now - from > fulfillMs;
+      } else if (deal.status === 'completed_by_seller') {
+        const from =
+          deal.completedBySellerAt?.getTime() ??
+          deal.acceptedAt?.getTime() ??
+          deal.requestedAt.getTime();
+        stale = now - from > fulfillMs;
+      }
+      if (!stale) continue;
+      try {
+        await this.cancelDeal(deal.id, 'system', { asAdmin: true });
+        expired += 1;
+      } catch {
+        // already terminal or race
+      }
+    }
+    return { expired };
+  }
+
+  async thankDeal(
+    dealId: string,
+    actorUserId: string,
+    input: { comment?: string; merits?: number },
+  ): Promise<UzzDealDocument> {
+    const deal = await this.requireDeal(dealId);
+    if (deal.status !== 'closed') {
+      throw new BadRequestException('Thanks are only available after the deal is closed');
+    }
+    const isBuyer = await this.isSameLinkedActor(deal.buyerId, actorUserId);
+    const isSeller = await this.isSameLinkedActor(deal.sellerId, actorUserId);
+    if (!isBuyer && !isSeller) {
+      throw new ForbiddenException('Only deal parties can send thanks');
+    }
+    if (isBuyer && deal.buyerThankedAt) {
+      throw new BadRequestException('You already sent thanks');
+    }
+    if (isSeller && deal.sellerThankedAt) {
+      throw new BadRequestException('You already sent thanks');
+    }
+
+    const merits = Math.max(0, Math.round(input.merits ?? 0));
+    const comment = (input.comment ?? '').trim();
+    if (!comment && merits <= 0) {
+      throw new BadRequestException('Add a comment or at least 1 заслуга');
+    }
+
+    if (merits > 0) {
+      const payerId = await this.pickWalletUserId(actorUserId, deal.communityId);
+      const payeeId = await this.pickWalletUserId(
+        isBuyer ? deal.sellerId : deal.buyerId,
+        deal.communityId,
+      );
+      const currency = await this.communityCurrency(deal.communityId);
+      const debited = await this.walletService.debitIfSufficient(
+        payerId,
+        deal.communityId,
+        merits,
+        'uzz_thanks',
+        deal.id,
+        'UZZ thanks',
+      );
+      if (!debited) {
+        throw new BadRequestException('Insufficient wallet balance for thanks');
+      }
+      await this.walletService.createOrGetWallet(payeeId, deal.communityId, currency);
+      await this.walletService.addTransaction(
+        payeeId,
+        deal.communityId,
+        'credit',
+        merits,
+        'personal',
+        'uzz_thanks',
+        deal.id,
+        currency,
+        'UZZ thanks',
+      );
+    }
+
+    const now = new Date();
+    if (isBuyer) {
+      deal.buyerThankedAt = now;
+      deal.buyerThanksComment = comment || undefined;
+      deal.buyerThanksMerits = merits;
+    } else {
+      deal.sellerThankedAt = now;
+      deal.sellerThanksComment = comment || undefined;
+      deal.sellerThanksMerits = merits;
+    }
+    await deal.save();
+    await this.appendLedger(
+      deal.communityId,
+      'deal_thanks',
+      { comment, merits, fromBuyer: isBuyer },
+      actorUserId,
+      deal.bankId,
+      deal.id,
+    );
+    return deal;
+  }
+
+  async bootstrap(userId: string): Promise<{
+    communityId: string;
+    communityName: string | null;
+    isUzzAdmin: boolean;
+  }> {
+    const memberships = await this.communityService.getUserCommunities(userId);
+    const withTg = memberships.filter((c) => Boolean(c.telegramChatId));
+    const fallback =
+      this.configService.get('app')?.defaultTelegramCommunityId?.trim() || '';
+    const resolved =
+      withTg.length === 1
+        ? withTg[0]
+        : withTg.find((c) => c.id === fallback) ??
+          memberships.find((c) => c.id === fallback);
+    const communityId = resolved?.id ?? fallback;
+    let communityName = resolved?.name ?? null;
+    if (!communityName && communityId) {
+      const community = await this.communityService.getCommunity(communityId);
+      communityName = community?.name ?? null;
+    }
+    let isUzzAdmin = false;
+    if (communityId) {
+      try {
+        await this.assertCommunityAdmin(communityId, userId);
+        isUzzAdmin = true;
+      } catch {
+        isUzzAdmin = false;
+      }
+    }
+    return { communityId, communityName, isUzzAdmin };
+  }
+
+  async listLedgerMine(
+    userId: string,
+    communityId: string,
+    opts?: { limit?: number; skip?: number },
+  ): Promise<UzzLedgerDocument[]> {
+    const ids = await this.resolveLinkedUserIds(userId);
+    const limit = Math.min(100, Math.max(1, opts?.limit ?? 50));
+    const skip = Math.max(0, opts?.skip ?? 0);
+    return this.ledgerModel
+      .find({ communityId, userId: { $in: ids } })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit)
+      .exec();
   }
 
   async startTelegramLink(userId: string): Promise<{ code: string; expiresAt: Date }> {
@@ -794,13 +1134,14 @@ export class UzzService {
   async listDeals(
     communityId: string,
     userId?: string,
-  ): Promise<UzzDealDocument[]> {
+  ): Promise<UzzDealView[]> {
     const filter: Record<string, unknown> = { communityId };
     if (userId) {
       const ids = await this.resolveLinkedUserIds(userId);
       filter.$or = [{ buyerId: { $in: ids } }, { sellerId: { $in: ids } }];
     }
-    return this.dealModel.find(filter).sort({ createdAt: -1 }).exec();
+    const deals = await this.dealModel.find(filter).sort({ createdAt: -1 }).exec();
+    return this.toDealViews(deals, userId);
   }
 
   async listDeeds(
@@ -867,6 +1208,166 @@ export class UzzService {
     if (!isAdmin) {
       throw new ForbiddenException('Lead or superadmin required');
     }
+  }
+
+  private async communityCurrency(communityId: string): Promise<{
+    singular: string;
+    plural: string;
+    genitive: string;
+  }> {
+    const community = await this.communityService.getCommunity(communityId);
+    const names = community?.settings?.currencyNames;
+    if (names?.singular && names?.plural && names?.genitive) {
+      return {
+        singular: names.singular,
+        plural: names.plural,
+        genitive: names.genitive,
+      };
+    }
+    return { ...DEFAULT_CURRENCY };
+  }
+
+  private async creditDealFee(
+    walletUserId: string,
+    communityId: string,
+    referenceId: string,
+  ): Promise<void> {
+    const currency = await this.communityCurrency(communityId);
+    await this.walletService.addTransaction(
+      walletUserId,
+      communityId,
+      'credit',
+      DEAL_FEE_MERITS,
+      'personal',
+      'uzz_deal_fee_refund',
+      referenceId,
+      currency,
+      'UZZ deal fee refund',
+    );
+  }
+
+  private async refundDealFeeIfReserved(deal: UzzDealDocument): Promise<void> {
+    if (!deal.feeReserved) return;
+    const walletUserId = await this.pickWalletUserId(deal.buyerId, deal.communityId);
+    await this.creditDealFee(walletUserId, deal.communityId, deal.id);
+    deal.feeReserved = false;
+    await deal.save();
+    await this.appendLedger(
+      deal.communityId,
+      'deal_fee_refunded',
+      { amount: DEAL_FEE_MERITS },
+      deal.buyerId,
+      deal.bankId,
+      deal.id,
+    );
+  }
+
+  private async notifyUser(
+    userId: string,
+    communityId: string,
+    flag: keyof UzzNotifyFlags,
+    text: string,
+  ): Promise<void> {
+    try {
+      const settings = await this.getOrCreateSettings(communityId);
+      if (!settings.notifyFlags?.[flag]) return;
+      const link = await this.findIdentityLinkForUser(userId);
+      if (!link?.telegramUserId) return;
+      const base = this.configService.get('app')?.uzzWebBaseUrl?.replace(/\/$/, '');
+      const body = base ? `${text}\n${base}` : text;
+      await this.eventBus.publish(
+        new UzzNotifyEvent(communityId, String(link.telegramUserId), body),
+      );
+    } catch {
+      // notifications must not fail the business path
+    }
+  }
+
+  private friendlyName(raw: string | undefined, userId: string): string {
+    const name = (raw ?? '').trim();
+    if (!name || name === userId || name.endsWith('…')) return 'Участник';
+    return name;
+  }
+
+  private async toBankViews(banks: UzzBankDocument[]): Promise<UzzBankView[]> {
+    const names = await this.userService.getDisplayNamesByUserIds(
+      banks.map((b) => b.ownerId),
+    );
+    return banks.map((bank) => ({
+      id: bank.id,
+      communityId: bank.communityId,
+      ownerId: bank.ownerId,
+      sourcePublicationId: bank.sourcePublicationId,
+      hopsLeft: bank.hopsLeft,
+      nominalRub: bank.nominalRub,
+      status: bank.status,
+      lastDemurrageAt: bank.lastDemurrageAt,
+      createdAt: bank.createdAt,
+      ownerName: this.friendlyName(names.get(bank.ownerId), bank.ownerId),
+    }));
+  }
+
+  private async toLotViews(lots: UzzLotDocument[]): Promise<UzzLotView[]> {
+    const names = await this.userService.getDisplayNamesByUserIds(
+      lots.map((l) => l.authorId),
+    );
+    return lots.map((lot) => ({
+      id: lot.id,
+      communityId: lot.communityId,
+      authorId: lot.authorId,
+      title: lot.title,
+      description: lot.description,
+      priceRub: lot.priceRub,
+      active: lot.active,
+      createdAt: lot.createdAt,
+      ownerName: this.friendlyName(names.get(lot.authorId), lot.authorId),
+    }));
+  }
+
+  private async toDealViews(
+    deals: UzzDealDocument[],
+    viewerUserId?: string,
+  ): Promise<UzzDealView[]> {
+    const lotIds = [...new Set(deals.map((d) => d.lotId))];
+    const lots = await this.lotModel.find({ id: { $in: lotIds } }).lean().exec();
+    const lotById = new Map(lots.map((l) => [l.id, l]));
+    const userIds = deals.flatMap((d) => [d.buyerId, d.sellerId]);
+    const names = await this.userService.getDisplayNamesByUserIds(userIds);
+    const viewerIds = viewerUserId
+      ? await this.resolveLinkedUserIds(viewerUserId)
+      : [];
+
+    return deals.map((deal) => {
+      const isBuyer = viewerIds.includes(deal.buyerId);
+      const isSeller = viewerIds.includes(deal.sellerId);
+      const counterpartyId = isBuyer ? deal.sellerId : deal.buyerId;
+      let myRole: UzzDealView['myRole'] = 'other';
+      if (isBuyer) myRole = 'buyer';
+      else if (isSeller) myRole = 'seller';
+      return {
+        id: deal.id,
+        communityId: deal.communityId,
+        buyerId: deal.buyerId,
+        sellerId: deal.sellerId,
+        lotId: deal.lotId,
+        bankId: deal.bankId,
+        status: deal.status,
+        dealAmountRub: deal.dealAmountRub,
+        feeReserved: deal.feeReserved,
+        requestedAt: deal.requestedAt,
+        acceptedAt: deal.acceptedAt,
+        completedBySellerAt: deal.completedBySellerAt,
+        closedAt: deal.closedAt,
+        rejectedAt: deal.rejectedAt,
+        cancelledAt: deal.cancelledAt,
+        buyerThankedAt: deal.buyerThankedAt,
+        sellerThankedAt: deal.sellerThankedAt,
+        lotTitle: lotById.get(deal.lotId)?.title ?? 'Услуга',
+        counterpartyName: this.friendlyName(names.get(counterpartyId), counterpartyId),
+        myRole,
+        createdAt: deal.createdAt,
+      };
+    });
   }
 
   private async hasFullIdentityLink(userId: string): Promise<boolean> {

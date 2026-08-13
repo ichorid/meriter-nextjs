@@ -12,4 +12,9 @@ export class UzzDemurrageCronEntrypoint {
   async applyDemurrage(): Promise<void> {
     await this.uzzService.applyDemurrage();
   }
+
+  @Cron(INV_21_CRON_PATHS.uzzDealExpiry.schedule)
+  async expireStaleDeals(): Promise<void> {
+    await this.uzzService.expireStaleDeals();
+  }
 }

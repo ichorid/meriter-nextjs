@@ -27,7 +27,7 @@ export class UzzLotSchemaClass implements Omit<UzzLot, 'createdAt' | 'updatedAt'
   @Prop({ required: true })
   title!: string;
 
-  @Prop({ required: true, default: '' })
+  @Prop({ default: '' })
   description!: string;
 
   @Prop({ required: true })

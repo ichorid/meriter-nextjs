@@ -86,6 +86,7 @@ export const uzzAppRouter = router({
       if (!user) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
       }
+      const boot = await ctx.uzzService.bootstrap(ctx.user.id);
       return {
         id: user.id,
         displayName: user.displayName,
@@ -93,6 +94,9 @@ export const uzzAppRouter = router({
         avatarUrl: user.avatarUrl,
         globalRole: user.globalRole,
         authProvider: user.authProvider,
+        isUzzAdmin: boot.isUzzAdmin,
+        communityId: boot.communityId,
+        communityName: boot.communityName,
       };
     }),
 
@@ -119,6 +123,10 @@ export const uzzAppRouter = router({
         ctx.cookieManager.establishUzzJwtAuth(ctx.res, result.jwt, ctx.req);
         return { user: result.user, jwt: result.jwt };
       }),
+  }),
+
+  bootstrap: protectedProcedure.query(async ({ ctx }) => {
+    return ctx.uzzService.bootstrap(ctx.user.id);
   }),
 
   settings: router({
@@ -176,6 +184,12 @@ export const uzzAppRouter = router({
         await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
         return ctx.uzzService.adminListAwaitingNominal(input.communityId);
       }),
+    listHolding: protectedProcedure
+      .input(z.object({ communityId: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
+        return ctx.uzzService.adminListHolding(input.communityId);
+      }),
     setNominal: protectedProcedure
       .input(
         z.object({
@@ -228,7 +242,7 @@ export const uzzAppRouter = router({
         const { lotId, ...patch } = input;
         return ctx.uzzService.updateLot(lotId, ctx.user.id, patch);
       }),
-    list: protectedProcedure
+    list: publicProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
         return ctx.uzzService.listLots(input.communityId);
@@ -287,6 +301,20 @@ export const uzzAppRouter = router({
       .mutation(async ({ ctx, input }) => {
         return ctx.uzzService.cancelDeal(input.dealId, ctx.user.id);
       }),
+    thank: protectedProcedure
+      .input(
+        z.object({
+          dealId: z.string().min(1),
+          comment: z.string().max(2000).optional(),
+          merits: z.number().int().nonnegative().max(10_000).optional(),
+        }),
+      )
+      .mutation(async ({ ctx, input }) => {
+        return ctx.uzzService.thankDeal(input.dealId, ctx.user.id, {
+          comment: input.comment,
+          merits: input.merits,
+        });
+      }),
     list: protectedProcedure
       .input(
         z.object({
@@ -328,16 +356,6 @@ export const uzzAppRouter = router({
           : undefined,
       };
     }),
-    confirmTelegramLink: publicProcedure
-      .input(
-        z.object({
-          code: z.string().min(1),
-          telegramUserId: z.string().min(1),
-        }),
-      )
-      .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.confirmTelegramLink(input.code, input.telegramUserId);
-      }),
     startEmailLinkFromBot: protectedProcedure
       .input(z.object({ email: z.string().email() }))
       .mutation(async ({ ctx, input }) => {
@@ -377,6 +395,20 @@ export const uzzAppRouter = router({
       .query(async ({ ctx, input }) => {
         await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
         return ctx.uzzService.listLedger(input.communityId, {
+          limit: input.limit,
+          skip: input.skip,
+        });
+      }),
+    listMine: protectedProcedure
+      .input(
+        z.object({
+          communityId: z.string().min(1),
+          limit: z.number().int().positive().max(100).optional(),
+          skip: z.number().int().nonnegative().optional(),
+        }),
+      )
+      .query(async ({ ctx, input }) => {
+        return ctx.uzzService.listLedgerMine(ctx.user.id, input.communityId, {
           limit: input.limit,
           skip: input.skip,
         });

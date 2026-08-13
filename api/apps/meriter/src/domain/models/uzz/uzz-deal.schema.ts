@@ -18,12 +18,19 @@ export interface UzzDeal {
   bankId: string;
   status: UzzDealStatus;
   dealAmountRub: number | null;
+  feeReserved: boolean;
   requestedAt: Date;
   acceptedAt?: Date;
   completedBySellerAt?: Date;
   closedAt?: Date;
   rejectedAt?: Date;
   cancelledAt?: Date;
+  buyerThankedAt?: Date;
+  sellerThankedAt?: Date;
+  buyerThanksComment?: string;
+  sellerThanksComment?: string;
+  buyerThanksMerits?: number;
+  sellerThanksMerits?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -65,6 +72,9 @@ export class UzzDealSchemaClass implements Omit<UzzDeal, 'createdAt' | 'updatedA
   @Prop({ type: Number, default: null })
   dealAmountRub!: number | null;
 
+  @Prop({ required: true, default: false })
+  feeReserved!: boolean;
+
   @Prop({ required: true, type: Date })
   requestedAt!: Date;
 
@@ -82,6 +92,24 @@ export class UzzDealSchemaClass implements Omit<UzzDeal, 'createdAt' | 'updatedA
 
   @Prop({ type: Date })
   cancelledAt?: Date;
+
+  @Prop({ type: Date })
+  buyerThankedAt?: Date;
+
+  @Prop({ type: Date })
+  sellerThankedAt?: Date;
+
+  @Prop({ type: String })
+  buyerThanksComment?: string;
+
+  @Prop({ type: String })
+  sellerThanksComment?: string;
+
+  @Prop({ type: Number })
+  buyerThanksMerits?: number;
+
+  @Prop({ type: Number })
+  sellerThanksMerits?: number;
 }
 
 export const UzzDealSchema = SchemaFactory.createForClass(UzzDealSchemaClass);

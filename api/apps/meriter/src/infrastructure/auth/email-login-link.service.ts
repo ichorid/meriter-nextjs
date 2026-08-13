@@ -32,17 +32,27 @@ export class EmailLoginLinkService {
         });
         const ttlMinutes = this.configService.getOrThrow('magicLink').ttlMinutes;
 
-        const emailConfig = this.configService.get('email');
-        if (emailConfig?.enabled && emailConfig.api?.key) {
-            try {
-                await this.sendViaWebApi(email, linkUrl, ttlMinutes, emailConfig);
-                this.logger.log(`Login link email sent to ${email}`);
-            } catch (error) {
-                this.logger.error(`Failed to send login link email to ${email}: ${error}`);
-                throw new Error('Failed to send email');
+        const html = [
+            '<p>Здравствуйте!</p>',
+            `<p>Чтобы войти в Meriter, нажмите на ссылку:</p>`,
+            `<p><a href="${linkUrl}" style="display:inline-block;padding:10px 20px;background:#A855F7;color:#ffffff;text-decoration:none;border-radius:8px;">Войти в Meriter</a></p>`,
+            `<p>Или скопируйте адрес в браузер: <a href="${linkUrl}">${linkUrl}</a></p>`,
+            `<p>Ссылка действует ${ttlMinutes} минут и сработает только один раз.</p>`,
+            '<p>Если вы не запрашивали вход, просто проигнорируйте это письмо.</p>',
+        ].join('');
+        const plaintext =
+            `Чтобы войти в Meriter, перейдите по ссылке: ${linkUrl}\n` +
+            `Ссылка действует ${ttlMinutes} минут и сработает только один раз.\n` +
+            `Если вы не запрашивали вход, просто проигнорируйте это письмо.`;
+
+        try {
+            const sent = await this.sendHtmlEmail(email, 'Вход в Meriter', html, plaintext);
+            if (!sent) {
+                this.logger.warn(`Email provider not configured, login link for ${email}: ${linkUrl}`);
             }
-        } else {
-            this.logger.warn(`Email provider not configured, login link for ${email}: ${linkUrl}`);
+        } catch (error) {
+            this.logger.error(`Failed to send login link email to ${email}: ${error}`);
+            throw new Error('Failed to send email');
         }
 
         return {
@@ -52,32 +62,26 @@ export class EmailLoginLinkService {
     }
 
     /**
-     * Send email via Unisender Web API
+     * Send an HTML email via Unisender. Returns false if email is not configured.
      * @see https://godocs.unisender.ru/web-api-ref#email-send
      */
-    private async sendViaWebApi(
-        email: string,
-        linkUrl: string,
-        ttlMinutes: number,
-        emailConfig: { api: { url: string; key: string }; from: { address: string; name: string } },
-    ): Promise<void> {
-        const apiUrl = `${emailConfig.api.url}/email/send.json`;
+    async sendHtmlEmail(
+        to: string,
+        subject: string,
+        html: string,
+        plaintext: string,
+    ): Promise<boolean> {
+        const emailConfig = this.configService.get('email');
+        if (!emailConfig?.enabled || !emailConfig.api?.key) {
+            return false;
+        }
 
+        const apiUrl = `${emailConfig.api.url}/email/send.json`;
         const payload = {
             message: {
-                recipients: [{ email }],
-                body: {
-                    html: [
-                        '<p>Здравствуйте!</p>',
-                        `<p>Чтобы войти в Meriter, нажмите на ссылку:</p>`,
-                        `<p><a href="${linkUrl}" style="display:inline-block;padding:10px 20px;background:#A855F7;color:#ffffff;text-decoration:none;border-radius:8px;">Войти в Meriter</a></p>`,
-                        `<p>Или скопируйте адрес в браузер: <a href="${linkUrl}">${linkUrl}</a></p>`,
-                        `<p>Ссылка действует ${ttlMinutes} минут и сработает только один раз.</p>`,
-                        '<p>Если вы не запрашивали вход, просто проигнорируйте это письмо.</p>',
-                    ].join(''),
-                    plaintext: `Чтобы войти в Meriter, перейдите по ссылке: ${linkUrl}\nСсылка действует ${ttlMinutes} минут и сработает только один раз.\nЕсли вы не запрашивали вход, просто проигнорируйте это письмо.`,
-                },
-                subject: 'Вход в Meriter',
+                recipients: [{ email: to }],
+                body: { html, plaintext },
+                subject,
                 from_email: emailConfig.from.address,
                 from_name: emailConfig.from.name,
                 reply_to: emailConfig.from.address,
@@ -97,6 +101,9 @@ export class EmailLoginLinkService {
             const errorText = await response.text();
             throw new Error(`Unisender API error: ${response.status} ${errorText}`);
         }
+
+        this.logger.log(`Email sent to ${to}: ${subject}`);
+        return true;
     }
 
     private async checkRateLimit(email: string): Promise<void> {

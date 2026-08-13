@@ -50,4 +50,10 @@ export const INV_21_CRON_PATHS = {
     domainLogic: 'domain/services/uzz/uzz.service.ts',
     method: 'applyDemurrage',
   },
+  uzzDealExpiry: {
+    schedule: '0 * * * *',
+    entrypoint: 'infrastructure/cron/uzz-demurrage.cron.ts',
+    domainLogic: 'domain/services/uzz/uzz.service.ts',
+    method: 'expireStaleDeals',
+  },
 } as const;

@@ -26,6 +26,7 @@ import { TelegramPublicationMirrorHandler } from './telegram-publication-mirror.
 import { TelegramPollAnnounceHandler } from './telegram-poll-announce.handler';
 import { TelegramPollResultsCron } from './telegram-poll-results.cron';
 import { TelegramMeritTransferGroupNotifier } from './telegram-merit-transfer-group-notifier.service';
+import { UzzTelegramNotifyHandler } from './uzz-telegram-notify.handler';
 import { MERIT_TRANSFER_GROUP_NOTIFY_PORT } from '../../domain/ports/merit-transfer-group-notify.port';
 
 /**
@@ -57,6 +58,7 @@ import { MERIT_TRANSFER_GROUP_NOTIFY_PORT } from '../../domain/ports/merit-trans
     TelegramPollAnnounceHandler,
     TelegramPollResultsCron,
     TelegramMeritTransferGroupNotifier,
+    UzzTelegramNotifyHandler,
     {
       provide: MERIT_TRANSFER_GROUP_NOTIFY_PORT,
       useExisting: TelegramMeritTransferGroupNotifier,
