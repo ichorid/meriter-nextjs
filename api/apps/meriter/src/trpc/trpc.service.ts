@@ -70,26 +70,10 @@ import { JwtVerificationService } from '../common/services/authentication.servic
 import { SeedCommunityWebDevUseCase } from '../application/use-cases/dev/seed-community-web-dev.use-case';
 import { MANAGE_YOUGILE_INTEGRATION_USE_CASE } from '../infrastructure/yougile/yougile.tokens';
 import type { ManageYougileIntegrationUseCase } from '../application/use-cases/integrations/manage-yougile-integration.use-case';
-import { UzzService } from '../domain/services/uzz/uzz.service';
+import { UzzApplicationFacade } from '../application/uzz/uzz-application.facade';
 import { EmailLoginLinkService } from '../infrastructure/auth/email-login-link.service';
 import { AuthMagicLinkService } from '../infrastructure/auth/magic-link-auth.service';
 import { RedeemUzzMagicLinkUseCase } from '../application/uzz/use-cases/redeem-uzz-magic-link.use-case';
-import { StartTelegramLinkUseCase } from '../application/uzz/use-cases/start-telegram-link.use-case';
-import { CreateListingUseCase } from '../application/uzz/use-cases/create-listing.use-case';
-import { UpdateListingUseCase } from '../application/uzz/use-cases/update-listing.use-case';
-import { ListCatalogUseCase } from '../application/uzz/use-cases/list-catalog.use-case';
-import { CheckPurchaseGateUseCase } from '../application/uzz/use-cases/check-purchase-gate.use-case';
-import { RequestDealUseCase } from '../application/uzz/use-cases/request-deal.use-case';
-import { AcceptDealUseCase } from '../application/uzz/use-cases/accept-deal.use-case';
-import { RejectDealUseCase } from '../application/uzz/use-cases/reject-deal.use-case';
-import { CancelDealUseCase } from '../application/uzz/use-cases/cancel-deal.use-case';
-import { MarkDealCompletedUseCase } from '../application/uzz/use-cases/mark-deal-completed.use-case';
-import { CloseDealUseCase } from '../application/uzz/use-cases/close-deal.use-case';
-import { AdminResolveDealUseCase } from '../application/uzz/use-cases/admin-resolve-deal.use-case';
-import { GetSettingsUseCase } from '../application/uzz/use-cases/get-settings.use-case';
-import { UpdateSettingsUseCase } from '../application/uzz/use-cases/update-settings.use-case';
-import { AssignRightNominalUseCase } from '../application/uzz/use-cases/assign-right-nominal.use-case';
-import { SendDealThanksUseCase } from '../application/uzz/use-cases/send-deal-thanks.use-case';
 
 @Injectable()
 export class TrpcService {
@@ -156,26 +140,10 @@ export class TrpcService {
     private seedCommunityWebDevUseCase: SeedCommunityWebDevUseCase,
     @Inject(MANAGE_YOUGILE_INTEGRATION_USE_CASE)
     private manageYougile: ManageYougileIntegrationUseCase,
-    private uzzService: UzzService,
+    private uzzFacade: UzzApplicationFacade,
     private emailLoginLinkService: EmailLoginLinkService,
     private authMagicLinkService: AuthMagicLinkService,
     private redeemUzzMagicLinkUseCase: RedeemUzzMagicLinkUseCase,
-    private startTelegramLinkUseCase: StartTelegramLinkUseCase,
-    private createListingUseCase: CreateListingUseCase,
-    private updateListingUseCase: UpdateListingUseCase,
-    private listCatalogUseCase: ListCatalogUseCase,
-    private checkPurchaseGateUseCase: CheckPurchaseGateUseCase,
-    private requestDealUseCase: RequestDealUseCase,
-    private acceptDealUseCase: AcceptDealUseCase,
-    private rejectDealUseCase: RejectDealUseCase,
-    private cancelDealUseCase: CancelDealUseCase,
-    private markDealCompletedUseCase: MarkDealCompletedUseCase,
-    private closeDealUseCase: CloseDealUseCase,
-    private adminResolveDealUseCase: AdminResolveDealUseCase,
-    private getSettingsUseCase: GetSettingsUseCase,
-    private updateSettingsUseCase: UpdateSettingsUseCase,
-    private assignRightNominalUseCase: AssignRightNominalUseCase,
-    private sendDealThanksUseCase: SendDealThanksUseCase,
   ) {}
 
   getRouter(): AppRouter {
@@ -255,26 +223,10 @@ export class TrpcService {
       authenticationService: this.authenticationService,
       seedCommunityWebDevUseCase: this.seedCommunityWebDevUseCase,
       manageYougile: this.manageYougile,
-      uzzService: this.uzzService,
+      uzzFacade: this.uzzFacade,
       emailLoginLinkService: this.emailLoginLinkService,
       authMagicLinkService: this.authMagicLinkService,
       redeemUzzMagicLinkUseCase: this.redeemUzzMagicLinkUseCase,
-      startTelegramLinkUseCase: this.startTelegramLinkUseCase,
-      createListingUseCase: this.createListingUseCase,
-      updateListingUseCase: this.updateListingUseCase,
-      listCatalogUseCase: this.listCatalogUseCase,
-      checkPurchaseGateUseCase: this.checkPurchaseGateUseCase,
-      requestDealUseCase: this.requestDealUseCase,
-      acceptDealUseCase: this.acceptDealUseCase,
-      rejectDealUseCase: this.rejectDealUseCase,
-      cancelDealUseCase: this.cancelDealUseCase,
-      markDealCompletedUseCase: this.markDealCompletedUseCase,
-      closeDealUseCase: this.closeDealUseCase,
-      adminResolveDealUseCase: this.adminResolveDealUseCase,
-      getSettingsUseCase: this.getSettingsUseCase,
-      updateSettingsUseCase: this.updateSettingsUseCase,
-      assignRightNominalUseCase: this.assignRightNominalUseCase,
-      sendDealThanksUseCase: this.sendDealThanksUseCase,
     });
   }
 }

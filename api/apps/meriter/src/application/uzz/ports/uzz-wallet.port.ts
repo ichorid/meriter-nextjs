@@ -14,6 +14,11 @@ export interface UzzWalletReservation {
 }
 
 export interface UzzWalletPort {
+  getBalances(input: {
+    userId: string;
+    localCommunityId: string;
+    globalCommunityId: string;
+  }): Promise<{ localBalance: number; globalBalance: number }>;
   reservePreferLocal(
     input: UzzWalletOperationInput,
   ): Promise<UzzWalletReservation>;
@@ -27,4 +32,3 @@ export interface UzzWalletPort {
     input: UzzWalletOperationInput & { recipientUserId: string },
   ): Promise<UzzWalletReservation>;
 }
-

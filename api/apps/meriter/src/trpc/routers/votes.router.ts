@@ -139,7 +139,7 @@ export const votesRouter = router({
       });
       if (input.targetType === 'publication') {
         try {
-          await ctx.uzzService.maybeEmitBankForPublication(input.targetId);
+          await ctx.uzzFacade.maybeEmitRight(input.targetId);
         } catch {
           // Emission must not fail the vote path
         }
@@ -189,7 +189,7 @@ export const votesRouter = router({
       }
       if (input.targetType === 'publication') {
         try {
-          await ctx.uzzService.maybeEmitBankForPublication(input.targetId!);
+          await ctx.uzzFacade.maybeEmitRight(input.targetId!);
         } catch {
           // Emission must not fail the vote path
         }

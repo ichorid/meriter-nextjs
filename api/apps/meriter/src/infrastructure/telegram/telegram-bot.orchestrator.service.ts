@@ -22,7 +22,7 @@ import { CommunityWalletService } from '../../domain/services/community-wallet.s
 import { DocumentService } from '../../domain/services/document.service';
 import { DocumentVariantService } from '../../domain/services/document-variant.service';
 import { TicketService } from '../../domain/services/ticket.service';
-import { UzzService } from '../../domain/services/uzz/uzz.service';
+import { UzzApplicationFacade } from '../../application/uzz/uzz-application.facade';
 import { ConfirmTelegramLinkUseCase } from '../../application/uzz/use-cases/confirm-telegram-link.use-case';
 import { EmailLoginLinkService } from '../auth/email-login-link.service';
 import type { Community } from '../../domain/models/community/community.schema';
@@ -225,7 +225,7 @@ export class TelegramBotOrchestratorService {
     @InjectModel(TelegramBotPendingActionSchemaClass.name)
     private readonly pendingModel: Model<TelegramBotPendingActionDocument>,
     private readonly chatResolver: TelegramCommunityChatResolver,
-    private readonly uzzService: UzzService,
+    private readonly uzzFacade: UzzApplicationFacade,
     private readonly confirmTelegramLinkUseCase: ConfirmTelegramLinkUseCase,
     private readonly moduleRef: ModuleRef,
   ) {}
@@ -2388,7 +2388,7 @@ export class TelegramBotOrchestratorService {
       return;
     }
     try {
-      const result = await this.uzzService.startEmailLinkByTelegram(tgUserId, emailArg);
+      const result = await this.rejectLegacyTelegramEmailLink(emailArg);
       let emailed = false;
       try {
         const emailService = this.moduleRef.get(EmailLoginLinkService, { strict: false });
@@ -2430,7 +2430,7 @@ export class TelegramBotOrchestratorService {
       return;
     }
     try {
-      await this.uzzService.confirmEmailLinkByTelegram(tgUserId, code);
+      await this.rejectLegacyTelegramEmailCode(code);
       await this.tgBots.tgSend({
         tgChatId: tgUserId,
         text: 'Почта привязана. Аккаунт Telegram и площадка «Услуги за заслуги» связаны.',
@@ -2927,7 +2927,7 @@ export class TelegramBotOrchestratorService {
         comment: comment?.trim() ? comment.trim() : TG_VOTE_DEFAULT_COMMENT,
       });
       try {
-        await this.uzzService.maybeEmitBankForPublication(publicationId);
+        await this.uzzFacade.maybeEmitRight(publicationId);
       } catch (emitError) {
         this.logger.warn('UZZ bank emission after Telegram vote failed', {
           publicationId,
@@ -4468,5 +4468,15 @@ export class TelegramBotOrchestratorService {
 
   private async clearPending(tgUserId: string): Promise<void> {
     await this.pendingModel.deleteMany({ telegramUserId: tgUserId }).exec();
+  }
+
+  private async rejectLegacyTelegramEmailLink(
+    _email: string,
+  ): Promise<{ email: string; code: string }> {
+    throw new Error('Вход и привязка почты доступны только по magic link на сайте');
+  }
+
+  private async rejectLegacyTelegramEmailCode(_code: string): Promise<void> {
+    throw new Error('Коды в Telegram больше не используются — откройте magic link из письма');
   }
 }

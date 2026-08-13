@@ -68,7 +68,8 @@ export interface UzzLedgerEntry {
     | 'deal_rejected'
     | 'deal_cancelled'
     | 'demurrage'
-    | 'nominal_assigned';
+    | 'nominal_assigned'
+    | 'right_emitted';
   amount: number;
   createdAt: Date;
   metadata: Record<string, unknown>;
@@ -103,6 +104,9 @@ export interface ExchangeRightRepository {
   findById(id: string): Promise<ExchangeRight | null>;
   findBySourcePublicationId(sourcePublicationId: string): Promise<ExchangeRight | null>;
   listDemurrageCandidates(before: Date, afterId: string | null, limit: number): Promise<ExchangeRight[]>;
+  listByOwners(communityId: string, ownerIds: string[]): Promise<ExchangeRight[]>;
+  listByStatus(communityId: string, statuses: string[]): Promise<ExchangeRight[]>;
+  listHoldingByOwners(ownerIds: string[]): Promise<ExchangeRight[]>;
   insert(right: ExchangeRight): Promise<void>;
   update(right: ExchangeRight): Promise<void>;
 }
@@ -120,6 +124,8 @@ export interface DealRepository {
   findById(id: string): Promise<Deal | null>;
   findOpenByRightId(exchangeRightId: string): Promise<Deal | null>;
   listDue(now: Date, afterId: string | null, limit: number): Promise<Deal[]>;
+  listByParticipants(communityId: string, userIds: string[]): Promise<Deal[]>;
+  listOpenByCommunity(communityId: string): Promise<Deal[]>;
   insert(deal: Deal): Promise<void>;
   update(deal: Deal): Promise<void>;
 }
@@ -149,6 +155,12 @@ export interface UzzIdentityRepository {
 
 export interface UzzLedgerRepository {
   append(entry: UzzLedgerEntry): Promise<void>;
+  list(input: {
+    communityId: string;
+    userId?: string;
+    limit: number;
+    skip: number;
+  }): Promise<UzzLedgerEntry[]>;
 }
 
 export interface UzzCommandRepository {

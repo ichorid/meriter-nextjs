@@ -127,6 +127,27 @@ function createRepositories(
       );
       return (rows as unknown[]).map(exchangeRightFromPersistence);
     },
+    async listByOwners(communityId, ownerIds) {
+      const rows = await execute(
+        models.rights.find({ communityId, ownerId: { $in: ownerIds } })
+          .sort({ createdAt: -1 }).lean(), session,
+      );
+      return (rows as unknown[]).map(exchangeRightFromPersistence);
+    },
+    async listByStatus(communityId, statuses) {
+      const rows = await execute(
+        models.rights.find({ communityId, status: { $in: statuses } })
+          .sort({ createdAt: 1 }).lean(), session,
+      );
+      return (rows as unknown[]).map(exchangeRightFromPersistence);
+    },
+    async listHoldingByOwners(ownerIds) {
+      const rows = await execute(
+        models.rights.find({ ownerId: { $in: ownerIds }, status: 'holding' }).lean(),
+        session,
+      );
+      return (rows as unknown[]).map(exchangeRightFromPersistence);
+    },
     async insert(right) {
       await models.rights.create([exchangeRightToPersistence(right)], options);
     },
@@ -204,6 +225,24 @@ function createRepositories(
           ],
         }).sort({ id: 1 }).limit(limit).lean(),
         session,
+      );
+      return (rows as unknown[]).map(dealFromPersistence);
+    },
+    async listByParticipants(communityId, userIds) {
+      const rows = await execute(
+        models.deals.find({
+          communityId,
+          $or: [{ buyerId: { $in: userIds } }, { sellerId: { $in: userIds } }],
+        }).sort({ createdAt: -1 }).lean(), session,
+      );
+      return (rows as unknown[]).map(dealFromPersistence);
+    },
+    async listOpenByCommunity(communityId) {
+      const rows = await execute(
+        models.deals.find({
+          communityId,
+          status: { $in: ['requested', 'accepted', 'completed_by_seller'] },
+        }).sort({ createdAt: -1 }).lean(), session,
       );
       return (rows as unknown[]).map(dealFromPersistence);
     },
@@ -322,6 +361,16 @@ function createRepositories(
   const ledger: UzzLedgerRepository = {
     async append(entry: UzzLedgerEntry) {
       await models.ledger.create([entry], options);
+    },
+    async list(input) {
+      const rows = await execute(
+        models.ledger.find({
+          communityId: input.communityId,
+          ...(input.userId ? { userId: input.userId } : {}),
+        }).sort({ createdAt: -1 }).skip(input.skip).limit(input.limit).lean(),
+        session,
+      );
+      return (rows as unknown[]).map(mapLedger);
     },
   };
 
@@ -515,6 +564,20 @@ function mapOutbox(raw: unknown): UzzOutboxRecord {
     deadLetteredAt: record.deadLetteredAt ? new Date(record.deadLetteredAt as Date) : null,
     lastError: typeof record.lastError === 'string' ? record.lastError : null,
     createdAt: new Date(record.createdAt as Date),
+  };
+}
+
+function mapLedger(raw: unknown): UzzLedgerEntry {
+  const record = asPersistenceRecord(raw);
+  return {
+    id: String(record.id),
+    operationId: String(record.operationId),
+    communityId: String(record.communityId),
+    userId: String(record.userId),
+    type: record.type as UzzLedgerEntry['type'],
+    amount: Number(record.amount ?? 0),
+    createdAt: new Date(record.createdAt as Date),
+    metadata: (record.metadata ?? {}) as Record<string, unknown>,
   };
 }
 

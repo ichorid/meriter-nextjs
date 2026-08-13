@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { ConfigService } from '@nestjs/config';
+import { AppConfig } from './config/configuration';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
 
 // Import schemas
@@ -114,18 +116,6 @@ import {
   TelegramChatMemberDirectorySchema,
 } from './domain/models/telegram/telegram-chat-member-directory.schema';
 import {
-  UzzSettingsSchemaClass,
-  UzzSettingsSchema,
-} from './domain/models/uzz/uzz-settings.schema';
-import { UzzBankSchemaClass, UzzBankSchema } from './domain/models/uzz/uzz-bank.schema';
-import { UzzLotSchemaClass, UzzLotSchema } from './domain/models/uzz/uzz-lot.schema';
-import { UzzDealSchemaClass, UzzDealSchema } from './domain/models/uzz/uzz-deal.schema';
-import { UzzLedgerSchemaClass, UzzLedgerSchema } from './domain/models/uzz/uzz-ledger.schema';
-import {
-  UzzIdentityLinkSchemaClass,
-  UzzIdentityLinkSchema,
-} from './domain/models/uzz/uzz-identity-link.schema';
-import {
   UZZ_COMMAND_MODEL,
   UzzCommandPersistenceSchema,
 } from './infrastructure/uzz/persistence/schemas/uzz-command.schema';
@@ -175,6 +165,9 @@ import {
   UZZ_COMMUNITY_ACCESS_PORT,
   UzzCommunityAccessPort,
 } from './application/uzz/ports/uzz-community-access.port';
+import { UZZ_PLATFORM_PORT, UzzPlatformPort } from './application/uzz/ports/uzz-platform.port';
+import { UzzAuthorizationService } from './application/uzz/uzz-authorization.service';
+import { UzzApplicationFacade } from './application/uzz/uzz-application.facade';
 import { UzzAccessPolicy } from './application/uzz/policies/uzz-access-policy';
 import { CreateListingUseCase } from './application/uzz/use-cases/create-listing.use-case';
 import { UpdateListingUseCase } from './application/uzz/use-cases/update-listing.use-case';
@@ -193,6 +186,7 @@ import { AssignRightNominalUseCase } from './application/uzz/use-cases/assign-ri
 import { ApplyDemurrageUseCase } from './application/uzz/use-cases/apply-demurrage.use-case';
 import { ExpireDealsUseCase } from './application/uzz/use-cases/expire-deals.use-case';
 import { SendDealThanksUseCase } from './application/uzz/use-cases/send-deal-thanks.use-case';
+import { EmitExchangeRightUseCase } from './application/uzz/use-cases/emit-exchange-right.use-case';
 import { SYSTEM_CLOCK } from './application/uzz/ports/clock.port';
 import { GLOBAL_COMMUNITY_ID } from './domain/common/constants/global.constant';
 
@@ -260,7 +254,6 @@ import { DocumentVariantService } from './domain/services/document-variant.servi
 import { DocumentStructureService } from './domain/services/document-structure.service';
 import { DocumentHtmlSyncService } from './domain/services/document-html-sync.service';
 import { DocumentLiveUpdatesService } from './domain/services/document-live-updates.service';
-import { UzzService } from './domain/services/uzz/uzz.service';
 
 // Import vote factor services
 import { RoleHierarchyFactor } from './domain/services/factors/role-hierarchy.factor';
@@ -321,12 +314,6 @@ import { EventBus } from './domain/events/event-bus';
         name: TelegramChatMemberDirectorySchemaClass.name,
         schema: TelegramChatMemberDirectorySchema,
       },
-      { name: UzzSettingsSchemaClass.name, schema: UzzSettingsSchema },
-      { name: UzzBankSchemaClass.name, schema: UzzBankSchema },
-      { name: UzzLotSchemaClass.name, schema: UzzLotSchema },
-      { name: UzzDealSchemaClass.name, schema: UzzDealSchema },
-      { name: UzzLedgerSchemaClass.name, schema: UzzLedgerSchema },
-      { name: UzzIdentityLinkSchemaClass.name, schema: UzzIdentityLinkSchema },
       { name: UZZ_COMMAND_MODEL, schema: UzzCommandPersistenceSchema },
       { name: UZZ_DEAL_MODEL, schema: UzzDealPersistenceSchema },
       {
@@ -372,9 +359,10 @@ import { EventBus } from './domain/events/event-bus';
     },
     {
       provide: UZZ_COMMUNITY_ACCESS_PORT,
-      inject: [CommunityMembershipService],
+      inject: [CommunityMembershipService, UserService],
       useFactory: (
         membership: CommunityMembershipService,
+        users: UserService,
       ): UzzCommunityAccessPort => ({
         async isAnyMember(communityId, userIds) {
           for (const userId of userIds) {
@@ -384,6 +372,79 @@ import { EventBus } from './domain/events/event-bus';
           }
           return false;
         },
+        async isAnyAdmin(communityId, userIds) {
+          for (const userId of userIds) {
+            if (await membership.isUserAdmin(communityId, userId)) return true;
+          }
+          return false;
+        },
+        async isSuperAdmin(userIds) {
+          for (const userId of userIds) {
+            if ((await users.getUserById(userId))?.globalRole === 'superadmin') return true;
+          }
+          return false;
+        },
+      }),
+    },
+    {
+      provide: UzzAuthorizationService,
+      inject: [UZZ_UNIT_OF_WORK, UZZ_COMMUNITY_ACCESS_PORT],
+      useFactory: (unitOfWork, access) => new UzzAuthorizationService(unitOfWork, access),
+    },
+    {
+      provide: UZZ_PLATFORM_PORT,
+      inject: [ConfigService, CommunityService, PublicationService, UserService],
+      useFactory: (
+        config: ConfigService<AppConfig>,
+        communities: CommunityService,
+        publications: PublicationService,
+        users: UserService,
+      ): UzzPlatformPort => ({
+        configuredCommunityId: () =>
+          config.get('app')?.defaultTelegramCommunityId?.trim() ?? '',
+        async listUserCommunities(userId) {
+          return (await communities.getUserCommunities(userId)).map((community) => ({
+            id: community.id, name: community.name,
+            telegramChatId: community.telegramChatId ? String(community.telegramChatId) : null,
+          }));
+        },
+        async getCommunity(communityId) {
+          const community = await communities.getCommunity(communityId);
+          return community ? {
+            id: community.id, name: community.name,
+            telegramChatId: community.telegramChatId ? String(community.telegramChatId) : null,
+          } : null;
+        },
+        async getPublication(publicationId) {
+          const publication = await publications.getPublication(publicationId);
+          if (!publication) return null;
+          const snapshot = publication.toSnapshot();
+          return {
+            id: snapshot.id, communityId: snapshot.communityId,
+            authorId: snapshot.authorId,
+            title: (snapshot.title?.trim() || snapshot.content.replace(/<[^>]+>/g, ' ').trim() || 'Доброе дело').slice(0, 160),
+            score: snapshot.metrics.score ?? 0,
+            postType: snapshot.postType ?? null,
+            deleted: Boolean(snapshot.deleted),
+          };
+        },
+        async listDeedPublications(communityId, authorIds) {
+          const batches = await Promise.all(
+            authorIds.map((authorId) => publications.getPublicationsByAuthor(authorId, 100, 0)),
+          );
+          return batches.flat().map((publication) => publication.toSnapshot())
+            .filter((snapshot) => snapshot.communityId === communityId &&
+              !snapshot.deleted && (!snapshot.postType || snapshot.postType === 'basic'))
+            .map((snapshot) => ({
+              id: snapshot.id, communityId: snapshot.communityId,
+              authorId: snapshot.authorId,
+              title: (snapshot.title?.trim() || snapshot.content.replace(/<[^>]+>/g, ' ').trim() || 'Доброе дело').slice(0, 160),
+              score: snapshot.metrics.score ?? 0,
+              postType: snapshot.postType ?? null,
+              deleted: Boolean(snapshot.deleted),
+            }));
+        },
+        getDisplayNames: (userIds) => users.getDisplayNamesByUserIds(userIds),
       }),
     },
     {
@@ -448,27 +509,27 @@ import { EventBus } from './domain/events/event-bus';
     },
     {
       provide: AdminResolveDealUseCase,
-      inject: [UZZ_UNIT_OF_WORK, UzzService],
-      useFactory: (unitOfWork, uzzService: UzzService) =>
-        new AdminResolveDealUseCase(unitOfWork, uzzService),
+      inject: [UZZ_UNIT_OF_WORK, UzzAuthorizationService],
+      useFactory: (unitOfWork, authorization: UzzAuthorizationService) =>
+        new AdminResolveDealUseCase(unitOfWork, authorization),
     },
     {
       provide: GetSettingsUseCase,
-      inject: [UZZ_UNIT_OF_WORK, UzzService],
-      useFactory: (unitOfWork, uzzService: UzzService) =>
-        new GetSettingsUseCase(unitOfWork, uzzService),
+      inject: [UZZ_UNIT_OF_WORK, UzzAuthorizationService],
+      useFactory: (unitOfWork, authorization: UzzAuthorizationService) =>
+        new GetSettingsUseCase(unitOfWork, authorization),
     },
     {
       provide: UpdateSettingsUseCase,
-      inject: [UZZ_UNIT_OF_WORK, UzzService],
-      useFactory: (unitOfWork, uzzService: UzzService) =>
-        new UpdateSettingsUseCase(unitOfWork, uzzService, SYSTEM_CLOCK),
+      inject: [UZZ_UNIT_OF_WORK, UzzAuthorizationService],
+      useFactory: (unitOfWork, authorization: UzzAuthorizationService) =>
+        new UpdateSettingsUseCase(unitOfWork, authorization, SYSTEM_CLOCK),
     },
     {
       provide: AssignRightNominalUseCase,
-      inject: [UZZ_UNIT_OF_WORK, UzzService],
-      useFactory: (unitOfWork, uzzService: UzzService) =>
-        new AssignRightNominalUseCase(unitOfWork, uzzService, SYSTEM_CLOCK),
+      inject: [UZZ_UNIT_OF_WORK, UzzAuthorizationService],
+      useFactory: (unitOfWork, authorization: UzzAuthorizationService) =>
+        new AssignRightNominalUseCase(unitOfWork, authorization, SYSTEM_CLOCK),
     },
     {
       provide: ApplyDemurrageUseCase,
@@ -484,6 +545,40 @@ import { EventBus } from './domain/events/event-bus';
       provide: SendDealThanksUseCase,
       inject: [UZZ_UNIT_OF_WORK],
       useFactory: (unitOfWork) => new SendDealThanksUseCase(unitOfWork, GLOBAL_COMMUNITY_ID),
+    },
+    {
+      provide: EmitExchangeRightUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UZZ_PLATFORM_PORT],
+      useFactory: (unitOfWork, platform: UzzPlatformPort) =>
+        new EmitExchangeRightUseCase(unitOfWork, platform, SYSTEM_CLOCK),
+    },
+    {
+      provide: UzzApplicationFacade,
+      inject: [
+        UZZ_UNIT_OF_WORK, UzzAuthorizationService, UZZ_PLATFORM_PORT,
+        EmitExchangeRightUseCase, GetSettingsUseCase, UpdateSettingsUseCase,
+        AssignRightNominalUseCase, CreateListingUseCase, UpdateListingUseCase,
+        ListCatalogUseCase, CheckPurchaseGateUseCase, RequestDealUseCase,
+        AcceptDealUseCase, RejectDealUseCase, CancelDealUseCase,
+        MarkDealCompletedUseCase, CloseDealUseCase, AdminResolveDealUseCase,
+        SendDealThanksUseCase, StartTelegramLinkUseCase,
+      ],
+      useFactory: (
+        unitOfWork, authorization, platform, emitRight,
+        getSettings, updateSettings, assignRightNominal,
+        createListing, updateListing, listCatalog, checkPurchaseGate,
+        requestDeal, acceptDeal, rejectDeal, cancelDeal, markDealCompleted,
+        closeDeal, adminResolveDeal, sendDealThanks, startTelegramLink,
+      ) =>
+        new UzzApplicationFacade(
+          unitOfWork, authorization, platform, emitRight, GLOBAL_COMMUNITY_ID,
+          {
+            getSettings, updateSettings, assignRightNominal,
+            createListing, updateListing, listCatalog, checkPurchaseGate,
+            requestDeal, acceptDeal, rejectDeal, cancelDeal, markDealCompleted,
+            closeDeal, adminResolveDeal, sendDealThanks, startTelegramLink,
+          },
+        ),
     },
 
     // Domain Services
@@ -550,7 +645,6 @@ import { EventBus } from './domain/events/event-bus';
     DocumentStructureService,
     DocumentHtmlSyncService,
     DocumentLiveUpdatesService,
-    UzzService,
 
     // Vote Factor Services
     RoleHierarchyFactor,
@@ -587,6 +681,9 @@ import { EventBus } from './domain/events/event-bus';
     ApplyDemurrageUseCase,
     ExpireDealsUseCase,
     SendDealThanksUseCase,
+    EmitExchangeRightUseCase,
+    UzzAuthorizationService,
+    UzzApplicationFacade,
 
     // Export domain services
     PublicationService,
@@ -648,7 +745,6 @@ import { EventBus } from './domain/events/event-bus';
     DocumentStructureService,
     DocumentHtmlSyncService,
     DocumentLiveUpdatesService,
-    UzzService,
 
     // Export vote factor services
     RoleHierarchyFactor,

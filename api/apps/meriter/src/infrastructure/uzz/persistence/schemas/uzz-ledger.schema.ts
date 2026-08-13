@@ -26,6 +26,7 @@ export const UzzLedgerPersistenceSchema = new Schema(
         'deal_cancelled',
         'demurrage',
         'nominal_assigned',
+        'right_emitted',
       ],
       required: true,
     },

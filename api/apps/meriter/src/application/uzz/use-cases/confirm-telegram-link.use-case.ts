@@ -67,6 +67,14 @@ export class ConfirmTelegramLinkUseCase {
           });
         }
       }
+      const ownerIds = [identity.canonicalUserId];
+      const aliases = await repositories.identities.listAliases(identity.id);
+      ownerIds.push(...aliases.map((entry) => entry.aliasUserId));
+      const holdingRights = await repositories.rights.listHoldingByOwners(ownerIds);
+      for (const right of holdingRights) {
+        right.promoteAfterIdentityLink(now);
+        await repositories.rights.update(right);
+      }
       return { canonicalUserId: identity.canonicalUserId };
     });
   }

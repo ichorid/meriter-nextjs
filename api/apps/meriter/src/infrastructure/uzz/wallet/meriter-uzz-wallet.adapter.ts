@@ -13,6 +13,29 @@ export class MeriterUzzWalletAdapter implements UzzWalletPort {
     private readonly session: ClientSession | null,
   ) {}
 
+  async getBalances(input: {
+    userId: string;
+    localCommunityId: string;
+    globalCommunityId: string;
+  }): Promise<{ localBalance: number; globalBalance: number }> {
+    const [local, global] = await Promise.all([
+      this.connection.collection('wallets').findOne(
+        { userId: input.userId, communityId: input.localCommunityId },
+        { session: this.session ?? undefined },
+      ),
+      this.connection.collection('wallets').findOne(
+        { userId: input.userId, communityId: input.globalCommunityId },
+        { session: this.session ?? undefined },
+      ),
+    ]);
+    return {
+      localBalance: Number(local?.balance ?? 0),
+      globalBalance: input.localCommunityId === input.globalCommunityId
+        ? Number(local?.balance ?? 0)
+        : Number(global?.balance ?? 0),
+    };
+  }
+
   async reservePreferLocal(
     input: UzzWalletOperationInput,
   ): Promise<UzzWalletReservation> {

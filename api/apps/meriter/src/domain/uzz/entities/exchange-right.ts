@@ -54,6 +54,12 @@ export class ExchangeRight {
     this.state.updatedAt = new Date(now);
   }
 
+  promoteAfterIdentityLink(now: Date): void {
+    if (this.state.status !== 'holding') return;
+    this.state.status = 'awaiting_nominal';
+    this.state.updatedAt = new Date(now);
+  }
+
   applyDemurrage(nominal: Rubles, processedAt: Date): void {
     if (
       this.state.status !== 'active' &&
@@ -172,4 +178,3 @@ function cloneSnapshot(snapshot: ExchangeRightSnapshot): ExchangeRightSnapshot {
     updatedAt: new Date(snapshot.updatedAt),
   };
 }
-

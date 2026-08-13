@@ -5,13 +5,10 @@ import { EmailAuthDisabledError } from '../../../application/use-cases/auth/send
 import { FakeAuthDisabledError } from '../../../application/use-cases/auth/establish-session.use-case';
 import {
   UzzIdentityConflictError,
-  UzzConflictError,
-  UzzForbiddenError,
   UzzInvalidTokenError,
-  UzzNotFoundError,
   UzzRateLimitedError,
-  UzzValidationError,
 } from '../../../domain/uzz/errors';
+import { executeUzz } from './uzz-error-mapper';
 
 /**
  * Whitelisted tRPC surface for `@meriter/uzz-web`.
@@ -51,7 +48,6 @@ export const uzzAppRouter = router({
             ip: resolveClientIp(ctx.req),
           });
           ctx.cookieManager.establishUzzJwtAuth(ctx.res, result.jwt, ctx.req);
-          await ctx.uzzService.recordLoginEmail(result.user.id, result.email);
           return { user: result.user, isNewUser: result.isNewUser };
         } catch (error) {
           if (error instanceof UzzRateLimitedError) {
@@ -86,7 +82,7 @@ export const uzzAppRouter = router({
       if (!user) {
         throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
       }
-      const boot = await ctx.uzzService.bootstrap(ctx.user.id);
+      const boot = await ctx.uzzFacade.bootstrap(ctx.user.id);
       return {
         id: user.id,
         displayName: user.displayName,
@@ -126,14 +122,14 @@ export const uzzAppRouter = router({
   }),
 
   bootstrap: protectedProcedure.query(async ({ ctx }) => {
-    return ctx.uzzService.bootstrap(ctx.user.id);
+    return ctx.uzzFacade.bootstrap(ctx.user.id);
   }),
 
   settings: router({
     get: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        return ctx.getSettingsUseCase.execute({
+        return ctx.uzzFacade.getSettings({
           communityId: input.communityId, userId: ctx.user.id,
         });
       }),
@@ -158,7 +154,7 @@ export const uzzAppRouter = router({
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.updateSettingsUseCase.execute({
+        return executeUzz(() => ctx.uzzFacade.updateSettings({
           commandId: input.commandId, communityId: input.communityId,
           adminId: ctx.user.id, patch: input.patch,
         }));
@@ -169,19 +165,21 @@ export const uzzAppRouter = router({
     listMine: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        return ctx.uzzService.listMyBanks(ctx.user.id, input.communityId);
+        return ctx.uzzFacade.listMyRights(ctx.user.id, input.communityId);
       }),
     listAwaitingNominal: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
-        return ctx.uzzService.adminListAwaitingNominal(input.communityId);
+        return ctx.uzzFacade.listRightsForAdmin(
+          input.communityId, ctx.user.id, ['awaiting_nominal'],
+        );
       }),
     listHolding: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
-        return ctx.uzzService.adminListHolding(input.communityId);
+        return ctx.uzzFacade.listRightsForAdmin(
+          input.communityId, ctx.user.id, ['holding'],
+        );
       }),
     setNominal: protectedProcedure
       .input(
@@ -192,7 +190,7 @@ export const uzzAppRouter = router({
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.assignRightNominalUseCase.execute({
+        return executeUzz(() => ctx.uzzFacade.assignRightNominal({
           commandId: input.commandId, rightId: input.bankId,
           adminId: ctx.user.id, nominalRub: input.nominalRub,
         }));
@@ -200,8 +198,8 @@ export const uzzAppRouter = router({
     checkEmission: protectedProcedure
       .input(z.object({ publicationId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        await ctx.uzzService.assertCanTriggerEmission(input.publicationId, ctx.user.id);
-        return ctx.uzzService.maybeEmitBankForPublication(input.publicationId);
+        await ctx.uzzFacade.assertCanTriggerEmission(input.publicationId, ctx.user.id);
+        return ctx.uzzFacade.maybeEmitRight(input.publicationId);
       }),
   }),
 
@@ -221,7 +219,7 @@ export const uzzAppRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         return executeUzz(() =>
-          ctx.createListingUseCase.execute({
+          ctx.uzzFacade.createListing({
             communityId: input.communityId,
             authorId: ctx.user.id,
             title: input.title,
@@ -252,7 +250,7 @@ export const uzzAppRouter = router({
       .mutation(async ({ ctx, input }) => {
         const { lotId, ...patch } = input;
         return executeUzz(() =>
-          ctx.updateListingUseCase.execute({
+          ctx.uzzFacade.updateListing({
             listingId: lotId,
             actorId: ctx.user.id,
             ...patch,
@@ -262,13 +260,13 @@ export const uzzAppRouter = router({
     list: publicProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.listCatalogUseCase.execute(input));
+        return executeUzz(() => ctx.uzzFacade.listCatalog(input));
       }),
     myLots: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
         return executeUzz(() =>
-          ctx.listCatalogUseCase.execute({
+          ctx.uzzFacade.listCatalog({
             communityId: input.communityId,
             authorId: ctx.user.id,
           }),
@@ -278,7 +276,7 @@ export const uzzAppRouter = router({
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
         return executeUzz(() =>
-          ctx.checkPurchaseGateUseCase.execute({
+          ctx.uzzFacade.checkPurchaseGate({
             communityId: input.communityId,
             buyerId: ctx.user.id,
           }),
@@ -300,7 +298,7 @@ export const uzzAppRouter = router({
       )
       .mutation(async ({ ctx, input }) => {
         return executeUzz(() =>
-          ctx.requestDealUseCase.execute({
+          ctx.uzzFacade.requestDeal({
             commandId: input.commandId,
             communityId: input.communityId,
             buyerId: ctx.user.id,
@@ -319,7 +317,7 @@ export const uzzAppRouter = router({
         agreedDeadlineAt: z.coerce.date().nullable().optional(),
       }))
       .mutation(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.acceptDealUseCase.execute({
+        return executeUzz(() => ctx.uzzFacade.acceptDeal({
           commandId: input.commandId,
           dealId: input.dealId,
           sellerId: ctx.user.id,
@@ -330,28 +328,28 @@ export const uzzAppRouter = router({
     reject: protectedProcedure
       .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.rejectDealUseCase.execute({
+        return executeUzz(() => ctx.uzzFacade.rejectDeal({
           commandId: input.commandId, dealId: input.dealId, sellerId: ctx.user.id,
         }));
       }),
     complete: protectedProcedure
       .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.markDealCompletedUseCase.execute({
+        return executeUzz(() => ctx.uzzFacade.markDealCompleted({
           commandId: input.commandId, dealId: input.dealId, sellerId: ctx.user.id,
         }));
       }),
     close: protectedProcedure
       .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.closeDealUseCase.execute({
+        return executeUzz(() => ctx.uzzFacade.closeDeal({
           commandId: input.commandId, dealId: input.dealId, buyerId: ctx.user.id,
         }));
       }),
     cancel: protectedProcedure
       .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.cancelDealUseCase.execute({
+        return executeUzz(() => ctx.uzzFacade.cancelDeal({
           commandId: input.commandId, dealId: input.dealId, buyerId: ctx.user.id,
         }));
       }),
@@ -365,7 +363,7 @@ export const uzzAppRouter = router({
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.sendDealThanksUseCase.execute({
+        return executeUzz(() => ctx.uzzFacade.sendDealThanks({
           commandId: input.commandId, dealId: input.dealId,
           actorUserId: ctx.user.id, comment: input.comment ?? '', merits: input.merits ?? 0,
         }));
@@ -378,18 +376,17 @@ export const uzzAppRouter = router({
         }),
       )
       .query(async ({ ctx, input }) => {
-        return ctx.uzzService.listDeals(input.communityId, ctx.user.id);
+        return ctx.uzzFacade.listDeals(input.communityId, ctx.user.id);
       }),
     adminList: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
-        return ctx.uzzService.listOpenDeals(input.communityId);
+        return ctx.uzzFacade.listOpenDeals(input.communityId, ctx.user.id);
       }),
     adminClose: protectedProcedure
       .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1), reason: z.string().trim().min(10).max(1000) }))
       .mutation(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.adminResolveDealUseCase.execute({
+        return executeUzz(() => ctx.uzzFacade.adminResolveDeal({
           commandId: input.commandId, dealId: input.dealId, adminId: ctx.user.id,
           outcome: 'close', reason: input.reason,
         }));
@@ -397,7 +394,7 @@ export const uzzAppRouter = router({
     adminCancel: protectedProcedure
       .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1), reason: z.string().trim().min(10).max(1000) }))
       .mutation(async ({ ctx, input }) => {
-        return executeUzz(() => ctx.adminResolveDealUseCase.execute({
+        return executeUzz(() => ctx.uzzFacade.adminResolveDeal({
           commandId: input.commandId, dealId: input.dealId, adminId: ctx.user.id,
           outcome: 'cancel', reason: input.reason,
         }));
@@ -406,10 +403,10 @@ export const uzzAppRouter = router({
 
   identity: router({
     getLinkStatus: protectedProcedure.query(async ({ ctx }) => {
-      return ctx.uzzService.getLinkStatus(ctx.user.id);
+      return ctx.uzzFacade.getLinkStatus(ctx.user.id);
     }),
     startTelegramLink: protectedProcedure.mutation(async ({ ctx }) => {
-      const result = await ctx.startTelegramLinkUseCase.execute({
+      const result = await ctx.uzzFacade.startTelegramLink({
         userId: ctx.user.id,
       });
       const botUsername = ctx.configService.get('bot')?.username;
@@ -426,10 +423,7 @@ export const uzzAppRouter = router({
     getBalance: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        const balances = await ctx.uzzService.getFeeBalances(
-          ctx.user.id,
-          input.communityId,
-        );
+        const balances = await ctx.uzzFacade.getFeeBalances(ctx.user.id, input.communityId);
         return {
           communityId: input.communityId,
           localBalance: balances.localBalance,
@@ -450,10 +444,9 @@ export const uzzAppRouter = router({
         }),
       )
       .query(async ({ ctx, input }) => {
-        await ctx.uzzService.assertCommunityAdmin(input.communityId, ctx.user.id);
-        return ctx.uzzService.listLedger(input.communityId, {
-          limit: input.limit,
-          skip: input.skip,
+        return ctx.uzzFacade.listLedger({
+          communityId: input.communityId, viewerId: ctx.user.id, mineOnly: false,
+          limit: input.limit, skip: input.skip,
         });
       }),
     listMine: protectedProcedure
@@ -465,9 +458,9 @@ export const uzzAppRouter = router({
         }),
       )
       .query(async ({ ctx, input }) => {
-        return ctx.uzzService.listLedgerMine(ctx.user.id, input.communityId, {
-          limit: input.limit,
-          skip: input.skip,
+        return ctx.uzzFacade.listLedger({
+          communityId: input.communityId, viewerId: ctx.user.id, mineOnly: true,
+          limit: input.limit, skip: input.skip,
         });
       }),
   }),
@@ -476,7 +469,7 @@ export const uzzAppRouter = router({
     list: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        return ctx.uzzService.listDeeds(ctx.user.id, input.communityId);
+        return ctx.uzzFacade.listDeeds(ctx.user.id, input.communityId);
       }),
   }),
 });
@@ -488,24 +481,4 @@ function resolveClientIp(request: {
   socket?: { remoteAddress?: string };
 }): string {
   return request.ip || request.socket?.remoteAddress || 'unknown';
-}
-
-async function executeUzz<T>(work: () => Promise<T>): Promise<T> {
-  try {
-    return await work();
-  } catch (error) {
-    if (error instanceof UzzValidationError) {
-      throw new TRPCError({ code: 'BAD_REQUEST', message: error.code });
-    }
-    if (error instanceof UzzForbiddenError) {
-      throw new TRPCError({ code: 'FORBIDDEN', message: error.code });
-    }
-    if (error instanceof UzzNotFoundError) {
-      throw new TRPCError({ code: 'NOT_FOUND', message: error.code });
-    }
-    if (error instanceof UzzConflictError) {
-      throw new TRPCError({ code: 'CONFLICT', message: error.code });
-    }
-    throw error;
-  }
 }
