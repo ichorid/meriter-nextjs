@@ -19,6 +19,7 @@ export interface UzzDeal {
   status: UzzDealStatus;
   dealAmountRub: number | null;
   feeReserved: boolean;
+  feeWalletCommunityId?: string;
   requestedAt: Date;
   acceptedAt?: Date;
   completedBySellerAt?: Date;
@@ -74,6 +75,9 @@ export class UzzDealSchemaClass implements Omit<UzzDeal, 'createdAt' | 'updatedA
 
   @Prop({ required: true, default: false })
   feeReserved!: boolean;
+
+  @Prop()
+  feeWalletCommunityId?: string;
 
   @Prop({ required: true, type: Date })
   requestedAt!: Date;

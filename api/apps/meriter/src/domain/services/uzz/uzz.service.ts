@@ -46,6 +46,7 @@ import { EventBus } from '../../events/event-bus';
 import { UzzNotifyEvent } from '../../events/uzz.events';
 import { ConfigService } from '@nestjs/config';
 import type { AppConfig } from '../../../config/configuration';
+import { GLOBAL_COMMUNITY_ID } from '../../common/constants/global.constant';
 
 export type UzzSettingsPatch = Partial<{
   emissionThreshold: number;
@@ -152,6 +153,7 @@ export type UzzDealView = {
   lotPriceRub: number | null;
   counterpartyName: string;
   myRole: 'buyer' | 'seller' | 'other';
+  feeSource: 'community' | 'global' | null;
   expiresAt: Date | null;
   createdAt: Date;
 };
@@ -503,19 +505,11 @@ export class UzzService {
       throw new BadRequestException('Это право уже в сделке');
     }
 
-    const walletUserId = await this.pickWalletUserId(input.buyerId, input.communityId);
-    const walletCommunityId = await this.walletScope(input.communityId);
-    const reserved = await this.walletService.debitIfSufficient(
-      walletUserId,
-      walletCommunityId,
-      DEAL_FEE_MERITS,
-      'uzz_deal_fee',
+    const reserved = await this.reserveDealFee(
+      input.buyerId,
+      input.communityId,
       input.bankId,
-      'UZZ deal fee reserved',
     );
-    if (!reserved) {
-      throw new BadRequestException('Не хватает 1 заслуги на комиссию');
-    }
 
     const now = new Date();
     let deal;
@@ -530,10 +524,16 @@ export class UzzService {
         status: 'requested' satisfies UzzDealStatus,
         dealAmountRub: null,
         feeReserved: true,
+        feeWalletCommunityId: reserved.walletCommunityId,
         requestedAt: now,
       });
     } catch (error) {
-      await this.creditDealFee(walletUserId, input.communityId, input.bankId);
+      await this.creditDealFee(
+        reserved.walletUserId,
+        reserved.walletCommunityId,
+        input.bankId,
+        input.communityId,
+      );
       if (isMongoDuplicateKey(error)) {
         throw new BadRequestException('Это право уже в сделке');
       }
@@ -543,7 +543,10 @@ export class UzzService {
     await this.appendLedger(
       input.communityId,
       'deal_fee_reserved',
-      { amount: DEAL_FEE_MERITS },
+      {
+        amount: DEAL_FEE_MERITS,
+        wallet: this.feeSourceLabel(reserved.walletCommunityId, input.communityId),
+      },
       input.buyerId,
       bank.id,
       deal.id,
@@ -721,25 +724,11 @@ export class UzzService {
       throw new BadRequestException('У права ещё нет номинала');
     }
 
-    let extraFeeDebited = false;
-    let extraFeeWalletUserId: string | null = null;
+    let extraFee: { walletUserId: string; walletCommunityId: string } | null = null;
     if (!deal.feeReserved) {
-      const walletUserId = await this.pickWalletUserId(deal.buyerId, deal.communityId);
-      const walletCommunityId = await this.walletScope(deal.communityId);
-      const debited = await this.walletService.debitIfSufficient(
-        walletUserId,
-        walletCommunityId,
-        DEAL_FEE_MERITS,
-        'uzz_deal_fee',
-        deal.id,
-        'UZZ deal fee',
-      );
-      if (!debited) {
-        throw new BadRequestException('Не хватает заслуг, чтобы закрыть сделку');
-      }
-      extraFeeDebited = true;
-      extraFeeWalletUserId = walletUserId;
+      extraFee = await this.reserveDealFee(deal.buyerId, deal.communityId, deal.id);
       deal.feeReserved = true;
+      deal.feeWalletCommunityId = extraFee.walletCommunityId;
     }
 
     const now = new Date();
@@ -755,13 +744,21 @@ export class UzzService {
           closedAt: now,
           dealAmountRub: bank.nominalRub,
           feeReserved: true,
+          ...(extraFee
+            ? { feeWalletCommunityId: extraFee.walletCommunityId }
+            : {}),
         },
       },
       { new: true },
     );
     if (!claimed) {
-      if (extraFeeDebited && extraFeeWalletUserId) {
-        await this.creditDealFee(extraFeeWalletUserId, deal.communityId, deal.id);
+      if (extraFee) {
+        await this.creditDealFee(
+          extraFee.walletUserId,
+          extraFee.walletCommunityId,
+          deal.id,
+          deal.communityId,
+        );
       }
       throw new BadRequestException('Эту сделку уже нельзя закрыть');
     }
@@ -1509,11 +1506,28 @@ export class UzzService {
     return this.requireBank(bankId);
   }
 
+  async getFeeBalances(
+    userId: string,
+    communityId: string,
+  ): Promise<{ localBalance: number; globalBalance: number }> {
+    const localUserId = await this.pickWalletUserIdFor(userId, communityId);
+    const localWallet = await this.walletService.getWallet(localUserId, communityId);
+    const localBalance = localWallet?.getBalance?.() ?? 0;
+    if (communityId === GLOBAL_COMMUNITY_ID) {
+      return { localBalance, globalBalance: localBalance };
+    }
+    const globalUserId = await this.pickWalletUserIdFor(userId, GLOBAL_COMMUNITY_ID);
+    const globalWallet = await this.walletService.getWallet(
+      globalUserId,
+      GLOBAL_COMMUNITY_ID,
+    );
+    return { localBalance, globalBalance: globalWallet?.getBalance?.() ?? 0 };
+  }
+
   async getSpendableBalance(userId: string, communityId: string): Promise<number> {
-    const walletUserId = await this.pickWalletUserId(userId, communityId);
-    const walletCommunityId = await this.walletScope(communityId);
-    const wallet = await this.walletService.getWallet(walletUserId, walletCommunityId);
-    return wallet?.getBalance?.() ?? 0;
+    const { localBalance, globalBalance } = await this.getFeeBalances(userId, communityId);
+    if (communityId === GLOBAL_COMMUNITY_ID) return localBalance;
+    return localBalance + globalBalance;
   }
 
   async assertCommunityParticipant(communityId: string, userId: string): Promise<void> {
@@ -1555,14 +1569,14 @@ export class UzzService {
 
   private async creditDealFee(
     walletUserId: string,
-    communityId: string,
+    feeWalletCommunityId: string,
     referenceId: string,
+    currencyCommunityId: string,
   ): Promise<void> {
-    const currency = await this.communityCurrency(communityId);
-    const walletCommunityId = await this.walletScope(communityId);
+    const currency = await this.communityCurrency(currencyCommunityId);
     await this.walletService.addTransaction(
       walletUserId,
-      walletCommunityId,
+      feeWalletCommunityId,
       'credit',
       DEAL_FEE_MERITS,
       'personal',
@@ -1571,6 +1585,43 @@ export class UzzService {
       currency,
       'UZZ deal fee refund',
     );
+  }
+
+  private async reserveDealFee(
+    buyerId: string,
+    communityId: string,
+    referenceId: string,
+  ): Promise<{ walletUserId: string; walletCommunityId: string }> {
+    const candidates = [communityId];
+    if (communityId !== GLOBAL_COMMUNITY_ID) {
+      candidates.push(GLOBAL_COMMUNITY_ID);
+    }
+    for (const walletCommunityId of candidates) {
+      const walletUserId = await this.pickWalletUserIdFor(buyerId, walletCommunityId);
+      const reserved = await this.walletService.debitIfSufficient(
+        walletUserId,
+        walletCommunityId,
+        DEAL_FEE_MERITS,
+        'uzz_deal_fee',
+        referenceId,
+        'UZZ deal fee reserved',
+      );
+      if (reserved) {
+        return { walletUserId, walletCommunityId };
+      }
+    }
+    throw new BadRequestException(
+      'Не хватает 1 заслуги на комиссию — ни в сообществе, ни в общем кошельке',
+    );
+  }
+
+  private feeSourceLabel(
+    feeWalletCommunityId: string | undefined,
+    communityId: string,
+  ): 'community' | 'global' {
+    return feeWalletCommunityId && feeWalletCommunityId === communityId
+      ? 'community'
+      : 'global';
   }
 
   private async refundDealFeeIfReserved(deal: UzzDealDocument): Promise<void> {
@@ -1582,16 +1633,27 @@ export class UzzService {
     );
     if (!claimed) return;
     try {
-      const walletUserId = await this.pickWalletUserId(
+      const walletUserId = await this.pickWalletUserIdFor(
         claimed.buyerId,
+        claimed.feeWalletCommunityId ?? GLOBAL_COMMUNITY_ID,
+      );
+      await this.creditDealFee(
+        walletUserId,
+        claimed.feeWalletCommunityId ?? GLOBAL_COMMUNITY_ID,
+        claimed.id,
         claimed.communityId,
       );
-      await this.creditDealFee(walletUserId, claimed.communityId, claimed.id);
       deal.feeReserved = false;
       await this.appendLedger(
         claimed.communityId,
         'deal_fee_refunded',
-        { amount: DEAL_FEE_MERITS },
+        {
+          amount: DEAL_FEE_MERITS,
+          wallet: this.feeSourceLabel(
+            claimed.feeWalletCommunityId,
+            claimed.communityId,
+          ),
+        },
         claimed.buyerId,
         claimed.bankId,
         claimed.id,
@@ -1729,6 +1791,11 @@ export class UzzService {
         lotPriceRub: lotById.get(deal.lotId)?.priceRub ?? deal.dealAmountRub,
         counterpartyName: this.friendlyName(names.get(counterpartyId), counterpartyId),
         myRole,
+        feeSource: deal.feeWalletCommunityId
+          ? this.feeSourceLabel(deal.feeWalletCommunityId, deal.communityId)
+          : deal.feeReserved
+            ? 'global'
+            : null,
         expiresAt: this.dealExpiresAt(deal, settings),
         createdAt: deal.createdAt,
       };
@@ -1837,8 +1904,14 @@ export class UzzService {
 
   /** Prefer the linked identity that actually holds wallet balance (usually TG user). */
   private async pickWalletUserId(userId: string, communityId: string): Promise<string> {
+    return this.pickWalletUserIdFor(userId, await this.walletScope(communityId));
+  }
+
+  private async pickWalletUserIdFor(
+    userId: string,
+    walletCommunityId: string,
+  ): Promise<string> {
     const ids = await this.resolveLinkedUserIds(userId);
-    const walletCommunityId = await this.walletScope(communityId);
     let bestId = userId;
     let bestBalance = -1;
     for (const id of ids) {

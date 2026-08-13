@@ -208,13 +208,16 @@ describe('UzzService (integration)', () => {
     const view = listed.find((row) => row.id === deal.id);
     expect(view?.expiresAt).toBeInstanceOf(Date);
     expect(view?.expiresAt!.getTime()).toBeGreaterThan(Date.now());
+    expect(view?.feeSource).toBe('community');
     await uzzService.acceptDeal(deal.id, sellerId);
     await uzzService.completeDeal(deal.id, sellerId);
     const closed = await uzzService.closeDeal(deal.id, authorId);
 
     expect(closed.status).toBe('closed');
     expect(closed.dealAmountRub).toBe(1000);
-    expect(await uzzService.getSpendableBalance(authorId, communityId)).toBe(9);
+    const afterClose = await uzzService.getFeeBalances(authorId, communityId);
+    expect(afterClose.localBalance).toBe(9);
+    expect(afterClose.globalBalance).toBe(10);
 
     const updatedBank = await bankModel.findOne({ id: bank!.id }).exec();
     expect(updatedBank!.ownerId).toBe(sellerId);
@@ -268,6 +271,7 @@ describe('UzzService (integration)', () => {
       bankId: bank!.id,
     });
     expect(deal.feeReserved).toBe(true);
+    expect(deal.feeWalletCommunityId).toBe(communityId);
     expect(await uzzService.getSpendableBalance(authorId, communityId)).toBe(before - 1);
 
     await uzzService.rejectDeal(deal.id, sellerId);
@@ -566,13 +570,13 @@ describe('UzzService (integration)', () => {
     expect(listed.find((row) => row.id === deal.id)?.expiresAt).toBeNull();
   });
 
-  it('takes the deal fee from the global wallet, not the team wallet', async () => {
+  it('takes the deal fee from the community wallet first', async () => {
     const pubId = uid();
     await publicationModel.create({
       id: pubId,
       communityId,
       authorId,
-      content: 'Deed for global fee',
+      content: 'Deed for local fee',
       type: 'text',
       postType: 'basic',
       metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
@@ -585,25 +589,166 @@ describe('UzzService (integration)', () => {
     const lot = await uzzService.createLot({
       communityId,
       authorId: sellerId,
-      title: 'Global fee lot',
+      title: 'Local fee lot',
       description: '',
       priceRub: 100,
     });
-    const localBefore =
-      (await walletService.getWallet(authorId, communityId))?.getBalance?.() ?? 0;
-    const globalBefore = await uzzService.getSpendableBalance(authorId, communityId);
-    await uzzService.requestDeal({
+    const before = await uzzService.getFeeBalances(authorId, communityId);
+    const deal = await uzzService.requestDeal({
       communityId,
       buyerId: authorId,
       lotId: lot.id,
       bankId: bank!.id,
     });
-    expect(
-      (await walletService.getWallet(authorId, communityId))?.getBalance?.() ?? 0,
-    ).toBe(localBefore);
-    expect(await uzzService.getSpendableBalance(authorId, communityId)).toBe(
-      globalBefore - 1,
+    expect(deal.feeWalletCommunityId).toBe(communityId);
+    const after = await uzzService.getFeeBalances(authorId, communityId);
+    expect(after.localBalance).toBe(before.localBalance - 1);
+    expect(after.globalBalance).toBe(before.globalBalance);
+  });
+
+  it('falls back to the global wallet when the community wallet cannot cover the fee', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Deed for global fee fallback',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    await uzzService.setBankNominal(bank!.id, 500, authorId);
+    const lot = await uzzService.createLot({
+      communityId,
+      authorId: sellerId,
+      title: 'Global fee fallback lot',
+      description: '',
+      priceRub: 100,
+    });
+    const before = await uzzService.getFeeBalances(authorId, communityId);
+    expect(before.localBalance).toBeGreaterThan(0);
+    const drained = await walletService.debitIfSufficient(
+      authorId,
+      communityId,
+      before.localBalance,
+      'test_drain',
+      uid(),
+      'drain local for fee fallback',
     );
+    expect(drained).toBe(true);
+
+    const deal = await uzzService.requestDeal({
+      communityId,
+      buyerId: authorId,
+      lotId: lot.id,
+      bankId: bank!.id,
+    });
+    expect(deal.feeWalletCommunityId).toBe(GLOBAL_COMMUNITY_ID);
+    const after = await uzzService.getFeeBalances(authorId, communityId);
+    expect(after.localBalance).toBe(0);
+    expect(after.globalBalance).toBe(before.globalBalance - 1);
+
+    await walletService.addTransaction(
+      authorId,
+      communityId,
+      'credit',
+      before.localBalance,
+      'personal',
+      'test_restore',
+      uid(),
+      currency,
+      'restore local after fee fallback',
+    );
+  });
+
+  it('rejects the deal when neither wallet can cover the fee', async () => {
+    const pubId = uid();
+    await publicationModel.create({
+      id: pubId,
+      communityId,
+      authorId,
+      content: 'Deed for empty wallets',
+      type: 'text',
+      postType: 'basic',
+      metrics: { upvotes: 0, downvotes: 0, score: 10, commentCount: 0 },
+      status: 'active',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const bank = await uzzService.maybeEmitBankForPublication(pubId);
+    await uzzService.setBankNominal(bank!.id, 500, authorId);
+    const lot = await uzzService.createLot({
+      communityId,
+      authorId: sellerId,
+      title: 'Empty wallets lot',
+      description: '',
+      priceRub: 100,
+    });
+    const before = await uzzService.getFeeBalances(authorId, communityId);
+    if (before.localBalance > 0) {
+      expect(
+        await walletService.debitIfSufficient(
+          authorId,
+          communityId,
+          before.localBalance,
+          'test_drain',
+          uid(),
+          'drain local',
+        ),
+      ).toBe(true);
+    }
+    if (before.globalBalance > 0) {
+      expect(
+        await walletService.debitIfSufficient(
+          authorId,
+          GLOBAL_COMMUNITY_ID,
+          before.globalBalance,
+          'test_drain',
+          uid(),
+          'drain global',
+        ),
+      ).toBe(true);
+    }
+
+    await expect(
+      uzzService.requestDeal({
+        communityId,
+        buyerId: authorId,
+        lotId: lot.id,
+        bankId: bank!.id,
+      }),
+    ).rejects.toThrow(/ни в сообществе, ни в общем кошельке/);
+
+    if (before.localBalance > 0) {
+      await walletService.addTransaction(
+        authorId,
+        communityId,
+        'credit',
+        before.localBalance,
+        'personal',
+        'test_restore',
+        uid(),
+        currency,
+        'restore local',
+      );
+    }
+    if (before.globalBalance > 0) {
+      await walletService.addTransaction(
+        authorId,
+        GLOBAL_COMMUNITY_ID,
+        'credit',
+        before.globalBalance,
+        'personal',
+        'test_restore',
+        uid(),
+        currency,
+        'restore global',
+      );
+    }
   });
 
   it('rejects a nominal below the floor', async () => {

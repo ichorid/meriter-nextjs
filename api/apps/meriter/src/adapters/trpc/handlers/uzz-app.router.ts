@@ -368,13 +368,16 @@ export const uzzAppRouter = router({
     getBalance: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        const balance = await ctx.uzzService.getSpendableBalance(
+        const balances = await ctx.uzzService.getFeeBalances(
           ctx.user.id,
           input.communityId,
         );
         return {
           communityId: input.communityId,
-          balance,
+          localBalance: balances.localBalance,
+          globalBalance: balances.globalBalance,
+          balance: balances.localBalance + balances.globalBalance,
+          canPayFee: balances.localBalance >= 1 || balances.globalBalance >= 1,
         };
       }),
   }),

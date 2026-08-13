@@ -6,7 +6,16 @@ import { AppShell } from '@/components/app-shell';
 import { Button, Card, EmptyState, Notice, QueryFailed, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { dealNeedsAction, dealStatusLabel, formatDeadline, isDeadlinePassed, uzzErrorMessage } from '@/lib/utils';
+import {
+  dealNeedsAction,
+  dealStatusLabel,
+  feeChargedCopy,
+  feeWalletPhrase,
+  formatDeadline,
+  isDeadlinePassed,
+  meritsLabel,
+  uzzErrorMessage,
+} from '@/lib/utils';
 
 export default function DealsPage() {
   const { communityId, loggedIn } = useUzzCommunityId();
@@ -32,7 +41,14 @@ export default function DealsPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('requested')) {
-      setFlash('Запрос отправлен. Исполнитель получит короткое сообщение в Telegram.');
+      const fee = params.get('fee');
+      const charged =
+        fee === 'community' || fee === 'global' ? feeChargedCopy(fee) : null;
+      setFlash(
+        charged
+          ? `Запрос отправлен. ${charged}. Исполнитель получит короткое сообщение в Telegram.`
+          : 'Запрос отправлен. Исполнитель получит короткое сообщение в Telegram.',
+      );
       window.history.replaceState(null, '', '/deals');
     }
   }, []);
@@ -136,9 +152,9 @@ export default function DealsPage() {
         <header className="space-y-2">
           <h1 className="text-2xl font-extrabold tracking-tight">Сделки</h1>
           <p className="text-sm text-stitch-muted">
-            Сначала ответ исполнителя, потом «сделано», потом закрытие. 1 заслуга держится до
-            финала и возвращается при отказе. После закрытия можно сказать спасибо — это не
-            обязательно.
+            Сначала ответ исполнителя, потом «сделано», потом закрытие. Комиссия 1 заслуга
+            списывается сначала с кошелька сообщества, иначе с общего, и возвращается при отказе.
+            После закрытия можно сказать спасибо — это не обязательно.
           </p>
         </header>
 
@@ -218,6 +234,13 @@ export default function DealsPage() {
                           : ''}
                       {deadline ? ` · ${deadline}` : ''}
                     </p>
+                    {deal.myRole === 'buyer' && deal.feeSource ? (
+                      <p className="mt-1 text-sm text-stitch-muted">
+                        {deal.feeReserved
+                          ? feeChargedCopy(deal.feeSource)
+                          : `Комиссия ${meritsLabel(1)} возвращена на ${feeWalletPhrase(deal.feeSource)}`}
+                      </p>
+                    ) : null}
                     {expired && deal.status === 'requested' ? (
                       <p className="mt-2 text-sm text-amber-200">
                         {deal.myRole === 'seller'

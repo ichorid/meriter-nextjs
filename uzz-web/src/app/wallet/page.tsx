@@ -4,7 +4,14 @@ import { AppShell } from '@/components/app-shell';
 import { Card, EmptyState, QueryFailed } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { formatWhen, ledgerTypeLabel, meritsLabel, meritsWord } from '@/lib/utils';
+import {
+  feeSourceFromWallet,
+  feeWalletPhrase,
+  formatWhen,
+  ledgerTypeLabel,
+  meritsLabel,
+  meritsWord,
+} from '@/lib/utils';
 
 export default function WalletPage() {
   const { communityId, loggedIn } = useUzzCommunityId();
@@ -28,16 +35,33 @@ export default function WalletPage() {
 
         <Card>
           <p className="text-xs uppercase tracking-wide text-stitch-muted">Сейчас</p>
-          <p className="mt-1 text-3xl font-extrabold text-stitch-accent">
-            {balance.isLoading ? '…' : balance.isError ? '—' : (balance.data?.balance ?? 0)}
-          </p>
           {balance.isError ? (
             <QueryFailed onRetry={() => void balance.refetch()} />
           ) : (
-            <p className="mt-1 text-sm text-stitch-muted">
-              {meritsWord(balance.data?.balance ?? 0)}
-            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs text-stitch-muted">Сообщество</p>
+                <p className="mt-1 text-3xl font-extrabold text-stitch-accent">
+                  {balance.isLoading ? '…' : (balance.data?.localBalance ?? 0)}
+                </p>
+                <p className="mt-1 text-sm text-stitch-muted">
+                  {meritsWord(balance.data?.localBalance ?? 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-stitch-muted">Общий кошелёк</p>
+                <p className="mt-1 text-3xl font-extrabold text-stitch-accent">
+                  {balance.isLoading ? '…' : (balance.data?.globalBalance ?? 0)}
+                </p>
+                <p className="mt-1 text-sm text-stitch-muted">
+                  {meritsWord(balance.data?.globalBalance ?? 0)}
+                </p>
+              </div>
+            </div>
           )}
+          <p className="mt-3 text-sm text-stitch-muted">
+            Комиссия сделки: сначала сообщество, если не хватит — общий кошелёк.
+          </p>
         </Card>
 
         <section className="space-y-3">
@@ -65,7 +89,12 @@ export default function WalletPage() {
                     {typeof row.payload?.merits === 'number' ? (
                       <p className="text-sm text-stitch-muted">{meritsLabel(row.payload.merits)}</p>
                     ) : typeof row.payload?.amount === 'number' ? (
-                      <p className="text-sm text-stitch-muted">{meritsLabel(row.payload.amount)}</p>
+                      <p className="text-sm text-stitch-muted">
+                        {meritsLabel(row.payload.amount)}
+                        {feeWalletPhrase(feeSourceFromWallet(row.payload.wallet))
+                          ? ` · ${feeWalletPhrase(feeSourceFromWallet(row.payload.wallet))}`
+                          : ''}
+                      </p>
                     ) : null}
                     {typeof row.payload?.dealAmountRub === 'number' ? (
                       <p className="text-sm text-stitch-muted">

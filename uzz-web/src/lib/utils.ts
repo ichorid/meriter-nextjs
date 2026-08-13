@@ -92,6 +92,34 @@ export function meritsLabel(n: number): string {
   return `${n} ${meritsWord(n)}`;
 }
 
+export function feeSourceFromWallet(
+  wallet: unknown,
+): 'community' | 'global' | null {
+  if (wallet === 'community' || wallet === 'global') return wallet;
+  return null;
+}
+
+export function feeChargedCopy(
+  source: 'community' | 'global' | null | undefined,
+  amount = 1,
+): string {
+  if (source === 'community') {
+    return `Списана ${meritsLabel(amount)} с кошелька сообщества`;
+  }
+  if (source === 'global') {
+    return `Списана ${meritsLabel(amount)} с общего кошелька`;
+  }
+  return `Списана ${meritsLabel(amount)}`;
+}
+
+export function feeWalletPhrase(
+  source: 'community' | 'global' | null | undefined,
+): string {
+  if (source === 'community') return 'кошелёк сообщества';
+  if (source === 'global') return 'общий кошелёк';
+  return '';
+}
+
 export function linkGap(
   status?: { linked?: boolean; telegramUserId?: string; email?: string } | null,
 ): 'telegram' | 'email' | null {

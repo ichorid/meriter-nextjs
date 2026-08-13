@@ -41,11 +41,15 @@ export default function CatalogPage() {
   const [message, setMessage] = useState<string | null>(null);
 
   const requestDeal = trpc.deals.request.useMutation({
-    onSuccess: () => {
+    onSuccess: (deal) => {
       void utils.deals.list.invalidate();
       void utils.wallet.getBalance.invalidate();
       void utils.banks.listMine.invalidate();
-      router.push('/deals?requested=1');
+      const fee =
+        deal.feeWalletCommunityId && deal.feeWalletCommunityId === communityId
+          ? 'community'
+          : 'global';
+      router.push(`/deals?requested=1&fee=${fee}`);
     },
     onError: (err) => setMessage(uzzErrorMessage(err)),
   });
@@ -265,11 +269,12 @@ export default function CatalogPage() {
                     {selectedLotId === lot.id ? (
                       <div className="mt-4 space-y-3 border-t border-stitch-border pt-4">
                         <p className="text-sm text-stitch-muted">
-                          С кошелька уйдёт 1 заслуга. Вернём, если исполнитель откажется или вы
-                          отмените заявку. Номинал права должен быть не ниже цены. Сдачи нет — при
-                          закрытии исполнителю уйдёт весь сегодняшний потолок.
-                          {typeof balance.data?.balance === 'number'
-                            ? ` Сейчас у вас ${meritsLabel(balance.data.balance)}.`
+                          Спишем 1 заслугу: сначала с кошелька сообщества, если там нет — с общего.
+                          Вернём, если исполнитель откажется или вы отмените заявку. Номинал права
+                          должен быть не ниже цены. Сдачи нет — при закрытии исполнителю уйдёт весь
+                          сегодняшний потолок.
+                          {balance.data
+                            ? ` Сейчас: сообщество ${meritsLabel(balance.data.localBalance)}, общие ${meritsLabel(balance.data.globalBalance)}.`
                             : ''}
                         </p>
                         <label className="block space-y-1 text-sm">
@@ -298,9 +303,11 @@ export default function CatalogPage() {
                             .
                           </p>
                         ) : null}
-                        {typeof balance.data?.balance === 'number' && balance.data.balance < 1 ? (
+                        {balance.data && !balance.data.canPayFee ? (
                           <Notice tone="warn">
-                            Нужна 1 заслуга на комиссию. Сейчас {balance.data.balance}.
+                            Нужна 1 заслуга на комиссию. Сейчас в сообществе{' '}
+                            {meritsLabel(balance.data.localBalance)}, в общем кошельке{' '}
+                            {meritsLabel(balance.data.globalBalance)}.
                           </Notice>
                         ) : null}
                         <div className="flex flex-wrap gap-2">
@@ -310,8 +317,7 @@ export default function CatalogPage() {
                               !bankId ||
                               requestDeal.isPending ||
                               balance.isLoading ||
-                              (typeof balance.data?.balance === 'number' &&
-                                balance.data.balance < 1)
+                              Boolean(balance.data && !balance.data.canPayFee)
                             }
                             onClick={() =>
                               requestDeal.mutate({ communityId, lotId: lot.id, bankId })
