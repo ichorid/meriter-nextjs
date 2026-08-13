@@ -34,6 +34,10 @@ const validateSync = (config: Record<string, unknown>) => {
     MONGO_URL_SECONDARY: (config.MONGO_URL_SECONDARY as string) || 'mongodb://127.0.0.1:27017/meriter_test',
     NODE_ENV: nodeEnv,
     FAKE_DATA_MODE: config.FAKE_DATA_MODE || 'false',
+    UZZ_WEB_BASE_URL: (config.UZZ_WEB_BASE_URL as string) || '',
+    UZZ_DOMAIN: (config.UZZ_DOMAIN as string) || '',
+    DEFAULT_TELEGRAM_COMMUNITY_ID:
+      (config.DEFAULT_TELEGRAM_COMMUNITY_ID as string) || '',
     
     // Telegram
     TELEGRAM_BOT_ENABLED: (config.TELEGRAM_BOT_ENABLED as string) || 'false',
@@ -137,6 +141,15 @@ const validateSync = (config: Record<string, unknown>) => {
     MONGO_URL_SECONDARY: z.string().regex(/^mongodb(\+srv)?:\/\//, 'Invalid MongoDB URI format'),
     NODE_ENV: z.enum(['development', 'production', 'test']),
     FAKE_DATA_MODE: z.enum(['true', 'false']).optional().default('false'),
+    UZZ_WEB_BASE_URL: nodeEnv === 'production'
+      ? z.string().url('UZZ_WEB_BASE_URL must be an absolute URL')
+      : urlValidator.default(''),
+    UZZ_DOMAIN: nodeEnv === 'production'
+      ? z.string().min(1, 'UZZ_DOMAIN is required in production')
+      : z.string().optional().default(''),
+    DEFAULT_TELEGRAM_COMMUNITY_ID: nodeEnv === 'production'
+      ? z.string().uuid('DEFAULT_TELEGRAM_COMMUNITY_ID must be the pilot community UUID')
+      : z.string().optional().default(''),
     
     // Telegram
     TELEGRAM_BOT_ENABLED: z.enum(['true', 'false']).optional().default('false'),

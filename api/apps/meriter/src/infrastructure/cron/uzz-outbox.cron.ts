@@ -14,6 +14,8 @@ export class UzzOutboxCronEntrypoint {
       this.logger.warn(
         `UZZ outbox: delivered=${result.delivered} failed=${result.failed} dead=${result.deadLettered}`,
       );
+    } else if (result.delivered > 0) {
+      this.logger.log(`UZZ outbox delivered=${result.delivered}`);
     }
   }
 }
