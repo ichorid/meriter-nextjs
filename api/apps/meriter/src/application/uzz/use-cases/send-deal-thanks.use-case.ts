@@ -73,7 +73,7 @@ export class SendDealThanksUseCase {
           metadata: { ...metadata, counterpartyId: actorUserId },
         });
         await appendTelegramNotification(repositories, {
-          operationId: input.commandId, aggregateId: before.id,
+          operationId: input.commandId, aggregateId: before.id, communityId: before.communityId,
           targetUserId: recipientUserId, kind: 'deal_thanks',
           text: merits
             ? `Вам отправили благодарность: ${merits.value} засл.`

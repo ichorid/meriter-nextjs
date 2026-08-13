@@ -38,6 +38,16 @@ describe('UZZ exchange-right emission', () => {
     expect(await useCase.execute({ publicationId: publication.id })).toMatchObject({ status: 'holding', ownerId: 'author-1' });
   });
 
+  it('notifies a Telegram-only participant when the right is emitted into holding', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({ id: 'identity-1', canonicalUserId: 'author-1', normalizedEmail: null, telegramUserId: '1001', telegramUsername: 'author', createdAt: NOW, updatedAt: NOW, version: 0 });
+
+    expect(await useCase.execute({ publicationId: publication.id })).toMatchObject({ status: 'holding' });
+    expect(await connection.db!.collection('uzz_outbox').findOne({ aggregateId: { $exists: true } })).toMatchObject({
+      payload: { telegramUserId: '1001', kind: 'right_emitted', path: '/' },
+    });
+  });
+
   it('does not emit below threshold or outside the configured community', async () => {
     publication.score = 9; expect(await useCase.execute({ publicationId: publication.id })).toBeNull();
     publication.score = 10; publication.communityId = 'other'; expect(await useCase.execute({ publicationId: publication.id })).toBeNull();

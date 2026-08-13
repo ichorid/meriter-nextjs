@@ -11,6 +11,10 @@ export const UZZ_SETTINGS_DEFAULTS = {
   requestTtlHours: 48,
   fulfillmentTtlDays: 7,
   confirmationTtlDays: 7,
+  notifyRightEmitted: true,
+  notifyRequestLifecycle: true,
+  notifyDealProgress: true,
+  notifyDealClosed: true,
 };
 
 export type UzzSettingsPatch = Partial<Omit<
@@ -18,7 +22,17 @@ export type UzzSettingsPatch = Partial<Omit<
   'communityId' | 'createdAt' | 'updatedAt' | 'version'
 >>;
 
-const INTEGER_BOUNDS: Record<Exclude<keyof UzzSettingsPatch, 'purchaseGateMode'>, [number, number]> = {
+type IntegerSettingKey =
+  | 'emissionThreshold'
+  | 'initialHops'
+  | 'demurrageRubPerDay'
+  | 'nominalFloorRub'
+  | 'minimumListingsToBuy'
+  | 'requestTtlHours'
+  | 'fulfillmentTtlDays'
+  | 'confirmationTtlDays';
+
+const INTEGER_BOUNDS: Record<IntegerSettingKey, [number, number]> = {
   emissionThreshold: [1, 1_000_000],
   initialHops: [1, 1_000],
   demurrageRubPerDay: [0, 1_000_000],
@@ -42,6 +56,18 @@ export function validateSettingsPatch(patch: UzzSettingsPatch): void {
   if (patch.purchaseGateMode !== undefined &&
       !['nudge', 'require_min_lots'].includes(patch.purchaseGateMode)) {
     throw new UzzValidationError('SETTINGS_PURCHASE_GATE_INVALID');
+  }
+  for (const key of [
+    'notifyRightEmitted',
+    'notifyRequestLifecycle',
+    'notifyDealProgress',
+    'notifyDealClosed',
+  ] as const) {
+    if (patch[key] !== undefined && typeof patch[key] !== 'boolean') {
+      throw new UzzValidationError('SETTINGS_VALUE_INVALID', 'SETTINGS_VALUE_INVALID', {
+        field: key,
+      });
+    }
   }
 }
 

@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { DealAcceptForm } from '@/components/deal-accept-form';
 import { DealCard, type DealView } from '@/components/deal-card';
-import { Button, EmptyState, Notice, PageHeader, QueryFailed, Skeleton, inputClass } from '@/components/ui';
+import { ThanksForm } from '@/components/thanks-form';
+import { Button, EmptyState, Notice, PageHeader, QueryFailed, Skeleton } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { uzzErrorMessage } from '@/lib/utils';
@@ -25,6 +26,8 @@ export default function DealsPage() {
   const thank = trpc.deals.thank.useMutation(mutationOptions('Благодарность отправлена.'));
   const pending = accept.isPending || reject.isPending || cancel.isPending || complete.isPending || close.isPending || thank.isPending;
   const visible = useMemo(() => (deals.data ?? []).filter((deal) => !openOnly || ['requested', 'accepted', 'completed_by_seller'].includes(deal.status)), [deals.data, openOnly]);
+  const searchParams = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
+  const requestedFeeSource = searchParams.get('feeSource');
 
   function act(kind: NonNullable<Panel>['kind'], deal: DealView) {
     setFlash(null); setActionError(null);
@@ -35,7 +38,7 @@ export default function DealsPage() {
 
   return <AppShell><div className="space-y-8">
     <PageHeader eyebrow="Ваши договорённости" title="Сделки">Следуйте одному следующему действию. Сроки каждого этапа зафиксированы в сделке и не меняются задним числом при обновлении настроек.</PageHeader>
-    {new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search).has('requested') ? <Notice tone="ok">Заявка отправлена. Мы зарезервировали комиссию 1 заслуга сначала из кошелька сообщества, затем — при необходимости — из общего.</Notice> : null}
+    {searchParams.has('requested') ? <Notice tone="ok">Заявка отправлена. Зарезервирована 1 заслуга {requestedFeeSource === 'local' ? 'с кошелька сообщества' : requestedFeeSource === 'global' ? 'с общего кошелька' : 'с доступного кошелька'}.</Notice> : null}
     {flash ? <Notice tone="ok">{flash}</Notice> : null}
     <label className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stitch-border px-4 text-sm text-stitch-muted"><input type="checkbox" checked={openOnly} onChange={(event) => setOpenOnly(event.target.checked)} />Только активные</label>
     {deals.isLoading ? <div className="space-y-4" aria-busy><Skeleton className="h-72" /><Skeleton className="h-72" /></div> : deals.isError ? <QueryFailed onRetry={() => void deals.refetch()} /> : !deals.data?.length ? <EmptyState title="Сделок пока нет"><Link className="text-stitch-accent underline" href="/catalog">Выбрать услугу в каталоге</Link></EmptyState> : !visible.length ? <EmptyState title="Активных сделок нет"><button className="text-stitch-accent underline" onClick={() => setOpenOnly(false)}>Показать историю</button></EmptyState> : <ul className="space-y-4">{visible.map((deal) => <li key={deal.id}><DealCard deal={deal}>
@@ -49,10 +52,4 @@ export default function DealsPage() {
       {deal.status === 'closed' && !(deal.myRole === 'buyer' ? deal.buyerThankedAt : deal.sellerThankedAt) ? panel?.dealId === deal.id && panel.kind === 'thanks' ? <ThanksForm pending={thank.isPending} error={actionError} onCancel={() => setPanel(null)} onSubmit={({ comment, merits }) => thank.mutate({ commandId: crypto.randomUUID(), dealId: deal.id, comment, merits })} /> : <div className="flex flex-wrap items-center gap-3"><Button variant="ghost" onClick={() => { setActionError(null); setPanel({ dealId: deal.id, kind: 'thanks' }); }}>Сказать спасибо</Button><span className="text-xs text-stitch-muted">Необязательно</span></div> : null}
     </DealCard></li>)}</ul>}
   </div></AppShell>;
-}
-
-function ThanksForm({ pending, error, onCancel, onSubmit }: { pending: boolean; error?: string | null; onCancel: () => void; onSubmit: (value: { comment?: string; merits?: number }) => void }) {
-  const [comment, setComment] = useState(''); const [merits, setMerits] = useState('');
-  function submit(event: FormEvent) { event.preventDefault(); const amount = Number(merits); onSubmit({ comment: comment.trim() || undefined, merits: Number.isFinite(amount) && amount > 0 ? amount : undefined }); }
-  return <form className="space-y-3" onSubmit={submit}><h3 className="font-extrabold">Необязательная благодарность</h3><textarea className={inputClass} rows={3} maxLength={1000} value={comment} onChange={(event) => setComment(event.target.value)} placeholder="За что хотите поблагодарить" /><input className={inputClass} type="number" min={0} max={10000} value={merits} onChange={(event) => setMerits(event.target.value)} placeholder="Заслуг, если хотите добавить" />{error ? <Notice tone="warn">{error}</Notice> : null}<div className="flex gap-2"><Button type="submit" disabled={pending || (!comment.trim() && !(Number(merits) > 0))}>Отправить</Button><Button type="button" variant="ghost" onClick={onCancel}>Пропустить</Button></div></form>;
 }

@@ -43,6 +43,10 @@ export function feeSourceFromWallet(wallet: unknown): 'community' | 'global' | n
 export function feeWalletPhrase(source: 'community' | 'global' | null | undefined): string { return source === 'community' ? 'кошелёк сообщества' : source === 'global' ? 'общий кошелёк' : ''; }
 export function feeChargedCopy(source: 'community' | 'global' | null | undefined, amount = 1): string { return `Списано ${meritsLabel(amount)}: ${feeWalletPhrase(source) || 'кошелёк'}`; }
 export function feeReservedCopy(source: 'community' | 'global' | null | undefined, amount = 1): string { return `Зарезервировано ${meritsLabel(amount)}: ${feeWalletPhrase(source) || 'кошелёк'}`; }
+export function walletSourceLabel(sourceCommunityId: unknown, communityId: string): string | null {
+  if (typeof sourceCommunityId !== 'string' || !sourceCommunityId) return null;
+  return sourceCommunityId === communityId ? 'кошелёк сообщества' : 'общий кошелёк';
+}
 
 export function linkGap(status: { linked?: boolean; telegramUserId?: string | null; email?: string | null } | null | undefined): 'telegram' | 'email' | null {
   if (!status || status.linked) return null;
@@ -59,7 +63,11 @@ export function markUzzSession(): void { if (typeof window !== 'undefined') loca
 export function clearUzzSessionFlag(): void { if (typeof window !== 'undefined') localStorage.removeItem(SESSION_KEY); }
 export function hadUzzSession(): boolean { return typeof window !== 'undefined' && localStorage.getItem(SESSION_KEY) === '1'; }
 
-export function tomorrowNominal(nominalRub: number | null, demurrageRubPerDay: number, floorRub: number): number | null { return nominalRub == null ? null : Math.max(floorRub, nominalRub - demurrageRubPerDay); }
+export function tomorrowNominal(nominalRub: number | null, demurrageRubPerDay: number, floorRub: number): number | null {
+  if (nominalRub == null) return null;
+  const reduced = Math.max(1, nominalRub - demurrageRubPerDay);
+  return nominalRub >= floorRub ? Math.max(floorRub, reduced) : reduced;
+}
 export function formatDeadline(value: Date | string | null | undefined): string | null {
   if (!value) return null; const ms = new Date(value).getTime() - Date.now();
   if (ms <= 0) return 'Срок истёк';
@@ -75,8 +83,11 @@ export function uzzErrorMessage(err: { message?: string } | null | undefined): s
   const labels: Record<string, string> = {
     UNAUTHORIZED: 'Нужно войти по ссылке из письма', FORBIDDEN: 'Для этого действия недостаточно прав',
     LISTING_TITLE_INVALID: 'Название должно содержать от 3 до 120 символов', LISTING_PRICE_INVALID: 'Укажите положительную цену',
-    DEAL_REQUEST_MESSAGE_INVALID: 'Напишите исполнителю, что именно вам нужно', RIGHT_NOMINAL_CHANGED: 'Номинал изменился. Проверьте новую сумму и подтвердите принятие ещё раз',
-    RIGHT_NOT_ACTIVE: 'Это право сейчас нельзя использовать', PURCHASE_GATE_BLOCKED: 'Сначала добавьте свои предложения', INSUFFICIENT_MERITS: 'Не хватает заслуг для комиссии',
+    DEAL_REQUEST_MESSAGE_INVALID: 'Напишите исполнителю, что именно вам нужно', RIGHT_NOMINAL_CHANGED: 'Номинал изменился. Проверьте новую сумму и подтвердите принятие ещё раз', NOMINAL_CHANGED: 'Номинал изменился. Проверьте новую сумму и подтвердите принятие ещё раз',
+    RIGHT_NOT_ACTIVE: 'Это право сейчас нельзя использовать', PURCHASE_GATE_BLOCKED: 'Сначала добавьте свои предложения', MIN_LISTINGS_REQUIRED: 'Сначала добавьте свои предложения',
+    IDENTITY_LINK_REQUIRED: 'Сначала привяжите Telegram в профиле',
+    INSUFFICIENT_MERITS: 'Недостаточно заслуг: нужна вся сумма либо в кошельке сообщества, либо в общем кошельке', WALLET_INSUFFICIENT_FUNDS: 'Недостаточно заслуг: нужна вся сумма либо в кошельке сообщества, либо в общем кошельке',
+    DEAL_CANNOT_CANCEL: 'После принятия заказчик не может отменить сделку',
     'Invalid or expired login link': 'Ссылка недействительна или устарела', 'Email authentication is not enabled': 'Вход по почте сейчас недоступен',
   };
   if (labels[message]) return labels[message];

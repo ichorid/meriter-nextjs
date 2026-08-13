@@ -40,7 +40,7 @@ export class CancelDealUseCase {
           metadata: { dealId: state.id },
         });
         await appendTelegramNotification(repositories, {
-          operationId: input.commandId, aggregateId: state.id,
+          operationId: input.commandId, aggregateId: state.id, communityId: state.communityId,
           targetUserId: state.sellerId, kind: 'deal_cancelled',
           text: `Запрос по услуге «${state.listingSnapshot.title}» отменён`, now,
         });

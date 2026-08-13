@@ -35,7 +35,7 @@ export class MarkDealCompletedUseCase {
           metadata: { dealId: state.id },
         });
         await appendTelegramNotification(repositories, {
-          operationId: input.commandId, aggregateId: state.id,
+          operationId: input.commandId, aggregateId: state.id, communityId: state.communityId,
           targetUserId: state.buyerId, kind: 'deal_completed',
           text: `Исполнитель отметил «${state.listingSnapshot.title}» как выполненное`, now,
         });

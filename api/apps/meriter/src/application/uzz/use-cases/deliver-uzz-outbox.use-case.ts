@@ -66,5 +66,8 @@ function notificationPayload(payload: Record<string, unknown>): UzzNotificationP
       typeof payload.text !== 'string' || !payload.text.trim()) {
     throw new UzzValidationError('OUTBOX_PAYLOAD_INVALID');
   }
-  return { telegramUserId: payload.telegramUserId, text: payload.text };
+  const path = typeof payload.path === 'string' && /^\/(?!\/)/.test(payload.path)
+    ? payload.path
+    : undefined;
+  return { telegramUserId: payload.telegramUserId, text: payload.text, ...(path ? { path } : {}) };
 }

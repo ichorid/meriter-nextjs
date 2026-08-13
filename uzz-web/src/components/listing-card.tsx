@@ -8,7 +8,7 @@ export interface ListingView {
 
 const delivery: Record<ListingView['deliveryMode'], string> = { online: 'Онлайн', offline: 'Очно', both: 'Онлайн или очно' };
 
-export function ListingCard({ listing, own, affordable, onRequest }: { listing: ListingView; own?: boolean; affordable?: boolean; onRequest?: () => void }) {
+export function ListingCard({ listing, own, affordable, requestLabel, requestDisabled, onRequest }: { listing: ListingView; own?: boolean; affordable?: boolean; requestLabel?: string; requestDisabled?: boolean; onRequest?: () => void }) {
   return <Card className="flex h-full flex-col">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="space-y-1"><h2 className="text-lg font-extrabold leading-snug">{listing.title}</h2><p className="text-sm text-stitch-muted">{listing.ownerName || 'Участник сообщества'}</p></div>
@@ -22,7 +22,7 @@ export function ListingCard({ listing, own, affordable, onRequest }: { listing: 
     </div>
     {listing.availabilityText ? <p className="mt-3 text-xs leading-5 text-stitch-muted">Когда: {listing.availabilityText}</p> : null}
     <div className="mt-auto pt-5">
-      {own ? <Badge>Ваше предложение</Badge> : onRequest ? <Button className="w-full" disabled={!affordable} onClick={onRequest}>{affordable ? 'Оставить заявку' : 'Нужен больший номинал'}</Button> : null}
+      {own ? <Badge>Ваше предложение</Badge> : onRequest ? <Button className="w-full" disabled={requestDisabled ?? !affordable} onClick={onRequest}>{requestLabel ?? (affordable ? 'Оставить заявку' : 'Нужен больший номинал')}</Button> : null}
     </div>
   </Card>;
 }

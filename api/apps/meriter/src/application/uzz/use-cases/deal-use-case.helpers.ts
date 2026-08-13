@@ -85,12 +85,16 @@ export async function appendTelegramNotification(
   input: {
     operationId: string;
     aggregateId: string;
+    communityId: string;
     targetUserId: string;
     kind: string;
     text: string;
     now: Date;
   },
 ): Promise<void> {
+  const settings = await repositories.settings.findByCommunityId(input.communityId);
+  const settingKey = notificationSettingKey(input.kind);
+  if (settingKey && settings?.[settingKey] === false) return;
   const { identity } = await resolveIdentityContext(repositories, input.targetUserId);
   if (!identity?.telegramUserId) return;
   await repositories.outbox.append({
@@ -100,6 +104,7 @@ export async function appendTelegramNotification(
     payload: {
       telegramUserId: identity.telegramUserId,
       text: input.text,
+      path: input.kind === 'right_emitted' ? '/' : '/deals',
       kind: input.kind,
       targetUserId: input.targetUserId,
     },
@@ -111,4 +116,19 @@ export async function appendTelegramNotification(
     lastError: null,
     createdAt: new Date(input.now),
   });
+}
+
+function notificationSettingKey(kind: string):
+  | 'notifyRightEmitted'
+  | 'notifyRequestLifecycle'
+  | 'notifyDealProgress'
+  | 'notifyDealClosed'
+  | null {
+  if (kind === 'right_emitted') return 'notifyRightEmitted';
+  if (['deal_requested', 'deal_cancelled', 'deal_rejected'].includes(kind)) {
+    return 'notifyRequestLifecycle';
+  }
+  if (['deal_accepted', 'deal_completed'].includes(kind)) return 'notifyDealProgress';
+  if (kind === 'deal_closed') return 'notifyDealClosed';
+  return null;
 }

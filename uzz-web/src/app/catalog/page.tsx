@@ -18,30 +18,53 @@ export default function CatalogPage() {
   const rights = trpc.banks.listMine.useQuery({ communityId }, { enabled: enabled && loggedIn, retry: false });
   const gate = trpc.lots.canBuy.useQuery({ communityId }, { enabled: enabled && loggedIn, retry: false });
   const wallet = trpc.wallet.getBalance.useQuery({ communityId }, { enabled: enabled && loggedIn, retry: false });
-  const [query, setQuery] = useState(''); const [onlineOnly, setOnlineOnly] = useState(false); const [selected, setSelected] = useState<ListingView | null>(null); const [error, setError] = useState<string | null>(null);
+  const settings = trpc.settings.get.useQuery({ communityId }, { enabled: enabled && loggedIn, retry: false });
+  const link = trpc.identity.getLinkStatus.useQuery(undefined, { enabled: loggedIn, retry: false });
+  const [query, setQuery] = useState(''); const [onlineOnly, setOnlineOnly] = useState(false); const [affordableOnly, setAffordableOnly] = useState(false); const [selected, setSelected] = useState<ListingView | null>(null); const [error, setError] = useState<string | null>(null);
 
-  const request = trpc.deals.request.useMutation({ onSuccess: () => { void Promise.all([utils.deals.list.invalidate(), utils.banks.listMine.invalidate(), utils.wallet.getBalance.invalidate()]); router.push('/deals?requested=1'); }, onError: (err) => setError(uzzErrorMessage(err)) });
-  const visible = useMemo(() => { const needle = query.trim().toLocaleLowerCase('ru-RU'); return (listings.data ?? []).filter((item) => (!onlineOnly || item.deliveryMode !== 'offline') && (!needle || `${item.title} ${item.description} ${item.ownerName}`.toLocaleLowerCase('ru-RU').includes(needle))); }, [listings.data, onlineOnly, query]);
+  const request = trpc.deals.request.useMutation({ onSuccess: (deal) => { void Promise.all([utils.deals.list.invalidate(), utils.banks.listMine.invalidate(), utils.wallet.getBalance.invalidate()]); const feeSource = deal.feeSourceCommunityId === communityId ? 'local' : 'global'; router.push(`/deals?requested=1&feeSource=${feeSource}`); }, onError: (err) => setError(uzzErrorMessage(err)) });
   const activeRights = rights.data?.filter((right) => right.status === 'active' && right.nominalRub != null) ?? [];
   const maxNominal = Math.max(0, ...activeRights.map((right) => right.nominalRub ?? 0));
-  const canStart = loggedIn && gate.data?.allowed !== false && !gate.isError && wallet.data?.canPayFee === true;
+  const visible = useMemo(() => { const needle = query.trim().toLocaleLowerCase('ru-RU'); return (listings.data ?? []).filter((item) => (!onlineOnly || item.deliveryMode !== 'offline') && (!affordableOnly || item.priceRub <= maxNominal) && (!needle || `${item.title} ${item.description} ${item.ownerName}`.toLocaleLowerCase('ru-RU').includes(needle))); }, [affordableOnly, listings.data, maxNominal, onlineOnly, query]);
+  const strictGateBlocked = gate.isError && gate.error.message.includes('MIN_LISTINGS_REQUIRED');
 
   function choose(item: ListingView) {
     if (!loggedIn) { router.push(`/login?next=${encodeURIComponent('/catalog')}`); return; }
+    if (!link.data?.linked) { router.push('/profile'); return; }
     setError(null); setSelected(item);
+  }
+
+  function requestAction(item: ListingView): { label: string; disabled: boolean } {
+    if (sessionLoading) return { label: 'Проверяем вход…', disabled: true };
+    if (!loggedIn) return { label: 'Войти, чтобы запросить', disabled: false };
+    if (link.isLoading) return { label: 'Проверяем Telegram…', disabled: true };
+    if (link.isError) return { label: 'Не удалось проверить Telegram', disabled: true };
+    if (!link.data?.linked) return { label: 'Сначала привяжите Telegram', disabled: false };
+    if (rights.isLoading) return { label: 'Проверяем ваши права…', disabled: true };
+    if (rights.isError) return { label: 'Не удалось загрузить права', disabled: true };
+    if (gate.isLoading || wallet.isLoading) return { label: 'Проверяем условия…', disabled: true };
+    if (strictGateBlocked) return { label: 'Сначала добавьте свои услуги', disabled: true };
+    if (gate.isError || wallet.isError) return { label: 'Не удалось проверить условия', disabled: true };
+    if (!wallet.data?.canPayFee) return { label: 'Не хватает заслуги на комиссию', disabled: true };
+    if (item.priceRub > maxNominal) return { label: 'Нужен больший номинал', disabled: true };
+    return { label: 'Оставить заявку', disabled: false };
   }
 
   return <AppShell><div className="space-y-8">
     <PageHeader eyebrow="Внутри вашего сообщества" title="Найдите, кто может помочь">Цена показывает нужный текущий номинал права. Контакт исполнителя откроется только после того, как он примет заявку.</PageHeader>
     {!loggedIn && !sessionLoading ? <Notice>Каталог открыт без входа. Чтобы оставить заявку, войдите по одноразовой ссылке из письма.</Notice> : null}
     {gate.data?.nudge ? <Notice tone="info"><strong>Добавьте ещё {gate.data.missingListingCount} предлож.</strong> Это мягкая рекомендация: обмен уже доступен, но взаимность делает каталог полезнее. <Link href="/?tab=lots" className="underline">Добавить услугу</Link></Notice> : null}
-    {gate.isError && loggedIn ? <Notice tone="warn">Администратор включил обязательный режим: прежде чем заказывать, добавьте нужное количество активных предложений. <Link href="/?tab=lots" className="underline">Перейти к своим услугам</Link></Notice> : null}
+    {strictGateBlocked ? <Notice tone="warn">Администратор включил обязательный режим: прежде чем заказывать, добавьте нужное количество активных предложений. <Link href="/?tab=lots" className="underline">Перейти к своим услугам</Link></Notice> : null}
+    {gate.isError && !strictGateBlocked && loggedIn ? <Notice tone="warn">Не удалось проверить правила покупки. <button className="underline" onClick={() => void gate.refetch()}>Повторить</button></Notice> : null}
+    {link.isError && loggedIn ? <Notice tone="warn">Не удалось проверить привязку Telegram. <button className="underline" onClick={() => void link.refetch()}>Повторить</button></Notice> : null}
+    {rights.isError && loggedIn ? <Notice tone="warn">Каталог доступен, но ваши права сейчас не загрузились. <button className="underline" onClick={() => void rights.refetch()}>Повторить</button></Notice> : null}
     {wallet.data && !wallet.data.canPayFee ? <Notice tone="warn">Для заявки нужна комиссия 1 заслуга. Сначала пополните кошелёк сообщества или общий кошелёк.</Notice> : null}
-    <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+    <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
       <label><span className="sr-only">Поиск по каталогу</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по названию, описанию или автору" className={inputClass} /></label>
       <label className="flex min-h-11 items-center gap-2 rounded-xl border border-stitch-border px-4 text-sm text-stitch-muted"><input type="checkbox" checked={onlineOnly} onChange={(event) => setOnlineOnly(event.target.checked)} />Доступно онлайн</label>
+      {loggedIn ? <label className="flex min-h-11 items-center gap-2 rounded-xl border border-stitch-border px-4 text-sm text-stitch-muted"><input type="checkbox" checked={affordableOnly} disabled={rights.isLoading || rights.isError} onChange={(event) => setAffordableOnly(event.target.checked)} />По карману</label> : null}
     </div>
-    {selected ? <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-end bg-black/70 p-0 sm:place-items-center sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-stitch-border bg-stitch-surface p-5 sm:rounded-2xl sm:p-6"><DealRequestForm title={selected.title} priceRub={selected.priceRub} rights={rights.data ?? []} pending={request.isPending} error={error} onCancel={() => setSelected(null)} onSubmit={(data) => request.mutate({ commandId: crypto.randomUUID(), communityId, lotId: selected.id, bankId: data.bankId, requestMessage: data.requestMessage, requestedDeadlineAt: data.requestedDeadlineAt })} /></section></div> : null}
-    {listings.isLoading ? <div className="grid gap-4 md:grid-cols-2" aria-busy><Skeleton className="h-64" /><Skeleton className="h-64" /></div> : listings.isError ? <QueryFailed onRetry={() => void listings.refetch()} /> : !visible.length ? <EmptyState title={query || onlineOnly ? 'Ничего не найдено' : 'В каталоге пока пусто'}>{query || onlineOnly ? <Button variant="ghost" onClick={() => { setQuery(''); setOnlineOnly(false); }}>Сбросить фильтры</Button> : loggedIn ? <Link href="/?tab=lots" className="text-stitch-accent underline">Добавьте первое предложение</Link> : 'Загляните позже.'}</EmptyState> : <ul className="grid gap-4 md:grid-cols-2">{visible.map((item) => <li key={item.id}><ListingCard listing={item} own={item.authorId === userId} affordable={canStart && item.priceRub <= maxNominal} onRequest={item.authorId === userId ? undefined : () => choose(item)} /></li>)}</ul>}
+    {selected ? <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 grid place-items-end bg-black/70 p-0 sm:place-items-center sm:p-6" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelected(null); }}><section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-stitch-border bg-stitch-surface p-5 sm:rounded-2xl sm:p-6"><DealRequestForm title={selected.title} priceRub={selected.priceRub} rights={rights.data ?? []} pending={request.isPending} error={error} demurrageRubPerDay={settings.data?.demurrageRubPerDay} nominalFloorRub={settings.data?.nominalFloorRub} feeSourceLabel={(wallet.data?.localBalance ?? 0) >= 1 ? 'кошелёк сообщества' : 'общий кошелёк'} onCancel={() => setSelected(null)} onSubmit={(data) => request.mutate({ commandId: crypto.randomUUID(), communityId, lotId: selected.id, bankId: data.bankId, requestMessage: data.requestMessage, requestedDeadlineAt: data.requestedDeadlineAt })} /></section></div> : null}
+    {listings.isLoading ? <div className="grid gap-4 md:grid-cols-2" aria-busy><Skeleton className="h-64" /><Skeleton className="h-64" /></div> : listings.isError ? <QueryFailed onRetry={() => void listings.refetch()} /> : !visible.length ? <EmptyState title={query || onlineOnly || affordableOnly ? 'Ничего не найдено' : 'В каталоге пока пусто'}>{query || onlineOnly || affordableOnly ? <Button variant="ghost" onClick={() => { setQuery(''); setOnlineOnly(false); setAffordableOnly(false); }}>Сбросить фильтры</Button> : loggedIn ? <Link href="/?tab=lots" className="text-stitch-accent underline">Добавьте первое предложение</Link> : 'Загляните позже.'}</EmptyState> : <ul className="grid gap-4 md:grid-cols-2">{visible.map((item) => { const action = requestAction(item); return <li key={item.id}><ListingCard listing={item} own={item.authorId === userId} affordable={!action.disabled} requestLabel={action.label} requestDisabled={action.disabled} onRequest={item.authorId === userId ? undefined : () => choose(item)} /></li>; })}</ul>}
   </div></AppShell>;
 }

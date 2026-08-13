@@ -39,7 +39,7 @@ export class TelegramBotPendingActionSchemaClass {
   @Prop({ type: Object, default: {} })
   payload!: Record<string, unknown>;
 
-  @Prop({ type: Date, required: true, index: true })
+  @Prop({ type: Date, required: true })
   expiresAt!: Date;
 
   @Prop({ required: true })

@@ -1,6 +1,10 @@
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { router, protectedProcedure, publicProcedure } from '../../../trpc/trpc';
+import {
+  uzzProtectedProcedure as protectedProcedure,
+  uzzPublicProcedure as publicProcedure,
+  uzzRouter as router,
+} from '../../../trpc/uzz-trpc';
 import { EmailAuthDisabledError } from '../../../application/use-cases/auth/send-email-login-link.use-case';
 import { FakeAuthDisabledError } from '../../../application/use-cases/auth/establish-session.use-case';
 import {
@@ -149,6 +153,10 @@ export const uzzAppRouter = router({
               requestTtlHours: z.number().int().optional(),
               fulfillmentTtlDays: z.number().int().optional(),
               confirmationTtlDays: z.number().int().optional(),
+              notifyRightEmitted: z.boolean().optional(),
+              notifyRequestLifecycle: z.boolean().optional(),
+              notifyDealProgress: z.boolean().optional(),
+              notifyDealClosed: z.boolean().optional(),
             })
             .default({}),
         }),

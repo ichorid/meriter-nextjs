@@ -197,6 +197,8 @@ jobs:
           key: mongoms-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
       - name: Run backend A-X acceptance gate
         run: pnpm --dir api exec jest --config apps/meriter/test/jest-e2e.json apps/meriter/test/uzz-acceptance.e2e-spec.ts --runInBand --forceExit
+      - name: Run UZZ component tests
+        run: pnpm --dir uzz-web test:unit
       - name: Install Chromium
         run: pnpm --dir uzz-web exec playwright install --with-deps chromium
       - name: Run UZZ browser acceptance gate

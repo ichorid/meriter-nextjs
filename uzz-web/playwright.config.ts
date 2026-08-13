@@ -19,11 +19,12 @@ export default defineConfig({
     { name: 'tablet-768', use: { viewport: { width: 768, height: 1024 } } },
   ],
   webServer: {
-    command: '.\\node_modules\\.bin\\next.CMD dev --webpack -p 8004',
+    command: 'pnpm exec next build --webpack && pnpm exec next start -p 8004',
     url: 'http://127.0.0.1:8004/login',
     reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    timeout: 180_000,
     env: {
+      PLAYWRIGHT_TEST: 'true',
       NEXT_PUBLIC_DEFAULT_COMMUNITY_ID: 'a1000001-0000-4000-8000-000000000001',
       NEXT_PUBLIC_FAKE_DATA_MODE: 'false',
     },

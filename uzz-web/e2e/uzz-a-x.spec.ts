@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { mockAdminApi, mockGuestApi } from './fixtures/uzz.fixture';
+import { mockAdminApi, mockGuestApi, mockMemberApi } from './fixtures/uzz.fixture';
 
 test('email magic link is the only visible sign-in method', async ({ page }) => {
   await mockGuestApi(page);
@@ -36,10 +36,32 @@ test('admin settings expose every configurable business parameter', async ({ pag
     'Ответ на заявку, часов',
     'Исполнение, дней',
     'Подтверждение, дней',
+    'Появилось право на обмен',
+    'Новая заявка или отмена',
+    'Заявка принята или услуга сделана',
+    'Сделка закрыта',
   ]) {
     await expect(page.getByLabel(name)).toBeVisible();
   }
   await expect(page.getByLabel('Режим взаимности')).toHaveValue('nudge');
+});
+
+test('catalog sends an unlinked member to profile without lying about nominal', async ({ page }) => {
+  await mockMemberApi(page, false);
+  await page.goto('/catalog');
+
+  const action = page.getByRole('button', { name: 'Сначала привяжите Telegram' });
+  await expect(action).toBeEnabled();
+  await expect(page.getByText('Нужен больший номинал')).toHaveCount(0);
+  await action.click();
+  await expect(page).toHaveURL(/\/profile$/);
+});
+
+test('deal request flash reports the wallet actually used for the fee', async ({ page }) => {
+  await mockMemberApi(page, true);
+  await page.goto('/deals?requested=1&feeSource=global');
+
+  await expect(page.getByText('Заявка отправлена. Зарезервирована 1 заслуга с общего кошелька.')).toBeVisible();
 });
 
 test('layout has no horizontal overflow at the release viewport', async ({ page }) => {

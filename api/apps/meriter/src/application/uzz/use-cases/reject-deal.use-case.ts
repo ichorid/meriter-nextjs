@@ -40,7 +40,7 @@ export class RejectDealUseCase {
           metadata: { dealId: state.id },
         });
         await appendTelegramNotification(repositories, {
-          operationId: input.commandId, aggregateId: state.id,
+          operationId: input.commandId, aggregateId: state.id, communityId: state.communityId,
           targetUserId: state.buyerId, kind: 'deal_rejected',
           text: `Запрос по услуге «${state.listingSnapshot.title}» отклонён`, now,
         });

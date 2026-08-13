@@ -3,11 +3,9 @@ const path = require('path');
 
 const nextConfig = {
   reactStrictMode: true,
-  output: 'standalone',
+  allowedDevOrigins: ['127.0.0.1'],
+  output: process.env.PLAYWRIGHT_TEST === 'true' ? undefined : 'standalone',
   outputFileTracingRoot: path.join(__dirname, '..'),
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   transpilePackages: ['@meriter/shared-types'],
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';

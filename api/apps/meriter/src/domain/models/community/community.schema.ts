@@ -628,4 +628,3 @@ export const Community = CommunitySchemaClass;
 
 CommunitySchema.index({ isActive: 1 });
 CommunitySchema.index({ isProject: 1 }, { partialFilterExpression: { isProject: true } });
-CommunitySchema.index({ telegramChatId: 1 }, { sparse: true, unique: true });

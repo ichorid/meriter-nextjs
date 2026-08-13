@@ -63,14 +63,15 @@ export class EmitExchangeRightUseCase {
             status: right.snapshot().status,
           },
         });
-        if (ready) {
-          await appendTelegramNotification(repositories, {
-            operationId: `emit-right:${publication.id}`,
-            aggregateId: right.snapshot().id, targetUserId: publication.authorId,
-            kind: 'right_emitted',
-            text: 'Появилось право на обмен. Администратор назначит номинал.', now,
-          });
-        }
+        await appendTelegramNotification(repositories, {
+          operationId: `emit-right:${publication.id}`, communityId: publication.communityId,
+          aggregateId: right.snapshot().id, targetUserId: publication.authorId,
+          kind: 'right_emitted',
+          text: ready
+            ? 'Появилось право на обмен. Администратор назначит номинал.'
+            : 'Появилось право на обмен. Привяжите email на сайте, чтобы продолжить.',
+          now,
+        });
         return right.snapshot();
       },
     });

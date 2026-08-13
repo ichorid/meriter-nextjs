@@ -1,6 +1,7 @@
 export interface UzzNotificationPayload {
   telegramUserId: string;
   text: string;
+  path?: string;
 }
 
 export interface UzzNotificationSender {

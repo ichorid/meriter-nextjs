@@ -72,7 +72,7 @@ export class AcceptDealUseCase {
           metadata: { dealId: state.id, nominalRub: input.expectedNominalRub },
         });
         await appendTelegramNotification(repositories, {
-          operationId: input.commandId, aggregateId: state.id,
+          operationId: input.commandId, aggregateId: state.id, communityId: state.communityId,
           targetUserId: state.buyerId, kind: 'deal_accepted',
           text: `Запрос по услуге «${state.listingSnapshot.title}» принят`, now,
         });

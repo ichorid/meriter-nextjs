@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { CircleUserRound, HandCoins, HeartHandshake, ListChecks, WalletCards, type LucideIcon } from 'lucide-react';
 import { CommunityIdBanner } from '@/components/community-id-banner';
 import { Button, QueryFailed } from '@/components/ui';
 import { config } from '@/config';
@@ -11,9 +12,9 @@ import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { clearUzzSessionFlag, cn, dealNeedsAction, isSafeAppPath, markUzzSession, rememberReturnTo, uzzErrorMessage } from '@/lib/utils';
 
 const NAV = [
-  { href: '/catalog', label: 'Обмен' }, { href: '/', label: 'Моё' },
-  { href: '/deals', label: 'Сделки' }, { href: '/wallet', label: 'Кошелёк' },
-  { href: '/profile', label: 'Профиль' },
+  { href: '/catalog', label: 'Обмен', icon: HeartHandshake }, { href: '/', label: 'Моё', icon: ListChecks },
+  { href: '/deals', label: 'Сделки', icon: HandCoins }, { href: '/wallet', label: 'Кошелёк', icon: WalletCards },
+  { href: '/profile', label: 'Профиль', icon: CircleUserRound },
 ] as const;
 const PRIVATE = new Set(['/deals', '/wallet', '/lots', '/deeds', '/admin', '/profile']);
 const NEEDS_LINK = new Set(['/deals', '/wallet', '/admin']);
@@ -55,10 +56,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   </div>;
 }
 
-function NavLink({ href, label, pathname, badge = 0, stacked = false }: { href: string; label: string; pathname: string; badge?: number; stacked?: boolean }) {
+function NavLink({ href, label, icon: Icon, pathname, badge = 0, stacked = false }: { href: string; label: string; icon?: LucideIcon; pathname: string; badge?: number; stacked?: boolean }) {
   const active = href === '/' ? pathname === '/' || pathname === '/lots' || pathname === '/deeds' : pathname === href || pathname.startsWith(`${href}/`);
-  return <Link href={href} aria-current={active ? 'page' : undefined} className={cn('relative rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent', stacked && 'flex min-h-14 items-center justify-center px-1 text-xs', active ? 'bg-stitch-accent/15 text-stitch-text' : 'text-stitch-muted hover:bg-stitch-surface hover:text-stitch-text')}>
-    {label}{badge > 0 ? <span className="absolute right-1 top-1 min-w-4 rounded-full bg-stitch-accent px-1 text-center text-[10px] font-bold text-white">{badge}</span> : null}
+  return <Link href={href} aria-current={active ? 'page' : undefined} className={cn('relative rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent', stacked && 'flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-[11px]', active ? 'bg-stitch-accent/15 text-stitch-text' : 'text-stitch-muted hover:bg-stitch-surface hover:text-stitch-text')}>
+    {stacked && Icon ? <Icon aria-hidden className="h-5 w-5" strokeWidth={2} /> : null}{label}{badge > 0 ? <span className="absolute right-1 top-1 min-w-4 rounded-full bg-stitch-accent px-1 text-center text-[10px] font-bold text-white">{badge}</span> : null}
   </Link>;
 }
 

@@ -44,7 +44,7 @@ export class CloseDealUseCase {
           metadata: { dealId: state.id },
         });
         await appendTelegramNotification(repositories, {
-          operationId: input.commandId, aggregateId: state.id,
+          operationId: input.commandId, aggregateId: state.id, communityId: state.communityId,
           targetUserId: state.sellerId, kind: 'deal_closed',
           text: `Сделка «${state.listingSnapshot.title}» закрыта`, now,
         });

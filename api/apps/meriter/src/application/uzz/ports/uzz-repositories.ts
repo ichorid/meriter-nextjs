@@ -14,6 +14,10 @@ export interface UzzSettingsRecord {
   requestTtlHours: number;
   fulfillmentTtlDays: number;
   confirmationTtlDays: number;
+  notifyRightEmitted: boolean;
+  notifyRequestLifecycle: boolean;
+  notifyDealProgress: boolean;
+  notifyDealClosed: boolean;
   createdAt: Date;
   updatedAt: Date;
   version: number;

@@ -109,7 +109,7 @@ export class RequestDealUseCase {
           metadata: { dealId: state.id, listingId: input.listingId },
         });
         await appendTelegramNotification(repositories, {
-          operationId: input.commandId, aggregateId: state.id,
+          operationId: input.commandId, aggregateId: state.id, communityId: state.communityId,
           targetUserId: state.sellerId, kind: 'deal_requested',
           text: `Новый запрос по услуге «${state.listingSnapshot.title}»`, now,
         });
