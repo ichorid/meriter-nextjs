@@ -66,6 +66,8 @@ import type { ManageYougileIntegrationUseCase } from '../application/use-cases/i
 import { UzzService } from '../domain/services/uzz/uzz.service';
 import { EmailLoginLinkService } from '../infrastructure/auth/email-login-link.service';
 import { AuthMagicLinkService } from '../infrastructure/auth/magic-link-auth.service';
+import { RedeemUzzMagicLinkUseCase } from '../application/uzz/use-cases/redeem-uzz-magic-link.use-case';
+import { StartTelegramLinkUseCase } from '../application/uzz/use-cases/start-telegram-link.use-case';
 
 export interface CreateContextOptions {
   req: any;
@@ -134,6 +136,8 @@ export interface CreateContextOptions {
   uzzService: UzzService;
   emailLoginLinkService: EmailLoginLinkService;
   authMagicLinkService: AuthMagicLinkService;
+  redeemUzzMagicLinkUseCase: RedeemUzzMagicLinkUseCase;
+  startTelegramLinkUseCase: StartTelegramLinkUseCase;
 }
 
 /**
@@ -211,6 +215,8 @@ export async function createContext(opts: CreateContextOptions) {
     uzzService,
     emailLoginLinkService,
     authMagicLinkService,
+    redeemUzzMagicLinkUseCase,
+    startTelegramLinkUseCase,
   } = opts;
 
   const logger = new Logger('tRPC-Context');
@@ -335,8 +341,9 @@ export async function createContext(opts: CreateContextOptions) {
     uzzService,
     emailLoginLinkService,
     authMagicLinkService,
+    redeemUzzMagicLinkUseCase,
+    startTelegramLinkUseCase,
   };
 }
 
 export type Context = inferAsyncReturnType<typeof createContext>;
-

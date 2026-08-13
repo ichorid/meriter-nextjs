@@ -16,3 +16,8 @@ export class UzzForbiddenError extends UzzDomainError {}
 
 export class UzzExpiredError extends UzzDomainError {}
 
+export class UzzInvalidTokenError extends UzzDomainError {}
+
+export class UzzIdentityConflictError extends UzzDomainError {}
+
+export class UzzRateLimitedError extends UzzDomainError {}

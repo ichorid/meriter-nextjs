@@ -8,6 +8,13 @@ import { UploadsModule } from '../api-v1/uploads/uploads.module';
 import { CommonServicesModule } from '../common/services/common-services.module';
 import { ApplicationModule } from '../application/application.module';
 import { YougileModule } from '../infrastructure/yougile/yougile.module';
+import { RedeemUzzMagicLinkUseCase } from '../application/uzz/use-cases/redeem-uzz-magic-link.use-case';
+import { AuthMagicLinkService } from '../infrastructure/auth/magic-link-auth.service';
+import { AuthProviderService } from '../api-v1/auth/auth.service';
+import { UserService } from '../domain/services/user.service';
+import { UZZ_UNIT_OF_WORK, UzzUnitOfWork } from '../application/uzz/ports/uzz-unit-of-work';
+import { UzzTokenHasher } from '../infrastructure/uzz/security/uzz-token-hasher';
+import { InMemoryUzzRateLimiter } from '../infrastructure/uzz/security/uzz-rate-limiter';
 
 @Module({
   imports: [
@@ -22,8 +29,41 @@ import { YougileModule } from '../infrastructure/yougile/yougile.module';
   ],
   // TrpcController removed - tRPC is handled via Express middleware in main.ts
   // to properly support batch requests with comma-separated paths
-  providers: [TrpcService],
+  providers: [
+    {
+      provide: RedeemUzzMagicLinkUseCase,
+      inject: [
+        AuthMagicLinkService,
+        AuthProviderService,
+        UserService,
+        UZZ_UNIT_OF_WORK,
+        UzzTokenHasher,
+        InMemoryUzzRateLimiter,
+      ],
+      useFactory: (
+        magicLinks: AuthMagicLinkService,
+        auth: AuthProviderService,
+        users: UserService,
+        unitOfWork: UzzUnitOfWork,
+        tokenHasher: UzzTokenHasher,
+        rateLimiter: InMemoryUzzRateLimiter,
+      ) =>
+        new RedeemUzzMagicLinkUseCase(
+          magicLinks,
+          {
+            authenticateEmail: (email) => auth.authenticateEmail(email),
+            findUserByEmail: (email) => users.getUserByAuthId('email', email),
+            linkEmailIdentity: (userId, email) =>
+              users.linkIdentity(userId, 'email', email),
+            findUserById: (userId) => users.getUserById(userId),
+          },
+          unitOfWork,
+          tokenHasher,
+          rateLimiter,
+        ),
+    },
+    TrpcService,
+  ],
   exports: [TrpcService],
 })
 export class TrpcModule {}
-

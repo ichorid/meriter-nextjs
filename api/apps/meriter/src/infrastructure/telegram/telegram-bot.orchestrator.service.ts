@@ -23,6 +23,7 @@ import { DocumentService } from '../../domain/services/document.service';
 import { DocumentVariantService } from '../../domain/services/document-variant.service';
 import { TicketService } from '../../domain/services/ticket.service';
 import { UzzService } from '../../domain/services/uzz/uzz.service';
+import { ConfirmTelegramLinkUseCase } from '../../application/uzz/use-cases/confirm-telegram-link.use-case';
 import { EmailLoginLinkService } from '../auth/email-login-link.service';
 import type { Community } from '../../domain/models/community/community.schema';
 import {
@@ -225,6 +226,7 @@ export class TelegramBotOrchestratorService {
     private readonly pendingModel: Model<TelegramBotPendingActionDocument>,
     private readonly chatResolver: TelegramCommunityChatResolver,
     private readonly uzzService: UzzService,
+    private readonly confirmTelegramLinkUseCase: ConfirmTelegramLinkUseCase,
     private readonly moduleRef: ModuleRef,
   ) {}
 
@@ -571,7 +573,11 @@ export class TelegramBotOrchestratorService {
         return;
       }
       if (referal.startsWith('uzz_link_')) {
-        await this.handleUzzTelegramLink(tgUserId, referal.slice('uzz_link_'.length).trim());
+        await this.handleUzzTelegramLink(
+          tgUserId,
+          from.username ?? null,
+          referal.slice('uzz_link_'.length).trim(),
+        );
         this.scheduleEphemeralUserMessage(tgUserId, triggerMessageId);
         return;
       }
@@ -2338,8 +2344,12 @@ export class TelegramBotOrchestratorService {
     return null;
   }
 
-  private async handleUzzTelegramLink(tgUserId: string, code: string): Promise<void> {
-    if (!code) {
+  private async handleUzzTelegramLink(
+    tgUserId: string,
+    telegramUsername: string | null,
+    token: string,
+  ): Promise<void> {
+    if (!token) {
       await this.tgBots.tgSend({
         tgChatId: tgUserId,
         text: 'Код привязки пуст. Откройте ссылку ещё раз в профиле «Услуги за заслуги».',
@@ -2347,7 +2357,11 @@ export class TelegramBotOrchestratorService {
       return;
     }
     try {
-      await this.uzzService.confirmTelegramLink(code, tgUserId);
+      await this.confirmTelegramLinkUseCase.execute({
+        token,
+        telegramUserId: tgUserId,
+        telegramUsername,
+      });
       await this.tgBots.tgSend({
         tgChatId: tgUserId,
         text:

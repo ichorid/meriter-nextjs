@@ -116,12 +116,18 @@ export interface UzzSettingsRepository {
 
 export interface UzzIdentityRepository {
   findById(id: string): Promise<UzzIdentityRecord | null>;
+  findByCanonicalUserId(canonicalUserId: string): Promise<UzzIdentityRecord | null>;
   findByEmail(normalizedEmail: string): Promise<UzzIdentityRecord | null>;
   findByTelegramUserId(telegramUserId: string): Promise<UzzIdentityRecord | null>;
   insert(identity: UzzIdentityRecord): Promise<void>;
   update(identity: UzzIdentityRecord): Promise<void>;
   insertAlias(alias: UzzIdentityAliasRecord): Promise<void>;
   insertToken(token: UzzIdentityTokenRecord): Promise<void>;
+  consumeToken(
+    tokenHash: string,
+    now: Date,
+    maximumAttempts: number,
+  ): Promise<UzzIdentityTokenRecord | null>;
 }
 
 export interface UzzLedgerRepository {
@@ -148,4 +154,3 @@ export interface UzzRepositories {
   commands: UzzCommandRepository;
   outbox: UzzOutboxRepository;
 }
-

@@ -10,7 +10,11 @@ export type AuthMagicLinkDocument = AuthMagicLink & Document;
 @Schema({ timestamps: true })
 export class AuthMagicLink {
   @Prop({ required: true, unique: true, index: true })
-  token!: string;
+  tokenHash!: string;
+
+  /** SHA-256 compatibility value for the legacy unique `token_1` index. */
+  @Prop({ type: String, select: false })
+  token?: string;
 
   @Prop({ required: true })
   channel!: 'sms' | 'email';
@@ -21,8 +25,8 @@ export class AuthMagicLink {
   @Prop({ required: true })
   expiresAt!: Date;
 
-  @Prop()
-  usedAt?: Date;
+  @Prop({ type: Date, default: null })
+  usedAt!: Date | null;
 
   /** When set, redeem links this identity to an existing user instead of login-as-new. */
   @Prop()

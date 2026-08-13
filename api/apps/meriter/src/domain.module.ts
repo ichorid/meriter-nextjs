@@ -167,6 +167,10 @@ import {
 } from './infrastructure/uzz/persistence/schemas/uzz-settings.schema';
 import { MongooseUzzUnitOfWork } from './infrastructure/uzz/persistence/mongoose-uzz-unit-of-work';
 import { UZZ_UNIT_OF_WORK } from './application/uzz/ports/uzz-unit-of-work';
+import { StartTelegramLinkUseCase } from './application/uzz/use-cases/start-telegram-link.use-case';
+import { ConfirmTelegramLinkUseCase } from './application/uzz/use-cases/confirm-telegram-link.use-case';
+import { UzzTokenHasher } from './infrastructure/uzz/security/uzz-token-hasher';
+import { InMemoryUzzRateLimiter } from './infrastructure/uzz/security/uzz-rate-limiter';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -328,6 +332,20 @@ import { EventBus } from './domain/events/event-bus';
       provide: UZZ_UNIT_OF_WORK,
       useExisting: MongooseUzzUnitOfWork,
     },
+    UzzTokenHasher,
+    InMemoryUzzRateLimiter,
+    {
+      provide: StartTelegramLinkUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzTokenHasher, InMemoryUzzRateLimiter],
+      useFactory: (unitOfWork, tokenHasher, rateLimiter) =>
+        new StartTelegramLinkUseCase(unitOfWork, tokenHasher, rateLimiter),
+    },
+    {
+      provide: ConfirmTelegramLinkUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzTokenHasher, InMemoryUzzRateLimiter],
+      useFactory: (unitOfWork, tokenHasher, rateLimiter) =>
+        new ConfirmTelegramLinkUseCase(unitOfWork, tokenHasher, rateLimiter),
+    },
 
     // Domain Services
     PublicationService,
@@ -409,6 +427,10 @@ import { EventBus } from './domain/events/event-bus';
     // Export repositories (only those with valuable logic)
     PollCastRepository,
     UZZ_UNIT_OF_WORK,
+    StartTelegramLinkUseCase,
+    ConfirmTelegramLinkUseCase,
+    UzzTokenHasher,
+    InMemoryUzzRateLimiter,
 
     // Export domain services
     PublicationService,

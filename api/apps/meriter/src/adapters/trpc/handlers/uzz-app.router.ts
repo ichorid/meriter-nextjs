@@ -3,6 +3,11 @@ import { z } from 'zod';
 import { router, protectedProcedure, publicProcedure } from '../../../trpc/trpc';
 import { EmailAuthDisabledError } from '../../../application/use-cases/auth/send-email-login-link.use-case';
 import { FakeAuthDisabledError } from '../../../application/use-cases/auth/establish-session.use-case';
+import {
+  UzzIdentityConflictError,
+  UzzInvalidTokenError,
+  UzzRateLimitedError,
+} from '../../../domain/uzz/errors';
 
 /**
  * Whitelisted tRPC surface for `@meriter/uzz-web`.
@@ -36,47 +41,35 @@ export const uzzAppRouter = router({
     redeemEmailLoginLink: publicProcedure
       .input(z.object({ token: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
-        const tokenResult = await ctx.authMagicLinkService.redeem(input.token);
-        if (!tokenResult || tokenResult.channel !== 'email') {
-          throw new TRPCError({
-            code: 'UNAUTHORIZED',
-            message: 'Invalid or expired login link',
+        try {
+          const result = await ctx.redeemUzzMagicLinkUseCase.execute({
+            token: input.token,
+            ip: resolveClientIp(ctx.req),
           });
-        }
-
-        if (tokenResult.linkToUserId) {
-          const existing = await ctx.userService.getUserByAuthId(
-            'email',
-            tokenResult.target,
-          );
-          if (existing && existing.id !== tokenResult.linkToUserId) {
+          ctx.cookieManager.establishUzzJwtAuth(ctx.res, result.jwt, ctx.req);
+          await ctx.uzzService.recordLoginEmail(result.user.id, result.email);
+          return { user: result.user, isNewUser: result.isNewUser };
+        } catch (error) {
+          if (error instanceof UzzRateLimitedError) {
             throw new TRPCError({
-              code: 'CONFLICT',
-              message: 'Email already linked to another user',
+              code: 'TOO_MANY_REQUESTS',
+              message: 'Too many login attempts',
             });
           }
-          await ctx.userService.linkIdentity(
-            tokenResult.linkToUserId,
-            'email',
-            tokenResult.target,
-          );
-          const user = await ctx.userService.getUserById(tokenResult.linkToUserId);
-          if (!user) {
-            throw new TRPCError({ code: 'NOT_FOUND', message: 'User not found' });
+          if (error instanceof UzzIdentityConflictError) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'Email identity conflicts with another account',
+            });
           }
-          const authResult = await ctx.authService.authenticateEmail(tokenResult.target);
-          ctx.cookieManager.establishUzzJwtAuth(ctx.res, authResult.jwt, ctx.req);
-          await ctx.uzzService.recordLoginEmail(authResult.user.id, tokenResult.target);
-          return { user: authResult.user, isNewUser: false };
+          if (error instanceof UzzInvalidTokenError) {
+            throw new TRPCError({
+              code: 'UNAUTHORIZED',
+              message: 'Invalid or expired login link',
+            });
+          }
+          throw error;
         }
-
-        const authResult = await ctx.authService.authenticateEmail(tokenResult.target);
-        ctx.cookieManager.establishUzzJwtAuth(ctx.res, authResult.jwt, ctx.req);
-        await ctx.uzzService.recordLoginEmail(authResult.user.id, tokenResult.target);
-        return {
-          user: authResult.user,
-          isNewUser: authResult.isNewUser ?? false,
-        };
       }),
 
     logout: protectedProcedure.mutation(async ({ ctx }) => {
@@ -353,12 +346,14 @@ export const uzzAppRouter = router({
       return ctx.uzzService.getLinkStatus(ctx.user.id);
     }),
     startTelegramLink: protectedProcedure.mutation(async ({ ctx }) => {
-      const result = await ctx.uzzService.startTelegramLink(ctx.user.id);
+      const result = await ctx.startTelegramLinkUseCase.execute({
+        userId: ctx.user.id,
+      });
       const botUsername = ctx.configService.get('bot')?.username;
       return {
         ...result,
         deepLink: botUsername
-          ? `https://t.me/${botUsername}?start=uzz_link_${result.code}`
+          ? `https://t.me/${botUsername}?start=uzz_link_${result.token}`
           : undefined,
       };
     }),
@@ -424,3 +419,10 @@ export const uzzAppRouter = router({
 });
 
 export type UzzAppRouter = typeof uzzAppRouter;
+
+function resolveClientIp(request: {
+  ip?: string;
+  socket?: { remoteAddress?: string };
+}): string {
+  return request.ip || request.socket?.remoteAddress || 'unknown';
+}

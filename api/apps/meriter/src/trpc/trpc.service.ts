@@ -73,6 +73,8 @@ import type { ManageYougileIntegrationUseCase } from '../application/use-cases/i
 import { UzzService } from '../domain/services/uzz/uzz.service';
 import { EmailLoginLinkService } from '../infrastructure/auth/email-login-link.service';
 import { AuthMagicLinkService } from '../infrastructure/auth/magic-link-auth.service';
+import { RedeemUzzMagicLinkUseCase } from '../application/uzz/use-cases/redeem-uzz-magic-link.use-case';
+import { StartTelegramLinkUseCase } from '../application/uzz/use-cases/start-telegram-link.use-case';
 
 @Injectable()
 export class TrpcService {
@@ -142,6 +144,8 @@ export class TrpcService {
     private uzzService: UzzService,
     private emailLoginLinkService: EmailLoginLinkService,
     private authMagicLinkService: AuthMagicLinkService,
+    private redeemUzzMagicLinkUseCase: RedeemUzzMagicLinkUseCase,
+    private startTelegramLinkUseCase: StartTelegramLinkUseCase,
   ) {}
 
   getRouter(): AppRouter {
@@ -224,7 +228,8 @@ export class TrpcService {
       uzzService: this.uzzService,
       emailLoginLinkService: this.emailLoginLinkService,
       authMagicLinkService: this.authMagicLinkService,
+      redeemUzzMagicLinkUseCase: this.redeemUzzMagicLinkUseCase,
+      startTelegramLinkUseCase: this.startTelegramLinkUseCase,
     });
   }
 }
-

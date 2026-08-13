@@ -186,21 +186,29 @@ function createRepositories(
 
   const identities: UzzIdentityRepository = {
     async findById(id) {
-      return execute(models.identities.findOne({ id }).lean(), session) as Promise<
-        UzzIdentityRecord | null
-      >;
+      const raw = await execute(models.identities.findOne({ id }).lean(), session);
+      return raw ? mapIdentity(raw) : null;
+    },
+    async findByCanonicalUserId(canonicalUserId) {
+      const raw = await execute(
+        models.identities.findOne({ canonicalUserId }).lean(),
+        session,
+      );
+      return raw ? mapIdentity(raw) : null;
     },
     async findByEmail(normalizedEmail) {
-      return execute(
+      const raw = await execute(
         models.identities.findOne({ normalizedEmail }).lean(),
         session,
-      ) as Promise<UzzIdentityRecord | null>;
+      );
+      return raw ? mapIdentity(raw) : null;
     },
     async findByTelegramUserId(telegramUserId) {
-      return execute(
+      const raw = await execute(
         models.identities.findOne({ telegramUserId }).lean(),
         session,
-      ) as Promise<UzzIdentityRecord | null>;
+      );
+      return raw ? mapIdentity(raw) : null;
     },
     async insert(identity) {
       await models.identities.create([identity], options);
@@ -219,6 +227,22 @@ function createRepositories(
     },
     async insertToken(token: UzzIdentityTokenRecord) {
       await models.identityTokens.create([token], options);
+    },
+    async consumeToken(tokenHash, now, maximumAttempts) {
+      const query = models.identityTokens
+        .findOneAndUpdate(
+          {
+            tokenHash,
+            consumedAt: null,
+            expiresAt: { $gt: now },
+            attemptCount: { $lt: maximumAttempts },
+          },
+          { $set: { consumedAt: now }, $inc: { attemptCount: 1 } },
+          { new: true },
+        )
+        .lean();
+      const raw = await execute(query, session);
+      return raw ? mapIdentityToken(raw) : null;
     },
   };
 
@@ -270,10 +294,11 @@ async function optimisticUpdate(
   persistenceModel: PersistenceModel,
   id: string,
   version: number,
-  state: Record<string, unknown>,
+  state: object,
   session: ClientSession | null,
 ): Promise<void> {
-  const { version: _version, createdAt: _createdAt, ...mutableState } = state;
+  const record = state as unknown as Record<string, unknown>;
+  const { version: _version, createdAt: _createdAt, ...mutableState } = record;
   const result = await persistenceModel.updateOne(
     { id, version },
     { $set: mutableState, $inc: { version: 1 } },
@@ -282,4 +307,46 @@ async function optimisticUpdate(
   if (result.matchedCount !== 1) {
     throw new UzzConflictError('UZZ_CONCURRENT_MODIFICATION');
   }
+}
+
+function mapIdentity(raw: unknown): UzzIdentityRecord {
+  const record = asPersistenceRecord(raw);
+  return {
+    id: String(record.id),
+    canonicalUserId: String(record.canonicalUserId),
+    normalizedEmail:
+      typeof record.normalizedEmail === 'string' ? record.normalizedEmail : null,
+    telegramUserId:
+      typeof record.telegramUserId === 'string' ? record.telegramUserId : null,
+    telegramUsername:
+      typeof record.telegramUsername === 'string'
+        ? record.telegramUsername
+        : null,
+    createdAt: new Date(record.createdAt as Date),
+    updatedAt: new Date(record.updatedAt as Date),
+    version: Number(record.version),
+  };
+}
+
+function mapIdentityToken(raw: unknown): UzzIdentityTokenRecord {
+  const record = asPersistenceRecord(raw);
+  return {
+    id: String(record.id),
+    identityId: String(record.identityId),
+    purpose: 'telegram_link',
+    tokenHash: String(record.tokenHash),
+    expiresAt: new Date(record.expiresAt as Date),
+    consumedAt: record.consumedAt
+      ? new Date(record.consumedAt as Date)
+      : null,
+    attemptCount: Number(record.attemptCount),
+    createdAt: new Date(record.createdAt as Date),
+  };
+}
+
+function asPersistenceRecord(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    throw new TypeError('UZZ persistence query returned an invalid document');
+  }
+  return raw as Record<string, unknown>;
 }
