@@ -5,8 +5,12 @@ import { EmailAuthDisabledError } from '../../../application/use-cases/auth/send
 import { FakeAuthDisabledError } from '../../../application/use-cases/auth/establish-session.use-case';
 import {
   UzzIdentityConflictError,
+  UzzConflictError,
+  UzzForbiddenError,
   UzzInvalidTokenError,
+  UzzNotFoundError,
   UzzRateLimitedError,
+  UzzValidationError,
 } from '../../../domain/uzz/errors';
 
 /**
@@ -212,48 +216,79 @@ export const uzzAppRouter = router({
       .input(
         z.object({
           communityId: z.string().min(1),
-          title: z.string().min(1),
-          description: z.string().optional(),
-          priceRub: z.number().positive(),
+          title: z.string().max(120),
+          description: z.string().max(2000).optional(),
+          priceRub: z.number(),
+          deliveryMode: z.enum(['online', 'offline', 'both']),
+          locationText: z.string().max(160).optional(),
+          durationText: z.string().max(120).optional(),
+          availabilityText: z.string().max(500).optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        return ctx.uzzService.createLot({
-          communityId: input.communityId,
-          authorId: ctx.user.id,
-          title: input.title,
-          description: input.description,
-          priceRub: input.priceRub,
-        });
+        return executeUzz(() =>
+          ctx.createListingUseCase.execute({
+            communityId: input.communityId,
+            authorId: ctx.user.id,
+            title: input.title,
+            description: input.description ?? '',
+            priceRub: input.priceRub,
+            deliveryMode: input.deliveryMode,
+            locationText: input.locationText ?? '',
+            durationText: input.durationText ?? '',
+            availabilityText: input.availabilityText ?? '',
+            now: new Date(),
+          }),
+        );
       }),
     update: protectedProcedure
       .input(
         z.object({
           lotId: z.string().min(1),
-          title: z.string().min(1).optional(),
-          description: z.string().optional(),
-          priceRub: z.number().positive().optional(),
+          title: z.string().max(120).optional(),
+          description: z.string().max(2000).optional(),
+          priceRub: z.number().optional(),
+          deliveryMode: z.enum(['online', 'offline', 'both']).optional(),
+          locationText: z.string().max(160).optional(),
+          durationText: z.string().max(120).optional(),
+          availabilityText: z.string().max(500).optional(),
           active: z.boolean().optional(),
         }),
       )
       .mutation(async ({ ctx, input }) => {
         const { lotId, ...patch } = input;
-        return ctx.uzzService.updateLot(lotId, ctx.user.id, patch);
+        return executeUzz(() =>
+          ctx.updateListingUseCase.execute({
+            listingId: lotId,
+            actorId: ctx.user.id,
+            ...patch,
+          }),
+        );
       }),
     list: publicProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        return ctx.uzzService.listLots(input.communityId);
+        return executeUzz(() => ctx.listCatalogUseCase.execute(input));
       }),
     myLots: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        return ctx.uzzService.myLots(ctx.user.id, input.communityId);
+        return executeUzz(() =>
+          ctx.listCatalogUseCase.execute({
+            communityId: input.communityId,
+            authorId: ctx.user.id,
+          }),
+        );
       }),
     canBuy: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))
       .query(async ({ ctx, input }) => {
-        return ctx.uzzService.canBuy(ctx.user.id, input.communityId);
+        return executeUzz(() =>
+          ctx.checkPurchaseGateUseCase.execute({
+            communityId: input.communityId,
+            buyerId: ctx.user.id,
+          }),
+        );
       }),
   }),
 
@@ -425,4 +460,24 @@ function resolveClientIp(request: {
   socket?: { remoteAddress?: string };
 }): string {
   return request.ip || request.socket?.remoteAddress || 'unknown';
+}
+
+async function executeUzz<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    if (error instanceof UzzValidationError) {
+      throw new TRPCError({ code: 'BAD_REQUEST', message: error.code });
+    }
+    if (error instanceof UzzForbiddenError) {
+      throw new TRPCError({ code: 'FORBIDDEN', message: error.code });
+    }
+    if (error instanceof UzzNotFoundError) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: error.code });
+    }
+    if (error instanceof UzzConflictError) {
+      throw new TRPCError({ code: 'CONFLICT', message: error.code });
+    }
+    throw error;
+  }
 }

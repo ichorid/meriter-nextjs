@@ -171,6 +171,15 @@ import { StartTelegramLinkUseCase } from './application/uzz/use-cases/start-tele
 import { ConfirmTelegramLinkUseCase } from './application/uzz/use-cases/confirm-telegram-link.use-case';
 import { UzzTokenHasher } from './infrastructure/uzz/security/uzz-token-hasher';
 import { InMemoryUzzRateLimiter } from './infrastructure/uzz/security/uzz-rate-limiter';
+import {
+  UZZ_COMMUNITY_ACCESS_PORT,
+  UzzCommunityAccessPort,
+} from './application/uzz/ports/uzz-community-access.port';
+import { UzzAccessPolicy } from './application/uzz/policies/uzz-access-policy';
+import { CreateListingUseCase } from './application/uzz/use-cases/create-listing.use-case';
+import { UpdateListingUseCase } from './application/uzz/use-cases/update-listing.use-case';
+import { ListCatalogUseCase } from './application/uzz/use-cases/list-catalog.use-case';
+import { CheckPurchaseGateUseCase } from './application/uzz/use-cases/check-purchase-gate.use-case';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -346,6 +355,50 @@ import { EventBus } from './domain/events/event-bus';
       useFactory: (unitOfWork, tokenHasher, rateLimiter) =>
         new ConfirmTelegramLinkUseCase(unitOfWork, tokenHasher, rateLimiter),
     },
+    {
+      provide: UZZ_COMMUNITY_ACCESS_PORT,
+      inject: [CommunityMembershipService],
+      useFactory: (
+        membership: CommunityMembershipService,
+      ): UzzCommunityAccessPort => ({
+        async isAnyMember(communityId, userIds) {
+          for (const userId of userIds) {
+            if (await membership.isUserMember(communityId, userId)) {
+              return true;
+            }
+          }
+          return false;
+        },
+      }),
+    },
+    {
+      provide: UzzAccessPolicy,
+      inject: [UZZ_COMMUNITY_ACCESS_PORT],
+      useFactory: (access: UzzCommunityAccessPort) => new UzzAccessPolicy(access),
+    },
+    {
+      provide: CreateListingUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzAccessPolicy],
+      useFactory: (unitOfWork, accessPolicy) =>
+        new CreateListingUseCase(unitOfWork, accessPolicy),
+    },
+    {
+      provide: UpdateListingUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzAccessPolicy],
+      useFactory: (unitOfWork, accessPolicy) =>
+        new UpdateListingUseCase(unitOfWork, accessPolicy),
+    },
+    {
+      provide: ListCatalogUseCase,
+      inject: [UZZ_UNIT_OF_WORK],
+      useFactory: (unitOfWork) => new ListCatalogUseCase(unitOfWork),
+    },
+    {
+      provide: CheckPurchaseGateUseCase,
+      inject: [UZZ_UNIT_OF_WORK, UzzAccessPolicy],
+      useFactory: (unitOfWork, accessPolicy) =>
+        new CheckPurchaseGateUseCase(unitOfWork, accessPolicy),
+    },
 
     // Domain Services
     PublicationService,
@@ -431,6 +484,10 @@ import { EventBus } from './domain/events/event-bus';
     ConfirmTelegramLinkUseCase,
     UzzTokenHasher,
     InMemoryUzzRateLimiter,
+    CreateListingUseCase,
+    UpdateListingUseCase,
+    ListCatalogUseCase,
+    CheckPurchaseGateUseCase,
 
     // Export domain services
     PublicationService,

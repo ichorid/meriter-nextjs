@@ -68,6 +68,10 @@ import { EmailLoginLinkService } from '../infrastructure/auth/email-login-link.s
 import { AuthMagicLinkService } from '../infrastructure/auth/magic-link-auth.service';
 import { RedeemUzzMagicLinkUseCase } from '../application/uzz/use-cases/redeem-uzz-magic-link.use-case';
 import { StartTelegramLinkUseCase } from '../application/uzz/use-cases/start-telegram-link.use-case';
+import { CreateListingUseCase } from '../application/uzz/use-cases/create-listing.use-case';
+import { UpdateListingUseCase } from '../application/uzz/use-cases/update-listing.use-case';
+import { ListCatalogUseCase } from '../application/uzz/use-cases/list-catalog.use-case';
+import { CheckPurchaseGateUseCase } from '../application/uzz/use-cases/check-purchase-gate.use-case';
 
 export interface CreateContextOptions {
   req: any;
@@ -138,6 +142,10 @@ export interface CreateContextOptions {
   authMagicLinkService: AuthMagicLinkService;
   redeemUzzMagicLinkUseCase: RedeemUzzMagicLinkUseCase;
   startTelegramLinkUseCase: StartTelegramLinkUseCase;
+  createListingUseCase: CreateListingUseCase;
+  updateListingUseCase: UpdateListingUseCase;
+  listCatalogUseCase: ListCatalogUseCase;
+  checkPurchaseGateUseCase: CheckPurchaseGateUseCase;
 }
 
 /**
@@ -217,6 +225,10 @@ export async function createContext(opts: CreateContextOptions) {
     authMagicLinkService,
     redeemUzzMagicLinkUseCase,
     startTelegramLinkUseCase,
+    createListingUseCase,
+    updateListingUseCase,
+    listCatalogUseCase,
+    checkPurchaseGateUseCase,
   } = opts;
 
   const logger = new Logger('tRPC-Context');
@@ -343,6 +355,10 @@ export async function createContext(opts: CreateContextOptions) {
     authMagicLinkService,
     redeemUzzMagicLinkUseCase,
     startTelegramLinkUseCase,
+    createListingUseCase,
+    updateListingUseCase,
+    listCatalogUseCase,
+    checkPurchaseGateUseCase,
   };
 }
 

@@ -128,6 +128,73 @@ export class Listing {
     this.state.updatedAt = new Date(now);
   }
 
+  update(
+    patch: Partial<
+      Pick<
+        ListingSnapshot,
+        | 'title'
+        | 'description'
+        | 'priceRub'
+        | 'deliveryMode'
+        | 'locationText'
+        | 'durationText'
+        | 'availabilityText'
+        | 'active'
+      >
+    >,
+    now: Date,
+  ): void {
+    if (patch.title !== undefined) {
+      this.state.title = requireText(
+        patch.title,
+        3,
+        120,
+        'LISTING_TITLE_INVALID',
+      );
+    }
+    if (patch.description !== undefined) {
+      this.state.description = optionalText(
+        patch.description,
+        2000,
+        'LISTING_DESCRIPTION_INVALID',
+      );
+    }
+    if (patch.priceRub !== undefined) {
+      this.state.priceRub = Rubles.create(patch.priceRub).value;
+    }
+    if (patch.deliveryMode !== undefined) {
+      if (!['online', 'offline', 'both'].includes(patch.deliveryMode)) {
+        throw new UzzValidationError('LISTING_DELIVERY_MODE_INVALID');
+      }
+      this.state.deliveryMode = patch.deliveryMode;
+    }
+    if (patch.locationText !== undefined) {
+      this.state.locationText = optionalText(
+        patch.locationText,
+        160,
+        'LISTING_LOCATION_INVALID',
+      );
+    }
+    if (patch.durationText !== undefined) {
+      this.state.durationText = optionalText(
+        patch.durationText,
+        120,
+        'LISTING_DURATION_INVALID',
+      );
+    }
+    if (patch.availabilityText !== undefined) {
+      this.state.availabilityText = optionalText(
+        patch.availabilityText,
+        500,
+        'LISTING_AVAILABILITY_INVALID',
+      );
+    }
+    if (patch.active !== undefined) {
+      this.state.active = patch.active;
+    }
+    this.state.updatedAt = new Date(now);
+  }
+
   snapshot(): ListingSnapshot {
     return {
       ...this.state,
@@ -154,4 +221,3 @@ function requireText(
 function optionalText(value: string, max: number, code: string): string {
   return requireText(value, 0, max, code);
 }
-

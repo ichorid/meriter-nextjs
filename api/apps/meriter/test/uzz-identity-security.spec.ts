@@ -123,6 +123,7 @@ describe('UZZ identity security', () => {
         token: started.token,
         telegramUserId: '1001',
         telegramUsername: 'telegram_user',
+        linkedUserId: 'telegram-meriter-user-1',
         now: new Date('2026-08-14T00:01:00.000Z'),
       }),
     ).resolves.toMatchObject({ canonicalUserId: 'user-1' });
@@ -131,6 +132,7 @@ describe('UZZ identity security', () => {
         token: started.token,
         telegramUserId: '1001',
         telegramUsername: 'telegram_user',
+        linkedUserId: 'telegram-meriter-user-1',
         now: new Date('2026-08-14T00:02:00.000Z'),
       }),
     ).rejects.toMatchObject({ code: 'IDENTITY_TOKEN_INVALID' });
@@ -139,6 +141,9 @@ describe('UZZ identity security', () => {
       canonicalUserId: 'user-1',
       telegramUsername: 'telegram_user',
     });
+    await expect(repositories.identities.listAliases('identity-1')).resolves.toEqual([
+      expect.objectContaining({ aliasUserId: 'telegram-meriter-user-1' }),
+    ]);
   });
 
   it('rate-limits repeated invalid magic-link attempts inside the use case', async () => {

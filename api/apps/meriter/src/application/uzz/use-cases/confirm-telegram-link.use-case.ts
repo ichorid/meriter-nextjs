@@ -19,6 +19,7 @@ export class ConfirmTelegramLinkUseCase {
     token: string;
     telegramUserId: string;
     telegramUsername: string | null;
+    linkedUserId?: string;
     now?: Date;
   }): Promise<{ canonicalUserId: string }> {
     const now = input.now ?? new Date();
@@ -51,6 +52,21 @@ export class ConfirmTelegramLinkUseCase {
       identity.telegramUsername = normalizeTelegramUsername(input.telegramUsername);
       identity.updatedAt = now;
       await repositories.identities.update(identity);
+      if (input.linkedUserId && input.linkedUserId !== identity.canonicalUserId) {
+        const existingAlias =
+          await repositories.identities.findAliasByUserId(input.linkedUserId);
+        if (existingAlias && existingAlias.identityId !== identity.id) {
+          throw new UzzIdentityConflictError('IDENTITY_CONFLICT');
+        }
+        if (!existingAlias) {
+          await repositories.identities.insertAlias({
+            id: `${identity.id}:${input.linkedUserId}`,
+            identityId: identity.id,
+            aliasUserId: input.linkedUserId,
+            createdAt: now,
+          });
+        }
+      }
       return { canonicalUserId: identity.canonicalUserId };
     });
   }
@@ -60,4 +76,3 @@ function normalizeTelegramUsername(value: string | null): string | null {
   const normalized = value?.trim().replace(/^@/, '') ?? '';
   return normalized || null;
 }
-

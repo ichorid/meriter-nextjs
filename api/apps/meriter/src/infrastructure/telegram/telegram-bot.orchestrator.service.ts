@@ -2357,10 +2357,15 @@ export class TelegramBotOrchestratorService {
       return;
     }
     try {
+      const linkedTelegramUser = await this.userService.getUserByAuthId(
+        'telegram',
+        tgUserId,
+      );
       await this.confirmTelegramLinkUseCase.execute({
         token,
         telegramUserId: tgUserId,
         telegramUsername,
+        linkedUserId: linkedTelegramUser?.id,
       });
       await this.tgBots.tgSend({
         tgChatId: tgUserId,

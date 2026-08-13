@@ -75,6 +75,10 @@ import { EmailLoginLinkService } from '../infrastructure/auth/email-login-link.s
 import { AuthMagicLinkService } from '../infrastructure/auth/magic-link-auth.service';
 import { RedeemUzzMagicLinkUseCase } from '../application/uzz/use-cases/redeem-uzz-magic-link.use-case';
 import { StartTelegramLinkUseCase } from '../application/uzz/use-cases/start-telegram-link.use-case';
+import { CreateListingUseCase } from '../application/uzz/use-cases/create-listing.use-case';
+import { UpdateListingUseCase } from '../application/uzz/use-cases/update-listing.use-case';
+import { ListCatalogUseCase } from '../application/uzz/use-cases/list-catalog.use-case';
+import { CheckPurchaseGateUseCase } from '../application/uzz/use-cases/check-purchase-gate.use-case';
 
 @Injectable()
 export class TrpcService {
@@ -146,6 +150,10 @@ export class TrpcService {
     private authMagicLinkService: AuthMagicLinkService,
     private redeemUzzMagicLinkUseCase: RedeemUzzMagicLinkUseCase,
     private startTelegramLinkUseCase: StartTelegramLinkUseCase,
+    private createListingUseCase: CreateListingUseCase,
+    private updateListingUseCase: UpdateListingUseCase,
+    private listCatalogUseCase: ListCatalogUseCase,
+    private checkPurchaseGateUseCase: CheckPurchaseGateUseCase,
   ) {}
 
   getRouter(): AppRouter {
@@ -230,6 +238,10 @@ export class TrpcService {
       authMagicLinkService: this.authMagicLinkService,
       redeemUzzMagicLinkUseCase: this.redeemUzzMagicLinkUseCase,
       startTelegramLinkUseCase: this.startTelegramLinkUseCase,
+      createListingUseCase: this.createListingUseCase,
+      updateListingUseCase: this.updateListingUseCase,
+      listCatalogUseCase: this.listCatalogUseCase,
+      checkPurchaseGateUseCase: this.checkPurchaseGateUseCase,
     });
   }
 }

@@ -97,6 +97,8 @@ export interface ExchangeRightRepository {
 
 export interface ListingRepository {
   findById(id: string): Promise<Listing | null>;
+  listActive(communityId: string): Promise<Listing[]>;
+  listByAuthor(communityId: string, authorId: string): Promise<Listing[]>;
   countActiveByAuthor(communityId: string, authorId: string): Promise<number>;
   insert(listing: Listing): Promise<void>;
   update(listing: Listing): Promise<void>;
@@ -122,6 +124,8 @@ export interface UzzIdentityRepository {
   insert(identity: UzzIdentityRecord): Promise<void>;
   update(identity: UzzIdentityRecord): Promise<void>;
   insertAlias(alias: UzzIdentityAliasRecord): Promise<void>;
+  listAliases(identityId: string): Promise<UzzIdentityAliasRecord[]>;
+  findAliasByUserId(aliasUserId: string): Promise<UzzIdentityAliasRecord | null>;
   insertToken(token: UzzIdentityTokenRecord): Promise<void>;
   consumeToken(
     tokenHash: string,

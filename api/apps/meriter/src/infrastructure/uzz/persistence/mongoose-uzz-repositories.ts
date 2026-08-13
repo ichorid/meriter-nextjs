@@ -128,6 +128,26 @@ function createRepositories(
       const raw = await execute(models.listings.findOne({ id }).lean(), session);
       return raw ? listingFromPersistence(raw) : null;
     },
+    async listActive(communityId) {
+      const rows = await execute(
+        models.listings
+          .find({ communityId, active: true })
+          .sort({ createdAt: -1 })
+          .lean(),
+        session,
+      );
+      return (rows as unknown[]).map(listingFromPersistence);
+    },
+    async listByAuthor(communityId, authorId) {
+      const rows = await execute(
+        models.listings
+          .find({ communityId, authorId })
+          .sort({ createdAt: -1 })
+          .lean(),
+        session,
+      );
+      return (rows as unknown[]).map(listingFromPersistence);
+    },
     async countActiveByAuthor(communityId, authorId) {
       return execute(
         models.listings.countDocuments({ communityId, authorId, active: true }),
@@ -224,6 +244,20 @@ function createRepositories(
     },
     async insertAlias(alias: UzzIdentityAliasRecord) {
       await models.identityAliases.create([alias], options);
+    },
+    async listAliases(identityId) {
+      const rows = await execute(
+        models.identityAliases.find({ identityId }).sort({ createdAt: 1 }).lean(),
+        session,
+      );
+      return (rows as unknown[]).map(mapIdentityAlias);
+    },
+    async findAliasByUserId(aliasUserId) {
+      const raw = await execute(
+        models.identityAliases.findOne({ aliasUserId }).lean(),
+        session,
+      );
+      return raw ? mapIdentityAlias(raw) : null;
     },
     async insertToken(token: UzzIdentityTokenRecord) {
       await models.identityTokens.create([token], options);
@@ -340,6 +374,16 @@ function mapIdentityToken(raw: unknown): UzzIdentityTokenRecord {
       ? new Date(record.consumedAt as Date)
       : null,
     attemptCount: Number(record.attemptCount),
+    createdAt: new Date(record.createdAt as Date),
+  };
+}
+
+function mapIdentityAlias(raw: unknown): UzzIdentityAliasRecord {
+  const record = asPersistenceRecord(raw);
+  return {
+    id: String(record.id),
+    identityId: String(record.identityId),
+    aliasUserId: String(record.aliasUserId),
     createdAt: new Date(record.createdAt as Date),
   };
 }

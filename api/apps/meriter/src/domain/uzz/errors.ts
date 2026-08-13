@@ -21,3 +21,5 @@ export class UzzInvalidTokenError extends UzzDomainError {}
 export class UzzIdentityConflictError extends UzzDomainError {}
 
 export class UzzRateLimitedError extends UzzDomainError {}
+
+export class UzzNotFoundError extends UzzDomainError {}
