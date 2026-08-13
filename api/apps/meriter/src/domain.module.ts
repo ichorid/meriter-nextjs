@@ -125,6 +125,48 @@ import {
   UzzIdentityLinkSchemaClass,
   UzzIdentityLinkSchema,
 } from './domain/models/uzz/uzz-identity-link.schema';
+import {
+  UZZ_COMMAND_MODEL,
+  UzzCommandPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-command.schema';
+import {
+  UZZ_DEAL_MODEL,
+  UzzDealPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-deal.schema';
+import {
+  UZZ_EXCHANGE_RIGHT_MODEL,
+  UzzExchangeRightPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-exchange-right.schema';
+import {
+  UZZ_IDENTITY_ALIAS_MODEL,
+  UzzIdentityAliasPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-identity-alias.schema';
+import {
+  UZZ_IDENTITY_TOKEN_MODEL,
+  UzzIdentityTokenPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-identity-token.schema';
+import {
+  UZZ_IDENTITY_MODEL,
+  UzzIdentityPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-identity.schema';
+import {
+  UZZ_LEDGER_MODEL,
+  UzzLedgerPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-ledger.schema';
+import {
+  UZZ_LISTING_MODEL,
+  UzzListingPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-listing.schema';
+import {
+  UZZ_OUTBOX_MODEL,
+  UzzOutboxPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-outbox.schema';
+import {
+  UZZ_SETTINGS_MODEL,
+  UzzSettingsPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-settings.schema';
+import { MongooseUzzUnitOfWork } from './infrastructure/uzz/persistence/mongoose-uzz-unit-of-work';
+import { UZZ_UNIT_OF_WORK } from './application/uzz/ports/uzz-unit-of-work';
 
 // Import repositories (only those with valuable logic)
 import { PollCastRepository } from './domain/models/poll/poll-cast.repository';
@@ -257,11 +299,35 @@ import { EventBus } from './domain/events/event-bus';
       { name: UzzDealSchemaClass.name, schema: UzzDealSchema },
       { name: UzzLedgerSchemaClass.name, schema: UzzLedgerSchema },
       { name: UzzIdentityLinkSchemaClass.name, schema: UzzIdentityLinkSchema },
+      { name: UZZ_COMMAND_MODEL, schema: UzzCommandPersistenceSchema },
+      { name: UZZ_DEAL_MODEL, schema: UzzDealPersistenceSchema },
+      {
+        name: UZZ_EXCHANGE_RIGHT_MODEL,
+        schema: UzzExchangeRightPersistenceSchema,
+      },
+      {
+        name: UZZ_IDENTITY_ALIAS_MODEL,
+        schema: UzzIdentityAliasPersistenceSchema,
+      },
+      {
+        name: UZZ_IDENTITY_TOKEN_MODEL,
+        schema: UzzIdentityTokenPersistenceSchema,
+      },
+      { name: UZZ_IDENTITY_MODEL, schema: UzzIdentityPersistenceSchema },
+      { name: UZZ_LEDGER_MODEL, schema: UzzLedgerPersistenceSchema },
+      { name: UZZ_LISTING_MODEL, schema: UzzListingPersistenceSchema },
+      { name: UZZ_OUTBOX_MODEL, schema: UzzOutboxPersistenceSchema },
+      { name: UZZ_SETTINGS_MODEL, schema: UzzSettingsPersistenceSchema },
     ]),
   ],
   providers: [
     // Repositories (only those with valuable logic)
     PollCastRepository,
+    MongooseUzzUnitOfWork,
+    {
+      provide: UZZ_UNIT_OF_WORK,
+      useExisting: MongooseUzzUnitOfWork,
+    },
 
     // Domain Services
     PublicationService,
@@ -342,6 +408,7 @@ import { EventBus } from './domain/events/event-bus';
   exports: [
     // Export repositories (only those with valuable logic)
     PollCastRepository,
+    UZZ_UNIT_OF_WORK,
 
     // Export domain services
     PublicationService,
