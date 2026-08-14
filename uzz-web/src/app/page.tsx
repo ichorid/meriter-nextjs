@@ -6,26 +6,37 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { ListingCard } from '@/components/listing-card';
 import { ListingEditor, type ListingDraft } from '@/components/listing-editor';
+import { Tab, TabPanel, Tabs } from '@/components/tabs';
 import { Badge, Button, Card, EmptyState, PageHeader, QueryFailed, Skeleton } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { bankHeadline, bankHopsLabel, bankStatusLabel, hadUzzSession, tomorrowNominal, uzzErrorMessage } from '@/lib/utils';
 
-type Tab = 'rights' | 'listings' | 'deeds';
+type HomeTab = 'rights' | 'listings' | 'deeds';
 export default function HomePage() {
   return <Suspense fallback={<AppShell><Skeleton className="h-64" /></AppShell>}><HomeContent /></Suspense>;
 }
 
 function HomeContent() {
-  const { communityId, loggedIn, sessionLoading } = useUzzCommunityId(); const [tab, setTab] = useState<Tab>('rights');
+  const { communityId, loggedIn, sessionLoading } = useUzzCommunityId(); const [tab, setTab] = useState<HomeTab>('rights');
   const searchParams = useSearchParams(); const router = useRouter();
   useEffect(() => { const value = searchParams.get('tab'); setTab(value === 'lots' ? 'listings' : value === 'deeds' ? 'deeds' : 'rights'); }, [searchParams]);
-  function selectTab(value: Tab) { setTab(value); router.replace(value === 'listings' ? '/?tab=lots' : value === 'deeds' ? '/?tab=deeds' : '/', { scroll: false }); }
+  function selectTab(value: string) {
+    const next: HomeTab = value === 'listings' ? 'listings' : value === 'deeds' ? 'deeds' : 'rights';
+    setTab(next);
+    router.replace(next === 'listings' ? '/?tab=lots' : next === 'deeds' ? '/?tab=deeds' : '/', { scroll: false });
+  }
   if (sessionLoading) return <AppShell><Skeleton className="h-64" /></AppShell>;
   if (!loggedIn) return <AppShell><Guest expired={hadUzzSession()} /></AppShell>;
   return <AppShell><div className="space-y-8"><PageHeader eyebrow="Личный раздел" title="Моё">Ваши права на обмен, предложения и добрые дела — разные сущности. Здесь они показаны отдельно, без путаницы с кошельком заслуг.</PageHeader>
-    <div role="tablist" className="inline-flex max-w-full gap-1 overflow-x-auto rounded-xl border border-stitch-border bg-stitch-surface p-1">{([['rights', 'Права'], ['listings', 'Мои услуги'], ['deeds', 'Добрые дела']] as const).map(([id, label]) => <button key={id} role="tab" aria-selected={tab === id} onClick={() => selectTab(id)} className={`min-h-10 whitespace-nowrap rounded-lg px-4 text-sm font-semibold ${tab === id ? 'bg-stitch-accent text-white' : 'text-stitch-muted'}`}>{label}</button>)}</div>
-    {tab === 'rights' ? <Rights communityId={communityId} /> : tab === 'listings' ? <Listings communityId={communityId} /> : <Deeds communityId={communityId} />}
+    <Tabs value={tab} onChange={selectTab} aria-label="Личный раздел">
+      <Tab value="rights">Права</Tab>
+      <Tab value="listings">Мои услуги</Tab>
+      <Tab value="deeds">Добрые дела</Tab>
+      <TabPanel value="rights"><Rights communityId={communityId} /></TabPanel>
+      <TabPanel value="listings"><Listings communityId={communityId} /></TabPanel>
+      <TabPanel value="deeds"><Deeds communityId={communityId} /></TabPanel>
+    </Tabs>
   </div></AppShell>;
 }
 
