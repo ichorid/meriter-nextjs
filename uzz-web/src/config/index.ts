@@ -1,15 +1,10 @@
 export const config = {
-  api: {
-    baseUrl: process.env.NEXT_PUBLIC_API_URL?.trim() || '',
-  },
-  app: {
-    url: process.env.NEXT_PUBLIC_APP_URL?.trim() || '',
-  },
   product: {
     trpcPath: '/trpc/uzz',
     header: 'uzz' as const,
   },
-  defaultCommunityId: process.env.NEXT_PUBLIC_DEFAULT_COMMUNITY_ID?.trim() || '',
+  // Deploy community ID is injected at request time via RuntimeConfigProvider.
+  defaultCommunityId: '',
   development: {
     fakeDataMode:
       process.env.NEXT_PUBLIC_FAKE_DATA_MODE === 'true' ||

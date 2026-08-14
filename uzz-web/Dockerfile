@@ -5,8 +5,6 @@ WORKDIR /repo
 RUN command -v pnpm >/dev/null 2>&1 || npm install -g pnpm@10.26.2
 RUN pnpm config set store-dir /pnpm/store
 ENV NEXT_TELEMETRY_DISABLED=1
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY libs/shared-types ./libs/shared-types
 COPY uzz-web/package.json ./uzz-web/

@@ -8,8 +8,8 @@ export const MERITER_PRODUCT_HEADER = 'x-meriter-product';
 
 export const trpc = createTRPCReact<UzzAppRouter>();
 
-export function getTrpcClient() {
-  const apiUrl = typeof window !== 'undefined' ? config.api.baseUrl || '' : '';
+export function getTrpcClient(apiBaseUrl: string) {
+  const apiUrl = apiBaseUrl.trim();
   const trpcUrl = apiUrl
     ? `${apiUrl}${config.product.trpcPath}`
     : config.product.trpcPath;

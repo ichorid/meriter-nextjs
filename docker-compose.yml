@@ -258,9 +258,9 @@ services:
     environment:
       - PORT=8004
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=
-      - NEXT_PUBLIC_APP_URL=${UZZ_WEB_BASE_URL:-}
-      - NEXT_PUBLIC_DEFAULT_COMMUNITY_ID=${NEXT_PUBLIC_DEFAULT_COMMUNITY_ID:-}
+      - API_URL=${API_URL:-}
+      - UZZ_WEB_BASE_URL=${UZZ_WEB_BASE_URL:-}
+      - DEFAULT_TELEGRAM_COMMUNITY_ID=${DEFAULT_TELEGRAM_COMMUNITY_ID:-}
     networks:
       - meriter-frontend-network
     healthcheck:

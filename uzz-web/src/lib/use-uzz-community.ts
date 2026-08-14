@@ -1,6 +1,6 @@
 'use client';
 
-import { config } from '@/config';
+import { useRuntimeConfig } from '@/config/runtime-config-context';
 import { trpc } from '@/lib/trpc/client';
 import { isUnauthorizedError } from '@/lib/utils';
 
@@ -14,8 +14,9 @@ export function useUzzCommunityId(): {
   sessionExpired: boolean;
   sessionUnreachable: boolean;
 } {
+  const { defaultCommunityId } = useRuntimeConfig();
   const me = trpc.auth.me.useQuery(undefined, { retry: false });
-  const communityId = me.data?.communityId || config.defaultCommunityId;
+  const communityId = me.data?.communityId || defaultCommunityId;
   const sessionExpired = me.isError && isUnauthorizedError(me.error);
   return {
     communityId,
