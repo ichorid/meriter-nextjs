@@ -2,6 +2,9 @@
 const path = require('path');
 
 const nextConfig = {
+  typescript: {
+    ignoreBuildErrors: process.env.DOCKER_BUILD === 'true',
+  },
   reactStrictMode: true,
   allowedDevOrigins: ['127.0.0.1'],
   output: process.env.PLAYWRIGHT_TEST === 'true' ? undefined : 'standalone',

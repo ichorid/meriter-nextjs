@@ -25,6 +25,8 @@
     "seed:community-web-dev": "node -r ./scripts/register-cli-paths.js -r ts-node/register/transpile-only scripts/seed-community-web-dev.ts",
     "uzz:reset": "ts-node scripts/reset-uzz-pilot-data.ts",
     "uzz:indexes:verify": "ts-node scripts/verify-uzz-indexes.ts",
+    "uzz:e2e:email": "node --experimental-strip-types --experimental-default-type=module apps/meriter/test/uzz-e2e/fake-email-provider.ts",
+    "uzz:e2e:telegram": "node --experimental-strip-types --experimental-default-type=module apps/meriter/test/uzz-e2e/fake-telegram-provider.ts",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "node dist/apps/meriter/main",
     "start:prod": "node dist/apps/meriter/main",

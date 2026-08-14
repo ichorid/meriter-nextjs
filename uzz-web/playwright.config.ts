@@ -2,12 +2,13 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: ['**/real/**'],
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: 'list',
   use: {
-    baseURL: 'http://127.0.0.1:8004',
+    baseURL: 'http://127.0.0.1:8005',
     browserName: 'chromium',
     channel: process.env.CI ? undefined : 'msedge',
     trace: 'retain-on-failure',
@@ -19,8 +20,8 @@ export default defineConfig({
     { name: 'tablet-768', use: { viewport: { width: 768, height: 1024 } } },
   ],
   webServer: {
-    command: 'pnpm exec next build --webpack && pnpm exec next start -p 8004',
-    url: 'http://127.0.0.1:8004/login',
+    command: 'pnpm exec next build --webpack && pnpm exec next start -p 8005',
+    url: 'http://127.0.0.1:8005/login',
     reuseExistingServer: !process.env.CI,
     timeout: 180_000,
     env: {

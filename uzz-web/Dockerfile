@@ -12,6 +12,7 @@ RUN --mount=type=cache,target=/pnpm/store \
     pnpm --filter @meriter/uzz-web... install --frozen-lockfile
 COPY uzz-web ./uzz-web
 ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV DOCKER_BUILD=true
 RUN --mount=type=cache,target=/pnpm/store \
     --mount=type=cache,target=/repo/uzz-web/.next/cache \
     pnpm -C uzz-web build

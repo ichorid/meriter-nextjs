@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { mockAdminApi, mockGuestApi, mockMemberApi } from './fixtures/uzz.fixture';
+import { mockAdminApi, mockGuestApi, mockMemberApi } from './uzz-contract.fixture';
 
 test('email magic link is the only visible sign-in method', async ({ page }) => {
   await mockGuestApi(page);

@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { mockGuestApi } from './fixtures/uzz.fixture';
+import { mockGuestApi } from './contract/uzz-contract.fixture';
 
 const UNBROKEN = 'W'.repeat(300);
 

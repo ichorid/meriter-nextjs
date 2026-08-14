@@ -45,7 +45,7 @@ export async function mockAdminApi(page: Page): Promise<void> {
       'banks.listAwaitingNominal': { result: { data: { json: [] } } },
       'banks.listHolding': { result: { data: { json: [] } } },
       'deals.adminList': { result: { data: { json: [] } } },
-      'ledger.list': { result: { data: { json: [] } } },
+      'ledger.list': { result: { data: { json: { items: [], nextCursor: null } } } },
     };
     await fulfillTrpcBatch(route, path, responses);
   });
