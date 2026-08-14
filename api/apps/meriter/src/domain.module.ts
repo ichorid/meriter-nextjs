@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { Logger, Module, OnModuleInit } from '@nestjs/common';
+import { InjectConnection, MongooseModule } from '@nestjs/mongoose';
+import { Connection } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from './config/configuration';
 import { PersistenceModule } from './infrastructure/persistence/persistence.module';
@@ -156,6 +157,7 @@ import {
   UzzSettingsPersistenceSchema,
 } from './infrastructure/uzz/persistence/schemas/uzz-settings.schema';
 import { MongooseUzzUnitOfWork } from './infrastructure/uzz/persistence/mongoose-uzz-unit-of-work';
+import { runUzzIndexPreflight } from './infrastructure/uzz/persistence/verify-uzz-indexes';
 import { UZZ_UNIT_OF_WORK } from './application/uzz/ports/uzz-unit-of-work';
 import { StartTelegramLinkUseCase } from './application/uzz/use-cases/start-telegram-link.use-case';
 import { ConfirmTelegramLinkUseCase } from './application/uzz/use-cases/confirm-telegram-link.use-case';
@@ -768,4 +770,12 @@ import { EventBus } from './domain/events/event-bus';
     EventBus,
   ],
 })
-export class DomainModule { }
+export class DomainModule implements OnModuleInit {
+  private readonly logger = new Logger(DomainModule.name);
+
+  constructor(@InjectConnection() private readonly connection: Connection) {}
+
+  async onModuleInit(): Promise<void> {
+    await runUzzIndexPreflight(this.connection.db, process.env, this.logger);
+  }
+}
