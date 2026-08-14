@@ -110,15 +110,67 @@ export function startFakeEmailProvider(options?: {
   return { provider, control };
 }
 
-export async function readLastEmail(
+function emailControlUrl(
   controlBaseUrl = process.env.UZZ_E2E_EMAIL_CONTROL_URL ?? 'http://127.0.0.1:19090',
-): Promise<FakeEmailMessage | null> {
-  const response = await fetch(`${controlBaseUrl.replace(/\/$/, '')}/__test__/messages`);
+): string {
+  return controlBaseUrl.replace(/\/$/, '');
+}
+
+export async function resetFakeEmail(
+  controlBaseUrl?: string,
+): Promise<void> {
+  const response = await fetch(`${emailControlUrl(controlBaseUrl)}/__test__/reset`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error(`fake-email reset failed: ${response.status}`);
+  }
+}
+
+export async function failNextEmailSend(
+  controlBaseUrl?: string,
+): Promise<void> {
+  const response = await fetch(`${emailControlUrl(controlBaseUrl)}/__test__/fail-next`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error(`fake-email fail-next failed: ${response.status}`);
+  }
+}
+
+export async function readEmailMessages(
+  controlBaseUrl?: string,
+): Promise<FakeEmailMessage[]> {
+  const response = await fetch(`${emailControlUrl(controlBaseUrl)}/__test__/messages`);
   if (!response.ok) {
     throw new Error(`fake-email control failed: ${response.status}`);
   }
   const payload = (await response.json()) as { messages: FakeEmailMessage[] };
-  return payload.messages.at(-1) ?? null;
+  return payload.messages;
+}
+
+export async function readLastEmail(
+  controlBaseUrl?: string,
+): Promise<FakeEmailMessage | null> {
+  const messages = await readEmailMessages(controlBaseUrl);
+  return messages.at(-1) ?? null;
+}
+
+export async function waitForLastEmail(
+  options?: { timeoutMs?: number; controlBaseUrl?: string; to?: string },
+): Promise<FakeEmailMessage> {
+  const timeoutMs = options?.timeoutMs ?? 10_000;
+  const started = Date.now();
+  const expectedTo = options?.to?.toLowerCase();
+  while (Date.now() - started < timeoutMs) {
+    const messages = await readEmailMessages(options?.controlBaseUrl);
+    const email = expectedTo
+      ? [...messages].reverse().find((item) => item.to.toLowerCase() === expectedTo)
+      : messages.at(-1);
+    if (email) return email;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  throw new Error('fake-email did not receive a message');
 }
 
 const invokedDirectly = (process.argv[1] ?? '').includes('fake-email-provider');

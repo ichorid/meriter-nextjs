@@ -1,9 +1,57 @@
 name: uzz-e2e
 
+x-uzz-api: &uzz-api
+  build:
+    context: .
+    dockerfile: api/Dockerfile
+  environment:
+    NODE_ENV: production
+    PORT: "8002"
+    DOMAIN: localhost
+    JWT_SECRET: uzz-e2e-jwt-secret-not-for-production
+    FAKE_DATA_MODE: "false"
+    MONGO_URL: mongodb://mongo:27017/uzz_e2e?replicaSet=rs0
+    MONGO_URL_SECONDARY: mongodb://mongo:27017/uzz_e2e?replicaSet=rs0
+    UZZ_DOMAIN: localhost
+    UZZ_WEB_BASE_URL: http://127.0.0.1:8004
+    DEFAULT_TELEGRAM_COMMUNITY_ID: a1000001-0000-4000-8000-000000000001
+    EMAIL_ENABLED: "true"
+    EMAIL_API_KEY: uzz-e2e-email-key
+    EMAIL_FROM: noreply@uzz.example.test
+    EMAIL_API_URL: https://fake-email:8443/ru/transactional/api/v1
+    TELEGRAM_BOT_ENABLED: "true"
+    BOT_TOKEN: e2e-bot-token-1234
+    BOT_USERNAME: uzz_e2e_bot
+    TELEGRAM_API_URL: https://api.telegram.org
+    NODE_TLS_REJECT_UNAUTHORIZED: "0"
+  networks:
+    - uzz-e2e
+  depends_on:
+    mongo:
+      condition: service_healthy
+    uzz-indexes:
+      condition: service_completed_successfully
+    fake-email:
+      condition: service_healthy
+    fake-telegram:
+      condition: service_healthy
+  healthcheck:
+    test:
+      [
+        "CMD",
+        "node",
+        "-e",
+        "fetch('http://127.0.0.1:8002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+      ]
+    interval: 5s
+    timeout: 10s
+    retries: 30
+    start_period: 90s
+
 services:
   mongo:
     image: mongo:8
-    command: ["mongod", "--replSet", "rs0", "--bind_ip_all"]
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--setParameter", "enableTestCommands=1"]
     ports:
       - "127.0.0.1:27018:27017"
     volumes:
@@ -113,54 +161,14 @@ services:
       start_period: 10s
 
   api:
-    build:
-      context: .
-      dockerfile: api/Dockerfile
-    environment:
-      NODE_ENV: production
-      PORT: "8002"
-      DOMAIN: localhost
-      JWT_SECRET: uzz-e2e-jwt-secret-not-for-production
-      FAKE_DATA_MODE: "false"
-      MONGO_URL: mongodb://mongo:27017/uzz_e2e?replicaSet=rs0
-      MONGO_URL_SECONDARY: mongodb://mongo:27017/uzz_e2e?replicaSet=rs0
-      UZZ_DOMAIN: localhost
-      UZZ_WEB_BASE_URL: http://127.0.0.1:8004
-      DEFAULT_TELEGRAM_COMMUNITY_ID: a1000001-0000-4000-8000-000000000001
-      EMAIL_ENABLED: "true"
-      EMAIL_API_KEY: uzz-e2e-email-key
-      EMAIL_FROM: noreply@uzz.example.test
-      EMAIL_API_URL: https://fake-email:8443/ru/transactional/api/v1
-      TELEGRAM_BOT_ENABLED: "true"
-      BOT_TOKEN: e2e-bot-token-1234
-      BOT_USERNAME: uzz_e2e_bot
-      TELEGRAM_API_URL: https://api.telegram.org
-      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+    <<: *uzz-api
     ports:
       - "127.0.0.1:8002:8002"
-    networks:
-      - uzz-e2e
-    depends_on:
-      mongo:
-        condition: service_healthy
-      uzz-indexes:
-        condition: service_completed_successfully
-      fake-email:
-        condition: service_healthy
-      fake-telegram:
-        condition: service_healthy
-    healthcheck:
-      test:
-        [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://127.0.0.1:8002/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
-        ]
-      interval: 5s
-      timeout: 10s
-      retries: 30
-      start_period: 90s
+
+  api-2:
+    <<: *uzz-api
+    ports:
+      - "127.0.0.1:8003:8002"
 
   uzz-web:
     build:
@@ -179,6 +187,8 @@ services:
       - uzz-e2e
     depends_on:
       api:
+        condition: service_healthy
+      api-2:
         condition: service_healthy
     healthcheck:
       test:

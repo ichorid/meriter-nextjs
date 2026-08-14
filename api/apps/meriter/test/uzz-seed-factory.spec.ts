@@ -46,6 +46,14 @@ describe('UZZ seed factory', () => {
     expect(user.id).toMatch(UUID_RE);
     expect(user.email).not.toContain(':');
     expect(user.email).toBe(`user-1-${RUN_ID}@uzz.example.test`);
+    const client = new MongoClient(mongod.getUri());
+    await client.connect();
+    try {
+      const community = await client.db().collection('communities').findOne({ id: COMMUNITY_ID });
+      expect(community?.members).toContain(user.id);
+    } finally {
+      await client.close();
+    }
   });
 
   it('tracks uzz_settings so cleanup deletes run-owned settings', async () => {

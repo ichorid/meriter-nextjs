@@ -131,6 +131,11 @@ export class UzzSeedFactory {
       updatedAt: now,
     });
     this.track('users', id);
+    await this.seedCommunity();
+    await this.db.collection('communities').updateOne(
+      { id: this.communityId },
+      { $addToSet: { members: id } },
+    );
     const identityId = this.nextId('identity');
     await this.db.collection('uzz_identities').insertOne({
       id: identityId,
@@ -155,6 +160,39 @@ export class UzzSeedFactory {
       updatedAt: now,
     });
     this.track('user_community_roles', roleId);
+    const authIdentityId = this.nextId('auth-identity');
+    await this.db.collection('user_auth_identities').insertOne({
+      id: authIdentityId,
+      userId: id,
+      provider: 'email',
+      authId: email,
+      linkedAt: now,
+      createdAt: now,
+      updatedAt: now,
+    });
+    this.track('user_auth_identities', authIdentityId);
+    await this.db.collection('communities').updateOne(
+      { id: this.communityId },
+      {
+        $addToSet: { members: id },
+        $setOnInsert: {
+          id: this.communityId,
+          name: 'Пилот',
+          hashtags: ['пилот'],
+          isActive: true,
+          isPriority: false,
+          settings: {
+            currencyNames: { singular: 'заслуга', plural: 'заслуги', genitive: 'заслуг' },
+            dailyEmission: 10,
+          },
+          createdAt: now,
+          updatedAt: now,
+          runId: this.runId,
+        },
+      },
+      { upsert: true },
+    );
+    this.track('communities', this.communityId);
     return { id, email, displayName };
   }
 
@@ -168,7 +206,7 @@ export class UzzSeedFactory {
         $setOnInsert: {
           id,
           name,
-          members: [],
+          members: [] as string[],
           hashtags: ['пилот'],
           isActive: true,
           isPriority: false,
@@ -294,10 +332,17 @@ export class UzzSeedFactory {
           });
         }
         if (collection === 'communities') {
-          return this.db.collection(collection).deleteMany({
-            id: { $in: ids },
-            runId: this.runId,
-          });
+          const memberIds = byCollection.get('users') ?? [];
+          return Promise.all([
+            this.db.collection(collection).updateMany(
+              { id: { $in: ids } },
+              { $pull: { members: { $in: memberIds } } },
+            ),
+            this.db.collection(collection).deleteMany({
+              id: { $in: ids },
+              runId: this.runId,
+            }),
+          ]);
         }
         return this.db.collection(collection).deleteMany({ id: { $in: ids } });
       }),
