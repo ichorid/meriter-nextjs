@@ -19,8 +19,8 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return <section className={cn('min-w-0 max-w-full rounded-2xl border border-stitch-border bg-stitch-surface p-5 shadow-[0_14px_40px_rgb(2_6_23_/_0.24)]', className)}>{children}</section>;
 }
 
-export function Notice({ children, tone = 'info', className }: { children: ReactNode; tone?: 'info' | 'warn' | 'ok'; className?: string }) {
-  return <div role="status" className={cn(
+export function Notice({ children, tone = 'info', className, role = 'status' }: { children: ReactNode; tone?: 'info' | 'warn' | 'ok'; className?: string; role?: 'status' | 'alert' }) {
+  return <div role={role} className={cn(
     'rounded-xl border p-4 text-sm leading-6',
     tone === 'warn' && 'border-amber-400/40 bg-amber-400/10 text-amber-100',
     tone === 'ok' && 'border-emerald-400/40 bg-emerald-400/10 text-emerald-100',

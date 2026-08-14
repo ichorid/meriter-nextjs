@@ -1,12 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { DealAcceptForm } from '@/components/deal-accept-form';
 import { DealCard, type DealView } from '@/components/deal-card';
 import { ThanksForm } from '@/components/thanks-form';
 import { Button, EmptyState, Notice, PageHeader, QueryFailed, Skeleton } from '@/components/ui';
+import { parseDealFlash } from '@/lib/flash-message';
 import { mapDeadlineError } from '@/lib/local-datetime';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
@@ -16,15 +18,31 @@ type Panel = { dealId: string; kind: 'accept' | 'reject' | 'cancel' | 'close' | 
 type ActionError = { dealId: string; action: string; message: string } | null;
 
 export default function DealsPage() {
+  return <Suspense fallback={<AppShell><Skeleton className="h-64" /></AppShell>}><DealsContent /></Suspense>;
+}
+
+function DealsContent() {
   const { communityId, loggedIn } = useUzzCommunityId();
   const utils = trpc.useUtils();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [openOnly, setOpenOnly] = useState(true);
   const [panel, setPanel] = useState<Panel>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [actionError, setActionError] = useState<ActionError>(null);
+  const consumedFlash = useRef(false);
   const deals = trpc.deals.list.useQuery({ communityId, mineOnly: true }, { enabled: Boolean(communityId) && loggedIn, retry: false, refetchInterval: 15_000 });
   const settings = trpc.settings.get.useQuery({ communityId }, { enabled: Boolean(communityId) && loggedIn, retry: false });
   const refresh = () => { setPanel(null); setActionError(null); void Promise.all([utils.deals.list.invalidate(), utils.banks.listMine.invalidate(), utils.wallet.getBalance.invalidate()]); };
+
+  useEffect(() => {
+    if (consumedFlash.current) return;
+    const message = parseDealFlash(searchParams);
+    if (!message) return;
+    consumedFlash.current = true;
+    setFlash(message);
+    router.replace('/deals', { scroll: false });
+  }, [router, searchParams]);
 
   function mapActionMessage(err: { message?: string }): string {
     return mapDeadlineError(err.message) ?? uzzErrorMessage(err);
@@ -49,8 +67,6 @@ export default function DealsPage() {
   const thank = trpc.deals.thank.useMutation(mutationOptions('thanks', 'Благодарность отправлена.'));
   const pending = accept.isPending || reject.isPending || cancel.isPending || complete.isPending || close.isPending || thank.isPending;
   const visible = useMemo(() => (deals.data ?? []).filter((deal) => !openOnly || ['requested', 'accepted', 'completed_by_seller'].includes(deal.status)), [deals.data, openOnly]);
-  const searchParams = new URLSearchParams(typeof window === 'undefined' ? '' : window.location.search);
-  const requestedFeeSource = searchParams.get('feeSource');
 
   function act(kind: NonNullable<Panel>['kind'], deal: DealView) {
     setFlash(null);
@@ -64,7 +80,6 @@ export default function DealsPage() {
 
   return <AppShell><div className="space-y-8">
     <PageHeader eyebrow="Ваши договорённости" title="Сделки">Следуйте одному следующему действию. Сроки каждого этапа зафиксированы в сделке и не меняются задним числом при обновлении настроек.</PageHeader>
-    {searchParams.has('requested') ? <Notice tone="ok">Заявка отправлена. Зарезервирована 1 заслуга {requestedFeeSource === 'local' ? 'с кошелька сообщества' : requestedFeeSource === 'global' ? 'с общего кошелька' : 'с доступного кошелька'}.</Notice> : null}
     {flash ? <Notice tone="ok">{flash}</Notice> : null}
     {actionError ? <div role="alert" aria-live="assertive" className="flex flex-col gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100 sm:flex-row sm:items-start sm:justify-between">
       <p>{actionError.message}</p>

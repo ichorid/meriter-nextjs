@@ -470,28 +470,28 @@ export const uzzAppRouter = router({
       .input(
         z.object({
           communityId: z.string().min(1),
-          limit: z.number().int().positive().max(100).optional(),
-          skip: z.number().int().nonnegative().optional(),
+          limit: z.number().int().positive().max(50).optional(),
+          cursor: z.object({ createdAt: z.coerce.date(), id: z.string().min(1) }).optional(),
         }),
       )
       .query(async ({ ctx, input }) => {
         return ctx.uzzFacade.listLedger({
           communityId: input.communityId, viewerId: ctx.user.id, mineOnly: false,
-          limit: input.limit, skip: input.skip,
+          limit: input.limit, cursor: input.cursor,
         });
       }),
     listMine: protectedProcedure
       .input(
         z.object({
           communityId: z.string().min(1),
-          limit: z.number().int().positive().max(100).optional(),
-          skip: z.number().int().nonnegative().optional(),
+          limit: z.number().int().positive().max(50).optional(),
+          cursor: z.object({ createdAt: z.coerce.date(), id: z.string().min(1) }).optional(),
         }),
       )
       .query(async ({ ctx, input }) => {
         return ctx.uzzFacade.listLedger({
           communityId: input.communityId, viewerId: ctx.user.id, mineOnly: true,
-          limit: input.limit, skip: input.skip,
+          limit: input.limit, cursor: input.cursor,
         });
       }),
   }),

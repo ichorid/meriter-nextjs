@@ -1,15 +1,16 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DealView } from '@/components/deal-card';
 
-const { community, dealsState, mutationHandlers } = vi.hoisted(() => ({
+const { community, dealsState, mutationHandlers, replace } = vi.hoisted(() => ({
   community: { communityId: 'community-1', loggedIn: true },
   dealsState: { data: [] as DealView[], isLoading: false, isError: false, refetch: vi.fn() },
   mutationHandlers: {
     accept: undefined as ((err: { message?: string }, vars: { dealId: string }) => void) | undefined,
     complete: undefined as ((err: { message?: string }, vars: { dealId: string }) => void) | undefined,
   },
+  replace: vi.fn(),
 }));
 
 vi.mock('@/components/app-shell', () => ({
@@ -18,6 +19,11 @@ vi.mock('@/components/app-shell', () => ({
 
 vi.mock('@/lib/use-uzz-community', () => ({
   useUzzCommunityId: () => community,
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace, push: vi.fn(), prefetch: vi.fn(), refresh: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
 }));
 
 function mutationStub(kind: 'accept' | 'complete') {
@@ -83,6 +89,7 @@ describe('DealsPage action errors', () => {
     dealsState.isError = false;
     mutationHandlers.accept = undefined;
     mutationHandlers.complete = undefined;
+    replace.mockReset();
     window.history.replaceState({}, '', '/deals');
   });
 
@@ -116,5 +123,32 @@ describe('DealsPage action errors', () => {
     await user.click(screen.getByRole('button', { name: 'Скрыть' }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Назад' })).toBeVisible();
+  });
+});
+
+describe('DealsPage flash', () => {
+  beforeEach(() => {
+    dealsState.data = [];
+    dealsState.isLoading = false;
+    dealsState.isError = false;
+    replace.mockReset();
+  });
+
+  it('does not render success copy from an arbitrary requested value', () => {
+    window.history.replaceState({}, '', '/deals?requested=evil');
+    render(<DealsPage />);
+
+    expect(screen.queryByText(/Заявка отправлена/)).not.toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('shows an allowlisted request flash once and removes the query', async () => {
+    window.history.replaceState({}, '', '/deals?requested=1&feeSource=local');
+    render(<DealsPage />);
+
+    expect(screen.getByText('Заявка отправлена. Зарезервирована 1 заслуга с кошелька сообщества.')).toBeVisible();
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith('/deals', { scroll: false });
+    });
   });
 });

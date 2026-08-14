@@ -167,14 +167,19 @@ export interface UzzIdentityRepository {
   ): Promise<UzzIdentityTokenRecord | null>;
 }
 
+export type UzzLedgerCursor = {
+  createdAt: Date;
+  id: string;
+};
+
 export interface UzzLedgerRepository {
   append(entry: UzzLedgerEntry): Promise<void>;
   list(input: {
     communityId: string;
     userIds?: string[];
     limit: number;
-    skip: number;
-  }): Promise<UzzLedgerEntry[]>;
+    cursor?: UzzLedgerCursor | null;
+  }): Promise<{ items: UzzLedgerEntry[]; nextCursor: UzzLedgerCursor | null }>;
 }
 
 export interface UzzCommandRepository {

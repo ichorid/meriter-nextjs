@@ -89,6 +89,36 @@ describe('UZZ tRPC adapter boundary', () => {
     expect(facade.getFeeBalances).toHaveBeenCalledWith('buyer-1', 'community-1');
   });
 
+  it('forwards ledger cursor pagination without skip', async () => {
+    const cursor = { createdAt: new Date('2026-08-14T00:00:00.000Z'), id: 'led-029' };
+    const facade = {
+      listLedger: jest.fn().mockResolvedValue({
+        items: [{ id: 'led-030' }],
+        nextCursor: null,
+      }),
+    };
+    const caller = uzzAppRouter.createCaller(context('user-1', facade));
+
+    await expect(
+      caller.ledger.listMine({ communityId: 'community-1', limit: 30, cursor }),
+    ).resolves.toEqual({ items: [{ id: 'led-030' }], nextCursor: null });
+    expect(facade.listLedger).toHaveBeenCalledWith({
+      communityId: 'community-1',
+      viewerId: 'user-1',
+      mineOnly: true,
+      limit: 30,
+      cursor,
+    });
+  });
+
+  it('rejects ledger pages larger than 50', async () => {
+    const caller = uzzAppRouter.createCaller(context('user-1', { listLedger: jest.fn() }));
+
+    await expect(
+      caller.ledger.listMine({ communityId: 'community-1', limit: 51 }),
+    ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+  });
+
   it('forwards an omitted deal deadline as null', async () => {
     const facade = { requestDeal: jest.fn().mockResolvedValue({ id: 'deal-1' }) };
     const caller = uzzAppRouter.createCaller(context('buyer-1', facade));

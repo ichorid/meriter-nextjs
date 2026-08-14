@@ -240,7 +240,7 @@ export class UzzApplicationFacade {
     viewerId: string;
     mineOnly: boolean;
     limit?: number;
-    skip?: number;
+    cursor?: { createdAt: Date; id: string } | null;
   }) {
     if (input.mineOnly) {
       await this.authorization.assertCommunityParticipant(input.communityId, input.viewerId);
@@ -253,8 +253,8 @@ export class UzzApplicationFacade {
     return this.unitOfWork.run((repositories) => repositories.ledger.list({
       communityId: input.communityId,
       userIds,
-      limit: Math.min(Math.max(input.limit ?? 50, 1), 100),
-      skip: Math.max(input.skip ?? 0, 0),
+      limit: Math.min(Math.max(input.limit ?? 30, 1), 50),
+      cursor: input.cursor ?? null,
     }));
   }
 

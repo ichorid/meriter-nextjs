@@ -365,14 +365,32 @@ function createRepositories(
       await models.ledger.create([entry], options);
     },
     async list(input) {
+      const filter: Record<string, unknown> = {
+        communityId: input.communityId,
+        ...(input.userIds?.length ? { userId: { $in: input.userIds } } : {}),
+      };
+      if (input.cursor) {
+        filter.$or = [
+          { createdAt: { $lt: input.cursor.createdAt } },
+          { createdAt: input.cursor.createdAt, id: { $lt: input.cursor.id } },
+        ];
+      }
       const rows = await execute(
-        models.ledger.find({
-          communityId: input.communityId,
-          ...(input.userIds?.length ? { userId: { $in: input.userIds } } : {}),
-        }).sort({ createdAt: -1 }).skip(input.skip).limit(input.limit).lean(),
+        models.ledger
+          .find(filter)
+          .sort({ createdAt: -1, id: -1 })
+          .limit(input.limit + 1)
+          .lean(),
         session,
       );
-      return (rows as unknown[]).map(mapLedger);
+      const mapped = (rows as unknown[]).map(mapLedger);
+      const hasMore = mapped.length > input.limit;
+      const items = hasMore ? mapped.slice(0, input.limit) : mapped;
+      const last = items.at(-1);
+      return {
+        items,
+        nextCursor: hasMore && last ? { createdAt: last.createdAt, id: last.id } : null,
+      };
     },
   };
 

@@ -336,4 +336,61 @@ describe('UZZ persistence boundary', () => {
       ]),
     ).resolves.toMatchObject({ insertedCount: 2 });
   });
+
+  it('pages ledger entries by createdAt+id cursor without duplicates or gaps', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    const entries = Array.from({ length: 75 }, (_, index) => ({
+      id: `led-${String(index).padStart(3, '0')}`,
+      operationId: `op-${index}`,
+      communityId: 'community-1',
+      userId: 'user-1',
+      type: 'fee_reserved' as const,
+      amount: -1,
+      createdAt: new Date(NOW.getTime() - Math.floor(index / 3) * 1000),
+      metadata: {},
+    }));
+    for (const entry of entries) {
+      await repositories.ledger.append(entry);
+    }
+
+    const expectedIds = [...entries]
+      .sort((left, right) => {
+        const time = right.createdAt.getTime() - left.createdAt.getTime();
+        if (time !== 0) return time;
+        return right.id.localeCompare(left.id);
+      })
+      .map((entry) => entry.id);
+
+    const first = await repositories.ledger.list({
+      communityId: 'community-1',
+      limit: 30,
+    });
+    expect(first.items.map((row) => row.id)).toEqual(expectedIds.slice(0, 30));
+    expect(first.nextCursor).toEqual({
+      createdAt: first.items[29].createdAt,
+      id: first.items[29].id,
+    });
+
+    const second = await repositories.ledger.list({
+      communityId: 'community-1',
+      limit: 30,
+      cursor: first.nextCursor,
+    });
+    expect(second.items.map((row) => row.id)).toEqual(expectedIds.slice(30, 60));
+    const firstIds = new Set(first.items.map((row) => row.id));
+    for (const row of second.items) {
+      expect(firstIds.has(row.id)).toBe(false);
+    }
+
+    const third = await repositories.ledger.list({
+      communityId: 'community-1',
+      limit: 30,
+      cursor: second.nextCursor,
+    });
+    expect(third.items.map((row) => row.id)).toEqual(expectedIds.slice(60));
+    expect(third.nextCursor).toBeNull();
+    expect([...first.items, ...second.items, ...third.items].map((row) => row.id)).toEqual(
+      expectedIds,
+    );
+  });
 });
