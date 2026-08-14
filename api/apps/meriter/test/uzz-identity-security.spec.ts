@@ -710,6 +710,66 @@ describe('UZZ identity security', () => {
     ).resolves.toMatchObject({ user: { id: 'user-abandoned' } });
   });
 
+  it('finalizes a claim after identity conflict', async () => {
+    const { token } = await magicLinks.createToken(
+      'email',
+      'conflict@example.com',
+      { linkToUserId: 'user-intended' },
+    );
+    const redeem = new RedeemUzzMagicLinkUseCase(
+      magicLinks,
+      {
+        async authenticateEmail() {
+          return {
+            user: { id: 'user-other', displayName: 'Other' },
+            jwt: 'jwt-token',
+            isNewUser: false,
+          };
+        },
+        async findUserByEmail() {
+          return { id: 'user-other', displayName: 'Other' };
+        },
+        async linkEmailIdentity() {},
+        async findUserById(userId: string) {
+          return { id: userId, displayName: userId };
+        },
+      },
+      uow,
+      hasher,
+      new InMemoryUzzRateLimiter(),
+    );
+
+    await expect(
+      redeem.execute({ token, ip: '127.0.0.1', now: NOW }),
+    ).rejects.toMatchObject({ code: 'IDENTITY_CONFLICT' });
+
+    const afterConflict = await findMagicLink();
+    expect(afterConflict?.usedAt ?? null).not.toBeNull();
+    expect(afterConflict?.claimId).toBeTruthy();
+
+    await expect(
+      magicLinks.claim(token, 'reclaim-after-conflict', NOW, 120_000),
+    ).resolves.toBeNull();
+    await expect(
+      redeem.execute({ token, ip: '127.0.0.1', now: NOW }),
+    ).rejects.toMatchObject({ code: 'MAGIC_LINK_INVALID' });
+    await expect(
+      magicLinks.claim(
+        token,
+        'reclaim-after-lease',
+        new Date(NOW.getTime() + 120_000),
+        120_000,
+      ),
+    ).resolves.toBeNull();
+    await expect(
+      redeem.execute({
+        token,
+        ip: '127.0.0.1',
+        now: new Date(NOW.getTime() + 120_000),
+      }),
+    ).rejects.toMatchObject({ code: 'MAGIC_LINK_INVALID' });
+  });
+
   it('finalized links can never be reclaimed', async () => {
     const { token } = await magicLinks.createToken(
       'email',
