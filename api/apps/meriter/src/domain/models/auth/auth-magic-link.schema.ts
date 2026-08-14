@@ -28,6 +28,15 @@ export class AuthMagicLink {
   @Prop({ type: Date, default: null })
   usedAt!: Date | null;
 
+  @Prop({ type: String, default: null })
+  claimId!: string | null;
+
+  @Prop({ type: Date, default: null })
+  claimedAt!: Date | null;
+
+  @Prop({ type: Date, default: null })
+  claimExpiresAt!: Date | null;
+
   /** When set, redeem links this identity to an existing user instead of login-as-new. */
   @Prop()
   linkToUserId?: string;
@@ -36,3 +45,11 @@ export class AuthMagicLink {
 export const AuthMagicLinkSchema = SchemaFactory.createForClass(AuthMagicLink);
 
 AuthMagicLinkSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+AuthMagicLinkSchema.index(
+  { claimId: 1 },
+  {
+    unique: true,
+    name: 'authmagiclinks_claim_id_unique',
+    partialFilterExpression: { claimId: { $type: 'string' } },
+  },
+);

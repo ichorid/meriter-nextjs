@@ -1,13 +1,21 @@
 import { UzzRateLimitedError } from '../../../domain/uzz/errors';
 
-export interface UzzMagicLinkResult {
+export interface UzzMagicLinkClaim {
+  claimId: string;
   channel: 'sms' | 'email';
   target: string;
   linkToUserId?: string;
 }
 
 export interface UzzMagicLinkPort {
-  redeem(token: string): Promise<UzzMagicLinkResult | null>;
+  claim(
+    token: string,
+    claimId: string,
+    now: Date,
+    leaseMs: number,
+  ): Promise<UzzMagicLinkClaim | null>;
+  finalize(claimId: string, usedAt: Date): Promise<boolean>;
+  release(claimId: string): Promise<void>;
 }
 
 export interface UzzAuthenticatedUser {

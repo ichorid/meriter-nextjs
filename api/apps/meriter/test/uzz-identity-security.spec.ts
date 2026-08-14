@@ -73,6 +73,12 @@ describe('UZZ identity security', () => {
     }
   });
 
+  async function findMagicLink() {
+    return connection.db
+      .collection('authmagiclinks')
+      .findOne({ channel: 'email' });
+  }
+
   it('Q: redeems a magic link only once under concurrency', async () => {
     const { token } = await magicLinks.createToken('email', 'user@example.com');
     const gateway = createIdentityGateway();
@@ -518,7 +524,7 @@ describe('UZZ identity security', () => {
       hasher,
       limiter,
     );
-    const redeemSpy = jest.spyOn(magicLinks, 'redeem');
+    const claimSpy = jest.spyOn(magicLinks, 'claim');
 
     await redeem.execute({ token, ip: '203.0.113.9', now: NOW });
 
@@ -536,9 +542,216 @@ describe('UZZ identity security', () => {
         windowMs: 15 * 60 * 1000,
       },
     ]);
-    expect(redeemSpy).toHaveBeenCalledTimes(1);
+    expect(claimSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it('releases a claim after retryable identity failure', async () => {
+    const { token } = await magicLinks.createToken('email', 'retry@example.com');
+    const user = { id: 'user-retry', displayName: 'Retry User' };
+    let attempts = 0;
+    const redeem = new RedeemUzzMagicLinkUseCase(
+      magicLinks,
+      createIdentityGateway(user, async () => {
+        attempts += 1;
+        if (attempts === 1) {
+          throw new Error('IDENTITY_GATEWAY_UNAVAILABLE');
+        }
+      }),
+      uow,
+      hasher,
+      new InMemoryUzzRateLimiter(),
+    );
+
+    await expect(
+      redeem.execute({ token, ip: '127.0.0.1', now: NOW }),
+    ).rejects.toThrow('IDENTITY_GATEWAY_UNAVAILABLE');
+
+    const afterFailure = await findMagicLink();
+    expect(afterFailure?.usedAt ?? null).toBeNull();
+    expect(afterFailure?.claimId ?? null).toBeNull();
+
+    await expect(
+      redeem.execute({ token, ip: '127.0.0.1', now: NOW }),
+    ).resolves.toMatchObject({ user: { id: 'user-retry' } });
+    expect(
+      await connection.db
+        .collection('uzz_identities')
+        .countDocuments({ canonicalUserId: 'user-retry' }),
+    ).toBe(1);
+  });
+
+  it('releases a claim after UZZ transaction rollback', async () => {
+    const { token } = await magicLinks.createToken(
+      'email',
+      'rollback@example.com',
+    );
+    const user = { id: 'user-rollback', displayName: 'Rollback User' };
+    let attempts = 0;
+    const originalRun = uow.run.bind(uow);
+    const redeem = new RedeemUzzMagicLinkUseCase(
+      magicLinks,
+      createIdentityGateway(user),
+      {
+        async run(work) {
+          attempts += 1;
+          if (attempts === 1) {
+            return originalRun(async (repositories) => {
+              await work(repositories);
+              throw new Error('WRITE_CONFLICT');
+            });
+          }
+          return originalRun(work);
+        },
+      },
+      hasher,
+      new InMemoryUzzRateLimiter(),
+    );
+
+    await expect(
+      redeem.execute({ token, ip: '127.0.0.1', now: NOW }),
+    ).rejects.toThrow('WRITE_CONFLICT');
+
+    expect(
+      await connection.db
+        .collection('uzz_identities')
+        .countDocuments({ canonicalUserId: 'user-rollback' }),
+    ).toBe(0);
+    const afterFailure = await findMagicLink();
+    expect(afterFailure?.usedAt ?? null).toBeNull();
+    expect(afterFailure?.claimId ?? null).toBeNull();
+
+    await expect(
+      redeem.execute({ token, ip: '127.0.0.1', now: NOW }),
+    ).resolves.toMatchObject({ user: { id: 'user-rollback' } });
+    expect(
+      await connection.db
+        .collection('uzz_identities')
+        .countDocuments({ canonicalUserId: 'user-rollback' }),
+    ).toBe(1);
+  });
+
+  it('allows only one concurrent live claim', async () => {
+    const { token } = await magicLinks.createToken(
+      'email',
+      'concurrent@example.com',
+    );
+    let releaseIdentity!: () => void;
+    const identityGate = new Promise<void>((resolve) => {
+      releaseIdentity = resolve;
+    });
+    const redeem = new RedeemUzzMagicLinkUseCase(
+      magicLinks,
+      createIdentityGateway(undefined, () => identityGate),
+      uow,
+      hasher,
+      new InMemoryUzzRateLimiter(),
+    );
+
+    try {
+      const first = redeem.execute({ token, ip: '127.0.0.1', now: NOW });
+      await waitUntil(async () => {
+        const stored = await findMagicLink();
+        return Boolean(stored?.claimId) || Boolean(stored?.usedAt);
+      });
+      await expect(
+        redeem.execute({ token, ip: '127.0.0.2', now: NOW }),
+      ).rejects.toMatchObject({ code: 'MAGIC_LINK_INVALID' });
+
+      const during = await findMagicLink();
+      expect(during?.usedAt ?? null).toBeNull();
+      expect(during?.claimId).toBeTruthy();
+
+      releaseIdentity();
+      await expect(first).resolves.toMatchObject({
+        user: { id: 'user-1' },
+      });
+    } finally {
+      releaseIdentity();
+    }
+  });
+
+  it('reclaims an abandoned claim after lease expiry', async () => {
+    const { token } = await magicLinks.createToken(
+      'email',
+      'abandoned@example.com',
+    );
+    await connection.db.collection('authmagiclinks').updateOne(
+      { tokenHash: hasher.hash(token) },
+      {
+        $set: {
+          claimId: 'abandoned-claim',
+          claimedAt: NOW,
+          claimExpiresAt: new Date(NOW.getTime() + 120_000),
+        },
+      },
+    );
+    const redeem = new RedeemUzzMagicLinkUseCase(
+      magicLinks,
+      createIdentityGateway({ id: 'user-abandoned' }),
+      uow,
+      hasher,
+      new InMemoryUzzRateLimiter(),
+    );
+
+    await expect(
+      redeem.execute({
+        token,
+        ip: '127.0.0.1',
+        now: new Date(NOW.getTime() + 60_000),
+      }),
+    ).rejects.toMatchObject({ code: 'MAGIC_LINK_INVALID' });
+
+    await expect(
+      redeem.execute({
+        token,
+        ip: '127.0.0.1',
+        now: new Date(NOW.getTime() + 120_000),
+      }),
+    ).resolves.toMatchObject({ user: { id: 'user-abandoned' } });
+  });
+
+  it('finalized links can never be reclaimed', async () => {
+    const { token } = await magicLinks.createToken(
+      'email',
+      'final@example.com',
+    );
+    const redeem = new RedeemUzzMagicLinkUseCase(
+      magicLinks,
+      createIdentityGateway({ id: 'user-final' }),
+      uow,
+      hasher,
+      new InMemoryUzzRateLimiter(),
+    );
+
+    await expect(
+      redeem.execute({ token, ip: '127.0.0.1', now: NOW }),
+    ).resolves.toMatchObject({ user: { id: 'user-final' } });
+    await expect(
+      redeem.execute({ token, ip: '127.0.0.1', now: NOW }),
+    ).rejects.toMatchObject({ code: 'MAGIC_LINK_INVALID' });
+    await expect(
+      redeem.execute({
+        token,
+        ip: '127.0.0.1',
+        now: new Date(NOW.getTime() + 120_000),
+      }),
+    ).rejects.toMatchObject({ code: 'MAGIC_LINK_INVALID' });
   });
 });
+
+async function waitUntil(
+  predicate: () => Promise<boolean>,
+  timeoutMs = 2_000,
+): Promise<void> {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    if (await predicate()) {
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  throw new Error('timed out waiting for condition');
+}
 
 function allowAllLimiter(): UzzRateLimiterPort {
   return {
@@ -552,10 +765,16 @@ function allowAllLimiter(): UzzRateLimiterPort {
   };
 }
 
-function createIdentityGateway() {
-  const user = { id: 'user-1', displayName: 'User One' };
+function createIdentityGateway(
+  user: { id: string; displayName?: string } = {
+    id: 'user-1',
+    displayName: 'User One',
+  },
+  beforeAuthenticate?: () => Promise<void> | void,
+) {
   return {
     async authenticateEmail(_email: string) {
+      await beforeAuthenticate?.();
       return { user, jwt: 'jwt-token', isNewUser: true };
     },
     async findUserByEmail(_email: string) {

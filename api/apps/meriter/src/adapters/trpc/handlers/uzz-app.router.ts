@@ -9,6 +9,7 @@ import { EmailAuthDisabledError } from '../../../application/use-cases/auth/send
 import { EmailDeliveryUnavailableError } from '../../../infrastructure/auth/email-login-link.service';
 import { FakeAuthDisabledError } from '../../../application/use-cases/auth/establish-session.use-case';
 import {
+  UzzConflictError,
   UzzIdentityConflictError,
   UzzInvalidTokenError,
   UzzRateLimitedError,
@@ -72,6 +73,12 @@ export const uzzAppRouter = router({
             throw new TRPCError({
               code: 'CONFLICT',
               message: 'Email identity conflicts with another account',
+            });
+          }
+          if (error instanceof UzzConflictError) {
+            throw new TRPCError({
+              code: 'CONFLICT',
+              message: 'Invalid or expired login link',
             });
           }
           if (error instanceof UzzInvalidTokenError) {

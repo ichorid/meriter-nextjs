@@ -80,17 +80,13 @@ export class AuthMagicLinkService {
 
   /**
    * Validate and mark a magic link token used (inv-24: 15-minute expiry at create time).
-   * Returns null if token is missing, expired, or already used (same response for all).
+   * Returns null if token is missing, expired, already used, or held by a live claim.
    * Session establishment is handled by RedeemMagicLinkUseCase.
    */
   async redeem(token: string): Promise<RedeemMagicLinkResult | null> {
     const now = new Date();
     const doc = await this.magicLinkModel.findOneAndUpdate(
-      {
-        tokenHash: this.tokenHasher.hash(token),
-        usedAt: null,
-        expiresAt: { $gt: now },
-      },
+      this.availableFilter(this.tokenHasher.hash(token), now),
       { $set: { usedAt: now } },
       { new: true },
     );
@@ -101,6 +97,62 @@ export class AuthMagicLinkService {
       channel: doc.channel,
       target: doc.target,
       linkToUserId: doc.linkToUserId,
+    };
+  }
+
+  async claim(
+    token: string,
+    claimId: string,
+    now: Date,
+    leaseMs: number,
+  ): Promise<{
+    claimId: string;
+    channel: 'sms' | 'email';
+    target: string;
+    linkToUserId?: string;
+  } | null> {
+    const doc = await this.magicLinkModel.findOneAndUpdate(
+      this.availableFilter(this.tokenHasher.hash(token), now),
+      {
+        $set: {
+          claimId,
+          claimedAt: now,
+          claimExpiresAt: new Date(now.getTime() + leaseMs),
+        },
+      },
+      { new: true },
+    );
+    if (!doc) return null;
+    return {
+      claimId,
+      channel: doc.channel,
+      target: doc.target,
+      linkToUserId: doc.linkToUserId,
+    };
+  }
+
+  async finalize(claimId: string, usedAt: Date): Promise<boolean> {
+    const doc = await this.magicLinkModel.findOneAndUpdate(
+      { claimId, usedAt: null },
+      { $set: { usedAt } },
+      { new: true },
+    );
+    return Boolean(doc);
+  }
+
+  async release(claimId: string): Promise<void> {
+    await this.magicLinkModel.findOneAndUpdate(
+      { claimId, usedAt: null },
+      { $unset: { claimId: 1, claimedAt: 1, claimExpiresAt: 1 } },
+    );
+  }
+
+  private availableFilter(tokenHash: string, now: Date) {
+    return {
+      tokenHash,
+      usedAt: null,
+      expiresAt: { $gt: now },
+      $or: [{ claimId: null }, { claimExpiresAt: { $lte: now } }],
     };
   }
 }

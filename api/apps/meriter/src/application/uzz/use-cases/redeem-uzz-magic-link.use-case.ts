@@ -1,5 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import {
   UzzEmailIdentityGateway,
+  UzzMagicLinkClaim,
   UzzMagicLinkPort,
   UzzRateLimiterPort,
   UzzTokenHasherPort,
@@ -7,9 +9,12 @@ import {
 } from '../ports/uzz-identity.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import {
+  UzzConflictError,
   UzzIdentityConflictError,
   UzzInvalidTokenError,
 } from '../../../domain/uzz/errors';
+
+const MAGIC_LINK_CLAIM_LEASE_MS = 120_000;
 
 export class RedeemUzzMagicLinkUseCase {
   constructor(
@@ -38,23 +43,52 @@ export class RedeemUzzMagicLinkUseCase {
       now,
     });
 
-    const link = await this.magicLinks.redeem(input.token);
-    if (!link || link.channel !== 'email') {
+    const claimId = randomUUID();
+    const claim = await this.magicLinks.claim(
+      input.token,
+      claimId,
+      now,
+      MAGIC_LINK_CLAIM_LEASE_MS,
+    );
+    if (!claim) {
       throw new UzzInvalidTokenError('MAGIC_LINK_INVALID');
     }
-    const normalizedEmail = link.target.trim().toLowerCase();
+    try {
+      const result = await this.authenticateAndPersistIdentity(claim, now);
+      if (!(await this.magicLinks.finalize(claimId, now))) {
+        throw new UzzConflictError('MAGIC_LINK_CLAIM_LOST');
+      }
+      return result;
+    } catch (error) {
+      if (isRetryableAuthenticationFailure(error)) {
+        await this.magicLinks.release(claimId);
+      } else if (!isMagicLinkClaimLost(error)) {
+        await this.magicLinks.finalize(claimId, now);
+      }
+      throw error;
+    }
+  }
 
-    if (link.linkToUserId) {
+  private async authenticateAndPersistIdentity(
+    claim: UzzMagicLinkClaim,
+    now: Date,
+  ) {
+    if (claim.channel !== 'email') {
+      throw new UzzInvalidTokenError('MAGIC_LINK_INVALID');
+    }
+    const normalizedEmail = claim.target.trim().toLowerCase();
+
+    if (claim.linkToUserId) {
       const existing = await this.identityGateway.findUserByEmail(normalizedEmail);
-      if (existing && existing.id !== link.linkToUserId) {
+      if (existing && existing.id !== claim.linkToUserId) {
         throw new UzzIdentityConflictError('IDENTITY_CONFLICT');
       }
-      const target = await this.identityGateway.findUserById(link.linkToUserId);
+      const target = await this.identityGateway.findUserById(claim.linkToUserId);
       if (!target) {
         throw new UzzIdentityConflictError('IDENTITY_NOT_FOUND');
       }
       await this.identityGateway.linkEmailIdentity(
-        link.linkToUserId,
+        claim.linkToUserId,
         normalizedEmail,
       );
     }
@@ -63,8 +97,8 @@ export class RedeemUzzMagicLinkUseCase {
       normalizedEmail,
     );
     if (
-      link.linkToUserId &&
-      authenticated.user.id !== link.linkToUserId
+      claim.linkToUserId &&
+      authenticated.user.id !== claim.linkToUserId
     ) {
       throw new UzzIdentityConflictError('IDENTITY_CONFLICT');
     }
@@ -110,4 +144,16 @@ export class RedeemUzzMagicLinkUseCase {
       email: normalizedEmail,
     };
   }
+}
+
+function isMagicLinkClaimLost(error: unknown): boolean {
+  return error instanceof UzzConflictError && error.code === 'MAGIC_LINK_CLAIM_LOST';
+}
+
+function isRetryableAuthenticationFailure(error: unknown): boolean {
+  return !(
+    error instanceof UzzIdentityConflictError ||
+    error instanceof UzzInvalidTokenError ||
+    error instanceof UzzConflictError
+  );
 }
