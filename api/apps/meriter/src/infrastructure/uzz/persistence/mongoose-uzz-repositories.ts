@@ -14,6 +14,7 @@ import {
   UzzLedgerRepository,
   UzzOutboxRecord,
   UzzOutboxRepository,
+  UzzOutboxTopicHealth,
   UzzRepositories,
   UzzSettingsRecord,
   UzzSettingsRepository,
@@ -446,6 +447,43 @@ function createRepositories(
         options,
       );
       return result.matchedCount > 0;
+    },
+    async snapshotHealth(now) {
+      const pendingRows = await execute(
+        models.outbox.find({ processedAt: null, deadLetteredAt: null })
+          .select({ topic: 1, createdAt: 1, _id: 0 })
+          .lean(),
+        session,
+      ) as Array<{ topic?: string; createdAt?: Date }>;
+      const deadRows = await execute(
+        models.outbox.find({ processedAt: null, deadLetteredAt: { $ne: null } })
+          .select({ topic: 1, _id: 0 })
+          .lean(),
+        session,
+      ) as Array<{ topic?: string }>;
+      const byTopic = new Map<string, UzzOutboxTopicHealth>();
+      const topicHealth = (topic: string): UzzOutboxTopicHealth => {
+        const existing = byTopic.get(topic);
+        if (existing) return existing;
+        const created: UzzOutboxTopicHealth = {
+          topic, pending: 0, oldestSeconds: 0, deadLetter: 0,
+        };
+        byTopic.set(topic, created);
+        return created;
+      };
+      for (const row of pendingRows) {
+        const health = topicHealth(String(row.topic ?? 'unknown'));
+        health.pending += 1;
+        const createdAt = row.createdAt ? new Date(row.createdAt).getTime() : NaN;
+        if (Number.isFinite(createdAt)) {
+          const ageSeconds = Math.max(0, Math.floor((now.getTime() - createdAt) / 1000));
+          health.oldestSeconds = Math.max(health.oldestSeconds, ageSeconds);
+        }
+      }
+      for (const row of deadRows) {
+        topicHealth(String(row.topic ?? 'unknown')).deadLetter += 1;
+      }
+      return [...byTopic.values()].sort((left, right) => left.topic.localeCompare(right.topic));
     },
   };
 

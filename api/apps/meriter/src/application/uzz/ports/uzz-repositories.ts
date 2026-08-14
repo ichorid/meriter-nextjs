@@ -107,6 +107,13 @@ export interface UzzOutboxRecord {
   createdAt: Date;
 }
 
+export interface UzzOutboxTopicHealth {
+  topic: string;
+  pending: number;
+  oldestSeconds: number;
+  deadLetter: number;
+}
+
 export interface ExchangeRightRepository {
   findById(id: string): Promise<ExchangeRight | null>;
   findBySourcePublicationId(sourcePublicationId: string): Promise<ExchangeRight | null>;
@@ -193,6 +200,7 @@ export interface UzzOutboxRepository {
     availableAt: Date;
     deadLetteredAt: Date | null;
   }): Promise<boolean>;
+  snapshotHealth(now: Date): Promise<UzzOutboxTopicHealth[]>;
 }
 
 export interface UzzRepositories {
