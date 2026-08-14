@@ -1,8 +1,12 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { DealAcceptForm } from '@/components/deal-accept-form';
 import { DealCard, type DealView } from '@/components/deal-card';
 
 const deal: DealView = { id: 'deal-1', status: 'requested', myRole: 'buyer', listingSnapshot: { title: 'Консультация', priceRub: 500, deliveryMode: 'online', locationText: 'Telegram' }, requestMessage: 'Нужна помощь', currentNominalRub: 600, sellerContact: { telegramUsername: 'seller' } };
+
+const requestedDeadlineAt = '2026-08-20T11:00:00.000Z';
+const agreedDeadlineAt = '2026-08-21T15:30:00.000Z';
 
 describe('DealCard', () => {
   it('hides Telegram contact before accept and shows it after accept', () => {
@@ -17,5 +21,49 @@ describe('DealCard', () => {
     expect(screen.getByText('400 ₽')).toBeVisible();
     expect(screen.queryByText('600 ₽')).not.toBeInTheDocument();
     expect(screen.getByText('Списана 1 заслуга с общего кошелька')).toBeVisible();
+  });
+
+  it('shows listing price, current nominal, signed difference, demurrage, message and both deadlines in the acceptance view', () => {
+    render(
+      <DealCard deal={{ ...deal, myRole: 'seller', requestedDeadlineAt, agreedDeadlineAt }}>
+        <DealAcceptForm
+          listingPriceRub={500}
+          currentNominalRub={600}
+          demurrageRubPerDay={75}
+          requestMessage="Нужна помощь"
+          requestedDeadlineAt={requestedDeadlineAt}
+          agreedDeadlineAt={agreedDeadlineAt}
+          pending={false}
+          onCancel={vi.fn()}
+          onAccept={vi.fn()}
+        />
+      </DealCard>,
+    );
+
+    expect(screen.getAllByText('500 ₽').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('600 ₽').length).toBeGreaterThan(0);
+    expect(screen.getByText('+100 ₽')).toBeVisible();
+    expect(screen.getByText('75 ₽ в день')).toBeVisible();
+    expect(screen.getAllByText('Нужна помощь').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(new Date(requestedDeadlineAt).toLocaleString('ru-RU')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(new Date(agreedDeadlineAt).toLocaleString('ru-RU')).length).toBeGreaterThan(0);
+  });
+
+  it('warns when nominal is below listing price without blocking acceptance', () => {
+    render(
+      <DealAcceptForm
+        listingPriceRub={500}
+        currentNominalRub={400}
+        demurrageRubPerDay={75}
+        requestMessage="Нужна помощь"
+        pending={false}
+        onCancel={vi.fn()}
+        onAccept={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText('−100 ₽')).toBeVisible();
+    expect(screen.getByText(/номинал ниже цены/i)).toBeVisible();
+    expect(screen.getByRole('button', { name: /Принять на 400 ₽/ })).toBeEnabled();
   });
 });

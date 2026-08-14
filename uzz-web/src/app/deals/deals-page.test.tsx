@@ -48,6 +48,9 @@ vi.mock('@/lib/trpc/client', () => ({
       close: { useMutation: () => ({ isPending: false, mutate: vi.fn() }) },
       thank: { useMutation: () => ({ isPending: false, mutate: vi.fn() }) },
     },
+    settings: {
+      get: { useQuery: () => ({ data: { demurrageRubPerDay: 100, nominalFloorRub: 100 }, isLoading: false }) },
+    },
   },
 }));
 

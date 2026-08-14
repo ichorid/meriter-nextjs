@@ -3,6 +3,22 @@ import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
+export const INTEGER_RUBLES_MESSAGE = 'Введите целое число рублей';
+
+const DEAL_STATUS_LABELS: Record<string, string> = {
+  requested: 'Ждёт ответа',
+  accepted: 'В работе',
+  completed_by_seller: 'Ждёт подтверждения',
+  closed: 'Завершена',
+  rejected: 'Отклонена',
+  cancelled: 'Отменена',
+  expired: 'Истекла',
+};
+
+export function reportUnknownDealStatus(status: string): void {
+  console.warn('uzz.unknown_deal_status', status);
+}
+
 export function dealStatusLabel(status: string, role?: 'buyer' | 'seller' | 'other'): string {
   if (role === 'seller') {
     if (status === 'requested') return 'Новая заявка — нужен ваш ответ';
@@ -14,7 +30,23 @@ export function dealStatusLabel(status: string, role?: 'buyer' | 'seller' | 'oth
     if (status === 'accepted') return 'Исполнитель взял заявку в работу';
     if (status === 'completed_by_seller') return 'Подтвердите выполнение';
   }
-  return ({ requested: 'Ждёт ответа', accepted: 'В работе', completed_by_seller: 'Ждёт подтверждения', closed: 'Завершена', rejected: 'Отклонена', cancelled: 'Отменена' } as Record<string, string>)[status] ?? 'Статус обновлён';
+  const label = DEAL_STATUS_LABELS[status];
+  if (label) return label;
+  reportUnknownDealStatus(status);
+  return 'Неизвестный статус';
+}
+
+export function formatSignedRub(value: number): string {
+  const abs = Math.abs(value).toLocaleString('ru-RU');
+  if (value > 0) return `+${abs} ₽`;
+  if (value < 0) return `−${abs} ₽`;
+  return '0 ₽';
+}
+
+export function parseIntegerRubles(raw: string): number | null {
+  if (!raw.trim()) return null;
+  const value = Number(raw);
+  return Number.isSafeInteger(value) ? value : null;
 }
 
 export function bankStatusLabel(status: string): string {

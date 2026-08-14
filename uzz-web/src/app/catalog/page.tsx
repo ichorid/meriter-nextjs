@@ -44,9 +44,10 @@ export default function CatalogPage() {
     if (!link.data?.linked) return { label: 'Сначала привяжите Telegram', disabled: false };
     if (rights.isLoading) return { label: 'Проверяем ваши права…', disabled: true };
     if (rights.isError) return { label: 'Не удалось загрузить права', disabled: true };
-    if (gate.isLoading || wallet.isLoading) return { label: 'Проверяем условия…', disabled: true };
+    if (gate.isLoading || wallet.isLoading || settings.isLoading) return { label: 'Загружаем условия…', disabled: true };
     if (strictGateBlocked) return { label: 'Сначала добавьте свои услуги', disabled: true };
-    if (gate.isError || wallet.isError) return { label: 'Не удалось проверить условия', disabled: true };
+    if (gate.isError || wallet.isError || settings.isError) return { label: 'Не удалось загрузить условия', disabled: true };
+    if (settings.data == null || wallet.data == null) return { label: 'Загружаем условия…', disabled: true };
     if (!wallet.data?.canPayFee) return { label: 'Не хватает заслуги на комиссию', disabled: true };
     if (item.priceRub > maxNominal) return { label: 'Нужен больший номинал', disabled: true };
     return { label: 'Оставить заявку', disabled: false };
