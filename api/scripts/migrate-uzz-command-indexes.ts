@@ -79,10 +79,10 @@ export async function migrateUzzCommandIndexes(
       : 'Dry run; pass --apply with environment confirmation to mutate indexes',
   );
   console.log(
-    `${args.apply ? 'Will drop' : 'Would drop'} ${OLD_COMMAND_ID_INDEX}: ${hasOld ? 'present' : 'already absent'}`,
+    `${args.apply ? 'Will create' : 'Would create'} ${COMPOUND_COMMAND_INDEX}: ${hasCompound ? 'already present' : 'missing'}`,
   );
   console.log(
-    `${args.apply ? 'Will create' : 'Would create'} ${COMPOUND_COMMAND_INDEX}: ${hasCompound ? 'already present' : 'missing'}`,
+    `${args.apply ? 'Will drop' : 'Would drop'} ${OLD_COMMAND_ID_INDEX}: ${hasOld ? 'present' : 'already absent'}`,
   );
 
   if (!args.apply) {
@@ -93,12 +93,6 @@ export async function migrateUzzCommandIndexes(
       dropped: false,
       created: false,
     };
-  }
-
-  let dropped = false;
-  if (hasOld) {
-    await collection.dropIndex(OLD_COMMAND_ID_INDEX);
-    dropped = true;
   }
 
   await collection.createIndex(COMPOUND_COMMAND_INDEX_KEY, {
@@ -116,6 +110,12 @@ export async function migrateUzzCommandIndexes(
     verified.key.commandId === 1;
   if (!verified?.unique || !keyMatches) {
     throw new Error('Compound unique index verification failed');
+  }
+
+  let dropped = false;
+  if (hasOld) {
+    await collection.dropIndex(OLD_COMMAND_ID_INDEX);
+    dropped = true;
   }
 
   return {
