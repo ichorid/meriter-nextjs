@@ -33,6 +33,11 @@ export class ApplyDemurrageUseCase {
       const commandId = `demurrage:${snapshot.id}:${snapshot.lastDemurrageAt.toISOString()}:${elapsedDays}`;
       await this.commands.execute({
         commandId, actorId: 'system', type: 'apply_demurrage',
+        payload: {
+          rightId: snapshot.id,
+          lastDemurrageAt: snapshot.lastDemurrageAt.toISOString(),
+          elapsedDays,
+        },
         work: async (repositories) => {
           const right = await repositories.rights.findById(snapshot.id);
           if (!right) return null;

@@ -19,6 +19,7 @@ export class AssignRightNominalUseCase {
     const now = this.clock.now();
     return this.commands.execute({
       commandId: input.commandId, actorId: input.adminId, type: 'assign_right_nominal',
+      payload: { rightId: input.rightId, nominalRub: input.nominalRub },
       work: async (repositories) => {
         const right = await repositories.rights.findById(input.rightId);
         if (!right) throw new UzzNotFoundError('RIGHT_NOT_FOUND');

@@ -131,9 +131,38 @@ describe('UZZ listings access', () => {
     ).rejects.toMatchObject({ code: 'RUBLES_INVALID' });
   });
 
+  it('creates one listing when the same command id is retried', async () => {
+    const command = validCommand({ commandId: 'create-listing-retry' });
+    const first = await createListing.execute(command);
+    const retry = await createListing.execute(command);
+    expect(retry.id).toBe(first.id);
+    expect(await rawDb.collection('uzz_listings').countDocuments()).toBe(1);
+  });
+
+  it('increments listing version once when an update is retried after a timeout', async () => {
+    const created = await createListing.execute(
+      validCommand({ commandId: 'create-before-update-retry' }),
+    );
+    const update = {
+      commandId: 'update-listing-retry',
+      listingId: created.id,
+      actorId: 'seller-1',
+      title: 'Настрою отчёт и обучу команду',
+      now: new Date('2026-08-14T01:00:00.000Z'),
+    };
+    await updateListing.execute(update);
+    await updateListing.execute(update);
+    const stored = await createMongooseUzzRepositories(connection, null).listings.findById(
+      created.id,
+    );
+    expect(stored?.snapshot().version).toBe(1);
+    expect(await rawDb.collection('uzz_listings').countDocuments()).toBe(1);
+  });
+
   it('creates, updates, and lists a complete delivery snapshot', async () => {
     const created = await createListing.execute(validCommand());
     const updated = await updateListing.execute({
+      commandId: 'update-listing-snapshot',
       listingId: created.id,
       actorId: 'seller-1',
       title: '  Настрою отчёт и обучу команду  ',
@@ -182,6 +211,7 @@ describe('UZZ listings access', () => {
 
 function validCommand(patch: Record<string, unknown> = {}) {
   return {
+    commandId: 'create-listing-default',
     communityId: 'community-1',
     authorId: 'seller-1',
     title: '  Помогу настроить отчёт  ',

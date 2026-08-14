@@ -14,6 +14,7 @@ export class MarkDealCompletedUseCase {
       commandId: input.commandId,
       actorId: input.sellerId,
       type: 'complete_deal',
+      payload: { dealId: input.dealId },
       work: async (repositories) => {
         const deal = await repositories.deals.findById(input.dealId);
         if (!deal) throw new UzzNotFoundError('DEAL_NOT_FOUND');

@@ -1,6 +1,9 @@
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, createConnection } from 'mongoose';
-import { CommandExecutor } from '../src/application/uzz/use-cases/command-executor';
+import {
+  CommandExecutor,
+  hashCommandPayload,
+} from '../src/application/uzz/use-cases/command-executor';
 import { UzzConflictError } from '../src/domain/uzz/errors';
 import { TransactionSchema } from '../src/domain/models/transaction/transaction.schema';
 import { WalletSchema } from '../src/domain/models/wallet/wallet.schema';
@@ -100,11 +103,13 @@ describe('UZZ wallet transactions', () => {
 
   it('returns the first result when commandId is replayed', async () => {
     const executor = new CommandExecutor(uow);
+    const payload = { dealId: 'd1', amount: 1 };
     const run = () =>
       executor.execute({
         commandId: 'command-1',
         actorId: 'buyer-1',
         type: 'reserve_fee',
+        payload,
         work: async (repositories) =>
           repositories.wallet.reservePreferLocal({
             userId: 'buyer-1',
@@ -125,6 +130,93 @@ describe('UZZ wallet transactions', () => {
         .collection('transactions')
         .countDocuments({ referenceId: 'command-1' }),
     ).toBe(1);
+  });
+
+  it('replays when object key order differs but the canonical payload matches', async () => {
+    const executor = new CommandExecutor(uow);
+    const work = jest.fn(async () => ({ ok: true as const }));
+    const first = await executor.execute({
+      commandId: 'command-key-order',
+      actorId: 'buyer-1',
+      type: 'deal.close',
+      payload: { dealId: 'd1', note: 'same' },
+      work,
+    });
+    work.mockClear();
+    const replay = await executor.execute({
+      commandId: 'command-key-order',
+      actorId: 'buyer-1',
+      type: 'deal.close',
+      payload: { note: 'same', dealId: 'd1' },
+      work,
+    });
+    expect(replay).toEqual(first);
+    expect(work).not.toHaveBeenCalled();
+    expect(hashCommandPayload({ note: 'same', dealId: 'd1' })).toBe(
+      hashCommandPayload({ dealId: 'd1', note: 'same' }),
+    );
+  });
+
+  it('rejects the same command id when the payload differs', async () => {
+    const executor = new CommandExecutor(uow);
+    const work = async () => ({ ok: true as const });
+    await executor.execute({
+      commandId: 'command-conflict',
+      actorId: 'a',
+      type: 'deal.close',
+      payload: { dealId: 'd1' },
+      work,
+    });
+    await expect(
+      executor.execute({
+        commandId: 'command-conflict',
+        actorId: 'a',
+        type: 'deal.close',
+        payload: { dealId: 'd2' },
+        work,
+      }),
+    ).rejects.toMatchObject({ code: 'COMMAND_ID_CONFLICT' });
+  });
+
+  it('rejects the same command id when the type differs', async () => {
+    const executor = new CommandExecutor(uow);
+    const work = async () => ({ ok: true as const });
+    await executor.execute({
+      commandId: 'command-type-conflict',
+      actorId: 'a',
+      type: 'deal.close',
+      payload: { dealId: 'd1' },
+      work,
+    });
+    await expect(
+      executor.execute({
+        commandId: 'command-type-conflict',
+        actorId: 'a',
+        type: 'deal.cancel',
+        payload: { dealId: 'd1' },
+        work,
+      }),
+    ).rejects.toMatchObject({ code: 'COMMAND_ID_CONFLICT' });
+  });
+
+  it('does not return another actor stored result for the same command id', async () => {
+    const executor = new CommandExecutor(uow);
+    const first = await executor.execute({
+      commandId: 'shared-command',
+      actorId: 'a',
+      type: 'deal.close',
+      payload: { dealId: 'd1' },
+      work: async () => 'actor-a',
+    });
+    const second = await executor.execute({
+      commandId: 'shared-command',
+      actorId: 'b',
+      type: 'deal.close',
+      payload: { dealId: 'd1' },
+      work: async () => 'actor-b',
+    });
+    expect(first).toBe('actor-a');
+    expect(second).toBe('actor-b');
   });
 
   it('F: refuses a request without fee balance', async () => {

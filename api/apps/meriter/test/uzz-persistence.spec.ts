@@ -160,6 +160,7 @@ describe('UZZ persistence boundary', () => {
       commandId: 'command-1',
       actorId: 'buyer-1',
       type: 'request_deal',
+      payloadHash: 'hash-1',
       status: 'started',
       createdAt: NOW,
       updatedAt: NOW,
@@ -169,11 +170,36 @@ describe('UZZ persistence boundary', () => {
         commandId: 'command-1',
         actorId: 'buyer-1',
         type: 'request_deal',
+        payloadHash: 'hash-1',
         status: 'started',
         createdAt: NOW,
         updatedAt: NOW,
       }),
     ).rejects.toMatchObject({ code: 11000 });
+
+    await expect(
+      repositories.commands.insert({
+        commandId: 'command-1',
+        actorId: 'seller-1',
+        type: 'request_deal',
+        payloadHash: 'hash-1',
+        status: 'started',
+        createdAt: NOW,
+        updatedAt: NOW,
+      }),
+    ).resolves.toBeUndefined();
+
+    const commandIndexes = await connection.db.collection('uzz_commands').indexes();
+    expect(commandIndexes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'uzz_commands_actor_command_unique',
+          unique: true,
+          key: { actorId: 1, commandId: 1 },
+        }),
+      ]),
+    );
+    expect(commandIndexes.find((index) => index.name === 'uzz_commands_id_unique')).toBeUndefined();
   });
 
   it('enforces canonical identity aliases and expires raw identity tokens', async () => {

@@ -43,6 +43,13 @@ export class RequestDealUseCase {
       commandId: input.commandId,
       actorId: input.buyerId,
       type: 'request_deal',
+      payload: {
+        communityId: input.communityId,
+        listingId: input.listingId,
+        exchangeRightId: input.exchangeRightId,
+        requestMessage: input.requestMessage,
+        requestedDeadlineAt,
+      },
       work: async (repositories) => {
         const listing = await repositories.listings.findById(input.listingId);
         const right = await repositories.rights.findById(input.exchangeRightId);

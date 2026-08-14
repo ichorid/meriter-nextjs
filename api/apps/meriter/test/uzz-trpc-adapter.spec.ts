@@ -25,12 +25,12 @@ describe('UZZ tRPC adapter boundary', () => {
     const caller = uzzAppRouter.createCaller(context('admin-1', facade));
 
     await caller.settings.update({
-      commandId: 'command-123', communityId: 'community-1',
+      commandId: '11111111-1111-4111-8111-111111111111', communityId: 'community-1',
       patch: { notifyDealClosed: false },
     });
 
     expect(facade.updateSettings).toHaveBeenCalledWith({
-      commandId: 'command-123', communityId: 'community-1', adminId: 'admin-1',
+      commandId: '11111111-1111-4111-8111-111111111111', communityId: 'community-1', adminId: 'admin-1',
       patch: { notifyDealClosed: false },
     });
   });
@@ -45,7 +45,7 @@ describe('UZZ tRPC adapter boundary', () => {
     const agreedDeadlineAt = new Date('2026-08-14T10:04:59.000Z');
 
     await caller.deals.request({
-      commandId: 'command-expired-deadline',
+      commandId: '22222222-2222-4222-8222-222222222222',
       communityId: 'community-1',
       lotId: 'listing-1',
       bankId: 'right-1',
@@ -53,7 +53,7 @@ describe('UZZ tRPC adapter boundary', () => {
       requestedDeadlineAt,
     });
     await caller.deals.accept({
-      commandId: 'command-expired-accept',
+      commandId: '33333333-3333-4333-8333-333333333333',
       dealId: 'deal-1',
       expectedNominalRub: 500,
       agreedDeadlineAt,
@@ -72,7 +72,7 @@ describe('UZZ tRPC adapter boundary', () => {
     const caller = uzzAppRouter.createCaller(context('buyer-1', facade));
 
     await caller.deals.request({
-      commandId: 'command-omitted-deadline',
+      commandId: '44444444-4444-4444-8444-444444444444',
       communityId: 'community-1',
       lotId: 'listing-1',
       bankId: 'right-1',

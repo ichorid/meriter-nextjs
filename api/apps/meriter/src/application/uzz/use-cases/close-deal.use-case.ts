@@ -15,6 +15,7 @@ export class CloseDealUseCase {
       commandId: input.commandId,
       actorId: input.buyerId,
       type: 'close_deal',
+      payload: { dealId: input.dealId },
       work: async (repositories) => {
         const deal = await repositories.deals.findById(input.dealId);
         if (!deal) throw new UzzNotFoundError('DEAL_NOT_FOUND');

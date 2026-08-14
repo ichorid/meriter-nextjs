@@ -24,6 +24,7 @@ export class SendDealThanksUseCase {
       commandId: input.commandId,
       actorId: input.actorUserId,
       type: 'send_deal_thanks',
+      payload: { dealId: input.dealId, merits: input.merits, comment: input.comment },
       work: async (repositories) => {
         const deal = await repositories.deals.findById(input.dealId);
         if (!deal) throw new UzzNotFoundError('DEAL_NOT_FOUND');

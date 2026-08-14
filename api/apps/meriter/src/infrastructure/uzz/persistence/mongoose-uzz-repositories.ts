@@ -375,17 +375,19 @@ function createRepositories(
   };
 
   const commands: UzzCommandRepository = {
-    async findById(commandId) {
-      return execute(models.commands.findOne({ commandId }).lean(), session) as Promise<
-        UzzCommandRecord | null
-      >;
+    async find(actorId, commandId) {
+      const raw = await execute(
+        models.commands.findOne({ actorId, commandId }).lean(),
+        session,
+      );
+      return raw ? mapCommand(raw) : null;
     },
     async insert(command) {
       await models.commands.create([command], options);
     },
     async update(command) {
       await models.commands.updateOne(
-        { commandId: command.commandId },
+        { actorId: command.actorId, commandId: command.commandId },
         { $set: command },
         options,
       );
@@ -582,6 +584,21 @@ function mapLedger(raw: unknown): UzzLedgerEntry {
     amount: Number(record.amount ?? 0),
     createdAt: new Date(record.createdAt as Date),
     metadata: (record.metadata ?? {}) as Record<string, unknown>,
+  };
+}
+
+function mapCommand(raw: unknown): UzzCommandRecord {
+  const record = asPersistenceRecord(raw);
+  return {
+    commandId: String(record.commandId),
+    actorId: String(record.actorId),
+    type: String(record.type),
+    payloadHash: String(record.payloadHash),
+    status: record.status as UzzCommandRecord['status'],
+    result: record.result,
+    errorCode: typeof record.errorCode === 'string' ? record.errorCode : undefined,
+    createdAt: new Date(record.createdAt as Date),
+    updatedAt: new Date(record.updatedAt as Date),
   };
 }
 

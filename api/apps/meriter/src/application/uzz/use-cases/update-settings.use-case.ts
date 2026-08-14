@@ -26,6 +26,7 @@ export class UpdateSettingsUseCase {
       commandId: input.commandId,
       actorId: input.adminId,
       type: 'update_uzz_settings',
+      payload: { communityId: input.communityId, patch: input.patch },
       work: async (repositories) => {
         await this.access.assertCommunityAdmin(input.communityId, input.adminId);
         const existing = await repositories.settings.findByCommunityId(input.communityId);

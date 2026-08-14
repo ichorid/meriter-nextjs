@@ -29,6 +29,11 @@ export class ExpireDealsUseCase {
       const commandId = `expire:${candidateState.id}:${candidateState.status}:${deadline.toISOString()}`;
       await this.commands.execute({
         commandId, actorId: 'system', type: 'expire_deal',
+        payload: {
+          dealId: candidateState.id,
+          status: candidateState.status,
+          deadline: deadline.toISOString(),
+        },
         work: async (repositories) => {
           const deal = await repositories.deals.findById(candidateState.id);
           if (!deal) return null;

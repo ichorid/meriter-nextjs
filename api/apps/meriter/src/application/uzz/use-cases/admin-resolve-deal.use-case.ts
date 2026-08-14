@@ -27,6 +27,7 @@ export class AdminResolveDealUseCase {
       commandId: input.commandId,
       actorId: input.adminId,
       type: `admin_${input.outcome}_deal`,
+      payload: { dealId: input.dealId, outcome: input.outcome, reason: input.reason },
       work: async (repositories) => {
         const deal = await repositories.deals.findById(input.dealId);
         if (!deal) throw new UzzNotFoundError('DEAL_NOT_FOUND');

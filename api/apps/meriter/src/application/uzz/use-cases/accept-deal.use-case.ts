@@ -38,6 +38,11 @@ export class AcceptDealUseCase {
       commandId: input.commandId,
       actorId: input.sellerId,
       type: 'accept_deal',
+      payload: {
+        dealId: input.dealId,
+        expectedNominalRub: input.expectedNominalRub,
+        agreedDeadlineAt,
+      },
       work: async (repositories) => {
         const deal = await repositories.deals.findById(input.dealId);
         if (!deal) throw new UzzNotFoundError('DEAL_NOT_FOUND');

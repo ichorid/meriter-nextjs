@@ -7,6 +7,7 @@ export const UzzCommandPersistenceSchema = new Schema(
     commandId: { type: String, required: true },
     actorId: { type: String, required: true },
     type: { type: String, required: true },
+    payloadHash: { type: String, required: true },
     status: {
       type: String,
       enum: ['started', 'completed', 'failed'],
@@ -19,7 +20,7 @@ export const UzzCommandPersistenceSchema = new Schema(
 );
 
 UzzCommandPersistenceSchema.index(
-  { commandId: 1 },
-  { unique: true, name: 'uzz_commands_id_unique' },
+  { actorId: 1, commandId: 1 },
+  { unique: true, name: 'uzz_commands_actor_command_unique' },
 );
 UzzCommandPersistenceSchema.index({ actorId: 1, createdAt: -1 });

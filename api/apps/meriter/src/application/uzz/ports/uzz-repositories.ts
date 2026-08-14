@@ -83,6 +83,7 @@ export interface UzzCommandRecord {
   commandId: string;
   actorId: string;
   type: string;
+  payloadHash: string;
   status: 'started' | 'completed' | 'failed';
   result?: unknown;
   errorCode?: string;
@@ -168,7 +169,7 @@ export interface UzzLedgerRepository {
 }
 
 export interface UzzCommandRepository {
-  findById(commandId: string): Promise<UzzCommandRecord | null>;
+  find(actorId: string, commandId: string): Promise<UzzCommandRecord | null>;
   insert(command: UzzCommandRecord): Promise<void>;
   update(command: UzzCommandRecord): Promise<void>;
 }

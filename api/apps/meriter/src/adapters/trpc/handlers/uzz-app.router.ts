@@ -17,6 +17,7 @@ import {
 import { executeUzz } from './uzz-error-mapper';
 
 const optionalDealDeadlineInput = z.coerce.date().nullable().optional();
+const commandIdInput = z.string().uuid();
 
 /**
  * Whitelisted tRPC surface for `@meriter/uzz-web`.
@@ -157,7 +158,7 @@ export const uzzAppRouter = router({
     update: protectedProcedure
       .input(
         z.object({
-          commandId: z.string().min(8).max(200),
+          commandId: commandIdInput,
           communityId: z.string().min(1),
           patch: z
             .object({
@@ -209,7 +210,7 @@ export const uzzAppRouter = router({
     setNominal: protectedProcedure
       .input(
         z.object({
-          commandId: z.string().min(8).max(200),
+          commandId: commandIdInput,
           bankId: z.string().min(1),
           nominalRub: z.number().int().positive(),
         }),
@@ -232,6 +233,7 @@ export const uzzAppRouter = router({
     create: protectedProcedure
       .input(
         z.object({
+          commandId: commandIdInput,
           communityId: z.string().min(1),
           title: z.string().max(120),
           description: z.string().max(2000).optional(),
@@ -245,6 +247,7 @@ export const uzzAppRouter = router({
       .mutation(async ({ ctx, input }) => {
         return executeUzz(() =>
           ctx.uzzFacade.createListing({
+            commandId: input.commandId,
             communityId: input.communityId,
             authorId: ctx.user.id,
             title: input.title,
@@ -261,6 +264,7 @@ export const uzzAppRouter = router({
     update: protectedProcedure
       .input(
         z.object({
+          commandId: commandIdInput,
           lotId: z.string().min(1),
           title: z.string().max(120).optional(),
           description: z.string().max(2000).optional(),
@@ -273,9 +277,10 @@ export const uzzAppRouter = router({
         }),
       )
       .mutation(async ({ ctx, input }) => {
-        const { lotId, ...patch } = input;
+        const { commandId, lotId, ...patch } = input;
         return executeUzz(() =>
           ctx.uzzFacade.updateListing({
+            commandId,
             listingId: lotId,
             actorId: ctx.user.id,
             ...patch,
@@ -313,7 +318,7 @@ export const uzzAppRouter = router({
     request: protectedProcedure
       .input(
         z.object({
-          commandId: z.string().min(8).max(200),
+          commandId: commandIdInput,
           communityId: z.string().min(1),
           lotId: z.string().min(1),
           bankId: z.string().min(1),
@@ -336,7 +341,7 @@ export const uzzAppRouter = router({
       }),
     accept: protectedProcedure
       .input(z.object({
-        commandId: z.string().min(8).max(200),
+        commandId: commandIdInput,
         dealId: z.string().min(1),
         expectedNominalRub: z.number().int().positive(),
         agreedDeadlineAt: optionalDealDeadlineInput,
@@ -351,28 +356,28 @@ export const uzzAppRouter = router({
         }));
       }),
     reject: protectedProcedure
-      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
+      .input(z.object({ commandId: commandIdInput, dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
         return executeUzz(() => ctx.uzzFacade.rejectDeal({
           commandId: input.commandId, dealId: input.dealId, sellerId: ctx.user.id,
         }));
       }),
     complete: protectedProcedure
-      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
+      .input(z.object({ commandId: commandIdInput, dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
         return executeUzz(() => ctx.uzzFacade.markDealCompleted({
           commandId: input.commandId, dealId: input.dealId, sellerId: ctx.user.id,
         }));
       }),
     close: protectedProcedure
-      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
+      .input(z.object({ commandId: commandIdInput, dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
         return executeUzz(() => ctx.uzzFacade.closeDeal({
           commandId: input.commandId, dealId: input.dealId, buyerId: ctx.user.id,
         }));
       }),
     cancel: protectedProcedure
-      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1) }))
+      .input(z.object({ commandId: commandIdInput, dealId: z.string().min(1) }))
       .mutation(async ({ ctx, input }) => {
         return executeUzz(() => ctx.uzzFacade.cancelDeal({
           commandId: input.commandId, dealId: input.dealId, buyerId: ctx.user.id,
@@ -381,7 +386,7 @@ export const uzzAppRouter = router({
     thank: protectedProcedure
       .input(
         z.object({
-          commandId: z.string().min(8).max(200),
+          commandId: commandIdInput,
           dealId: z.string().min(1),
           comment: z.string().max(1000).optional(),
           merits: z.number().int().nonnegative().max(10_000).optional(),
@@ -409,7 +414,7 @@ export const uzzAppRouter = router({
         return ctx.uzzFacade.listOpenDeals(input.communityId, ctx.user.id);
       }),
     adminClose: protectedProcedure
-      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1), reason: z.string().trim().min(10).max(1000) }))
+      .input(z.object({ commandId: commandIdInput, dealId: z.string().min(1), reason: z.string().trim().min(10).max(1000) }))
       .mutation(async ({ ctx, input }) => {
         return executeUzz(() => ctx.uzzFacade.adminResolveDeal({
           commandId: input.commandId, dealId: input.dealId, adminId: ctx.user.id,
@@ -417,7 +422,7 @@ export const uzzAppRouter = router({
         }));
       }),
     adminCancel: protectedProcedure
-      .input(z.object({ commandId: z.string().min(8).max(200), dealId: z.string().min(1), reason: z.string().trim().min(10).max(1000) }))
+      .input(z.object({ commandId: commandIdInput, dealId: z.string().min(1), reason: z.string().trim().min(10).max(1000) }))
       .mutation(async ({ ctx, input }) => {
         return executeUzz(() => ctx.uzzFacade.adminResolveDeal({
           commandId: input.commandId, dealId: input.dealId, adminId: ctx.user.id,

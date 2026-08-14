@@ -34,6 +34,7 @@ export class EmitExchangeRightUseCase {
       commandId: `emit-right:${publication.id}`,
       actorId: publication.authorId,
       type: 'emit_exchange_right',
+      payload: { publicationId: publication.id },
       work: async (repositories) => {
         const existing = await repositories.rights.findBySourcePublicationId(publication.id);
         if (existing) return existing.snapshot();
