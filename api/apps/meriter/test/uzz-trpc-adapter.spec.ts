@@ -135,4 +135,19 @@ describe('UZZ tRPC adapter boundary', () => {
       expect.objectContaining({ requestedDeadlineAt: null }),
     );
   });
+
+  it('sets the UZZ cookie from fake login without returning the jwt', async () => {
+    const ctx = context(null, {});
+    (ctx.configService.get as jest.Mock).mockReturnValue({ fakeDataMode: true });
+    (ctx.authService.authenticateFakeUser as jest.Mock).mockResolvedValue({
+      user: { id: 'user-1' },
+      jwt: 'secret-jwt',
+    });
+    const caller = uzzAppRouter.createCaller(ctx);
+
+    await expect(caller.auth.authenticateFake({})).resolves.toEqual({ user: { id: 'user-1' } });
+    expect(ctx.cookieManager.establishUzzJwtAuth).toHaveBeenCalledWith(
+      ctx.res, 'secret-jwt', ctx.req,
+    );
+  });
 });

@@ -9,6 +9,14 @@ import { z } from 'zod';
  */
 const validateSync = (config: Record<string, unknown>) => {
   const nodeEnv = (config.NODE_ENV as string) || 'development';
+  if (nodeEnv === 'production') {
+    if (config.FAKE_DATA_MODE === 'true') {
+      throw new Error('FAKE_DATA_MODE must be false in production');
+    }
+    if (config.TEST_AUTH_MODE === 'true') {
+      throw new Error('TEST_AUTH_MODE must be false in production');
+    }
+  }
   const fakeDataMode =
     config.FAKE_DATA_MODE === 'true' ||
     (nodeEnv === 'development' && config.FAKE_DATA_MODE !== 'false');

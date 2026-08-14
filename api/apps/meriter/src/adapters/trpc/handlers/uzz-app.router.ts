@@ -139,7 +139,7 @@ export const uzzAppRouter = router({
           input?.fakeUserId ?? ctx.req.cookies?.uzz_fake_user_id,
         );
         ctx.cookieManager.establishUzzJwtAuth(ctx.res, result.jwt, ctx.req);
-        return { user: result.user, jwt: result.jwt };
+        return { user: result.user };
       }),
   }),
 

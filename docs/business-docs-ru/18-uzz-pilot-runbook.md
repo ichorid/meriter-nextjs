@@ -4,7 +4,7 @@
 
 - MongoDB работает как replica set, транзакции доступны.
 - `UZZ_WEB_BASE_URL`, `UZZ_DOMAIN`, `DEFAULT_TELEGRAM_COMMUNITY_ID`, email и bot secrets заданы.
-- UUID API совпадает с `NEXT_PUBLIC_DEFAULT_COMMUNITY_ID` web-сборки.
+- UUID API `DEFAULT_TELEGRAM_COMMUNITY_ID` совпадает с runtime `DEFAULT_TELEGRAM_COMMUNITY_ID` контейнера uzz-web (не build-time `NEXT_PUBLIC_*`).
 - В production выключены fake auth и debug endpoints.
 - Пройдены UZZ-тесты, web lint/build и сценарии приёмки из отчёта 20 (CI job `uzz-release-gate`). Отчёт 19 сохраняет исторический mocked UI-contract 24/24; он не заменяет реальный E2E.
 - В админке проверены четыре флага Telegram-уведомлений; тестовое сообщение открывает абсолютную ссылку на текущий UZZ-домен.

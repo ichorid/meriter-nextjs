@@ -41,4 +41,11 @@ describe('UZZ production configuration', () => {
   ])('rejects incomplete production UZZ email configuration', (patch, field) => {
     expect(() => validateSync(productionUzzEnv(patch))).toThrow(field);
   });
+
+  it.each([
+    [{ FAKE_DATA_MODE: 'true' }, 'FAKE_DATA_MODE'],
+    [{ TEST_AUTH_MODE: 'true' }, 'TEST_AUTH_MODE'],
+  ])('rejects fake or test auth flags in production', (patch, field) => {
+    expect(() => validateSync(productionUzzEnv(patch))).toThrow(field);
+  });
 });
