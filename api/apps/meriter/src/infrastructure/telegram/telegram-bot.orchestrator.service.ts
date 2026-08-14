@@ -2392,7 +2392,7 @@ export class TelegramBotOrchestratorService {
       let emailed = false;
       try {
         const emailService = this.moduleRef.get(EmailLoginLinkService, { strict: false });
-        emailed = await emailService.sendHtmlEmail(
+        const emailResult = await emailService.sendHtmlEmail(
           result.email,
           'Код привязки «Услуги за заслуги»',
           [
@@ -2404,6 +2404,7 @@ export class TelegramBotOrchestratorService {
           ].join(''),
           `Код для привязки: ${result.code}\nВведите в боте: /email_code ${result.code}\nКод действует 30 минут.`,
         );
+        emailed = emailResult.delivered;
       } catch (sendError) {
         this.logger.warn('UZZ email link send failed', {
           error: sendError instanceof Error ? sendError.message : String(sendError),
