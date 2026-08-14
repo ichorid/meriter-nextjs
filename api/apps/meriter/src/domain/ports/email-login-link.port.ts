@@ -15,6 +15,8 @@ export type EmailLoginLinkPort = {
         baseUrl?: string;
         path?: string;
         productLabel?: string;
+        clientIp?: string;
+        now?: Date;
     },
   ): Promise<EmailLoginLinkSendResult>;
 };

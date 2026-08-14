@@ -160,7 +160,12 @@ import { UZZ_UNIT_OF_WORK } from './application/uzz/ports/uzz-unit-of-work';
 import { StartTelegramLinkUseCase } from './application/uzz/use-cases/start-telegram-link.use-case';
 import { ConfirmTelegramLinkUseCase } from './application/uzz/use-cases/confirm-telegram-link.use-case';
 import { UzzTokenHasher } from './infrastructure/uzz/security/uzz-token-hasher';
-import { InMemoryUzzRateLimiter } from './infrastructure/uzz/security/uzz-rate-limiter';
+import { MongooseUzzRateLimiter } from './infrastructure/uzz/security/mongoose-uzz-rate-limiter';
+import {
+  UZZ_RATE_LIMIT_MODEL,
+  UzzRateLimitPersistenceSchema,
+} from './infrastructure/uzz/persistence/schemas/uzz-rate-limit.schema';
+import { UZZ_RATE_LIMITER_PORT } from './application/uzz/ports/uzz-identity.port';
 import {
   UZZ_COMMUNITY_ACCESS_PORT,
   UzzCommunityAccessPort,
@@ -333,6 +338,7 @@ import { EventBus } from './domain/events/event-bus';
       { name: UZZ_LISTING_MODEL, schema: UzzListingPersistenceSchema },
       { name: UZZ_OUTBOX_MODEL, schema: UzzOutboxPersistenceSchema },
       { name: UZZ_SETTINGS_MODEL, schema: UzzSettingsPersistenceSchema },
+      { name: UZZ_RATE_LIMIT_MODEL, schema: UzzRateLimitPersistenceSchema },
     ]),
   ],
   providers: [
@@ -344,16 +350,20 @@ import { EventBus } from './domain/events/event-bus';
       useExisting: MongooseUzzUnitOfWork,
     },
     UzzTokenHasher,
-    InMemoryUzzRateLimiter,
+    MongooseUzzRateLimiter,
+    {
+      provide: UZZ_RATE_LIMITER_PORT,
+      useExisting: MongooseUzzRateLimiter,
+    },
     {
       provide: StartTelegramLinkUseCase,
-      inject: [UZZ_UNIT_OF_WORK, UzzTokenHasher, InMemoryUzzRateLimiter],
+      inject: [UZZ_UNIT_OF_WORK, UzzTokenHasher, UZZ_RATE_LIMITER_PORT],
       useFactory: (unitOfWork, tokenHasher, rateLimiter) =>
         new StartTelegramLinkUseCase(unitOfWork, tokenHasher, rateLimiter),
     },
     {
       provide: ConfirmTelegramLinkUseCase,
-      inject: [UZZ_UNIT_OF_WORK, UzzTokenHasher, InMemoryUzzRateLimiter],
+      inject: [UZZ_UNIT_OF_WORK, UzzTokenHasher, UZZ_RATE_LIMITER_PORT],
       useFactory: (unitOfWork, tokenHasher, rateLimiter) =>
         new ConfirmTelegramLinkUseCase(unitOfWork, tokenHasher, rateLimiter),
     },
@@ -663,7 +673,8 @@ import { EventBus } from './domain/events/event-bus';
     StartTelegramLinkUseCase,
     ConfirmTelegramLinkUseCase,
     UzzTokenHasher,
-    InMemoryUzzRateLimiter,
+    MongooseUzzRateLimiter,
+    UZZ_RATE_LIMITER_PORT,
     CreateListingUseCase,
     UpdateListingUseCase,
     ListCatalogUseCase,

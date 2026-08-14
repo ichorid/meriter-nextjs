@@ -1,6 +1,7 @@
 import {
   UzzRateLimiterPort,
   UzzTokenHasherPort,
+  consumeUzzRateLimit,
 } from '../ports/uzz-identity.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import {
@@ -24,9 +25,9 @@ export class ConfirmTelegramLinkUseCase {
   }): Promise<{ canonicalUserId: string }> {
     const now = input.now ?? new Date();
     const tokenHash = this.tokenHasher.hash(input.token);
-    this.rateLimiter.assertAllowed({
+    await consumeUzzRateLimit(this.rateLimiter, {
       scope: 'telegram-link-confirm',
-      key: `${input.telegramUserId}:${tokenHash}`,
+      subjectHash: this.tokenHasher.hash(`${input.telegramUserId}:${tokenHash}`),
       limit: 5,
       windowMs: 15 * 60 * 1000,
       now,

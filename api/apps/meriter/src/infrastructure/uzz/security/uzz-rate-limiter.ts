@@ -1,5 +1,8 @@
-import { UzzRateLimiterPort } from '../../../application/uzz/ports/uzz-identity.port';
-import { UzzRateLimitedError } from '../../../domain/uzz/errors';
+import {
+  RateLimitConsumeInput,
+  RateLimitDecision,
+  UzzRateLimiterPort,
+} from '../../../application/uzz/ports/uzz-identity.port';
 
 interface RateLimitEntry {
   count: number;
@@ -9,28 +12,25 @@ interface RateLimitEntry {
 export class InMemoryUzzRateLimiter implements UzzRateLimiterPort {
   private readonly entries = new Map<string, RateLimitEntry>();
 
-  assertAllowed(input: {
-    scope: string;
-    key: string;
-    limit: number;
-    windowMs: number;
-    now: Date;
-  }): void {
-    const mapKey = `${input.scope}:${input.key}`;
+  async consume(input: RateLimitConsumeInput): Promise<RateLimitDecision> {
+    const mapKey = `${input.scope}:${input.subjectHash}`;
     const nowMs = input.now.getTime();
+    const windowStart = Math.floor(nowMs / input.windowMs) * input.windowMs;
+    const resetAt = windowStart + input.windowMs;
     let entry = this.entries.get(mapKey);
     if (!entry || entry.resetAt <= nowMs) {
-      entry = { count: 0, resetAt: nowMs + input.windowMs };
+      entry = { count: 0, resetAt };
       this.entries.set(mapKey, entry);
     }
-    if (entry.count >= input.limit) {
-      throw new UzzRateLimitedError('UZZ_RATE_LIMITED');
-    }
-
     entry.count += 1;
     if (this.entries.size > 10_000) {
       this.removeExpired(nowMs);
     }
+    return {
+      allowed: entry.count <= input.limit,
+      remaining: Math.max(0, input.limit - entry.count),
+      resetAt: new Date(entry.resetAt),
+    };
   }
 
   private removeExpired(nowMs: number): void {

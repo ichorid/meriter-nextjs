@@ -3,22 +3,13 @@ import {
   UzzMagicLinkPort,
   UzzRateLimiterPort,
   UzzTokenHasherPort,
+  consumeUzzRateLimit,
 } from '../ports/uzz-identity.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import {
   UzzIdentityConflictError,
   UzzInvalidTokenError,
 } from '../../../domain/uzz/errors';
-
-interface RedeemRateOptions {
-  attemptsPerWindow: number;
-  windowMs: number;
-}
-
-const DEFAULT_RATE_OPTIONS: RedeemRateOptions = {
-  attemptsPerWindow: 30,
-  windowMs: 60_000,
-};
 
 export class RedeemUzzMagicLinkUseCase {
   constructor(
@@ -27,21 +18,25 @@ export class RedeemUzzMagicLinkUseCase {
     private readonly unitOfWork: UzzUnitOfWork,
     private readonly tokenHasher: UzzTokenHasherPort,
     private readonly rateLimiter: UzzRateLimiterPort,
-    private readonly rateOptions: RedeemRateOptions = DEFAULT_RATE_OPTIONS,
   ) {}
 
   async execute(input: { token: string; ip: string; now?: Date }) {
     const now = input.now ?? new Date();
     const tokenHash = this.tokenHasher.hash(input.token);
-    for (const key of [`ip:${input.ip}`, `token:${tokenHash}`]) {
-      this.rateLimiter.assertAllowed({
-        scope: 'magic-link-redeem',
-        key,
-        limit: this.rateOptions.attemptsPerWindow,
-        windowMs: this.rateOptions.windowMs,
-        now,
-      });
-    }
+    await consumeUzzRateLimit(this.rateLimiter, {
+      scope: 'magic-link-redeem-ip',
+      subjectHash: this.tokenHasher.hash(input.ip),
+      limit: 20,
+      windowMs: 15 * 60 * 1000,
+      now,
+    });
+    await consumeUzzRateLimit(this.rateLimiter, {
+      scope: 'magic-link-redeem-token',
+      subjectHash: tokenHash,
+      limit: 10,
+      windowMs: 15 * 60 * 1000,
+      now,
+    });
 
     const link = await this.magicLinks.redeem(input.token);
     if (!link || link.channel !== 'email') {

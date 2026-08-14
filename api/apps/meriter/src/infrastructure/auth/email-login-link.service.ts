@@ -1,8 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../../config/configuration';
 import { AuthMagicLinkService } from './magic-link-auth.service';
 import type { EmailLoginLinkSendResult } from '../../domain/ports/email-login-link.port';
+import {
+  UZZ_RATE_LIMITER_PORT,
+  UzzRateLimiterPort,
+  consumeUzzRateLimit,
+} from '../../application/uzz/ports/uzz-identity.port';
 import { UzzTokenHasher } from '../uzz/security/uzz-token-hasher';
 
 export class EmailDeliveryUnavailableError extends Error {
@@ -33,6 +38,8 @@ export class EmailLoginLinkService {
     constructor(
         private readonly configService: ConfigService<AppConfig>,
         private readonly authMagicLinkService: AuthMagicLinkService,
+        @Inject(UZZ_RATE_LIMITER_PORT)
+        private readonly rateLimiter: UzzRateLimiterPort,
     ) {}
 
     async sendLoginLink(
@@ -42,10 +49,13 @@ export class EmailLoginLinkService {
             baseUrl?: string;
             path?: string;
             productLabel?: string;
+            clientIp?: string;
+            now?: Date;
         },
     ): Promise<EmailLoginLinkSendResult> {
         const normalizedEmail = email.trim().toLowerCase();
-        await this.checkRateLimit(normalizedEmail);
+        const now = options?.now ?? new Date();
+        await this.consumeSendLimits(normalizedEmail, options?.clientIp, now);
 
         const { linkUrl } = await this.authMagicLinkService.createToken(
             'email',
@@ -101,7 +111,7 @@ export class EmailLoginLinkService {
 
         return {
             expiresIn: ttlMinutes * 60,
-            canResendAt: Math.floor(Date.now() / 1000) + this.resendCooldownSeconds,
+            canResendAt: Math.floor(now.getTime() / 1000) + this.resendCooldownSeconds,
         };
     }
 
@@ -150,15 +160,34 @@ export class EmailLoginLinkService {
         return { delivered: true, providerRequestId };
     }
 
-    private async checkRateLimit(email: string): Promise<void> {
-        const lastSentAt = await this.authMagicLinkService.getLastCreatedAt('email', email);
-        if (!lastSentAt) return;
-
-        const diffSeconds = (Date.now() - lastSentAt.getTime()) / 1000;
-        if (diffSeconds < this.resendCooldownSeconds) {
-            const waitSeconds = Math.ceil(this.resendCooldownSeconds - diffSeconds);
-            throw new Error(`Please wait ${waitSeconds} seconds before requesting a new link.`);
-        }
+    private async consumeSendLimits(
+        normalizedEmail: string,
+        clientIp: string | undefined,
+        now: Date,
+    ): Promise<void> {
+        const emailHash = this.tokenHasher.hash(normalizedEmail);
+        const ipHash = this.tokenHasher.hash(clientIp ?? 'unknown');
+        await consumeUzzRateLimit(this.rateLimiter, {
+            scope: 'magic-link-send-email-cooldown',
+            subjectHash: emailHash,
+            limit: 1,
+            windowMs: 60_000,
+            now,
+        });
+        await consumeUzzRateLimit(this.rateLimiter, {
+            scope: 'magic-link-send-email-hour',
+            subjectHash: emailHash,
+            limit: 5,
+            windowMs: 60 * 60 * 1000,
+            now,
+        });
+        await consumeUzzRateLimit(this.rateLimiter, {
+            scope: 'magic-link-send-ip-hour',
+            subjectHash: ipHash,
+            limit: 20,
+            windowMs: 60 * 60 * 1000,
+            now,
+        });
     }
 }
 

@@ -14,7 +14,7 @@ import { AuthProviderService } from '../api-v1/auth/auth.service';
 import { UserService } from '../domain/services/user.service';
 import { UZZ_UNIT_OF_WORK, UzzUnitOfWork } from '../application/uzz/ports/uzz-unit-of-work';
 import { UzzTokenHasher } from '../infrastructure/uzz/security/uzz-token-hasher';
-import { InMemoryUzzRateLimiter } from '../infrastructure/uzz/security/uzz-rate-limiter';
+import { UZZ_RATE_LIMITER_PORT, UzzRateLimiterPort } from '../application/uzz/ports/uzz-identity.port';
 
 @Module({
   imports: [
@@ -38,7 +38,7 @@ import { InMemoryUzzRateLimiter } from '../infrastructure/uzz/security/uzz-rate-
         UserService,
         UZZ_UNIT_OF_WORK,
         UzzTokenHasher,
-        InMemoryUzzRateLimiter,
+        UZZ_RATE_LIMITER_PORT,
       ],
       useFactory: (
         magicLinks: AuthMagicLinkService,
@@ -46,7 +46,7 @@ import { InMemoryUzzRateLimiter } from '../infrastructure/uzz/security/uzz-rate-
         users: UserService,
         unitOfWork: UzzUnitOfWork,
         tokenHasher: UzzTokenHasher,
-        rateLimiter: InMemoryUzzRateLimiter,
+        rateLimiter: UzzRateLimiterPort,
       ) =>
         new RedeemUzzMagicLinkUseCase(
           magicLinks,

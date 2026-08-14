@@ -53,6 +53,8 @@
         }
         
         reverse_proxy api:8002 {
+            header_up -X-Forwarded-For
+            header_up -X-Real-IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
@@ -63,6 +65,8 @@
 
     handle /trpc* {
         reverse_proxy api:8002 {
+            header_up -X-Forwarded-For
+            header_up -X-Real-IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
@@ -79,6 +83,8 @@
             X-RateLimit-Window "60"
         }
         reverse_proxy web:8001 {
+            header_up -X-Forwarded-For
+            header_up -X-Real-IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
@@ -100,6 +106,8 @@
 
     handle /api* {
         reverse_proxy api:8002 {
+            header_up -X-Forwarded-For
+            header_up -X-Real-IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
@@ -110,6 +118,8 @@
 
     handle /trpc* {
         reverse_proxy api:8002 {
+            header_up -X-Forwarded-For
+            header_up -X-Real-IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
@@ -120,6 +130,8 @@
 
     handle {
         reverse_proxy community-web:8003 {
+            header_up -X-Forwarded-For
+            header_up -X-Real-IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
@@ -141,6 +153,8 @@
 
     handle /api* {
         reverse_proxy api:8002 {
+            header_up -X-Forwarded-For
+            header_up -X-Real-IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
@@ -151,6 +165,8 @@
 
     handle /trpc* {
         reverse_proxy api:8002 {
+            header_up -X-Forwarded-For
+            header_up -X-Real-IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}
@@ -161,6 +177,8 @@
 
     handle {
         reverse_proxy uzz-web:8004 {
+            header_up -X-Forwarded-For
+            header_up -X-Real-IP
             header_up X-Real-IP {remote_host}
             header_up X-Forwarded-For {remote_host}
             header_up X-Forwarded-Proto {scheme}

@@ -1,6 +1,7 @@
 import {
   UzzRateLimiterPort,
   UzzTokenHasherPort,
+  consumeUzzRateLimit,
 } from '../ports/uzz-identity.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { UzzIdentityConflictError } from '../../../domain/uzz/errors';
@@ -19,9 +20,9 @@ export class StartTelegramLinkUseCase {
     now?: Date;
   }): Promise<{ token: string; expiresAt: Date }> {
     const now = input.now ?? new Date();
-    this.rateLimiter.assertAllowed({
+    await consumeUzzRateLimit(this.rateLimiter, {
       scope: 'telegram-link-start',
-      key: input.userId,
+      subjectHash: this.tokenHasher.hash(input.userId),
       limit: 3,
       windowMs: 10 * 60 * 1000,
       now,

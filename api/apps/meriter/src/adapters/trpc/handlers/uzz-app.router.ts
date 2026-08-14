@@ -37,8 +37,12 @@ export const uzzAppRouter = router({
             baseUrl: uzzBase,
             path: '/a',
             productLabel: 'Услуги за заслуги',
+            clientIp: resolveTrustedClientIp(ctx.req),
           });
         } catch (error) {
+          if (error instanceof UzzRateLimitedError) {
+            throw toUzzRateLimitTrpcError(error);
+          }
           if (error instanceof EmailDeliveryUnavailableError) {
             throw new TRPCError({
               code: 'INTERNAL_SERVER_ERROR',
@@ -56,16 +60,13 @@ export const uzzAppRouter = router({
         try {
           const result = await ctx.redeemUzzMagicLinkUseCase.execute({
             token: input.token,
-            ip: resolveClientIp(ctx.req),
+            ip: resolveTrustedClientIp(ctx.req),
           });
           ctx.cookieManager.establishUzzJwtAuth(ctx.res, result.jwt, ctx.req);
           return { user: result.user, isNewUser: result.isNewUser };
         } catch (error) {
           if (error instanceof UzzRateLimitedError) {
-            throw new TRPCError({
-              code: 'TOO_MANY_REQUESTS',
-              message: 'Too many login attempts',
-            });
+            throw toUzzRateLimitTrpcError(error);
           }
           if (error instanceof UzzIdentityConflictError) {
             throw new TRPCError({
@@ -491,9 +492,18 @@ export const uzzAppRouter = router({
 
 export type UzzAppRouter = typeof uzzAppRouter;
 
-function resolveClientIp(request: {
+export function resolveTrustedClientIp(request: {
   ip?: string;
   socket?: { remoteAddress?: string };
+  headers?: Record<string, unknown>;
 }): string {
   return request.ip || request.socket?.remoteAddress || 'unknown';
+}
+
+export function toUzzRateLimitTrpcError(error: UzzRateLimitedError): TRPCError {
+  return new TRPCError({
+    code: 'TOO_MANY_REQUESTS',
+    message: 'Too many login attempts',
+    cause: error,
+  });
 }

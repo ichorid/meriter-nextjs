@@ -18,6 +18,7 @@ import {
   initializeUzzModels,
 } from '../src/infrastructure/uzz/persistence/mongoose-uzz-repositories';
 import { MongooseUzzUnitOfWork } from '../src/infrastructure/uzz/persistence/mongoose-uzz-unit-of-work';
+import { UzzRateLimiterPort } from '../src/application/uzz/ports/uzz-identity.port';
 import { InMemoryUzzRateLimiter } from '../src/infrastructure/uzz/security/uzz-rate-limiter';
 import { UzzTokenHasher } from '../src/infrastructure/uzz/security/uzz-token-hasher';
 import { createMongoMemoryReplSetWithRetry } from './mongo-memory-shared';
@@ -55,6 +56,7 @@ describe('UZZ identity security', () => {
   });
 
   afterEach(async () => {
+    jest.restoreAllMocks();
     const collections = await connection.db.listCollections().toArray();
     await Promise.all(
       collections.map(({ name }) => connection.db.collection(name).deleteMany({})),
@@ -226,12 +228,13 @@ describe('UZZ identity security', () => {
       uow,
       hasher,
       limiter,
-      { attemptsPerWindow: 1, windowMs: 60_000 },
     );
 
-    await expect(
-      redeem.execute({ token: 'invalid-token', ip: '127.0.0.1', now: NOW }),
-    ).rejects.toMatchObject({ code: 'MAGIC_LINK_INVALID' });
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await expect(
+        redeem.execute({ token: 'invalid-token', ip: '127.0.0.1', now: NOW }),
+      ).rejects.toMatchObject({ code: 'MAGIC_LINK_INVALID' });
+    }
     await expect(
       redeem.execute({ token: 'invalid-token', ip: '127.0.0.1', now: NOW }),
     ).rejects.toBeInstanceOf(UzzRateLimitedError);
@@ -279,7 +282,11 @@ describe('UZZ identity security', () => {
           from: { address: 'noreply@example.test', name: 'UZZ' },
         },
       } as AppConfig);
-      const service = new EmailLoginLinkService(config, magicLinks);
+      const service = new EmailLoginLinkService(
+        config,
+        magicLinks,
+        allowAllLimiter(),
+      );
       jest.spyOn(service, 'sendHtmlEmail').mockResolvedValue(false);
 
       let rawToken = '';
@@ -290,7 +297,9 @@ describe('UZZ identity security', () => {
         return created;
       });
 
-      const result = service.sendLoginLink('person@example.test');
+      const result = service.sendLoginLink('person@example.test', {
+        clientIp: '203.0.113.9',
+      });
       await expect(result).rejects.toMatchObject({ code: 'EMAIL_DELIVERY_UNAVAILABLE' });
 
       const serializedLogs = JSON.stringify(logs);
@@ -301,9 +310,170 @@ describe('UZZ identity security', () => {
       logSpy.mockRestore();
       warnSpy.mockRestore();
       errorSpy.mockRestore();
+      jest.restoreAllMocks();
     }
   });
+
+  it('consumes email cooldown, email-hour and IP-hour limits before creating a token', async () => {
+    const consumed: Array<{
+      scope: string;
+      subjectHash: string;
+      limit: number;
+      windowMs: number;
+    }> = [];
+    const limiter: UzzRateLimiterPort = {
+      async consume(input) {
+        consumed.push({
+          scope: input.scope,
+          subjectHash: input.subjectHash,
+          limit: input.limit,
+          windowMs: input.windowMs,
+        });
+        return { allowed: true, remaining: input.limit - 1, resetAt: NOW };
+      },
+    };
+    const config = new ConfigService<AppConfig>({
+      magicLink: {
+        baseUrl: 'https://uzz.example.test',
+        path: '/a',
+        ttlMinutes: 15,
+      },
+      email: {
+        enabled: true,
+        api: { url: 'https://email.example.test', key: 'test-key' },
+        from: { address: 'noreply@example.test', name: 'UZZ' },
+      },
+    } as AppConfig);
+    const service = new EmailLoginLinkService(config, magicLinks, limiter);
+    jest.spyOn(service, 'sendHtmlEmail').mockResolvedValue({ delivered: true });
+    const createSpy = jest.spyOn(magicLinks, 'createToken');
+
+    await service.sendLoginLink('person@example.test', {
+      clientIp: '203.0.113.9',
+      now: NOW,
+    });
+
+    expect(consumed).toEqual([
+      {
+        scope: 'magic-link-send-email-cooldown',
+        subjectHash: hasher.hash('person@example.test'),
+        limit: 1,
+        windowMs: 60_000,
+      },
+      {
+        scope: 'magic-link-send-email-hour',
+        subjectHash: hasher.hash('person@example.test'),
+        limit: 5,
+        windowMs: 60 * 60 * 1000,
+      },
+      {
+        scope: 'magic-link-send-ip-hour',
+        subjectHash: hasher.hash('203.0.113.9'),
+        limit: 20,
+        windowMs: 60 * 60 * 1000,
+      },
+    ]);
+    expect(createSpy).toHaveBeenCalledTimes(1);
+    createSpy.mockRestore();
+  });
+
+  it('returns a generic rate-limit error and does not create a token when send is limited', async () => {
+    const limiter: UzzRateLimiterPort = {
+      async consume() {
+        return {
+          allowed: false,
+          remaining: 0,
+          resetAt: new Date(NOW.getTime() + 60_000),
+        };
+      },
+    };
+    const config = new ConfigService<AppConfig>({
+      magicLink: {
+        baseUrl: 'https://uzz.example.test',
+        path: '/a',
+        ttlMinutes: 15,
+      },
+      email: {
+        enabled: true,
+        api: { url: 'https://email.example.test', key: 'test-key' },
+        from: { address: 'noreply@example.test', name: 'UZZ' },
+      },
+    } as AppConfig);
+    const service = new EmailLoginLinkService(config, magicLinks, limiter);
+    const createSpy = jest.spyOn(magicLinks, 'createToken');
+
+    await expect(
+      service.sendLoginLink('person@example.test', {
+        clientIp: '203.0.113.9',
+        now: NOW,
+      }),
+    ).rejects.toMatchObject({
+      code: 'UZZ_RATE_LIMITED',
+      details: { retryAfterSeconds: 60 },
+    });
+    expect(createSpy).not.toHaveBeenCalled();
+    createSpy.mockRestore();
+  });
+
+  it('consumes redeem IP and token-hash windows before claiming a magic link', async () => {
+    const consumed: Array<{
+      scope: string;
+      subjectHash: string;
+      limit: number;
+      windowMs: number;
+    }> = [];
+    const limiter: UzzRateLimiterPort = {
+      async consume(input) {
+        consumed.push({
+          scope: input.scope,
+          subjectHash: input.subjectHash,
+          limit: input.limit,
+          windowMs: input.windowMs,
+        });
+        return { allowed: true, remaining: input.limit - 1, resetAt: NOW };
+      },
+    };
+    const { token } = await magicLinks.createToken('email', 'user@example.com');
+    const redeem = new RedeemUzzMagicLinkUseCase(
+      magicLinks,
+      createIdentityGateway(),
+      uow,
+      hasher,
+      limiter,
+    );
+    const redeemSpy = jest.spyOn(magicLinks, 'redeem');
+
+    await redeem.execute({ token, ip: '203.0.113.9', now: NOW });
+
+    expect(consumed).toEqual([
+      {
+        scope: 'magic-link-redeem-ip',
+        subjectHash: hasher.hash('203.0.113.9'),
+        limit: 20,
+        windowMs: 15 * 60 * 1000,
+      },
+      {
+        scope: 'magic-link-redeem-token',
+        subjectHash: hasher.hash(token),
+        limit: 10,
+        windowMs: 15 * 60 * 1000,
+      },
+    ]);
+    expect(redeemSpy).toHaveBeenCalledTimes(1);
+  });
 });
+
+function allowAllLimiter(): UzzRateLimiterPort {
+  return {
+    async consume(input) {
+      return {
+        allowed: true,
+        remaining: input.limit,
+        resetAt: new Date(input.now.getTime() + input.windowMs),
+      };
+    },
+  };
+}
 
 function createIdentityGateway() {
   const user = { id: 'user-1', displayName: 'User One' };
