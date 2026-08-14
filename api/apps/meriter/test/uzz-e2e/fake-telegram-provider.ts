@@ -13,6 +13,7 @@ export type FakeTelegramMessage = {
 
 const messages: FakeTelegramMessage[] = [];
 let failNext = false;
+let sendDelayMs = 0;
 let messageId = 1000;
 
 function json(res: http.ServerResponse, status: number, payload: unknown): void {
@@ -71,12 +72,20 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
   if (method === 'POST' && url.pathname === '/__test__/reset') {
     messages.length = 0;
     failNext = false;
+    sendDelayMs = 0;
     json(res, 200, { ok: true });
     return;
   }
   if (method === 'POST' && url.pathname === '/__test__/fail-next') {
     failNext = true;
     json(res, 200, { ok: true });
+    return;
+  }
+  if (method === 'POST' && url.pathname === '/__test__/delay') {
+    const raw = await readBody(req);
+    const parsed = raw ? (JSON.parse(raw) as { ms?: number }) : {};
+    sendDelayMs = Math.max(0, Number(parsed.ms ?? 0));
+    json(res, 200, { ok: true, delayMs: sendDelayMs });
     return;
   }
 
@@ -95,6 +104,9 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse): Prom
   if (botMethod === 'getMe') {
     json(res, 200, { ok: true, result: { id: 1, is_bot: true, username: 'uzz_e2e_bot' } });
     return;
+  }
+  if (sendDelayMs > 0) {
+    await new Promise((resolve) => setTimeout(resolve, sendDelayMs));
   }
 
   messageId += 1;
@@ -136,8 +148,12 @@ export function startFakeTelegramProvider(options?: {
   return { provider, control };
 }
 
+function telegramControlUrl(): string {
+  return process.env.UZZ_E2E_TELEGRAM_CONTROL_URL ?? 'http://127.0.0.1:19091';
+}
+
 export async function readTelegramMessages(
-  controlBaseUrl = process.env.UZZ_E2E_TELEGRAM_CONTROL_URL ?? 'http://127.0.0.1:19091',
+  controlBaseUrl = telegramControlUrl(),
 ): Promise<FakeTelegramMessage[]> {
   const response = await fetch(`${controlBaseUrl.replace(/\/$/, '')}/__test__/messages`);
   if (!response.ok) {
@@ -145,6 +161,31 @@ export async function readTelegramMessages(
   }
   const payload = (await response.json()) as { messages: FakeTelegramMessage[] };
   return payload.messages;
+}
+
+export async function resetFakeTelegram(
+  controlBaseUrl = telegramControlUrl(),
+): Promise<void> {
+  const response = await fetch(`${controlBaseUrl.replace(/\/$/, '')}/__test__/reset`, {
+    method: 'POST',
+  });
+  if (!response.ok) {
+    throw new Error(`fake-telegram reset failed: ${response.status}`);
+  }
+}
+
+export async function delayTelegramSend(
+  ms: number,
+  controlBaseUrl = telegramControlUrl(),
+): Promise<void> {
+  const response = await fetch(`${controlBaseUrl.replace(/\/$/, '')}/__test__/delay`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ ms }),
+  });
+  if (!response.ok) {
+    throw new Error(`fake-telegram delay failed: ${response.status}`);
+  }
 }
 
 const invokedDirectly = (process.argv[1] ?? '').includes('fake-telegram-provider');
