@@ -1,6 +1,6 @@
-import fs from 'node:fs';
+import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import path from 'node:path';
+import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 type MongoClient = import('mongodb').MongoClient;
@@ -38,12 +38,12 @@ type TrackedDoc = { collection: string; id: string };
 
 function apiRequire() {
   const candidates = [
-    path.join(process.cwd(), 'package.json'),
-    path.join(process.cwd(), 'api', 'package.json'),
-    path.join(process.cwd(), '..', 'api', 'package.json'),
+    join(process.cwd(), 'package.json'),
+    join(process.cwd(), 'api', 'package.json'),
+    join(process.cwd(), '..', 'api', 'package.json'),
   ];
   for (const candidate of candidates) {
-    if (!fs.existsSync(candidate)) continue;
+    if (!existsSync(candidate)) continue;
     try {
       const req = createRequire(candidate);
       req.resolve('mongodb');
@@ -98,9 +98,9 @@ export class UzzSeedFactory {
     readonly communityId: string,
   ) {}
 
-  private nextId(kind: string): string {
+  private nextId(_kind?: string): string {
     this.seq += 1;
-    return `${this.runId}:${kind}:${this.seq}`;
+    return randomUUID();
   }
 
   private track(collection: string, id: string): void {
@@ -115,7 +115,9 @@ export class UzzSeedFactory {
   } = {}): Promise<SeededUser> {
     const now = new Date();
     const id = this.nextId('user');
-    const email = (input.email ?? `${id}@uzz.example.test`).toLowerCase();
+    const email = (
+      input.email ?? `user-${this.seq}-${this.runId}@uzz.example.test`
+    ).toLowerCase();
     const displayName = input.displayName ?? 'Участник пилота';
     await this.db.collection('users').insertOne({
       id,
@@ -208,6 +210,7 @@ export class UzzSeedFactory {
       },
       { upsert: true },
     );
+    this.track('uzz_settings', id);
     return { id, name };
   }
 

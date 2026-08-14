@@ -25,10 +25,11 @@ export default defineConfig({
   },
   projects: [{ name: 'desktop', use: { ...devices['Desktop Chrome'] } }],
   webServer: {
-    command: 'docker compose -f docker-compose.uzz-e2e.yml up --build -d --wait',
+    command:
+      'docker compose -f docker-compose.uzz-e2e.yml up --build --wait && node -e "setInterval(function () {}, 1e9)"',
     cwd: repoRoot,
     url: 'http://127.0.0.1:8004/login',
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 15 * 60 * 1000,
   },
 });
