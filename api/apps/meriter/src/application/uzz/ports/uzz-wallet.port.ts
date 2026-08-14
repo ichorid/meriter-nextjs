@@ -1,3 +1,12 @@
+export type UzzWalletMode = 'split' | 'shared';
+
+export interface UzzWalletBalance {
+  localBalance: number;
+  globalBalance: number;
+  totalBalance: number;
+  mode: UzzWalletMode;
+}
+
 export interface UzzWalletOperationInput {
   userId: string;
   localCommunityId: string;
@@ -18,7 +27,7 @@ export interface UzzWalletPort {
     userId: string;
     localCommunityId: string;
     globalCommunityId: string;
-  }): Promise<{ localBalance: number; globalBalance: number }>;
+  }): Promise<UzzWalletBalance>;
   reservePreferLocal(
     input: UzzWalletOperationInput,
   ): Promise<UzzWalletReservation>;

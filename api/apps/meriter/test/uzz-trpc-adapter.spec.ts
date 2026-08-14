@@ -67,6 +67,28 @@ describe('UZZ tRPC adapter boundary', () => {
     );
   });
 
+  it('forwards shared wallet totals from the facade without recomputing', async () => {
+    const facade = {
+      getFeeBalances: jest.fn().mockResolvedValue({
+        localBalance: 5,
+        globalBalance: 0,
+        totalBalance: 5,
+        mode: 'shared',
+      }),
+    };
+    const caller = uzzAppRouter.createCaller(context('buyer-1', facade));
+
+    await expect(caller.wallet.getBalance({ communityId: 'community-1' })).resolves.toEqual({
+      communityId: 'community-1',
+      localBalance: 5,
+      globalBalance: 0,
+      totalBalance: 5,
+      mode: 'shared',
+      canPayFee: true,
+    });
+    expect(facade.getFeeBalances).toHaveBeenCalledWith('buyer-1', 'community-1');
+  });
+
   it('forwards an omitted deal deadline as null', async () => {
     const facade = { requestDeal: jest.fn().mockResolvedValue({ id: 'deal-1' }) };
     const caller = uzzAppRouter.createCaller(context('buyer-1', facade));

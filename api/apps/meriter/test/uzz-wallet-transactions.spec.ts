@@ -219,6 +219,38 @@ describe('UZZ wallet transactions', () => {
     expect(second).toBe('actor-b');
   });
 
+  it('returns a shared wallet once and debits it once when local and global ids match', async () => {
+    const SHARED = 'community-shared';
+    await seedWallet('shared-wallet', SHARED, 5);
+
+    const balances = await uow.run((repositories) =>
+      repositories.wallet.getBalances({
+        userId: 'buyer-1',
+        localCommunityId: SHARED,
+        globalCommunityId: SHARED,
+      }),
+    );
+
+    expect(balances).toEqual({
+      localBalance: 5,
+      globalBalance: 0,
+      totalBalance: 5,
+      mode: 'shared',
+    });
+
+    await uow.run((repositories) =>
+      repositories.wallet.reservePreferLocal({
+        userId: 'buyer-1',
+        localCommunityId: SHARED,
+        globalCommunityId: SHARED,
+        amount: 1,
+        operationId: 'operation-shared-fee',
+      }),
+    );
+
+    expect(await balance(SHARED)).toBe(4);
+  });
+
   it('F: refuses a request without fee balance', async () => {
     await rawDb.collection('wallets').updateMany({}, { $set: { balance: 0 } });
 

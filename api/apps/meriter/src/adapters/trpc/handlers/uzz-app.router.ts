@@ -458,8 +458,9 @@ export const uzzAppRouter = router({
           communityId: input.communityId,
           localBalance: balances.localBalance,
           globalBalance: balances.globalBalance,
-          balance: balances.localBalance + balances.globalBalance,
-          canPayFee: balances.localBalance >= 1 || balances.globalBalance >= 1,
+          totalBalance: balances.totalBalance,
+          mode: balances.mode,
+          canPayFee: balances.totalBalance >= 1,
         };
       }),
   }),

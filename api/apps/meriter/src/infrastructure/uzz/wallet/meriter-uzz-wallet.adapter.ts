@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { ClientSession, Connection } from 'mongoose';
 import {
+  UzzWalletBalance,
   UzzWalletOperationInput,
   UzzWalletPort,
   UzzWalletReservation,
@@ -17,7 +18,20 @@ export class MeriterUzzWalletAdapter implements UzzWalletPort {
     userId: string;
     localCommunityId: string;
     globalCommunityId: string;
-  }): Promise<{ localBalance: number; globalBalance: number }> {
+  }): Promise<UzzWalletBalance> {
+    if (input.localCommunityId === input.globalCommunityId) {
+      const wallet = await this.connection.collection('wallets').findOne(
+        { userId: input.userId, communityId: input.localCommunityId },
+        { session: this.session ?? undefined },
+      );
+      const localBalance = Number(wallet?.balance ?? 0);
+      return {
+        localBalance,
+        globalBalance: 0,
+        totalBalance: localBalance,
+        mode: 'shared',
+      };
+    }
     const [local, global] = await Promise.all([
       this.connection.collection('wallets').findOne(
         { userId: input.userId, communityId: input.localCommunityId },
@@ -28,11 +42,13 @@ export class MeriterUzzWalletAdapter implements UzzWalletPort {
         { session: this.session ?? undefined },
       ),
     ]);
+    const localBalance = Number(local?.balance ?? 0);
+    const globalBalance = Number(global?.balance ?? 0);
     return {
-      localBalance: Number(local?.balance ?? 0),
-      globalBalance: input.localCommunityId === input.globalCommunityId
-        ? Number(local?.balance ?? 0)
-        : Number(global?.balance ?? 0),
+      localBalance,
+      globalBalance,
+      totalBalance: localBalance + globalBalance,
+      mode: 'split',
     };
   }
 
@@ -58,10 +74,10 @@ export class MeriterUzzWalletAdapter implements UzzWalletPort {
       };
     }
 
-    for (const communityId of [
-      input.localCommunityId,
-      input.globalCommunityId,
-    ]) {
+    const communityIds = input.localCommunityId === input.globalCommunityId
+      ? [input.localCommunityId]
+      : [input.localCommunityId, input.globalCommunityId];
+    for (const communityId of communityIds) {
       const wallet = await this.connection.collection('wallets').findOneAndUpdate(
         {
           userId: input.userId,

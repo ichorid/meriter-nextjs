@@ -229,7 +229,9 @@ export class UzzApplicationFacade {
       return balances.reduce((total, current) => ({
         localBalance: total.localBalance + current.localBalance,
         globalBalance: total.globalBalance + current.globalBalance,
-      }), { localBalance: 0, globalBalance: 0 });
+        totalBalance: total.totalBalance + current.totalBalance,
+        mode: current.mode,
+      }), { localBalance: 0, globalBalance: 0, totalBalance: 0, mode: 'split' as const });
     });
   }
 
