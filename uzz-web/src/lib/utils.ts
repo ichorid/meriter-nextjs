@@ -56,9 +56,55 @@ export function linkGap(status: { linked?: boolean; telegramUserId?: string | nu
 }
 
 const RETURN_TO_KEY = 'uzz_return_to'; const SESSION_KEY = 'uzz_had_session';
-export function isSafeAppPath(path: string): boolean { return path.startsWith('/') && !path.startsWith('//') && !path.includes('://'); }
-export function rememberReturnTo(path: string): void { if (typeof window !== 'undefined' && isSafeAppPath(path)) sessionStorage.setItem(RETURN_TO_KEY, path); }
-export function consumeReturnTo(): string { if (typeof window === 'undefined') return '/'; const value = sessionStorage.getItem(RETURN_TO_KEY); sessionStorage.removeItem(RETURN_TO_KEY); return value && isSafeAppPath(value) ? value : '/'; }
+const SAME_ORIGIN_BASE = 'https://uzz.invalid';
+
+function hasBackslashOrControl(value: string): boolean {
+  if (value.includes('\\') || /%5c/i.test(value)) return true;
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    if (code <= 31 || code === 127) return true;
+  }
+  return false;
+}
+
+function parseSafeAppPath(value: unknown): string | null {
+  if (typeof value !== 'string' || !value) return null;
+  if (hasBackslashOrControl(value) || !value.startsWith('/') || value.startsWith('//')) return null;
+  let decoded = value;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+  if (hasBackslashOrControl(decoded)) return null;
+  let url: URL;
+  try {
+    url = new URL(value, SAME_ORIGIN_BASE);
+  } catch {
+    return null;
+  }
+  const base = new URL(SAME_ORIGIN_BASE);
+  if (url.origin !== base.origin || url.username || url.password) return null;
+  if (hasBackslashOrControl(url.href) || hasBackslashOrControl(url.pathname)) return null;
+  const result = `${url.pathname}${url.search}${url.hash}`;
+  if (!result.startsWith('/') || result.startsWith('//') || hasBackslashOrControl(result)) return null;
+  return result;
+}
+
+export function safeAppPath(value: unknown, fallback = '/'): string {
+  return parseSafeAppPath(value) ?? fallback;
+}
+export function isSafeAppPath(path: string): boolean { return parseSafeAppPath(path) !== null; }
+export function rememberReturnTo(path: string): void {
+  if (typeof window === 'undefined') return;
+  sessionStorage.setItem(RETURN_TO_KEY, safeAppPath(path, '/'));
+}
+export function consumeReturnTo(): string {
+  if (typeof window === 'undefined') return '/';
+  const value = sessionStorage.getItem(RETURN_TO_KEY);
+  sessionStorage.removeItem(RETURN_TO_KEY);
+  return safeAppPath(value, '/');
+}
 export function markUzzSession(): void { if (typeof window !== 'undefined') localStorage.setItem(SESSION_KEY, '1'); }
 export function clearUzzSessionFlag(): void { if (typeof window !== 'undefined') localStorage.removeItem(SESSION_KEY); }
 export function hadUzzSession(): boolean { return typeof window !== 'undefined' && localStorage.getItem(SESSION_KEY) === '1'; }

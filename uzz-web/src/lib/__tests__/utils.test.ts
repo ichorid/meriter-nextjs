@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { uzzErrorMessage, walletSourceLabel } from '@/lib/utils';
+import { safeAppPath, uzzErrorMessage, walletSourceLabel } from '@/lib/utils';
 
 describe('uzzErrorMessage', () => {
   it.each([
@@ -19,4 +19,16 @@ describe('walletSourceLabel', () => {
     expect(walletSourceLabel('__global__', 'community-1')).toBe('общий кошелёк');
     expect(walletSourceLabel(undefined, 'community-1')).toBeNull();
   });
+});
+
+describe('safeAppPath', () => {
+  it.each([
+    ['//evil.test', '/'],
+    ['/\\evil.test', '/'],
+    ['/%5c%5cevil.test', '/'],
+    ['/%255c%255cevil.test', '/'],
+    ['https://evil.test', '/'],
+    ['javascript:alert(1)', '/'],
+    ['/deals?requested=1', '/deals?requested=1'],
+  ])('normalizes %s', (input, expected) => expect(safeAppPath(input, '/')).toBe(expected));
 });
