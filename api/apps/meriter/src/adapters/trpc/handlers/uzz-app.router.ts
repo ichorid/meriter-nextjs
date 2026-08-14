@@ -16,6 +16,8 @@ import {
 } from '../../../domain/uzz/errors';
 import { executeUzz } from './uzz-error-mapper';
 
+const optionalDealDeadlineInput = z.coerce.date().nullable().optional();
+
 /**
  * Whitelisted tRPC surface for `@meriter/uzz-web`.
  * Mounted at `/trpc/uzz`.
@@ -316,7 +318,7 @@ export const uzzAppRouter = router({
           lotId: z.string().min(1),
           bankId: z.string().min(1),
           requestMessage: z.string().trim().min(1).max(1000),
-          requestedDeadlineAt: z.coerce.date().nullable().optional(),
+          requestedDeadlineAt: optionalDealDeadlineInput,
         }),
       )
       .mutation(async ({ ctx, input }) => {
@@ -337,7 +339,7 @@ export const uzzAppRouter = router({
         commandId: z.string().min(8).max(200),
         dealId: z.string().min(1),
         expectedNominalRub: z.number().int().positive(),
-        agreedDeadlineAt: z.coerce.date().nullable().optional(),
+        agreedDeadlineAt: optionalDealDeadlineInput,
       }))
       .mutation(async ({ ctx, input }) => {
         return executeUzz(() => ctx.uzzFacade.acceptDeal({

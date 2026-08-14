@@ -34,4 +34,53 @@ describe('UZZ tRPC adapter boundary', () => {
       patch: { notifyDealClosed: false },
     });
   });
+
+  it('forwards expired deal deadlines to the use case without Zod time checks', async () => {
+    const facade = {
+      requestDeal: jest.fn().mockResolvedValue({ id: 'deal-1' }),
+      acceptDeal: jest.fn().mockResolvedValue({ id: 'deal-1' }),
+    };
+    const caller = uzzAppRouter.createCaller(context('buyer-1', facade));
+    const requestedDeadlineAt = new Date('2026-08-14T09:59:59.000Z');
+    const agreedDeadlineAt = new Date('2026-08-14T10:04:59.000Z');
+
+    await caller.deals.request({
+      commandId: 'command-expired-deadline',
+      communityId: 'community-1',
+      lotId: 'listing-1',
+      bankId: 'right-1',
+      requestMessage: 'Need help',
+      requestedDeadlineAt,
+    });
+    await caller.deals.accept({
+      commandId: 'command-expired-accept',
+      dealId: 'deal-1',
+      expectedNominalRub: 500,
+      agreedDeadlineAt,
+    });
+
+    expect(facade.requestDeal).toHaveBeenCalledWith(
+      expect.objectContaining({ requestedDeadlineAt }),
+    );
+    expect(facade.acceptDeal).toHaveBeenCalledWith(
+      expect.objectContaining({ agreedDeadlineAt }),
+    );
+  });
+
+  it('forwards an omitted deal deadline as null', async () => {
+    const facade = { requestDeal: jest.fn().mockResolvedValue({ id: 'deal-1' }) };
+    const caller = uzzAppRouter.createCaller(context('buyer-1', facade));
+
+    await caller.deals.request({
+      commandId: 'command-omitted-deadline',
+      communityId: 'community-1',
+      lotId: 'listing-1',
+      bankId: 'right-1',
+      requestMessage: 'Need help',
+    });
+
+    expect(facade.requestDeal).toHaveBeenCalledWith(
+      expect.objectContaining({ requestedDeadlineAt: null }),
+    );
+  });
 });

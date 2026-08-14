@@ -5,7 +5,9 @@ import {
   UzzForbiddenError,
   UzzNotFoundError,
 } from '../../../domain/uzz/errors';
+import { DealDeadline } from '../../../domain/uzz/value-objects/deal-deadline';
 import { UzzAccessPolicy } from '../policies/uzz-access-policy';
+import { Clock, SYSTEM_CLOCK } from '../ports/clock.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
 import { addHours, appendDealLedger, appendTelegramNotification, assertReadyMember, selectWalletPayer } from './deal-use-case.helpers';
@@ -17,11 +19,12 @@ export class RequestDealUseCase {
     unitOfWork: UzzUnitOfWork,
     private readonly access: UzzAccessPolicy,
     private readonly globalCommunityId: string,
+    private readonly clock: Clock = SYSTEM_CLOCK,
   ) {
     this.commands = new CommandExecutor(unitOfWork);
   }
 
-  execute(input: {
+  async execute(input: {
     commandId: string;
     communityId: string;
     buyerId: string;
@@ -31,7 +34,11 @@ export class RequestDealUseCase {
     requestedDeadlineAt: Date | null;
     now?: Date;
   }) {
-    const now = input.now ?? new Date();
+    const now = input.now ?? this.clock.now();
+    const requestedDeadlineAt = DealDeadline.optionalFuture(
+      input.requestedDeadlineAt ?? undefined,
+      now,
+    ) ?? null;
     return this.commands.execute({
       commandId: input.commandId,
       actorId: input.buyerId,
@@ -91,7 +98,7 @@ export class RequestDealUseCase {
           exchangeRightId: rightState.id,
           requestMessage: input.requestMessage,
           listingSnapshot: listingState,
-          requestedDeadlineAt: input.requestedDeadlineAt,
+          requestedDeadlineAt,
           requestExpiresAt: addHours(now, settings?.requestTtlHours ?? 48),
           now,
         });

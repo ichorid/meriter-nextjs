@@ -10,6 +10,8 @@ import { RequestDealUseCase } from '../src/application/uzz/use-cases/request-dea
 import { UpdateSettingsUseCase } from '../src/application/uzz/use-cases/update-settings.use-case';
 import { ExchangeRight } from '../src/domain/uzz/entities/exchange-right';
 import { Listing } from '../src/domain/uzz/entities/listing';
+import { UzzValidationError } from '../src/domain/uzz/errors';
+import { DealDeadline } from '../src/domain/uzz/value-objects/deal-deadline';
 import { TransactionSchema } from '../src/domain/models/transaction/transaction.schema';
 import { WalletSchema } from '../src/domain/models/wallet/wallet.schema';
 import {
@@ -21,6 +23,33 @@ import { createMongoMemoryReplSetWithRetry } from './mongo-memory-shared';
 import { unregisterReplSet } from './mongo-memory-registry.js';
 
 const START = new Date('2026-08-14T00:00:00.000Z');
+const DEADLINE_NOW = new Date('2026-08-14T10:00:00.000Z');
+
+describe('DealDeadline', () => {
+  it.each([
+    new Date('2026-08-14T09:59:59Z'),
+    new Date('2026-08-14T10:04:59Z'),
+  ])('rejects a deadline without five minutes lead time', (deadline) => {
+    expect(() => DealDeadline.optionalFuture(deadline, DEADLINE_NOW)).toThrow(
+      UzzValidationError,
+    );
+    expect(() => DealDeadline.optionalFuture(deadline, DEADLINE_NOW)).toThrow(
+      'DEAL_DEADLINE_NOT_FUTURE',
+    );
+  });
+
+  it('allows omitting a deadline', () => {
+    expect(DealDeadline.optionalFuture(undefined, DEADLINE_NOW)).toBeUndefined();
+  });
+
+  it('preserves the exact UTC instant', () => {
+    const deadline = new Date('2026-08-14T12:30:00.000Z');
+    const result = DealDeadline.optionalFuture(deadline, DEADLINE_NOW);
+    expect(result?.toISOString()).toBe('2026-08-14T12:30:00.000Z');
+    expect(result).not.toBe(deadline);
+    expect(result?.getTime()).toBe(deadline.getTime());
+  });
+});
 
 class MutableClock implements Clock {
   constructor(private current: Date) {}
@@ -55,8 +84,8 @@ describe('UZZ time policies', () => {
     clock = new MutableClock(START);
     const access = new UzzAccessPolicy({ async isAnyMember() { return true; } });
     const admin = { async assertCommunityAdmin() { return; } };
-    request = new RequestDealUseCase(uow, access, 'global');
-    accept = new AcceptDealUseCase(uow, access);
+    request = new RequestDealUseCase(uow, access, 'global', clock);
+    accept = new AcceptDealUseCase(uow, access, clock);
     complete = new MarkDealCompletedUseCase(uow);
     updateSettings = new UpdateSettingsUseCase(uow, admin, clock);
     demurrage = new ApplyDemurrageUseCase(uow, clock);
@@ -194,6 +223,91 @@ describe('UZZ time policies', () => {
     const persisted = await createMongooseUzzRepositories(connection, null).deals.findById(deal.id);
     expect(persisted?.snapshot().status).toBe('closed');
     expect(right?.snapshot()).toMatchObject({ ownerId: 'seller-1', hopsLeft: 1 });
+  });
+
+  it.each([
+    new Date('2026-08-14T09:59:59Z'),
+    new Date('2026-08-14T10:04:59Z'),
+  ])('rejects a deadline without five minutes lead time', async (deadline) => {
+    await expect(
+      request.execute({
+        commandId: `request-deadline-${deadline.toISOString()}`,
+        communityId: 'community-1',
+        buyerId: 'buyer-1',
+        listingId: 'listing-1',
+        exchangeRightId: 'right-1',
+        requestMessage: 'Need help',
+        requestedDeadlineAt: deadline,
+        now: DEADLINE_NOW,
+      }),
+    ).rejects.toMatchObject({
+      code: 'DEAL_DEADLINE_NOT_FUTURE',
+    });
+  });
+
+  it.each([
+    new Date('2026-08-14T09:59:59Z'),
+    new Date('2026-08-14T10:04:59Z'),
+  ])('rejects an agreed deadline without five minutes lead time', async (deadline) => {
+    const deal = await createRequest();
+    await expect(
+      accept.execute({
+        commandId: `accept-deadline-${deadline.toISOString()}`,
+        dealId: deal.id,
+        sellerId: 'seller-1',
+        expectedNominalRub: 500,
+        agreedDeadlineAt: deadline,
+        now: DEADLINE_NOW,
+      }),
+    ).rejects.toMatchObject({
+      code: 'DEAL_DEADLINE_NOT_FUTURE',
+    });
+  });
+
+  it('allows omitting a requested deadline', async () => {
+    const deal = await request.execute({
+      commandId: 'request-deadline-omitted',
+      communityId: 'community-1',
+      buyerId: 'buyer-1',
+      listingId: 'listing-1',
+      exchangeRightId: 'right-1',
+      requestMessage: 'Need help',
+      requestedDeadlineAt: null,
+      now: DEADLINE_NOW,
+    });
+    expect(deal.requestedDeadlineAt).toBeNull();
+  });
+
+  it('preserves the exact UTC instant of a valid deadline', async () => {
+    const deadline = new Date('2026-08-14T12:30:00.000Z');
+    const deal = await request.execute({
+      commandId: 'request-deadline-utc',
+      communityId: 'community-1',
+      buyerId: 'buyer-1',
+      listingId: 'listing-1',
+      exchangeRightId: 'right-1',
+      requestMessage: 'Need help',
+      requestedDeadlineAt: deadline,
+      now: DEADLINE_NOW,
+    });
+    expect(deal.requestedDeadlineAt?.toISOString()).toBe('2026-08-14T12:30:00.000Z');
+  });
+
+  it('rejects a deadline using the injected clock', async () => {
+    clock.set('2026-08-14T10:00:00.000Z');
+    await expect(
+      request.execute({
+        commandId: 'request-clock-deadline',
+        communityId: 'community-1',
+        buyerId: 'buyer-1',
+        listingId: 'listing-1',
+        exchangeRightId: 'right-1',
+        requestMessage: 'Need help',
+        requestedDeadlineAt: new Date('2026-08-14T10:04:59Z'),
+      }),
+    ).rejects.toMatchObject({
+      code: 'DEAL_DEADLINE_NOT_FUTURE',
+    });
   });
 
   async function createRequest() {

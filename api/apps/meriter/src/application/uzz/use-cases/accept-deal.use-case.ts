@@ -1,3 +1,4 @@
+import { DealDeadline } from '../../../domain/uzz/value-objects/deal-deadline';
 import { Rubles } from '../../../domain/uzz/value-objects/rubles';
 import {
   UzzForbiddenError,
@@ -5,17 +6,22 @@ import {
   UzzNominalChangedError,
 } from '../../../domain/uzz/errors';
 import { UzzAccessPolicy } from '../policies/uzz-access-policy';
+import { Clock, SYSTEM_CLOCK } from '../ports/clock.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
 import { addDays, appendDealLedger, appendTelegramNotification, assertReadyMember } from './deal-use-case.helpers';
 
 export class AcceptDealUseCase {
   private readonly commands: CommandExecutor;
-  constructor(unitOfWork: UzzUnitOfWork, private readonly access: UzzAccessPolicy) {
+  constructor(
+    unitOfWork: UzzUnitOfWork,
+    private readonly access: UzzAccessPolicy,
+    private readonly clock: Clock = SYSTEM_CLOCK,
+  ) {
     this.commands = new CommandExecutor(unitOfWork);
   }
 
-  execute(input: {
+  async execute(input: {
     commandId: string;
     dealId: string;
     sellerId: string;
@@ -23,7 +29,11 @@ export class AcceptDealUseCase {
     agreedDeadlineAt: Date | null;
     now?: Date;
   }) {
-    const now = input.now ?? new Date();
+    const now = input.now ?? this.clock.now();
+    const agreedDeadlineAt = DealDeadline.optionalFuture(
+      input.agreedDeadlineAt ?? undefined,
+      now,
+    ) ?? null;
     return this.commands.execute({
       commandId: input.commandId,
       actorId: input.sellerId,
@@ -57,7 +67,7 @@ export class AcceptDealUseCase {
         deal.accept({
           sellerId: state.sellerId,
           acceptedNominal: Rubles.create(input.expectedNominalRub),
-          agreedDeadlineAt: input.agreedDeadlineAt,
+          agreedDeadlineAt,
           fulfillmentExpiresAt: addDays(now, settings?.fulfillmentTtlDays ?? 7),
           buyerContact: { telegramUsername: buyer.identity.telegramUsername! },
           sellerContact: { telegramUsername: seller.identity.telegramUsername! },
