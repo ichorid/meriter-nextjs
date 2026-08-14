@@ -25,7 +25,7 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       PLAYWRIGHT_TEST: 'true',
-      NEXT_PUBLIC_DEFAULT_COMMUNITY_ID: 'a1000001-0000-4000-8000-000000000001',
+      DEFAULT_TELEGRAM_COMMUNITY_ID: 'a1000001-0000-4000-8000-000000000001',
       NEXT_PUBLIC_FAKE_DATA_MODE: 'false',
     },
   },
