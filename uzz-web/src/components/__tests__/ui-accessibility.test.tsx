@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -179,5 +179,52 @@ describe('user content overflow', () => {
     const counterparty = screen.getByText((_, node) => node?.tagName === 'P' && (node.textContent ?? '').includes(UNBROKEN));
     expect(counterparty).toBeVisible();
     expectUserContent(counterparty);
+  });
+});
+
+describe('small accent text on surface', () => {
+  const srcRoot = path.resolve(__dirname, '../..');
+  const LARGE_TEXT = /\btext-(?:base|lg|xl|2xl|3xl|4xl|5xl|6xl)\b/;
+  const ACCENT_TEXT = /(?<![a-z-])text-stitch-accent(?![a-z-])/;
+  const ACCENT_FILL = /(?<![a-z-])bg-stitch-accent(?![a-z-/])/;
+
+  function walkSource(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) return entry.name === '__tests__' ? [] : walkSource(full);
+      return entry.name.endsWith('.tsx') || entry.name.endsWith('.ts') ? [full] : [];
+    });
+  }
+
+  function classValues(source: string): string[] {
+    const attrs = [...source.matchAll(/className="([^"]+)"/g), ...source.matchAll(/className='([^']+)'/g)].map((match) => match[1]);
+    const cnArgs = [...source.matchAll(/className=\{cn\(([\s\S]*?)\)\}/g)].flatMap((block) =>
+      [/'([^']+)'/g, /"([^"]+)"/g].flatMap((re) => [...block[1].matchAll(re)].map((match) => match[1])),
+    );
+    return [...attrs, ...cnArgs];
+  }
+
+  it('does not pair bg-stitch-accent with text-white', () => {
+    const hits: string[] = [];
+    for (const file of walkSource(srcRoot)) {
+      for (const value of classValues(readFileSync(file, 'utf8'))) {
+        if (ACCENT_FILL.test(value) && /\btext-white\b/.test(value)) {
+          hits.push(`${path.relative(srcRoot, file)}: ${value}`);
+        }
+      }
+    }
+    expect(hits).toEqual([]);
+  });
+
+  it('does not use sm/xs text-stitch-accent on surface copy', () => {
+    const hits: string[] = [];
+    for (const file of walkSource(srcRoot)) {
+      for (const value of classValues(readFileSync(file, 'utf8'))) {
+        if (ACCENT_TEXT.test(value) && !LARGE_TEXT.test(value)) {
+          hits.push(`${path.relative(srcRoot, file)}: ${value}`);
+        }
+      }
+    }
+    expect(hits).toEqual([]);
   });
 });

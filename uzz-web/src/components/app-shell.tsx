@@ -68,12 +68,12 @@ function IdentityLinkGate({ email }: { email?: string }) {
   const start = trpc.identity.startTelegramLink.useMutation({ onSuccess: ({ deepLink }) => { if (deepLink) window.location.href = deepLink; }, onError: (err) => setError(uzzErrorMessage(err)) });
   const logout = trpc.auth.logout.useMutation({ onSuccess: () => { clearUzzSessionFlag(); window.location.href = '/catalog'; } });
   return <main className="mx-auto flex min-h-[65vh] max-w-lg items-center px-4 py-10"><section className="w-full space-y-4 rounded-2xl border border-stitch-border bg-stitch-surface p-6 text-center">
-    <p className="text-xs font-bold uppercase tracking-widest text-stitch-accent">Последний шаг</p><h1 className="text-2xl font-black">Привяжите Telegram</h1>
+    <p className="text-xs font-bold uppercase tracking-widest text-stitch-accent-text">Последний шаг</p><h1 className="text-2xl font-black">Привяжите Telegram</h1>
     <p className="text-sm leading-6 text-stitch-muted">{email ? `Вы вошли как ${email}. ` : ''}Telegram нужен, чтобы сопоставить ваши добрые дела и безопасно открыть контакт только после принятия заявки.</p>
     <Button className="w-full" disabled={start.isPending} onClick={() => start.mutate()}>{start.isPending ? 'Готовим ссылку…' : 'Открыть Telegram'}</Button>
     {start.data && !start.data.deepLink ? <p className="text-sm text-amber-200">Ссылка на бота не настроена. Обратитесь к администратору сообщества.</p> : null}
     {error ? <p className="text-sm text-red-300">{error}</p> : null}
-    <Link href="/catalog" className="block text-sm text-stitch-accent hover:underline">Смотреть каталог без привязки</Link>
+    <Link href="/catalog" className="block text-sm text-stitch-accent-text hover:underline">Смотреть каталог без привязки</Link>
     <button type="button" className="text-sm text-stitch-muted hover:text-stitch-text" onClick={() => logout.mutate()}>Выйти</button>
   </section></main>;
 }
