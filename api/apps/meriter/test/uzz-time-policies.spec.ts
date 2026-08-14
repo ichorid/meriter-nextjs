@@ -2,8 +2,10 @@ import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, createConnection } from 'mongoose';
 import { UzzAccessPolicy } from '../src/application/uzz/policies/uzz-access-policy';
 import { Clock } from '../src/application/uzz/ports/clock.port';
+import { UzzUnitOfWork } from '../src/application/uzz/ports/uzz-unit-of-work';
 import { AcceptDealUseCase } from '../src/application/uzz/use-cases/accept-deal.use-case';
 import { ApplyDemurrageUseCase } from '../src/application/uzz/use-cases/apply-demurrage.use-case';
+import { CloseDealUseCase } from '../src/application/uzz/use-cases/close-deal.use-case';
 import { ExpireDealsUseCase } from '../src/application/uzz/use-cases/expire-deals.use-case';
 import { MarkDealCompletedUseCase } from '../src/application/uzz/use-cases/mark-deal-completed.use-case';
 import { RequestDealUseCase } from '../src/application/uzz/use-cases/request-deal.use-case';
@@ -67,6 +69,7 @@ describe('UZZ time policies', () => {
   let request: RequestDealUseCase;
   let accept: AcceptDealUseCase;
   let complete: MarkDealCompletedUseCase;
+  let close: CloseDealUseCase;
   let updateSettings: UpdateSettingsUseCase;
   let demurrage: ApplyDemurrageUseCase;
   let expiry: ExpireDealsUseCase;
@@ -87,6 +90,7 @@ describe('UZZ time policies', () => {
     request = new RequestDealUseCase(uow, access, 'global', clock);
     accept = new AcceptDealUseCase(uow, access, clock);
     complete = new MarkDealCompletedUseCase(uow);
+    close = new CloseDealUseCase(uow);
     updateSettings = new UpdateSettingsUseCase(uow, admin, clock);
     demurrage = new ApplyDemurrageUseCase(uow, clock);
     expiry = new ExpireDealsUseCase(uow, clock);
@@ -180,6 +184,67 @@ describe('UZZ time policies', () => {
     });
     const persisted = await createMongooseUzzRepositories(connection, null).deals.findById(deal.id);
     expect(persisted?.snapshot().requestExpiresAt).toEqual(deal.requestExpiresAt);
+  });
+
+  it('skips stale scanned deals and expires the rest of the page', async () => {
+    await rawDb.collection('wallets').updateOne({ id: 'wallet-1' }, { $set: { balance: 3 } });
+    const first = await createRequest();
+    const second = await seedDueRequest('2');
+    const third = await seedDueRequest('3');
+    const ordered = [first, second, third].sort((left, right) => left.id.localeCompare(right.id));
+    clock.set(ordered[0].requestExpiresAt.toISOString());
+
+    let scanned = false;
+    const racingUow: UzzUnitOfWork = {
+      run: async (work) => {
+        const result = await uow.run(work);
+        if (!scanned) {
+          scanned = true;
+          await accept.execute({
+            commandId: 'accept-stale-first',
+            dealId: ordered[0].id,
+            sellerId: 'seller-1',
+            expectedNominalRub: 500,
+            agreedDeadlineAt: null,
+            now: START,
+          });
+          await accept.execute({
+            commandId: 'accept-stale-second',
+            dealId: ordered[1].id,
+            sellerId: 'seller-1',
+            expectedNominalRub: 500,
+            agreedDeadlineAt: null,
+            now: START,
+          });
+          await complete.execute({
+            commandId: 'complete-stale-second',
+            dealId: ordered[1].id,
+            sellerId: 'seller-1',
+            now: START,
+          });
+          await close.execute({
+            commandId: 'close-stale-second',
+            dealId: ordered[1].id,
+            buyerId: 'buyer-1',
+            now: START,
+          });
+        }
+        return result;
+      },
+    };
+    const racingExpiry = new ExpireDealsUseCase(racingUow, clock);
+    const page = await racingExpiry.executePage({ limit: 3 });
+
+    expect(page).toMatchObject({
+      processed: 1,
+      skipped: 2,
+      failed: 0,
+      lastId: ordered[2].id,
+    });
+    const repos = createMongooseUzzRepositories(connection, null);
+    expect((await repos.deals.findById(ordered[0].id))?.snapshot().status).toBe('accepted');
+    expect((await repos.deals.findById(ordered[1].id))?.snapshot().status).toBe('closed');
+    expect((await repos.deals.findById(ordered[2].id))?.snapshot().status).toBe('cancelled');
   });
 
   it('expires a request from its snapshot deadline and refunds its fee', async () => {
@@ -315,6 +380,28 @@ describe('UZZ time policies', () => {
       commandId: 'request-time-policy', communityId: 'community-1', buyerId: 'buyer-1',
       listingId: 'listing-1', exchangeRightId: 'right-1', requestMessage: 'Need help',
       requestedDeadlineAt: null, now: START,
+    });
+  }
+
+  async function seedDueRequest(suffix: string) {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.listings.insert(Listing.create({
+      id: `listing-${suffix}`, communityId: 'community-1', authorId: 'seller-1',
+      title: 'Prepare report', description: '', priceRub: 500,
+      deliveryMode: 'online', locationText: 'Zoom', durationText: '',
+      availabilityText: '', now: START,
+    }));
+    await repositories.rights.insert(ExchangeRight.restore({
+      id: `right-${suffix}`, communityId: 'community-1', ownerId: 'buyer-1',
+      sourcePublicationId: `publication-${suffix}`, nominalRub: 500,
+      nominalAssignedAt: START, lastDemurrageAt: START, hopsLeft: 2,
+      status: 'active', lockedByDealId: null, ownerHistory: [], version: 0,
+      createdAt: START, updatedAt: START,
+    }));
+    return request.execute({
+      commandId: `request-time-policy-${suffix}`, communityId: 'community-1', buyerId: 'buyer-1',
+      listingId: `listing-${suffix}`, exchangeRightId: `right-${suffix}`,
+      requestMessage: 'Need help', requestedDeadlineAt: null, now: START,
     });
   }
 });

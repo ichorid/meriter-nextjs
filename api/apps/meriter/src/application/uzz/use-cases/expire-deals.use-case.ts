@@ -1,9 +1,15 @@
 import { Rubles } from '../../../domain/uzz/value-objects/rubles';
-import { UzzNotFoundError } from '../../../domain/uzz/errors';
+import { UzzDomainError, UzzNotFoundError } from '../../../domain/uzz/errors';
 import { Clock } from '../ports/clock.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
 import { appendDealLedger } from './deal-use-case.helpers';
+
+const SKIP_CODES = new Set([
+  'DEAL_NOT_DUE',
+  'DEAL_STATUS_INVALID',
+  'UZZ_CONCURRENT_MODIFICATION',
+]);
 
 export class ExpireDealsUseCase {
   private readonly commands: CommandExecutor;
@@ -18,6 +24,8 @@ export class ExpireDealsUseCase {
       repositories.deals.listDue(now, input.afterId ?? null, limit),
     );
     let processed = 0;
+    let skipped = 0;
+    let failed = 0;
     for (const candidate of candidates) {
       const candidateState = candidate.snapshot();
       const deadline = candidateState.status === 'requested'
@@ -25,75 +33,94 @@ export class ExpireDealsUseCase {
         : candidateState.status === 'accepted'
           ? candidateState.fulfillmentExpiresAt
           : candidateState.confirmationExpiresAt;
-      if (!deadline) continue;
+      if (!deadline) {
+        skipped += 1;
+        continue;
+      }
       const commandId = `expire:${candidateState.id}:${candidateState.status}:${deadline.toISOString()}`;
-      await this.commands.execute({
-        commandId, actorId: 'system', type: 'expire_deal',
-        payload: {
-          dealId: candidateState.id,
-          status: candidateState.status,
-          deadline: deadline.toISOString(),
-        },
-        work: async (repositories) => {
-          const deal = await repositories.deals.findById(candidateState.id);
-          if (!deal) return null;
-          const before = deal.snapshot();
-          const outcome = deal.expire(now);
-          const right = await repositories.rights.findById(before.exchangeRightId);
-          if (!right) throw new UzzNotFoundError('RIGHT_NOT_FOUND');
-          const nominal = right.snapshot().nominalRub;
-          if (outcome === 'closed') {
-            if (nominal === null) throw new UzzNotFoundError('RIGHT_NOMINAL_MISSING');
-            deal.setDealAmount(Rubles.create(nominal), now);
-            right.releaseAfterDeal(before.id, before.sellerId, now);
-          } else {
-            if (right.snapshot().lockedByDealId === before.id) {
-              right.unlockAfterDeal(before.id, now);
+      try {
+        await this.commands.execute({
+          commandId, actorId: 'system', type: 'expire_deal',
+          payload: {
+            dealId: candidateState.id,
+            status: candidateState.status,
+            deadline: deadline.toISOString(),
+          },
+          work: async (repositories) => {
+            const deal = await repositories.deals.findById(candidateState.id);
+            if (!deal) return null;
+            const before = deal.snapshot();
+            const outcome = deal.expire(now);
+            const right = await repositories.rights.findById(before.exchangeRightId);
+            if (!right) throw new UzzNotFoundError('RIGHT_NOT_FOUND');
+            const nominal = right.snapshot().nominalRub;
+            if (outcome === 'closed') {
+              if (nominal === null) throw new UzzNotFoundError('RIGHT_NOMINAL_MISSING');
+              deal.setDealAmount(Rubles.create(nominal), now);
+              right.releaseAfterDeal(before.id, before.sellerId, now);
+            } else {
+              if (right.snapshot().lockedByDealId === before.id) {
+                right.unlockAfterDeal(before.id, now);
+              }
+              if (before.feeReserved && before.feeSourceCommunityId) {
+                await repositories.wallet.refundToSource({
+                  userId: before.feePayerUserId ?? before.buyerId,
+                  sourceCommunityId: before.feeSourceCommunityId,
+                  amount: 1, operationId: `${commandId}:refund`,
+                });
+                deal.clearReservedFee(now);
+                await appendDealLedger(repositories, {
+                  operationId: commandId, communityId: before.communityId,
+                  userId: before.buyerId, type: 'fee_refunded', amount: 1,
+                  createdAt: now, metadata: { dealId: before.id, reason: 'expired' },
+                });
+              }
             }
-            if (before.feeReserved && before.feeSourceCommunityId) {
-              await repositories.wallet.refundToSource({
-                userId: before.feePayerUserId ?? before.buyerId,
-                sourceCommunityId: before.feeSourceCommunityId,
-                amount: 1, operationId: `${commandId}:refund`,
-              });
-              deal.clearReservedFee(now);
+            await repositories.deals.update(deal);
+            await repositories.rights.update(right);
+            if (outcome === 'closed' && nominal !== null) {
               await appendDealLedger(repositories, {
                 operationId: commandId, communityId: before.communityId,
-                userId: before.buyerId, type: 'fee_refunded', amount: 1,
-                createdAt: now, metadata: { dealId: before.id, reason: 'expired' },
+                userId: before.buyerId, type: 'right_sent', amount: -nominal,
+                createdAt: now, metadata: { dealId: before.id, reason: 'auto_close' },
+              });
+              await appendDealLedger(repositories, {
+                operationId: commandId, communityId: before.communityId,
+                userId: before.sellerId, type: 'right_received', amount: nominal,
+                createdAt: now, metadata: { dealId: before.id, reason: 'auto_close' },
               });
             }
-          }
-          await repositories.deals.update(deal);
-          await repositories.rights.update(right);
-          if (outcome === 'closed' && nominal !== null) {
             await appendDealLedger(repositories, {
               operationId: commandId, communityId: before.communityId,
-              userId: before.buyerId, type: 'right_sent', amount: -nominal,
-              createdAt: now, metadata: { dealId: before.id, reason: 'auto_close' },
+              userId: 'system', type: outcome === 'closed' ? 'deal_closed' : 'deal_cancelled',
+              amount: 0, createdAt: now,
+              metadata: { dealId: before.id, previousStatus: before.status, reason: 'expired' },
             });
-            await appendDealLedger(repositories, {
-              operationId: commandId, communityId: before.communityId,
-              userId: before.sellerId, type: 'right_received', amount: nominal,
-              createdAt: now, metadata: { dealId: before.id, reason: 'auto_close' },
-            });
-          }
-          await appendDealLedger(repositories, {
-            operationId: commandId, communityId: before.communityId,
-            userId: 'system', type: outcome === 'closed' ? 'deal_closed' : 'deal_cancelled',
-            amount: 0, createdAt: now,
-            metadata: { dealId: before.id, previousStatus: before.status, reason: 'expired' },
-          });
-          return deal.snapshot();
-        },
-      });
-      processed += 1;
+            return deal.snapshot();
+          },
+        });
+        processed += 1;
+      } catch (error) {
+        if (error instanceof UzzDomainError && SKIP_CODES.has(error.code)) {
+          skipped += 1;
+          continue;
+        }
+        failed += 1;
+        console.error(
+          `UZZ deal expiry failed dealId=${candidateState.id}`,
+          error,
+        );
+      }
     }
+    const lastId = candidates.length === limit
+      ? candidates[candidates.length - 1].snapshot().id
+      : null;
     return {
       processed,
-      nextAfterId: candidates.length === limit
-        ? candidates[candidates.length - 1].snapshot().id
-        : null,
+      skipped,
+      failed,
+      lastId,
+      nextAfterId: lastId,
     };
   }
 }
