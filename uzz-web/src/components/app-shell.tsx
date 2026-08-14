@@ -42,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {NAV.map((item) => <NavLink key={item.href} {...item} pathname={pathname} badge={item.href === '/deals' ? actionCount : 0} />)}
           {isUzzAdmin ? <NavLink href="/admin" label="Админ" pathname={pathname} /> : null}
         </nav>
-        {!loggedIn && !sessionLoading ? <Link href={loginHref} className="ml-auto rounded-xl bg-stitch-accent px-4 py-2 text-sm font-semibold text-white">Войти</Link> : null}
+        {!loggedIn && !sessionLoading ? <Link href={loginHref} className="ml-auto rounded-xl bg-stitch-accent-solid px-4 py-2 text-sm font-semibold text-white">Войти</Link> : null}
       </div>
     </header>
     {link.isError && loggedIn && NEEDS_LINK.has(pathname) ? <main className="mx-auto max-w-6xl px-4 py-8"><QueryFailed onRetry={() => void link.refetch()} /></main>
@@ -59,7 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 function NavLink({ href, label, icon: Icon, pathname, badge = 0, stacked = false }: { href: string; label: string; icon?: LucideIcon; pathname: string; badge?: number; stacked?: boolean }) {
   const active = href === '/' ? pathname === '/' || pathname === '/lots' || pathname === '/deeds' : pathname === href || pathname.startsWith(`${href}/`);
   return <Link href={href} aria-current={active ? 'page' : undefined} className={cn('relative rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent', stacked && 'flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-[11px]', active ? 'bg-stitch-accent/15 text-stitch-text' : 'text-stitch-muted hover:bg-stitch-surface hover:text-stitch-text')}>
-    {stacked && Icon ? <Icon aria-hidden className="h-5 w-5" strokeWidth={2} /> : null}{label}{badge > 0 ? <span className="absolute right-1 top-1 min-w-4 rounded-full bg-stitch-accent px-1 text-center text-[10px] font-bold text-white">{badge}</span> : null}
+    {stacked && Icon ? <Icon aria-hidden className="h-5 w-5" strokeWidth={2} /> : null}{label}{badge > 0 ? <span className="absolute right-1 top-1 min-w-4 rounded-full bg-stitch-accent-solid px-1 text-center text-[10px] font-bold text-white">{badge}</span> : null}
   </Link>;
 }
 

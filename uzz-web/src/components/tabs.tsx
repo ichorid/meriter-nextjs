@@ -92,7 +92,7 @@ export function Tab({ value, children }: { value: string; children: ReactNode })
       tabIndex={active ? 0 : -1}
       className={cn(
         'min-h-11 min-w-11 whitespace-nowrap rounded-lg px-4 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent',
-        active ? 'bg-stitch-accent text-white' : 'text-stitch-muted',
+        active ? 'bg-stitch-accent-solid text-white' : 'text-stitch-muted',
       )}
       onClick={() => onChange(value)}
     >

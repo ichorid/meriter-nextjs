@@ -163,4 +163,21 @@ describe('user content overflow', () => {
     expect(badge).toBeVisible();
     expectUserContent(badge);
   });
+
+  it('wraps listing owner name and availability as user content', () => {
+    render(<ListingCard listing={listing({ ownerName: UNBROKEN, availabilityText: UNBROKEN })} />);
+    const owner = screen.getByText(UNBROKEN);
+    const availability = screen.getByText(`Когда: ${UNBROKEN}`);
+    expect(owner).toBeVisible();
+    expect(availability).toBeVisible();
+    expectUserContent(owner);
+    expectUserContent(availability);
+  });
+
+  it('wraps deal counterparty name as user content', () => {
+    render(<DealCard deal={deal({ counterpartyName: UNBROKEN })} />);
+    const counterparty = screen.getByText((_, node) => node?.tagName === 'P' && (node.textContent ?? '').includes(UNBROKEN));
+    expect(counterparty).toBeVisible();
+    expectUserContent(counterparty);
+  });
 });
