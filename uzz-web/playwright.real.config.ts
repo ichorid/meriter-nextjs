@@ -23,7 +23,33 @@ export default defineConfig({
     channel: process.env.CI ? undefined : 'msedge',
     trace: 'retain-on-failure',
   },
-  projects: [{ name: 'desktop', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'desktop',
+      use: { ...devices['Desktop Chrome'] },
+      testIgnore: /accessibility-responsive\.spec\.ts/,
+    },
+    {
+      name: 'w320',
+      use: { viewport: { width: 320, height: 800 } },
+      testMatch: /accessibility-responsive\.spec\.ts/,
+    },
+    {
+      name: 'w360',
+      use: { viewport: { width: 360, height: 800 } },
+      testMatch: /accessibility-responsive\.spec\.ts/,
+    },
+    {
+      name: 'w768',
+      use: { viewport: { width: 768, height: 1024 } },
+      testMatch: /accessibility-responsive\.spec\.ts/,
+    },
+    {
+      name: 'w1280',
+      use: { viewport: { width: 1280, height: 800 } },
+      testMatch: /accessibility-responsive\.spec\.ts/,
+    },
+  ],
   webServer: {
     command:
       'docker compose -f docker-compose.uzz-e2e.yml up --build --wait && node -e "setInterval(function () {}, 1e9)"',
