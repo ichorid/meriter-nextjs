@@ -114,6 +114,8 @@ export async function appendTelegramNotification(
     lockedUntil: null,
     deadLetteredAt: null,
     lastError: null,
+    leaseToken: null,
+    leaseOwner: null,
     createdAt: new Date(input.now),
   });
 }

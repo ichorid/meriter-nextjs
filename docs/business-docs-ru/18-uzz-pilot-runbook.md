@@ -26,11 +26,21 @@ pnpm --dir api exec nest build meriter
 
 ## Ежедневный контроль
 
-1. Outbox: число `pending`, возраст старейшей записи, `dead_letter`; проверить lease/retry перед ручным повтором.
+1. Outbox: число `pending`, возраст старейшей записи, `dead_letter`; проверить lease/retry перед ручным повтором. Telegram — at-least-once (см. ниже), не exactly-once.
 2. Сделки: нет ли `requested`, `accepted`, `completed_by_seller` старше сохранённого дедлайна после работы cron.
 3. Ledger: для каждой экономической операции один `operationId`; суммы резервов/возвратов и парных благодарностей симметричны.
 4. Права: у `in_deal` есть `lockedByDealId`; у активной сделки — существующее право; номинал не ниже исторически применённого результата таяния и не растёт от подъёма пола.
 5. Identity: токены хешированы, использованные не погашаются повторно, истёкшие удаляются TTL-индексом.
+
+## Outbox: lease fencing и at-least-once Telegram
+
+Telegram Bot API не даёт ключ идемпотентности. Доставка **at-least-once**. Не считать её exactly-once и не считать сообщения provider-deduplicated.
+
+Каждый claim получает случайный `leaseToken`. `renewLease` / `markProcessed` / `markFailed` обновляют только документ `{id, leaseToken, processedAt:null}`. Heartbeat продлевает lease каждые 1/3 длительности, пока идёт медленный send.
+
+**Окно дубля (измерено тестом):** процесс упал после успешного `send` и до `markProcessed`. После истечения lease другой worker отправит то же уведомление ещё раз. Это ожидаемый остаточный риск, не баг fencing.
+
+Retry: 1m, 5m, 30m, 2h, 12h. Шестая ошибка → dead-letter. В `lastError` только класс/сообщение ошибки, без payload/секретов.
 
 ## Реакция на инцидент
 

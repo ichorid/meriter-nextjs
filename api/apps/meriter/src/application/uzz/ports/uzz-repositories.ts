@@ -102,6 +102,8 @@ export interface UzzOutboxRecord {
   lockedUntil: Date | null;
   deadLetteredAt: Date | null;
   lastError: string | null;
+  leaseToken: string | null;
+  leaseOwner: string | null;
   createdAt: Date;
 }
 
@@ -176,14 +178,21 @@ export interface UzzCommandRepository {
 
 export interface UzzOutboxRepository {
   append(event: UzzOutboxRecord): Promise<void>;
-  claimAvailable(now: Date, limit: number, lockedUntil: Date): Promise<UzzOutboxRecord[]>;
-  markProcessed(id: string, processedAt: Date): Promise<void>;
+  claimAvailable(
+    now: Date,
+    limit: number,
+    lockedUntil: Date,
+    leaseOwner: string,
+  ): Promise<UzzOutboxRecord[]>;
+  renewLease(id: string, leaseToken: string, lockedUntil: Date): Promise<boolean>;
+  markProcessed(id: string, leaseToken: string, processedAt: Date): Promise<boolean>;
   markFailed(input: {
     id: string;
+    leaseToken: string;
     error: string;
     availableAt: Date;
     deadLetteredAt: Date | null;
-  }): Promise<void>;
+  }): Promise<boolean>;
 }
 
 export interface UzzRepositories {

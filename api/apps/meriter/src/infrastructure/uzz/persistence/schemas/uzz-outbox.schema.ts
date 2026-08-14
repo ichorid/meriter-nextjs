@@ -14,6 +14,8 @@ export const UzzOutboxPersistenceSchema = new Schema(
     lockedUntil: { type: Date, default: null },
     deadLetteredAt: { type: Date, default: null },
     lastError: { type: String, default: null },
+    leaseToken: { type: String, default: null },
+    leaseOwner: { type: String, default: null },
     createdAt: { type: Date, required: true },
   },
   { collection: 'uzz_outbox', versionKey: false },

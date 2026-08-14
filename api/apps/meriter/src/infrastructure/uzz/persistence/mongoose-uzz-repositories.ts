@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { ClientSession, Connection, Model, Query } from 'mongoose';
 import {
   DealRepository,
@@ -398,9 +399,10 @@ function createRepositories(
     async append(event: UzzOutboxRecord) {
       await models.outbox.create([event], options);
     },
-    async claimAvailable(now, limit, lockedUntil) {
+    async claimAvailable(now, limit, lockedUntil, leaseOwner) {
       const claimed: UzzOutboxRecord[] = [];
       for (let index = 0; index < limit; index += 1) {
+        const leaseToken = randomUUID();
         const raw = await models.outbox.findOneAndUpdate(
           {
             processedAt: null,
@@ -408,7 +410,7 @@ function createRepositories(
             availableAt: { $lte: now },
             $or: [{ lockedUntil: null }, { lockedUntil: { $lte: now } }],
           },
-          { $set: { lockedUntil }, $inc: { attempts: 1 } },
+          { $set: { lockedUntil, leaseToken, leaseOwner }, $inc: { attempts: 1 } },
           { ...options, new: true, sort: { availableAt: 1, id: 1 } },
         ).lean();
         if (!raw) break;
@@ -416,16 +418,25 @@ function createRepositories(
       }
       return claimed;
     },
-    async markProcessed(id, processedAt) {
-      await models.outbox.updateOne(
-        { id },
+    async renewLease(id, leaseToken, lockedUntil) {
+      const result = await models.outbox.updateOne(
+        { id, leaseToken, processedAt: null },
+        { $set: { lockedUntil } },
+        options,
+      );
+      return result.matchedCount > 0;
+    },
+    async markProcessed(id, leaseToken, processedAt) {
+      const result = await models.outbox.updateOne(
+        { id, leaseToken, processedAt: null },
         { $set: { processedAt, lockedUntil: null, lastError: null } },
         options,
       );
+      return result.matchedCount > 0;
     },
     async markFailed(input) {
-      await models.outbox.updateOne(
-        { id: input.id },
+      const result = await models.outbox.updateOne(
+        { id: input.id, leaseToken: input.leaseToken, processedAt: null },
         { $set: {
           lastError: input.error,
           availableAt: input.availableAt,
@@ -434,6 +445,7 @@ function createRepositories(
         } },
         options,
       );
+      return result.matchedCount > 0;
     },
   };
 
@@ -569,6 +581,8 @@ function mapOutbox(raw: unknown): UzzOutboxRecord {
     lockedUntil: record.lockedUntil ? new Date(record.lockedUntil as Date) : null,
     deadLetteredAt: record.deadLetteredAt ? new Date(record.deadLetteredAt as Date) : null,
     lastError: typeof record.lastError === 'string' ? record.lastError : null,
+    leaseToken: typeof record.leaseToken === 'string' ? record.leaseToken : null,
+    leaseOwner: typeof record.leaseOwner === 'string' ? record.leaseOwner : null,
     createdAt: new Date(record.createdAt as Date),
   };
 }

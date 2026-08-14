@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { UzzValidationError } from '../../../domain/uzz/errors';
 import { Clock } from '../ports/clock.port';
 import {
@@ -6,16 +7,30 @@ import {
 } from '../ports/uzz-notification-sender.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 
+const RETRY_DELAYS_MS = [60_000, 300_000, 1_800_000, 7_200_000, 43_200_000] as const;
+
+/**
+ * Telegram Bot API has no idempotency key. Outbox delivery is at-least-once.
+ * Lease fencing stops two healthy workers from acking the same event.
+ * Residual duplicate window: crash after send() returns and before markProcessed.
+ * Do not describe this path as exactly-once or provider-deduplicated.
+ */
 export class DeliverUzzOutboxUseCase {
+  private readonly leaseOwner = randomUUID();
+  private readonly options: { maximumAttempts: number; leaseMs: number };
+
   constructor(
     private readonly unitOfWork: UzzUnitOfWork,
     private readonly sender: UzzNotificationSender,
     private readonly clock: Clock,
-    private readonly options: { maximumAttempts: number; leaseMs: number } = {
-      maximumAttempts: 8,
+    options: { maximumAttempts?: number; leaseMs?: number } = {},
+  ) {
+    this.options = {
+      maximumAttempts: RETRY_DELAYS_MS.length + 1,
       leaseMs: 60_000,
-    },
-  ) {}
+      ...options,
+    };
+  }
 
   async executeBatch(input: { limit?: number } = {}) {
     const now = this.clock.now();
@@ -25,40 +40,64 @@ export class DeliverUzzOutboxUseCase {
         now,
         limit,
         new Date(now.getTime() + this.options.leaseMs),
+        this.leaseOwner,
       ),
     );
     let delivered = 0;
     let failed = 0;
     let deadLettered = 0;
     for (const event of events) {
+      const leaseToken = event.leaseToken;
+      if (!leaseToken) {
+        throw new UzzValidationError('OUTBOX_LEASE_TOKEN_MISSING');
+      }
+      const heartbeatMs = Math.max(1, Math.floor(this.options.leaseMs / 3));
+      const heartbeat = setInterval(() => {
+        void this.unitOfWork
+          .run((repositories) => repositories.outbox.renewLease(
+            event.id,
+            leaseToken,
+            new Date(this.clock.now().getTime() + this.options.leaseMs),
+          ))
+          .catch(() => undefined);
+      }, heartbeatMs);
       try {
         if (event.topic !== 'uzz.telegram') {
           throw new UzzValidationError('OUTBOX_TOPIC_UNSUPPORTED');
         }
         const payload = notificationPayload(event.payload);
         await this.sender.send(event.id, payload);
-        await this.unitOfWork.run((repositories) =>
-          repositories.outbox.markProcessed(event.id, now),
+        const acked = await this.unitOfWork.run((repositories) =>
+          repositories.outbox.markProcessed(event.id, leaseToken, this.clock.now()),
         );
-        delivered += 1;
+        if (acked) delivered += 1;
       } catch (error) {
         const isDeadLetter = event.attempts >= this.options.maximumAttempts;
-        const retryDelayMs = Math.min(
-          6 * 60 * 60 * 1000,
-          60_000 * 2 ** Math.max(0, event.attempts - 1),
-        );
+        const retryDelayMs = isDeadLetter
+          ? 0
+          : RETRY_DELAYS_MS[Math.min(Math.max(event.attempts, 1), RETRY_DELAYS_MS.length) - 1];
+        const failedAt = this.clock.now();
         await this.unitOfWork.run((repositories) => repositories.outbox.markFailed({
           id: event.id,
-          error: error instanceof Error ? error.message : String(error),
-          availableAt: new Date(now.getTime() + retryDelayMs),
-          deadLetteredAt: isDeadLetter ? now : null,
+          leaseToken,
+          error: sanitizeOutboxError(error),
+          availableAt: new Date(failedAt.getTime() + retryDelayMs),
+          deadLetteredAt: isDeadLetter ? failedAt : null,
         }));
         failed += 1;
         if (isDeadLetter) deadLettered += 1;
+      } finally {
+        clearInterval(heartbeat);
       }
     }
     return { delivered, failed, deadLettered };
   }
+}
+
+function sanitizeOutboxError(error: unknown): string {
+  const name = error instanceof Error && error.name.trim() ? error.name : 'Error';
+  const message = error instanceof Error ? error.message : String(error);
+  return `${name}: ${message.replace(/\s+/g, ' ').trim()}`.slice(0, 300);
 }
 
 function notificationPayload(payload: Record<string, unknown>): UzzNotificationPayload {
