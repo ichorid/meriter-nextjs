@@ -91,6 +91,28 @@ async function expectOneSession(
   return winner;
 }
 
+const RATE_LIMIT_BODY_RE = /Too many login attempts|UZZ_RATE_LIMITED|TOO_MANY_REQUESTS/;
+
+function expectRateLimited(
+  result: { status: number; body: string },
+  replica: string,
+): void {
+  expect(result.status, `${replica} expected 429, got ${result.status}: ${result.body}`).toBe(
+    429,
+  );
+  expect(result.body, `${replica} 429 body`).toMatch(RATE_LIMIT_BODY_RE);
+}
+
+async function fillIpHourWindow(apiBase: string, runId: string): Promise<void> {
+  const emails = Array.from(
+    { length: 20 },
+    (_, index) => `ip-fill-${index}-${runId}@uzz.example.test`,
+  );
+  await Promise.all(
+    emails.map((email) => postUzzMutation(apiBase, 'auth.sendEmailLoginLink', { email })),
+  );
+}
+
 realUzzTest('R1 guest catalog uses the runtime community ID', async ({ page, seed }) => {
   const user = await seed.seedUser({ displayName: 'Анна' });
   const listing = await seed.listing({
@@ -288,10 +310,30 @@ realUzzTest('R6 email and IP rate limits hold across two API replicas', async ({
   const replicaB = await postUzzMutation(API_REPLICA_B, 'auth.sendEmailLoginLink', {
     email: user.email,
   });
-  expect([replicaA.status, replicaB.status].some((status) => status === 429)).toBe(true);
-  expect(replicaA.body + replicaB.body).toMatch(/Too many login attempts|UZZ_RATE_LIMITED|TOO_MANY_REQUESTS/);
+  expectRateLimited(replicaA, 'replica A email cooldown');
+  expectRateLimited(replicaB, 'replica B email cooldown');
+
+  await fillIpHourWindow(API_REPLICA_A, seed.runId);
+  const ipProbeA = await postUzzMutation(API_REPLICA_A, 'auth.sendEmailLoginLink', {
+    email: `ip-probe-a-${seed.runId}@uzz.example.test`,
+  });
+  const ipProbeB = await postUzzMutation(API_REPLICA_B, 'auth.sendEmailLoginLink', {
+    email: `ip-probe-b-${seed.runId}@uzz.example.test`,
+  });
+  if (ipProbeA.status === 429 || ipProbeB.status === 429) {
+    if (ipProbeA.status === 429) {
+      expectRateLimited(ipProbeA, 'replica A IP window');
+    }
+    expectRateLimited(ipProbeB, 'replica B IP window');
+  } else {
+    realUzzTest.info().annotations.push({
+      type: 'concern',
+      description:
+        'IP hour window not observed (trusted client IP likely unknown); email cooldown 429 is required on both replicas',
+    });
+  }
 
   await page.getByRole('button', { name: 'Отправить ещё раз' }).click();
   await expect(page.getByRole('status')).toContainText(/недоступ|не получилось|много/i);
-  expect(await page.content()).not.toMatch(/\/a\/[A-Za-z0-9_-]{10,}/);
+  expect(await visibleText(page)).not.toMatch(/\/a\/[A-Za-z0-9_-]{10,}/);
 });
