@@ -11,6 +11,8 @@ import {
   AuthMagicLinkSchema,
 } from '../src/domain/models/auth/auth-magic-link.schema';
 import { UzzRateLimitedError } from '../src/domain/uzz/errors';
+import { SendEmailLoginLinkUseCase } from '../src/application/use-cases/auth/send-email-login-link.use-case';
+import { toUzzRateLimitHttpError } from '../src/adapters/rest/auth.controller';
 import { EmailLoginLinkService } from '../src/infrastructure/auth/email-login-link.service';
 import { AuthMagicLinkService } from '../src/infrastructure/auth/magic-link-auth.service';
 import {
@@ -375,6 +377,81 @@ describe('UZZ identity security', () => {
     ]);
     expect(createSpy).toHaveBeenCalledTimes(1);
     createSpy.mockRestore();
+  });
+
+  it('skips the IP-hour window when no trusted client IP is present', async () => {
+    const consumed: string[] = [];
+    const limiter: UzzRateLimiterPort = {
+      async consume(input) {
+        consumed.push(input.scope);
+        return { allowed: true, remaining: input.limit - 1, resetAt: NOW };
+      },
+    };
+    const config = new ConfigService<AppConfig>({
+      magicLink: {
+        baseUrl: 'https://uzz.example.test',
+        path: '/a',
+        ttlMinutes: 15,
+      },
+      email: {
+        enabled: true,
+        api: { url: 'https://email.example.test', key: 'test-key' },
+        from: { address: 'noreply@example.test', name: 'UZZ' },
+      },
+    } as AppConfig);
+    const service = new EmailLoginLinkService(config, magicLinks, limiter);
+    jest.spyOn(service, 'sendHtmlEmail').mockResolvedValue({ delivered: true });
+
+    await service.sendLoginLink('one@example.test', { now: NOW });
+    await service.sendLoginLink('two@example.test', {
+      clientIp: 'unknown',
+      now: NOW,
+    });
+
+    expect(consumed).toEqual([
+      'magic-link-send-email-cooldown',
+      'magic-link-send-email-hour',
+      'magic-link-send-email-cooldown',
+      'magic-link-send-email-hour',
+    ]);
+    expect(consumed).not.toContain('magic-link-send-ip-hour');
+  });
+
+  it('forwards REST clientIp through the send-email use case', async () => {
+    const sent: Array<{ email: string; clientIp?: string }> = [];
+    const useCase = new SendEmailLoginLinkUseCase(
+      new ConfigService<AppConfig>({
+        email: { enabled: true },
+      } as AppConfig),
+      {
+        async sendLoginLink(email, options) {
+          sent.push({ email, clientIp: options?.clientIp });
+          return { expiresIn: 900, canResendAt: 1 };
+        },
+      },
+    );
+
+    await useCase.send('person@example.test', { clientIp: '203.0.113.9' });
+
+    expect(sent).toEqual([
+      { email: 'person@example.test', clientIp: '203.0.113.9' },
+    ]);
+  });
+
+  it('maps UzzRateLimitedError to HTTP 429 with details.retryAfterSeconds', () => {
+    const error = new UzzRateLimitedError('UZZ_RATE_LIMITED', 'UZZ_RATE_LIMITED', {
+      retryAfterSeconds: 42,
+    });
+    const httpError = toUzzRateLimitHttpError(error);
+    const body = httpError.getResponse() as {
+      message: string;
+      error?: { details?: { retryAfterSeconds?: number } };
+    };
+
+    expect(httpError.getStatus()).toBe(429);
+    expect(body.message).toBe('Too many login attempts');
+    expect(body.message).not.toContain('42');
+    expect(body.error?.details?.retryAfterSeconds).toBe(42);
   });
 
   it('returns a generic rate-limit error and does not create a token when send is limited', async () => {

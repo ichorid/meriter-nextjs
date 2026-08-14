@@ -166,7 +166,6 @@ export class EmailLoginLinkService {
         now: Date,
     ): Promise<void> {
         const emailHash = this.tokenHasher.hash(normalizedEmail);
-        const ipHash = this.tokenHasher.hash(clientIp ?? 'unknown');
         await consumeUzzRateLimit(this.rateLimiter, {
             scope: 'magic-link-send-email-cooldown',
             subjectHash: emailHash,
@@ -181,14 +180,26 @@ export class EmailLoginLinkService {
             windowMs: 60 * 60 * 1000,
             now,
         });
+        const trustedIp = trustedClientIp(clientIp);
+        if (!trustedIp) {
+            return;
+        }
         await consumeUzzRateLimit(this.rateLimiter, {
             scope: 'magic-link-send-ip-hour',
-            subjectHash: ipHash,
+            subjectHash: this.tokenHasher.hash(trustedIp),
             limit: 20,
             windowMs: 60 * 60 * 1000,
             now,
         });
     }
+}
+
+function trustedClientIp(clientIp: string | undefined): string | undefined {
+    const value = clientIp?.trim();
+    if (!value || value.toLowerCase() === 'unknown') {
+        return undefined;
+    }
+    return value;
 }
 
 function normalizeEmailProviderResult(

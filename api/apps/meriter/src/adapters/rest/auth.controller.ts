@@ -19,6 +19,7 @@ import { EmailLoginLinkService } from '../../infrastructure/auth/email-login-lin
 import { UserGuard } from '../../user.guard';
 import { CookieManager } from '../../infrastructure/auth/cookie-manager';
 import { UnauthorizedError, InternalServerError, TooManyRequestsError } from '../../common/exceptions/api.exceptions';
+import { UzzRateLimitedError } from '../../domain/uzz/errors';
 import { SmsRateLimitError, SmsResendCooldownError } from '../../domain/ports/sms-otp-provider.port';
 import { AppConfig } from '../../config/configuration';
 import {
@@ -279,8 +280,18 @@ export class AuthController {
       return res.json({ success: true, alreadyLinked: true });
     }
 
-    const result = await this.emailLoginLinkService.sendLoginLink(email, { linkToUserId: userId });
-    return res.json({ success: true, alreadyLinked: false, ...result });
+    try {
+      const result = await this.emailLoginLinkService.sendLoginLink(email, {
+        linkToUserId: userId,
+        clientIp: req.ip,
+      });
+      return res.json({ success: true, alreadyLinked: false, ...result });
+    } catch (error) {
+      if (error instanceof UzzRateLimitedError) {
+        throw toUzzRateLimitHttpError(error);
+      }
+      throw error;
+    }
   }
 
   @Post('link/telegram')
@@ -1009,10 +1020,16 @@ export class AuthController {
    * Login completes when the user opens the link (GET /api/v1/auth/link/:token).
    */
   @Post('email/send')
-  async sendEmailLoginLink(@Body() body: { email: string }, @Res() res: any) {
+  async sendEmailLoginLink(
+    @Body() body: { email: string },
+    @Req() req: { ip?: string },
+    @Res() res: any,
+  ) {
     try {
       this.logger.log(`Email login link send request for ${body.email}`);
-      const result = await this.sendEmailLoginLinkUseCase.send(body.email);
+      const result = await this.sendEmailLoginLinkUseCase.send(body.email, {
+        clientIp: req.ip,
+      });
 
       return res.json({
         success: true,
@@ -1024,6 +1041,9 @@ export class AuthController {
       if (error instanceof EmailAuthDisabledError) {
         throw new ForbiddenException(error.message);
       }
+      if (error instanceof UzzRateLimitedError) {
+        throw toUzzRateLimitHttpError(error);
+      }
       const errorMessage =
         error instanceof EmailRequiredError
           ? error.message
@@ -1034,4 +1054,16 @@ export class AuthController {
       throw new InternalServerError(errorMessage);
     }
   }
+}
+
+export function toUzzRateLimitHttpError(
+  error: UzzRateLimitedError,
+): TooManyRequestsError {
+  const retryAfterSeconds =
+    typeof error.details?.retryAfterSeconds === 'number'
+      ? error.details.retryAfterSeconds
+      : undefined;
+  return new TooManyRequestsError('Too many login attempts', {
+    retryAfterSeconds,
+  });
 }

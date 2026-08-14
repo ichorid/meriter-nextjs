@@ -31,7 +31,10 @@ export class SendEmailLoginLinkUseCase {
     private readonly emailLoginLinkService: EmailLoginLinkPort,
   ) {}
 
-  async send(email: string | undefined): Promise<EmailLoginLinkSendResult> {
+  async send(
+    email: string | undefined,
+    options?: { clientIp?: string },
+  ): Promise<EmailLoginLinkSendResult> {
     const enabled = this.configService.get('email')?.enabled ?? false;
     if (!enabled) {
       throw new EmailAuthDisabledError();
@@ -40,7 +43,9 @@ export class SendEmailLoginLinkUseCase {
       throw new EmailRequiredError();
     }
 
-    return this.emailLoginLinkService.sendLoginLink(email);
+    return this.emailLoginLinkService.sendLoginLink(email, {
+      clientIp: options?.clientIp,
+    });
   }
 }
 

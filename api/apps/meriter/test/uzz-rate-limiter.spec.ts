@@ -13,7 +13,9 @@ import {
   resolveTrustedClientIp,
   toUzzRateLimitTrpcError,
 } from '../src/adapters/trpc/handlers/uzz-app.router';
+import { formatUzzTrpcError } from '../src/trpc/uzz-trpc';
 import { UzzRateLimitedError } from '../src/domain/uzz/errors';
+import superjson from 'superjson';
 import { createMongoMemoryServerWithRetry } from './mongo-memory-shared';
 import { unregisterServer } from './mongo-memory-registry.js';
 
@@ -286,5 +288,31 @@ describe('trusted client address for UZZ rate limits', () => {
         typeof error.details === 'object' &&
         error.details.retryAfterSeconds,
     ).toBe(42);
+  });
+
+  it('exposes retryAfterSeconds on formatted tRPC data, not in the message', () => {
+    const error = new UzzRateLimitedError('UZZ_RATE_LIMITED', 'UZZ_RATE_LIMITED', {
+      retryAfterSeconds: 42,
+    });
+    const trpcError = toUzzRateLimitTrpcError(error);
+    const formatted = formatUzzTrpcError({
+      shape: {
+        message: trpcError.message,
+        code: -32029,
+        data: {
+          code: 'TOO_MANY_REQUESTS',
+          httpStatus: 429,
+          path: 'auth.sendEmailLoginLink',
+        },
+      },
+      error: trpcError,
+    });
+    const roundTripped = superjson.parse(
+      superjson.stringify(formatted),
+    ) as typeof formatted;
+
+    expect(roundTripped.message).toBe('Too many login attempts');
+    expect(roundTripped.message).not.toContain('42');
+    expect(roundTripped.data.details?.retryAfterSeconds).toBe(42);
   });
 });

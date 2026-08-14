@@ -1,6 +1,7 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import { UzzApplicationFacade } from '../application/uzz/uzz-application.facade';
+import { UzzRateLimitedError } from '../domain/uzz/errors';
 
 interface UzzSessionUser { id: string }
 interface UzzUserView {
@@ -33,7 +34,40 @@ export interface UzzTrpcContext {
   };
 }
 
-const t = initTRPC.context<UzzTrpcContext>().create({ transformer: superjson });
+export function formatUzzTrpcError<TShape extends { data: object }>({
+  shape,
+  error,
+}: {
+  shape: TShape;
+  error: { cause?: unknown };
+}): TShape {
+  const retryAfterSeconds = readRetryAfterSeconds(error.cause);
+  if (retryAfterSeconds === undefined) {
+    return shape;
+  }
+  return {
+    ...shape,
+    data: {
+      ...shape.data,
+      details: { retryAfterSeconds },
+    },
+  };
+}
+
+function readRetryAfterSeconds(cause: unknown): number | undefined {
+  if (!(cause instanceof UzzRateLimitedError)) {
+    return undefined;
+  }
+  const value = cause.details?.retryAfterSeconds;
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+const t = initTRPC.context<UzzTrpcContext>().create({
+  transformer: superjson,
+  errorFormatter({ shape, error }) {
+    return formatUzzTrpcError({ shape, error });
+  },
+});
 
 export const uzzRouter = t.router;
 export const uzzPublicProcedure = t.procedure;
