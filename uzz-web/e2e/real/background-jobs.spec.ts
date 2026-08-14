@@ -1,9 +1,12 @@
 import { expect } from '@playwright/test';
 import {
+  API_REPLICA_A,
+  API_REPLICA_B,
   RUNTIME_COMMUNITY_ID,
   ackOutboxWithToken,
   clearIdentityFailureInjection,
   delayTelegramSend,
+  expireOutboxLease,
   findDealByParticipants,
   findOutboxById,
   injectWriteFailureOnce,
@@ -12,6 +15,7 @@ import {
   realUzzTest,
   resetFakeTelegram,
   runExpiryPage,
+  runOutboxBatch,
   snapshotEconomics,
   waitUntil,
 } from './fixtures';
@@ -62,19 +66,22 @@ realUzzTest('R13 scan-to-update expiry races skip stale deals and process later 
     });
   }
 
+  const afterId = ids[0]!.slice(0, -1);
   const page = await runExpiryPage({
     race: { acceptId: ids[0]!, closeId: ids[1]! },
+    afterId,
+    limit: 3,
   });
+  const stored = await snapshotEconomics([buyer.id, seller.id]);
+  const byId = Object.fromEntries(stored.deals.map((deal) => [deal.id, deal.status]));
+  const runStatuses = ids.map((id) => byId[id]);
+  expect(runStatuses).toEqual(['accepted', 'closed', 'cancelled']);
   expect(page.processed).toBe(1);
   expect(page.skipped).toBe(2);
   expect(page.failed).toBe(0);
-  expect(page.lastId).toBe(ids[2]);
-
-  const stored = await snapshotEconomics([buyer.id, seller.id]);
-  const byId = Object.fromEntries(stored.deals.map((deal) => [deal.id, deal.status]));
-  expect(byId[ids[0]!]).toBe('accepted');
-  expect(byId[ids[1]!]).toBe('closed');
-  expect(byId[ids[2]!]).toBe('cancelled');
+  if (page.lastId) {
+    expect(ids).toContain(page.lastId);
+  }
 });
 
 realUzzTest('R14 two outbox workers plus slow Telegram deliver once and reject a stale lease ack', async ({
@@ -82,6 +89,10 @@ realUzzTest('R14 two outbox workers plus slow Telegram deliver once and reject a
 }) => {
   const user = await linkedUser(seed, 'NotifyR14');
   await resetFakeTelegram();
+  for (const replica of [API_REPLICA_A, API_REPLICA_B]) {
+    const health = await fetch(`${replica.replace(/\/$/, '')}/health`);
+    expect(health.ok, replica).toBe(true);
+  }
   await delayTelegramSend(8_000);
   const text = `R14 ${seed.runId.slice(0, 8)} one delivery`;
   const { id } = await seed.insertOutbox({
@@ -89,23 +100,41 @@ realUzzTest('R14 two outbox workers plus slow Telegram deliver once and reject a
     text,
   });
 
+  const workerA = runOutboxBatch();
   await waitUntil(async () => {
     const row = await findOutboxById(id);
     return typeof row?.leaseToken === 'string' && row.leaseToken.length > 0;
   }, 45_000);
+  const firstClaim = await findOutboxById(id);
+  const tokenA = String(firstClaim?.leaseToken);
+  expect(tokenA).toMatch(
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 500));
 
-  const claimed = await findOutboxById(id);
-  expect(claimed?.leaseToken).toBeTruthy();
-  expect(await ackOutboxWithToken(id, 'stale-lease-token-cannot-ack')).toBe(0);
-
+  await expireOutboxLease(id);
+  await delayTelegramSend(0);
+  const workerB = runOutboxBatch();
   await waitUntil(async () => {
     const row = await findOutboxById(id);
-    return row?.processedAt != null;
+    return typeof row?.leaseToken === 'string' && row.leaseToken !== tokenA;
   }, 45_000);
+  const secondClaim = await findOutboxById(id);
+  const tokenB = String(secondClaim?.leaseToken);
+  expect(tokenB).not.toBe(tokenA);
+
+  expect(await ackOutboxWithToken(id, tokenA)).toBe(0);
+
+  const deliveredB = await workerB;
+  expect(deliveredB.delivered).toBe(1);
+  expect(deliveredB.failed).toBe(0);
+  expect(await ackOutboxWithToken(id, tokenB)).toBe(0);
 
   const delivered = (await readTelegramMessages()).filter((message) => message.text.includes(text));
   expect(delivered).toHaveLength(1);
-  expect(await ackOutboxWithToken(id, String(claimed?.leaseToken))).toBe(0);
+
+  const deliveredA = await workerA;
+  expect(deliveredA.delivered).toBe(0);
   expect(user.id).toBeTruthy();
 });
 

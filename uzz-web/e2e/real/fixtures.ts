@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -130,7 +130,7 @@ export const realUzzTest = base.extend<{ seed: SeedApi }>({
         countListings: (authorId) => countListings(factory.communityId, authorId),
         seedWallet: (input) => seedWalletDoc(factory.runId, input),
         setSuperadmin: (userId) => setSuperadmin(userId),
-        attachSharedGlobal: (userIds) => attachSharedGlobal(factory.runId, userIds),
+        attachSharedGlobal: (userIds) => attachSharedGlobal(userIds),
         listingIn: (communityId, input) => listingInCommunity(factory, communityId, input),
         seedRightIn: (communityId, input) => rightInCommunity(factory, communityId, input),
         updateRightNominal: (rightId, nominalRub) => updateRightNominal(rightId, nominalRub),
@@ -139,6 +139,7 @@ export const realUzzTest = base.extend<{ seed: SeedApi }>({
         snapshotEconomics: (userIds) => snapshotEconomics(userIds),
       });
     } finally {
+      await restoreSharedGlobal().catch(() => undefined);
       await cleanupEconomicsSince(startedAt, factory.runId).catch(() => undefined);
       await factory.cleanup();
       await factory.close();
@@ -407,16 +408,52 @@ async function setSuperadmin(userId: string): Promise<void> {
   );
 }
 
-async function attachSharedGlobal(runId: string, userIds: string[]): Promise<void> {
+type SharedGlobalRestore = {
+  telegramChatId: unknown;
+  hadTelegramChatId: boolean;
+  userIds: string[];
+};
+
+let sharedGlobalRestore: SharedGlobalRestore | null = null;
+
+async function restoreSharedGlobal(): Promise<void> {
+  const restore = sharedGlobalRestore;
+  sharedGlobalRestore = null;
+  if (!restore) return;
   const now = new Date();
   await withE2eDb(async (db) => {
+    const telegramUpdate = restore.hadTelegramChatId
+      ? { $set: { telegramChatId: restore.telegramChatId, updatedAt: now } }
+      : { $unset: { telegramChatId: '' }, $set: { updatedAt: now } };
+    await db.collection('communities').updateOne(
+      { id: GLOBAL_COMMUNITY_ID },
+      {
+        ...telegramUpdate,
+        $pull: { members: { $in: restore.userIds } },
+      },
+    );
+    await db.collection('user_community_roles').deleteMany({
+      userId: { $in: restore.userIds },
+      communityId: GLOBAL_COMMUNITY_ID,
+    });
+  });
+}
+
+async function attachSharedGlobal(userIds: string[]): Promise<void> {
+  const now = new Date();
+  await withE2eDb(async (db) => {
+    const existing = await db.collection('communities').findOne({ id: GLOBAL_COMMUNITY_ID });
+    sharedGlobalRestore = {
+      telegramChatId: existing?.telegramChatId,
+      hadTelegramChatId: Boolean(existing && Object.prototype.hasOwnProperty.call(existing, 'telegramChatId')),
+      userIds: [...userIds],
+    };
     await db.collection('communities').updateOne(
       { id: GLOBAL_COMMUNITY_ID },
       {
         $set: {
           telegramChatId: 'e2e-shared-global',
           updatedAt: now,
-          runId,
         },
         $addToSet: { members: { $each: userIds } },
         $setOnInsert: {
@@ -455,7 +492,6 @@ async function attachSharedGlobal(runId: string, userIds: string[]): Promise<voi
           version: 0,
           createdAt: now,
           updatedAt: now,
-          runId,
         },
       },
       { upsert: true },
@@ -695,8 +731,6 @@ async function cleanupEconomicsSince(startedAt: Date, runId: string): Promise<vo
       db.collection('uzz_commands').deleteMany({ createdAt: { $gte: startedAt } }),
       db.collection('wallets').deleteMany({ runId }),
       db.collection('transactions').deleteMany({ createdAt: { $gte: startedAt } }),
-      db.collection('communities').deleteMany({ id: GLOBAL_COMMUNITY_ID, runId }),
-      db.collection('uzz_settings').deleteMany({ communityId: GLOBAL_COMMUNITY_ID, runId }),
     ]);
   });
 }
@@ -725,6 +759,15 @@ export async function ackOutboxWithToken(id: string, leaseToken: string): Promis
   return result.matchedCount;
 }
 
+export async function expireOutboxLease(id: string): Promise<void> {
+  await withE2eDb((db) =>
+    db.collection('uzz_outbox').updateOne(
+      { id, processedAt: null },
+      { $set: { lockedUntil: new Date(0) } },
+    ),
+  );
+}
+
 const EXPIRY_RUNNER_SOURCE = `import mongoose from 'mongoose';
 import { ExpireDealsUseCase } from '../../src/application/uzz/use-cases/expire-deals.use-case';
 import {
@@ -751,6 +794,7 @@ async function main(): Promise<void> {
   const input = JSON.parse(process.env.UZZ_EXPIRY_INPUT ?? '{}') as {
     mongoUrl: string;
     limit?: number;
+    afterId?: string | null;
     race?: Race;
   };
   const connection = await mongoose.createConnection(input.mongoUrl).asPromise();
@@ -787,7 +831,10 @@ async function main(): Promise<void> {
       },
     };
     const expiry = new ExpireDealsUseCase(unitOfWork, { now: () => new Date() });
-    const page = await expiry.executePage({ limit: input.limit ?? 3 });
+    const page = await expiry.executePage({
+      afterId: input.afterId ?? null,
+      limit: input.limit ?? 3,
+    });
     process.stdout.write(\`UZZ_EXPIRY_RESULT:\${JSON.stringify(page)}\\n\`);
   } finally {
     await connection.close();
@@ -813,6 +860,7 @@ function apiPackageRoot(): string {
 export async function runExpiryPage(input?: {
   race?: { acceptId: string; closeId: string };
   limit?: number;
+  afterId?: string | null;
 }): Promise<{ processed: number; skipped: number; failed: number; lastId: string | null }> {
   const apiRoot = apiPackageRoot();
   const runnerPath = path.join(apiRoot, 'apps', 'meriter', 'test', 'uzz-e2e', '_run-expiry-page.ts');
@@ -830,6 +878,7 @@ export async function runExpiryPage(input?: {
         UZZ_EXPIRY_INPUT: JSON.stringify({
           mongoUrl: e2eMongoUrl(),
           race: input?.race,
+          afterId: input?.afterId ?? null,
           limit: input?.limit ?? (input?.race ? 3 : 10),
         }),
       },
@@ -855,6 +904,138 @@ export async function runExpiryPage(input?: {
   } finally {
     fs.rmSync(runnerPath, { force: true });
   }
+}
+
+const OUTBOX_RUNNER_SOURCE = `import mongoose from 'mongoose';
+import { DeliverUzzOutboxUseCase } from '../../src/application/uzz/use-cases/deliver-uzz-outbox.use-case';
+import {
+  createMongooseUzzRepositories,
+  initializeUzzModels,
+} from '../../src/infrastructure/uzz/persistence/mongoose-uzz-repositories';
+
+async function main(): Promise<void> {
+  const input = JSON.parse(process.env.UZZ_OUTBOX_INPUT ?? '{}') as {
+    mongoUrl: string;
+    telegramUrl: string;
+    limit?: number;
+  };
+  const connection = await mongoose.createConnection(input.mongoUrl).asPromise();
+  try {
+    await initializeUzzModels(connection);
+    const unitOfWork = {
+      async run<T>(
+        work: (repos: ReturnType<typeof createMongooseUzzRepositories>) => Promise<T>,
+      ): Promise<T> {
+        const session = await connection.startSession();
+        let result: T | undefined;
+        let completed = false;
+        try {
+          await session.withTransaction(async () => {
+            result = await work(createMongooseUzzRepositories(connection, session));
+            completed = true;
+          });
+        } finally {
+          await session.endSession();
+        }
+        if (!completed) throw new Error('UZZ transaction ended without completing its work');
+        return result as T;
+      },
+    };
+    const sender = {
+      async send(_eventId: string, payload: { telegramUserId: string; text: string; path?: string }) {
+        const response = await fetch(\`\${input.telegramUrl.replace(/\\/$/, '')}/bot${process.env.BOT_TOKEN ?? 'e2e-bot-token-1234'}/sendMessage\`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: payload.telegramUserId,
+            text: payload.path ? \`\${payload.text}\\n\\n\${payload.path}\` : payload.text,
+          }),
+        });
+        if (!response.ok) {
+          throw new Error(\`telegram send failed: \${response.status}\`);
+        }
+      },
+    };
+    const deliver = new DeliverUzzOutboxUseCase(unitOfWork, sender, { now: () => new Date() });
+    const result = await deliver.executeBatch({ limit: input.limit ?? 1 });
+    process.stdout.write(\`UZZ_OUTBOX_RESULT:\${JSON.stringify(result)}\\n\`);
+  } finally {
+    await connection.close();
+  }
+}
+
+void main().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});
+`;
+
+type OutboxBatchResult = { delivered: number; failed: number; deadLettered: number };
+
+function parseOutboxResult(stdout: string, stderr: string): OutboxBatchResult {
+  const line = stdout
+    .split(/\r?\n/)
+    .reverse()
+    .find((row) => row.startsWith('UZZ_OUTBOX_RESULT:'));
+  if (!line) {
+    throw new Error(`outbox runner produced no result: ${stdout || stderr}`);
+  }
+  return JSON.parse(line.slice('UZZ_OUTBOX_RESULT:'.length)) as OutboxBatchResult;
+}
+
+export function runOutboxBatch(): Promise<OutboxBatchResult> {
+  const apiRoot = apiPackageRoot();
+  const runnerPath = path.join(
+    apiRoot,
+    'apps',
+    'meriter',
+    'test',
+    'uzz-e2e',
+    `_run-outbox-batch-${randomUUID()}.ts`,
+  );
+  const req = createRequire(path.join(apiRoot, 'package.json'));
+  const tsNodeRegister = req.resolve('ts-node/register/transpile-only');
+  fs.writeFileSync(runnerPath, OUTBOX_RUNNER_SOURCE);
+  const telegramUrl = process.env.UZZ_E2E_TELEGRAM_CONTROL_URL ?? 'http://127.0.0.1:19091';
+  return new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ['-r', tsNodeRegister, runnerPath], {
+      cwd: apiRoot,
+      env: {
+        ...process.env,
+        TS_NODE_PROJECT: path.join(apiRoot, 'tsconfig.json'),
+        TS_NODE_TRANSPILE_ONLY: '1',
+        UZZ_OUTBOX_INPUT: JSON.stringify({
+          mongoUrl: e2eMongoUrl(),
+          telegramUrl,
+          limit: 1,
+        }),
+      },
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk: Buffer | string) => {
+      stdout += String(chunk);
+    });
+    child.stderr.on('data', (chunk: Buffer | string) => {
+      stderr += String(chunk);
+    });
+    child.on('error', (error) => {
+      fs.rmSync(runnerPath, { force: true });
+      reject(error);
+    });
+    child.on('close', (status) => {
+      fs.rmSync(runnerPath, { force: true });
+      if (status !== 0) {
+        reject(new Error(`outbox runner failed (${status}): ${stderr || stdout}`));
+        return;
+      }
+      try {
+        resolve(parseOutboxResult(stdout, stderr));
+      } catch (error) {
+        reject(error);
+      }
+    });
+  });
 }
 
 export async function injectWriteFailureOnce(namespace: string): Promise<void> {
