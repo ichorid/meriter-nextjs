@@ -6,23 +6,26 @@
 - `UZZ_WEB_BASE_URL`, `UZZ_DOMAIN`, `DEFAULT_TELEGRAM_COMMUNITY_ID`, email и bot secrets заданы.
 - UUID API совпадает с `NEXT_PUBLIC_DEFAULT_COMMUNITY_ID` web-сборки.
 - В production выключены fake auth и debug endpoints.
-- Пройдены UZZ-тесты, web lint/build и сценарии приёмки из отчёта 19.
+- Пройдены UZZ-тесты, web lint/build и сценарии приёмки из отчёта 20 (CI job `uzz-release-gate`). Отчёт 19 сохраняет исторический mocked UI-contract 24/24; он не заменяет реальный E2E.
 - В админке проверены четыре флага Telegram-уведомлений; тестовое сообщение открывает абсолютную ссылку на текущий UZZ-домен.
 
-Рекомендуемый локальный release gate:
+Рекомендуемый локальный / CI release gate (`uzz-release-gate`):
 
 ```bash
-pnpm --dir api exec jest apps/meriter/test/uzz-*.spec.ts --runInBand --forceExit
-pnpm --dir api exec jest --config apps/meriter/test/jest-e2e.json apps/meriter/test/uzz-acceptance.e2e-spec.ts --runInBand --forceExit
-pnpm --dir uzz-web test:unit
-pnpm --dir uzz-web test:e2e
+pnpm --dir api exec jest 'apps/meriter/test/uzz-.*\.spec\.ts$' --runInBand --forceExit
+pnpm --dir api build
+pnpm --dir uzz-web test:unit -- --run
 pnpm --dir uzz-web lint
 pnpm --dir uzz-web exec tsc --noEmit
-pnpm --dir uzz-web build --webpack
-pnpm --dir api exec nest build meriter
+pnpm --dir uzz-web build
+pnpm --dir uzz-web test:ui-contract
+pnpm --dir uzz-web test:e2e:real
+pnpm --dir api uzz:indexes:verify
 ```
 
-В текущем общем Jest harness MongoMemoryServer может удерживать дочерний процесс после зелёного результата; для этих интеграционных команд используется `--forceExit`. Это не заменяет проверку exit code и числа прошедших тестов.
+`test:ui-contract` — mocked UI (четыре viewport × контрактные сценарии). `test:e2e:real` — сквозные R1–R15 против Compose API/Mongo. На Windows worktree, в пути которого есть `uzz-`, Jest glob заменяют на `--testPathPattern=apps/meriter/test/uzz` и отдельно запускают `reset-uzz-pilot-data.spec.ts`; production build — `pnpm --dir uzz-web build --webpack` (Turbopack падает на symlink worktree). `uzz:indexes:verify` требует `MONGO_URL` (Compose Mongo пилота или e2e).
+
+В текущем общем Jest harness MongoMemoryServer может удерживать дочерний процесс после зелёного результата; для этих интеграционных команд используется `--forceExit`. Это не заменяет проверку exit code и числа прошедших тестов. Deploy jobs ждут успех `uzz-release-gate`.
 
 ## Ежедневный контроль
 

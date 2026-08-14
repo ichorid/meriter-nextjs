@@ -6,6 +6,8 @@
 
 **Статус:** готово к интеграции; функциональных блокеров P0/P1/P2 не осталось.
 
+**Уточнение (2026-08-14, post-review):** Playwright **24/24** в этом отчёте — исторический результат **четырёх viewport × шести mocked UI-contract сценариев** (`test:ui-contract`, перехват tRPC). Это не сквозной E2E против реального API/Mongo. Число 24/24 не переписывается. Текущая приёмка релиза — отчёт 20 и CI job `uzz-release-gate`.
+
 ## Итог
 
 Пилот «Услуги за заслуги» переведён на чистую доменную модель, транзакционные application use cases и Mongoose Unit of Work. Экономические изменения атомарны и идемпотентны, уведомления доставляются через outbox, вход ограничен email magic link, а frontend закрывает полный пользовательский и административный цикл.
@@ -18,7 +20,7 @@
 - auth magic-link service: **6/6**, HTTP e2e: **5/5**;
 - reset/config/architecture: **7/7**;
 - frontend component tests: **7 файлов, 19/19**;
-- Playwright: **24/24** — desktop 1280, mobile 320/360, tablet 768;
+- Playwright: **24/24** — desktop 1280, mobile 320/360, tablet 768 (четыре viewport × шесть **mocked UI-contract** сценариев; superseded отчётом 20);
 - TypeScript, строгий ESLint, API build, Next production build, isolation и product-scope checks: **exit 0**.
 
 ## Трассировка требований
@@ -35,7 +37,7 @@
 | Необязательная благодарность | thanks use case/form; целочисленная inline-валидация | thanks backend и component tests |
 | Настраиваемые Telegram-уведомления | 4 settings flags, outbox payload path, absolute UZZ URL | notification settings/sender/outbox tests |
 | Безопасный UZZ-only reset | literal allowlist и двухфакторное подтверждение CLI | reset test; runbook 18 |
-| UI/UX и mobile | editor, honest states, filters, exact fee source, mobile nav | 19 component + 24 browser tests |
+| UI/UX и mobile | editor, honest states, filters, exact fee source, mobile nav | 19 component + 24 mocked UI-contract browser tests (superseded: отчёт 20) |
 | Тонкая typed tRPC boundary | отдельный `uzz-trpc.ts` context | adapter tests, frontend tsc и оба production builds |
 
 ## Сценарии A–X
@@ -73,6 +75,8 @@
 
 ## Browser acceptance
 
+Исторический прогон: шесть UI-потоков × четыре viewport = **24/24**. Это **mocked UI-contract** (`page.route` / фикстуры tRPC), а не реальный стек. Результат сохранён как есть; не интерпретировать его как E2E. Актуальные R1–R15 и Axe — отчёт 20.
+
 Каждый из шести потоков проверен в четырёх viewport-профилях:
 
 1. на экране входа виден только email magic link;
@@ -82,7 +86,7 @@
 5. подтверждение заявки показывает фактически использованный кошелёк комиссии;
 6. layout не создаёт горизонтальный overflow.
 
-Playwright запускается против `next build` + `next start`, а не dev/HMR. Это устраняет потерю событий на границе Fast Refresh и проверяет production-поведение. Итог: **24/24**.
+Playwright запускается против `next build` + `next start`, а не dev/HMR. Это устраняет потерю событий на границе Fast Refresh и проверяет production-сборку UI при замоканном API. Итог: **24/24** mocked UI-contract (superseded).
 
 ## Команды финального gate
 

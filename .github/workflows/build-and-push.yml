@@ -166,9 +166,10 @@ jobs:
       - name: Run E2E tests
         run: pnpm --filter @meriter/api test:e2e:ci
 
-  test-uzz:
-    name: UZZ acceptance and browser tests
+  uzz-release-gate:
+    name: UZZ release gate
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     permissions:
       contents: read
     env:
@@ -195,16 +196,38 @@ jobs:
         with:
           path: ${{ env.MONGOMS_DOWNLOAD_DIR }}
           key: mongoms-${{ runner.os }}-${{ env.MONGOMS_VERSION }}
-      - name: Run backend A-X acceptance gate
-        run: pnpm --dir api exec jest --config apps/meriter/test/jest-e2e.json apps/meriter/test/uzz-acceptance.e2e-spec.ts --runInBand --forceExit
-      - name: Run UZZ component tests
-        run: pnpm --dir uzz-web test:unit
+      - name: UZZ Jest specs
+        run: pnpm --dir api exec jest 'apps/meriter/test/uzz-.*\.spec\.ts$' --runInBand --forceExit
+      - name: API production build
+        run: pnpm --dir api build
+      - name: UZZ web unit tests
+        run: pnpm --dir uzz-web test:unit -- --run
+      - name: UZZ web lint
+        run: pnpm --dir uzz-web lint
+      - name: UZZ web typecheck
+        run: pnpm --dir uzz-web exec tsc --noEmit
+      - name: UZZ web production build
+        run: pnpm --dir uzz-web build
       - name: Install Chromium
         run: pnpm --dir uzz-web exec playwright install --with-deps chromium
-      - name: Run UZZ browser acceptance gate
-        run: pnpm --dir uzz-web test:e2e
-      - name: Lint and build UZZ web
-        run: pnpm --dir uzz-web lint && pnpm --dir uzz-web build --webpack
+      - name: UZZ mocked UI-contract
+        run: pnpm --dir uzz-web test:ui-contract
+      - name: UZZ real E2E
+        run: pnpm --dir uzz-web test:e2e:real
+      - name: Verify required UZZ indexes
+        env:
+          MONGO_URL: mongodb://127.0.0.1:27018/uzz_e2e?directConnection=true
+        run: pnpm --dir api uzz:indexes:verify
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: uzz-playwright-traces
+          path: |
+            uzz-web/test-results/
+            uzz-web/playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
 
   determine-target:
     name: Select deployment target
@@ -276,7 +299,7 @@ jobs:
       - check-shell-eol
       - determine-target
       - build-base
-      - test-uzz
+      - uzz-release-gate
     strategy:
       matrix:
         component: [web, api, community-web, uzz-web]
@@ -406,6 +429,7 @@ jobs:
       - determine-target
       - test-unit
       - test-e2e
+      - uzz-release-gate
       - build-images
     if: needs.determine-target.outputs.run_dev_deploy == 'true'
     environment:
@@ -433,6 +457,7 @@ jobs:
       - determine-target
       - test-unit
       - test-e2e
+      - uzz-release-gate
       - build-images
     if: needs.determine-target.outputs.run_stage_deploy == 'true'
     environment:
@@ -455,6 +480,7 @@ jobs:
       - determine-target
       - test-unit
       - test-e2e
+      - uzz-release-gate
       - build-images
       - deploy-stage
     if: needs.determine-target.outputs.run_prod_deploy == 'true'
