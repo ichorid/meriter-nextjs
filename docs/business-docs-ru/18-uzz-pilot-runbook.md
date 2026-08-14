@@ -52,21 +52,23 @@ Retry: 1m, 5m, 30m, 2h, 12h. Шестая ошибка → dead-letter. В `last
 
 ## Безопасный сброс пилота
 
-Сброс разрешён бизнесом, но затрагивает только UZZ. Dry-run — по умолчанию:
+Сброс разрешён бизнесом, но затрагивает только UZZ. Команда требует `--environment`, `--expected-host` и `--expected-db`, совпадающие с разобранным `MONGO_URL` (host и database сравниваются до подключения). Dry-run печатает resolved host/database:
 
 ```bash
-pnpm --dir api uzz:reset -- --environment=dev
+pnpm --dir api uzz:reset -- --environment=DEV --expected-host=127.0.0.1 --expected-db=meriter_dev
 ```
 
-Применение требует два явных флага:
+Применение требует `--apply` и токен `RESET_UZZ_<ENV>_<DB>`. Старый `RESET_UZZ_DEV` не принимается. Пример:
 
 ```bash
-pnpm --dir api uzz:reset -- --environment=dev --apply --confirm=RESET_UZZ_DEV
+pnpm --dir api uzz:reset -- --environment=DEV --expected-host=127.0.0.1 --expected-db=meriter_dev --apply --confirm=RESET_UZZ_DEV_MERITER_DEV
 ```
+
+Apply отклоняет: production URL при `--environment=DEV`, несовпадение host/database, широкие/дефолтные имена БД (`test`, `admin`, `local`, `config`, URL без database).
 
 Allowlist: `uzz_settings`, `uzz_rights`, `uzz_listings`, `uzz_deals`, `uzz_ledger`, `uzz_identities`, `uzz_identity_aliases`, `uzz_identity_tokens`, `uzz_commands`, `uzz_outbox`. Коллекции `users`, `wallets`, `publications`, `communities` не удаляются.
 
-Перед применением: остановить экономические команды/cron, снять backup, сохранить dry-run, сверить окружение и токен. После: перезапустить API, дождаться индексов, проверить вход/привязку и выполнить одну сквозную сделку.
+Перед применением: остановить экономические команды/cron, снять backup, сохранить dry-run, сверить host/database и токен. После: перезапустить API, дождаться индексов, проверить вход/привязку и выполнить одну сквозную сделку.
 
 ## Откат релиза
 
