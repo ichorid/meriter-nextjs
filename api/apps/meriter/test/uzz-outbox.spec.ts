@@ -169,14 +169,16 @@ describe('UZZ notification outbox', () => {
     const originalLeaseUntil = original?.lockedUntil as Date;
 
     clock.set(new Date(NOW.getTime() + leaseMs + 50));
-    await sleep(Math.floor(leaseMs / 3) + 80);
+    await waitUntil(async () => {
+      const current = await rawDb.collection('uzz_outbox').findOne({ id: 'event-1' });
+      const lockedUntil = current?.lockedUntil as Date | undefined;
+      return Boolean(lockedUntil && lockedUntil.getTime() > originalLeaseUntil.getTime());
+    }, { timeoutMs: 5_000, intervalMs: 20 });
 
     expect(await workerB.executeBatch({ limit: 10 })).toEqual({
       delivered: 0, failed: 0, deadLettered: 0,
     });
     expect(other.calls).toHaveLength(0);
-    const renewed = await rawDb.collection('uzz_outbox').findOne({ id: 'event-1' });
-    expect((renewed?.lockedUntil as Date).getTime()).toBeGreaterThan(originalLeaseUntil.getTime());
 
     slow.release();
     await expect(running).resolves.toEqual({ delivered: 1, failed: 0, deadLettered: 0 });
@@ -249,6 +251,14 @@ describe('UZZ notification outbox', () => {
   }
 });
 
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+async function waitUntil(
+  predicate: () => Promise<boolean>,
+  options: { timeoutMs: number; intervalMs: number },
+): Promise<void> {
+  const deadline = Date.now() + options.timeoutMs;
+  while (Date.now() < deadline) {
+    if (await predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, options.intervalMs));
+  }
+  throw new Error(`Timed out after ${options.timeoutMs}ms waiting for lease renewal`);
 }
