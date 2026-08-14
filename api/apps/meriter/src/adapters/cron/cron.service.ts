@@ -2,6 +2,7 @@ import { Clock } from '../../application/uzz/ports/clock.port';
 import { UzzUnitOfWork } from '../../application/uzz/ports/uzz-unit-of-work';
 import { ExpireDealsUseCase } from '../../application/uzz/use-cases/expire-deals.use-case';
 import {
+  UzzMetricSample,
   UzzOperationalMetrics,
   UzzOutboxTopicHealth,
 } from '../../infrastructure/uzz/observability/uzz-operational-metrics';
@@ -53,6 +54,7 @@ export class UzzCronService {
       processed,
       skipped,
       failed,
+      ...readExpiryTotals(this.deps.metrics),
       topics,
     }));
   }
@@ -80,6 +82,9 @@ function stringifyBatch(input: {
   failed?: number;
   delivered?: number;
   deadLettered?: number;
+  expiryProcessedTotal?: number;
+  expirySkippedTotal?: number;
+  expiryFailedTotal?: number;
   topics: UzzOutboxTopicHealth[];
 }): string {
   return JSON.stringify({
@@ -90,10 +95,36 @@ function stringifyBatch(input: {
     ...(input.failed === undefined ? {} : { failed: input.failed }),
     ...(input.delivered === undefined ? {} : { delivered: input.delivered }),
     ...(input.deadLettered === undefined ? {} : { deadLettered: input.deadLettered }),
+    ...(input.expiryProcessedTotal === undefined
+      ? {}
+      : { expiryProcessedTotal: input.expiryProcessedTotal }),
+    ...(input.expirySkippedTotal === undefined
+      ? {}
+      : { expirySkippedTotal: input.expirySkippedTotal }),
+    ...(input.expiryFailedTotal === undefined
+      ? {}
+      : { expiryFailedTotal: input.expiryFailedTotal }),
     outboxPending: sumField(input.topics, 'pending'),
     outboxOldestSeconds: maxField(input.topics, 'oldestSeconds'),
     outboxDeadLetter: sumField(input.topics, 'deadLetter'),
   });
+}
+
+function readExpiryTotals(metrics: UzzOperationalMetrics): {
+  expiryProcessedTotal: number;
+  expirySkippedTotal: number;
+  expiryFailedTotal: number;
+} {
+  const samples = metrics.collect();
+  return {
+    expiryProcessedTotal: sampleValue(samples, 'uzz_expiry_processed_total'),
+    expirySkippedTotal: sampleValue(samples, 'uzz_expiry_skipped_total'),
+    expiryFailedTotal: sampleValue(samples, 'uzz_expiry_failed_total'),
+  };
+}
+
+function sampleValue(samples: UzzMetricSample[], name: string): number {
+  return samples.find((sample) => sample.name === name)?.value ?? 0;
 }
 
 function sumField(topics: UzzOutboxTopicHealth[], field: 'pending' | 'deadLetter'): number {

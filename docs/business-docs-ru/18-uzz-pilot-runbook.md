@@ -27,20 +27,20 @@ pnpm --dir api exec nest build meriter
 ## Ежедневный контроль
 
 1. Outbox: метрики `uzz_outbox_pending`, `uzz_outbox_oldest_seconds`, `uzz_outbox_dead_letter_total`; проверить lease/retry перед ручным повтором. Telegram — at-least-once (см. ниже), не exactly-once.
-2. Сделки: нет ли `requested`, `accepted`, `completed_by_seller` старше сохранённого дедлайна после работы cron. Смотреть `uzz_expiry_processed_total` / `skipped` / `failed`.
+2. Сделки: нет ли `requested`, `accepted`, `completed_by_seller` старше сохранённого дедлайна после работы cron. Смотреть накопительные `expiryProcessedTotal` / `expirySkippedTotal` / `expiryFailedTotal` в `job=expiry`, не per-sweep `failed`.
 3. Ledger: для каждой экономической операции один `operationId`; суммы резервов/возвратов и парных благодарностей симметричны.
 4. Права: у `in_deal` есть `lockedByDealId`; у активной сделки — существующее право; номинал не ниже исторически применённого результата таяния и не растёт от подъёма пола.
 5. Identity: токены хешированы, использованные не погашаются повторно, истёкшие удаляются TTL-индексом.
 
 ## Алерты фона: пороги и команды
 
-Cron пишет одну JSON-строку `{"event":"uzz.background.batch",...}` на прогон (expiry hourly, outbox каждые 30 с). Labels метрик только `environment`, `topic`, `result` — без email, Telegram, payload, user/community/deal/event id.
+Cron пишет одну JSON-строку `{"event":"uzz.background.batch",...}` на прогон (expiry hourly, outbox каждые 30 с). Labels метрик только `environment`, `topic`, `result` — без email, Telegram, payload, user/community/deal/event id. Expiry-лог несёт per-sweep `processed`/`skipped`/`failed` и накопительные `expiryProcessedTotal`/`expirySkippedTotal`/`expiryFailedTotal` (in-process counters; `collect()` снаружи недоступен). Outbox-лог несёт gauges `outboxOldestSeconds` / `outboxDeadLetter`.
 
 **Порог — открыть инцидент, если выполняется любое:**
 
 - `uzz_outbox_oldest_seconds` / `outboxOldestSeconds` > 900 (15 минут);
 - `uzz_outbox_dead_letter_total` / `outboxDeadLetter` > 0 (любой dead letter);
-- `uzz_expiry_failed_total` / поле `failed` в `job=expiry` выросло относительно прошлого прогона.
+- `expiryFailedTotal` в `job=expiry` выросло относительно прошлого прогона. Это накопительный счётчик процесса (`uzz_expiry_failed_total`), не per-sweep поле `failed`. `failed` — только дельта текущего sweep; ноль на следующем прогоне не значит, что ошибок не было.
 
 ### Inspect
 
@@ -89,7 +89,7 @@ Expiry: не править сделки вручную. После восста
 
 ### Escalation
 
-Если после retry oldest всё ещё > 15 минут, dead letter снова появляется, или `failed` expiry растёт: остановить новые UZZ-команды, сохранить дамп и логи `uzz.background.batch`, откатить api worker к известному digest. Данные править только отдельным проверенным скриптом. Telegram не считать exactly-once.
+Если после retry oldest всё ещё > 15 минут, dead letter снова появляется, или накопительный `expiryFailedTotal` растёт (не путать с per-sweep `failed`): остановить новые UZZ-команды, сохранить дамп и логи `uzz.background.batch`, откатить api worker к известному digest. Данные править только отдельным проверенным скриптом. Telegram не считать exactly-once.
 
 ## Outbox: lease fencing и at-least-once Telegram
 

@@ -131,12 +131,58 @@ describe('UZZ operational metrics', () => {
       processed: 3,
       skipped: 1,
       failed: 1,
+      expiryProcessedTotal: 3,
+      expirySkippedTotal: 1,
+      expiryFailedTotal: 1,
       outboxPending: 2,
       outboxOldestSeconds: 1200,
       outboxDeadLetter: 1,
     });
     expect(JSON.stringify(summary)).not.toMatch(/user@example\.com|1001|payload-secret|deal-2|event-pending/);
     assertBoundedLabels(metrics);
+  });
+
+  it('logs cumulative expiry totals separately from per-sweep failed', async () => {
+    await seedOutboxFixture();
+    const expiry = {
+      executePage: jest.fn()
+        .mockResolvedValueOnce({
+          processed: 2, skipped: 1, failed: 1, lastId: null, nextAfterId: null,
+        })
+        .mockResolvedValueOnce({
+          processed: 0, skipped: 0, failed: 2, lastId: null, nextAfterId: null,
+        }),
+    };
+
+    const cron = createCron(expiry as unknown as ExpireDealsUseCase);
+    await cron.runExpirySweep();
+    await cron.runExpirySweep();
+
+    expect(logs).toHaveLength(2);
+    const first = JSON.parse(logs[0]);
+    const second = JSON.parse(logs[1]);
+    expect(first).toMatchObject({
+      event: 'uzz.background.batch',
+      job: 'expiry',
+      processed: 2,
+      skipped: 1,
+      failed: 1,
+      expiryProcessedTotal: 2,
+      expirySkippedTotal: 1,
+      expiryFailedTotal: 1,
+    });
+    expect(second).toMatchObject({
+      event: 'uzz.background.batch',
+      job: 'expiry',
+      processed: 0,
+      skipped: 0,
+      failed: 2,
+      expiryProcessedTotal: 2,
+      expirySkippedTotal: 1,
+      expiryFailedTotal: 3,
+    });
+    expect(second.failed).not.toBe(second.expiryFailedTotal);
+    expect(sample(metrics, 'uzz_expiry_failed_total')[0]?.value).toBe(3);
   });
 
   it('never emits email, Telegram, payload, or entity-id labels', async () => {
