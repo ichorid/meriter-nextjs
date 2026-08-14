@@ -6,6 +6,7 @@ import {
   uzzRouter as router,
 } from '../../../trpc/uzz-trpc';
 import { EmailAuthDisabledError } from '../../../application/use-cases/auth/send-email-login-link.use-case';
+import { EmailDeliveryUnavailableError } from '../../../infrastructure/auth/email-login-link.service';
 import { FakeAuthDisabledError } from '../../../application/use-cases/auth/establish-session.use-case';
 import {
   UzzIdentityConflictError,
@@ -38,6 +39,12 @@ export const uzzAppRouter = router({
             productLabel: 'Услуги за заслуги',
           });
         } catch (error) {
+          if (error instanceof EmailDeliveryUnavailableError) {
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message: error.code,
+            });
+          }
           const message = error instanceof Error ? error.message : 'Failed to send link';
           throw new TRPCError({ code: 'BAD_REQUEST', message });
         }

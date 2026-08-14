@@ -38,6 +38,12 @@ const validateSync = (config: Record<string, unknown>) => {
     UZZ_DOMAIN: (config.UZZ_DOMAIN as string) || '',
     DEFAULT_TELEGRAM_COMMUNITY_ID:
       (config.DEFAULT_TELEGRAM_COMMUNITY_ID as string) || '',
+    EMAIL_ENABLED: (config.EMAIL_ENABLED as string) || 'false',
+    EMAIL_API_KEY: (config.EMAIL_API_KEY as string) || '',
+    EMAIL_FROM: (config.EMAIL_FROM as string) || '',
+    EMAIL_API_URL:
+      (config.EMAIL_API_URL as string) ||
+      'https://go1.unisender.ru/ru/transactional/api/v1',
     
     // Telegram
     TELEGRAM_BOT_ENABLED: (config.TELEGRAM_BOT_ENABLED as string) || 'false',
@@ -150,6 +156,10 @@ const validateSync = (config: Record<string, unknown>) => {
     DEFAULT_TELEGRAM_COMMUNITY_ID: nodeEnv === 'production'
       ? z.string().uuid('DEFAULT_TELEGRAM_COMMUNITY_ID must be the pilot community UUID')
       : z.string().optional().default(''),
+    ...uzzProductionEmailFields(
+      nodeEnv,
+      String(configWithDefaults.UZZ_WEB_BASE_URL || '').trim(),
+    ),
     
     // Telegram
     TELEGRAM_BOT_ENABLED: z.enum(['true', 'false']).optional().default('false'),
@@ -241,6 +251,29 @@ const validateSync = (config: Record<string, unknown>) => {
 
   return result.data;
 };
+
+const httpsUrl = z
+  .string()
+  .url()
+  .refine((value) => value.startsWith('https://'), 'must be an HTTPS URL');
+
+function uzzProductionEmailFields(nodeEnv: string, uzzWebBaseUrl: string) {
+  const requireUzzEmail = nodeEnv === 'production' && uzzWebBaseUrl.length > 0;
+  if (requireUzzEmail) {
+    return {
+      EMAIL_ENABLED: z.literal('true'),
+      EMAIL_API_KEY: z.string().min(1, 'EMAIL_API_KEY is required'),
+      EMAIL_FROM: z.string().email('EMAIL_FROM must be a valid email'),
+      EMAIL_API_URL: httpsUrl,
+    };
+  }
+  return {
+    EMAIL_ENABLED: z.enum(['true', 'false']).optional().default('false'),
+    EMAIL_API_KEY: z.string().optional().default(''),
+    EMAIL_FROM: z.string().optional().default(''),
+    EMAIL_API_URL: z.string().url().optional().or(z.literal('')),
+  };
+}
 
 export const validationSchema = {
   validate: (config: Record<string, unknown>) => {

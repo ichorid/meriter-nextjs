@@ -3,6 +3,21 @@ import { ConfigService } from '@nestjs/config';
 import { AppConfig } from '../../config/configuration';
 import { AuthMagicLinkService } from './magic-link-auth.service';
 import type { EmailLoginLinkSendResult } from '../../domain/ports/email-login-link.port';
+import { UzzTokenHasher } from '../uzz/security/uzz-token-hasher';
+
+export class EmailDeliveryUnavailableError extends Error {
+    readonly code = 'EMAIL_DELIVERY_UNAVAILABLE';
+
+    constructor() {
+        super('EMAIL_DELIVERY_UNAVAILABLE');
+        this.name = 'EmailDeliveryUnavailableError';
+    }
+}
+
+export type EmailProviderResult = {
+    delivered: boolean;
+    providerRequestId?: string;
+};
 
 /**
  * BC-12: email login via one-time magic link.
@@ -13,6 +28,7 @@ import type { EmailLoginLinkSendResult } from '../../domain/ports/email-login-li
 export class EmailLoginLinkService {
     private readonly logger = new Logger(EmailLoginLinkService.name);
     private readonly resendCooldownSeconds = 60;
+    private readonly tokenHasher = new UzzTokenHasher();
 
     constructor(
         private readonly configService: ConfigService<AppConfig>,
@@ -28,13 +44,18 @@ export class EmailLoginLinkService {
             productLabel?: string;
         },
     ): Promise<EmailLoginLinkSendResult> {
-        await this.checkRateLimit(email);
+        const normalizedEmail = email.trim().toLowerCase();
+        await this.checkRateLimit(normalizedEmail);
 
-        const { linkUrl } = await this.authMagicLinkService.createToken('email', email, {
-            linkToUserId: options?.linkToUserId,
-            baseUrl: options?.baseUrl,
-            path: options?.path,
-        });
+        const { linkUrl } = await this.authMagicLinkService.createToken(
+            'email',
+            normalizedEmail,
+            {
+                linkToUserId: options?.linkToUserId,
+                baseUrl: options?.baseUrl,
+                path: options?.path,
+            },
+        );
         const ttlMinutes = this.configService.getOrThrow('magicLink').ttlMinutes;
         const product = options?.productLabel?.trim() || 'Meriter';
 
@@ -51,14 +72,31 @@ export class EmailLoginLinkService {
             `Ссылка действует ${ttlMinutes} минут и сработает только один раз.\n` +
             `Если вы не запрашивали вход, просто проигнорируйте это письмо.`;
 
+        let providerResult: EmailProviderResult;
         try {
-            const sent = await this.sendHtmlEmail(email, `Вход в ${product}`, html, plaintext);
-            if (!sent) {
-                this.logger.warn(`Email provider not configured, login link for ${email}: ${linkUrl}`);
-            }
-        } catch (error) {
-            this.logger.error(`Failed to send login link email to ${email}: ${error}`);
-            throw new Error('Failed to send email');
+            providerResult = normalizeEmailProviderResult(
+                await this.sendHtmlEmail(
+                    normalizedEmail,
+                    `Вход в ${product}`,
+                    html,
+                    plaintext,
+                ),
+            );
+        } catch {
+            this.logger.warn({
+                event: 'uzz_magic_link_delivery_failed',
+                subjectHash: this.tokenHasher.hash(normalizedEmail),
+            });
+            throw new EmailDeliveryUnavailableError();
+        }
+
+        if (!providerResult.delivered) {
+            this.logger.warn({
+                event: 'uzz_magic_link_delivery_failed',
+                subjectHash: this.tokenHasher.hash(normalizedEmail),
+                providerRequestId: providerResult.providerRequestId,
+            });
+            throw new EmailDeliveryUnavailableError();
         }
 
         return {
@@ -68,7 +106,7 @@ export class EmailLoginLinkService {
     }
 
     /**
-     * Send an HTML email via Unisender. Returns false if email is not configured.
+     * Send an HTML email via Unisender.
      * @see https://godocs.unisender.ru/web-api-ref#email-send
      */
     async sendHtmlEmail(
@@ -76,10 +114,10 @@ export class EmailLoginLinkService {
         subject: string,
         html: string,
         plaintext: string,
-    ): Promise<boolean> {
+    ): Promise<EmailProviderResult> {
         const emailConfig = this.configService.get('email');
         if (!emailConfig?.enabled || !emailConfig.api?.key) {
-            return false;
+            return { delivered: false };
         }
 
         const apiUrl = `${emailConfig.api.url}/email/send.json`;
@@ -103,13 +141,13 @@ export class EmailLoginLinkService {
             body: JSON.stringify(payload),
         });
 
+        const providerRequestId = await readProviderRequestId(response);
+
         if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Unisender API error: ${response.status} ${errorText}`);
+            return { delivered: false, providerRequestId };
         }
 
-        this.logger.log(`Email sent to ${to}: ${subject}`);
-        return true;
+        return { delivered: true, providerRequestId };
     }
 
     private async checkRateLimit(email: string): Promise<void> {
@@ -122,4 +160,54 @@ export class EmailLoginLinkService {
             throw new Error(`Please wait ${waitSeconds} seconds before requesting a new link.`);
         }
     }
+}
+
+function normalizeEmailProviderResult(
+    result: boolean | EmailProviderResult,
+): EmailProviderResult {
+    if (typeof result === 'boolean') {
+        return { delivered: result };
+    }
+    return {
+        delivered: result.delivered === true,
+        providerRequestId: result.providerRequestId,
+    };
+}
+
+async function readProviderRequestId(
+    response: Response,
+): Promise<string | undefined> {
+    const raw = await response.text();
+    if (!raw) {
+        return undefined;
+    }
+    try {
+        return extractProviderRequestId(JSON.parse(raw) as unknown);
+    } catch {
+        return undefined;
+    }
+}
+
+function extractProviderRequestId(payload: unknown): string | undefined {
+    if (!payload || typeof payload !== 'object') {
+        return undefined;
+    }
+    const record = payload as Record<string, unknown>;
+    if (typeof record.job_id === 'string' && record.job_id) {
+        return record.job_id;
+    }
+    if (typeof record.request_id === 'string' && record.request_id) {
+        return record.request_id;
+    }
+    const nested = record.result;
+    if (nested && typeof nested === 'object') {
+        const nestedRecord = nested as Record<string, unknown>;
+        if (typeof nestedRecord.job_id === 'string' && nestedRecord.job_id) {
+            return nestedRecord.job_id;
+        }
+        if (typeof nestedRecord.request_id === 'string' && nestedRecord.request_id) {
+            return nestedRecord.request_id;
+        }
+    }
+    return undefined;
 }

@@ -1,3 +1,4 @@
+import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, createConnection } from 'mongoose';
@@ -10,6 +11,7 @@ import {
   AuthMagicLinkSchema,
 } from '../src/domain/models/auth/auth-magic-link.schema';
 import { UzzRateLimitedError } from '../src/domain/uzz/errors';
+import { EmailLoginLinkService } from '../src/infrastructure/auth/email-login-link.service';
 import { AuthMagicLinkService } from '../src/infrastructure/auth/magic-link-auth.service';
 import {
   createMongooseUzzRepositories,
@@ -253,6 +255,53 @@ describe('UZZ identity security', () => {
     }
     expect(JSON.stringify(rows)).not.toContain(first.token);
     expect(JSON.stringify(rows)).not.toContain(second.token);
+  });
+
+  it('fails closed and does not log secrets when email delivery fails', async () => {
+    const logs: unknown[] = [];
+    const capture = (...args: unknown[]) => {
+      logs.push(...args);
+    };
+    const logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(capture);
+    const warnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(capture);
+    const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(capture);
+
+    try {
+      const config = new ConfigService<AppConfig>({
+        magicLink: {
+          baseUrl: 'https://uzz.example.test',
+          path: '/a',
+          ttlMinutes: 15,
+        },
+        email: {
+          enabled: true,
+          api: { url: 'https://email.example.test', key: 'test-key' },
+          from: { address: 'noreply@example.test', name: 'UZZ' },
+        },
+      } as AppConfig);
+      const service = new EmailLoginLinkService(config, magicLinks);
+      jest.spyOn(service, 'sendHtmlEmail').mockResolvedValue(false);
+
+      let rawToken = '';
+      const originalCreate = magicLinks.createToken.bind(magicLinks);
+      jest.spyOn(magicLinks, 'createToken').mockImplementation(async (...args) => {
+        const created = await originalCreate(...args);
+        rawToken = created.token;
+        return created;
+      });
+
+      const result = service.sendLoginLink('person@example.test');
+      await expect(result).rejects.toMatchObject({ code: 'EMAIL_DELIVERY_UNAVAILABLE' });
+
+      const serializedLogs = JSON.stringify(logs);
+      expect(serializedLogs).not.toContain(rawToken);
+      expect(serializedLogs).not.toContain('/a/');
+      expect(serializedLogs).not.toContain('person@example.test');
+    } finally {
+      logSpy.mockRestore();
+      warnSpy.mockRestore();
+      errorSpy.mockRestore();
+    }
   });
 });
 
