@@ -13,6 +13,8 @@
 
 Остатки, не вошедшие в ship-day (P2, UX-бэклог, отклонённые идеи): [BACKLOG-AFTER-FULL-QA.md](./BACKLOG-AFTER-FULL-QA.md).
 
+**Повторная проверка уже выкатанных фиксов на dev:** [15-proverka-fiksov-posle-qa.md](./15-proverka-fiksov-posle-qa.md) (не полный регресс 00→14, только таблица исправлений).
+
 ## Как пользоваться
 
 1. Получить от команды: доступ на dev + роль **superadmin** на ваш аккаунт (+ второй аккаунт для двух пользователей, если нужно).
@@ -40,6 +42,7 @@
 | 12 | [12-regressiya-poslednih-ispravleniy.md](./12-regressiya-poslednih-ispravleniy.md) | Недавние исправления UI | Да |
 | 13 | [13-realnaya-autentifikatsiya.md](./13-realnaya-autentifikatsiya.md) | Email / SMS / Passkey (prod и сверка) | Для prod-логина |
 | 14 | [14-prod-smoke.md](./14-prod-smoke.md) | Контрольный прогон на meriter.pro | Финальный шаг |
+| 15 | [15-proverka-fiksov-posle-qa.md](./15-proverka-fiksov-posle-qa.md) | Retest фиксов после полного QA (dev) | После выката фиксов на dev |
 
 ## Критерий «можно на production»
 

@@ -1,9 +1,10 @@
-# Backlog after full QA (junior pass, 2026-08)
+# Backlog after full QA (2026-08)
 
-Source: junior full-platform run (`Чек-лист сессий` + `UX-идеи`).  
+Source: full-platform run (`Чек-лист сессий` + `UX-идеи`).  
 Ship-day scope was **P0 + P1 + 4 UX polish** only. Everything below is **not** in that ship.
 
-Related temp parse (may be deleted after ship): `_qa-parse-temp.md`.
+Related temp parse (may be deleted after ship): `_qa-parse-temp.md`.  
+Retest of shipped fixes: [15-proverka-fiksov-posle-qa.md](./15-proverka-fiksov-posle-qa.md).
 
 ---
 
