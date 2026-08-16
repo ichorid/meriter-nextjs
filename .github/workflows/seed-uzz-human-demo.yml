@@ -57,10 +57,11 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
           scp /tmp/seed-uzz-human-demo.cjs "deploy@${VPS_HOST}:/tmp/seed-uzz-human-demo.cjs"
-          ssh "deploy@${VPS_HOST}" \
-            env COMMUNITY_NAME="$COMMUNITY_NAME" GRANT_EMAIL="$GRANT_EMAIL" SET_STAND="$SET_STAND" \
-            bash -s <<'REMOTE'
+          ssh "deploy@${VPS_HOST}" bash -s -- "$COMMUNITY_NAME" "$GRANT_EMAIL" "$SET_STAND" <<'REMOTE'
           set -euo pipefail
+          COMMUNITY_NAME="$1"
+          GRANT_EMAIL="$2"
+          SET_STAND="$3"
           docker inspect meriter-api >/dev/null
           docker cp /tmp/seed-uzz-human-demo.cjs meriter-api:/tmp/seed-uzz-human-demo.cjs
           extra=()
