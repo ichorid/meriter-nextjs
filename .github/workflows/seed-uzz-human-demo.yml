@@ -61,18 +61,20 @@ jobs:
           mkdir -p ~/.ssh
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
           scp /tmp/seed-uzz-human-demo.cjs "deploy@${VPS_HOST}:/tmp/seed-uzz-human-demo.cjs"
-          ssh "deploy@${VPS_HOST}" bash -s -- "$COMMUNITY_NAME" "$GRANT_EMAIL" "$SET_STAND" <<'REMOTE'
+          NAME_B64=$(printf '%s' "$COMMUNITY_NAME" | base64 -w0)
+          EMAIL_B64=$(printf '%s' "$GRANT_EMAIL" | base64 -w0)
+          STAND_B64=$(printf '%s' "$SET_STAND" | base64 -w0)
+          ssh "deploy@${VPS_HOST}" "NAME_B64=$NAME_B64 EMAIL_B64=$EMAIL_B64 STAND_B64=$STAND_B64 bash -s" <<'REMOTE'
           set -euo pipefail
-          COMMUNITY_NAME="$1"
-          GRANT_EMAIL="$2"
-          SET_STAND="$3"
+          COMMUNITY_NAME=$(printf '%s' "$NAME_B64" | base64 -d)
+          GRANT_EMAIL=$(printf '%s' "$EMAIL_B64" | base64 -d)
+          SET_STAND=$(printf '%s' "$STAND_B64" | base64 -d)
           docker inspect meriter-api >/dev/null
           MONGO_URL=$(docker exec meriter-api printenv MONGO_URL)
           HOST=$(MONGO_URL="$MONGO_URL" python3 -c "from urllib.parse import urlparse; import os; print(urlparse(os.environ['MONGO_URL']).hostname)")
           DB=$(MONGO_URL="$MONGO_URL" python3 -c "from urllib.parse import urlparse; import os; path=urlparse(os.environ['MONGO_URL']).path or '/meriter'; print(path.lstrip('/').split('?')[0] or 'meriter')")
           extra=()
           extra+=(--environment=DEV --expected-host="$HOST" --expected-db="$DB")
-          extra+=(--community-name="$COMMUNITY_NAME")
           if [ "$SET_STAND" = "true" ]; then
             extra+=(--set-stand)
           fi
@@ -82,6 +84,8 @@ jobs:
           run_seed() {
             docker run --rm --network container:meriter-api \
               -e MONGO_URL="$MONGO_URL" \
+              -e SEED_COMMUNITY_NAME="$COMMUNITY_NAME" \
+              -e SEED_GRANT_EMAIL="$GRANT_EMAIL" \
               -v /tmp/seed-uzz-human-demo.cjs:/seed-uzz-human-demo.cjs:ro \
               node:22-alpine node /seed-uzz-human-demo.cjs "$@"
           }

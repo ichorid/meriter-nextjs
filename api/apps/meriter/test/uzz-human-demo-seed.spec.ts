@@ -5,6 +5,7 @@ import {
   prepareSeed,
   seedConfirmationToken,
   seedHumanDemoWorld,
+  selectCommunityByName,
 } from '../../../scripts/seed-uzz-human-demo';
 import { withMockMarker } from '../../../scripts/uzz-human-demo-world';
 
@@ -29,6 +30,10 @@ describe('UZZ human demo seed safety', () => {
       '--community-name=Meriter Dev Chat',
       '--set-stand',
     ]).communityName).toBe('Meriter Dev Chat');
+    expect(selectCommunityByName([
+      { id: 'chat', name: 'Meriter Dev Chat', telegramChatId: '-1001' },
+      { id: 'bot', name: 'Test Meriter Dev Bot 3', telegramChatId: '-1002' },
+    ], 'Meriter Dev Chat').id).toBe('chat');
     expect(() =>
       parseSeedArguments([
         '--environment=DEV',

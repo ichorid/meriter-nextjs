@@ -68,10 +68,12 @@ export function parseSeedArguments(argv: string[]): SeedArguments {
     communityId: value(argv, '--community-id=').trim()
       || process.env.DEFAULT_TELEGRAM_COMMUNITY_ID?.trim()
       || DEFAULT_DEMO_COMMUNITY_ID,
-    communityName: value(argv, '--community-name=').trim() || null,
+    communityName: value(argv, '--community-name=').trim()
+      || process.env.SEED_COMMUNITY_NAME?.trim()
+      || null,
     apply,
     confirmation,
-    grantEmail: value(argv, '--grant-email=').trim().toLowerCase() || null,
+    grantEmail: (value(argv, '--grant-email=') || process.env.SEED_GRANT_EMAIL || '').trim().toLowerCase() || null,
     setStand: argv.includes('--set-stand'),
   };
 }
@@ -508,6 +510,26 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+export function selectCommunityByName<T extends { id?: unknown; name?: unknown; telegramChatId?: unknown }>(
+  rows: T[],
+  name: string,
+): T {
+  const withChat = rows.filter((row) => row.telegramChatId);
+  const pool = withChat.length ? withChat : rows;
+  if (pool.length === 0) {
+    throw new Error(`COMMUNITY_NOT_FOUND: ${name}`);
+  }
+  const needle = name.trim().toLowerCase();
+  const exact = pool.filter((row) => String(row.name ?? '').trim().toLowerCase() === needle);
+  const selected = exact.length === 1 ? exact[0]! : pool.length === 1 ? pool[0]! : null;
+  if (!selected) {
+    throw new Error(
+      `COMMUNITY_AMBIGUOUS: ${pool.map((row) => `${row.id}:${row.name}`).join(', ')}`,
+    );
+  }
+  return selected;
+}
+
 export async function resolveSeedCommunityId(
   db: DemoDb,
   args: Pick<SeedArguments, 'communityId' | 'communityName'>,
@@ -523,17 +545,7 @@ export async function resolveSeedCommunityId(
   const rows = await db.collection('communities').find({
     name: { $regex: escapeRegex(args.communityName), $options: 'i' },
   }).toArray();
-  const withChat = rows.filter((row) => row.telegramChatId);
-  const pool = withChat.length ? withChat : rows;
-  if (pool.length === 0) {
-    throw new Error(`COMMUNITY_NOT_FOUND: ${args.communityName}`);
-  }
-  if (pool.length > 1) {
-    throw new Error(
-      `COMMUNITY_AMBIGUOUS: ${pool.map((row) => `${row.id}:${row.name}`).join(', ')}`,
-    );
-  }
-  const selected = pool[0]!;
+  const selected = selectCommunityByName(rows, args.communityName);
   return {
     communityId: String(selected.id),
     communityName: typeof selected.name === 'string' ? selected.name : args.communityName,
