@@ -6,6 +6,7 @@ import {
   DEMO_PERSONAS,
   DEMO_TAG,
   DemoPersona,
+  withMockMarker,
 } from './uzz-human-demo-world';
 
 const FORBIDDEN_DATABASES = new Set(['test', 'admin', 'local', 'config']);
@@ -17,9 +18,11 @@ export interface SeedArguments {
   expectedHost: string;
   expectedDb: string;
   communityId: string;
+  communityName: string | null;
   apply: boolean;
   confirmation: string | null;
   grantEmail: string | null;
+  setStand: boolean;
 }
 
 export interface SeedTarget {
@@ -65,9 +68,11 @@ export function parseSeedArguments(argv: string[]): SeedArguments {
     communityId: value(argv, '--community-id=').trim()
       || process.env.DEFAULT_TELEGRAM_COMMUNITY_ID?.trim()
       || DEFAULT_DEMO_COMMUNITY_ID,
+    communityName: value(argv, '--community-name=').trim() || null,
     apply,
     confirmation,
     grantEmail: value(argv, '--grant-email=').trim().toLowerCase() || null,
+    setStand: argv.includes('--set-stand'),
   };
 }
 
@@ -147,7 +152,7 @@ async function seedPersona(db: DemoDb, communityId: string, persona: DemoPersona
     authId: persona.email,
     firstName: persona.firstName,
     lastName: persona.lastName,
-    displayName: persona.displayName,
+    displayName: withMockMarker(persona.displayName),
     username: persona.telegramUsername,
     profile: { bio: persona.bio },
     communityTags: [],
@@ -197,7 +202,7 @@ async function seedPersona(db: DemoDb, communityId: string, persona: DemoPersona
     id: persona.publicationId,
     communityId,
     authorId: persona.id,
-    title: persona.deedTitle,
+    title: withMockMarker(persona.deedTitle),
     content: persona.deedBody,
     description: persona.deedBody,
     type: 'text',
@@ -242,8 +247,8 @@ async function seedPersona(db: DemoDb, communityId: string, persona: DemoPersona
     id: persona.listing.id,
     communityId,
     authorId: persona.id,
-    title: persona.listing.title,
-    description: persona.listing.description,
+    title: withMockMarker(persona.listing.title),
+    description: withMockMarker(persona.listing.description),
     priceRub: persona.listing.priceRub,
     deliveryMode: persona.listing.deliveryMode,
     locationText: persona.listing.locationText,
@@ -278,7 +283,6 @@ export async function seedHumanDemoWorld(
       $set: {
         members: [...members],
         updatedAt: input.now,
-        [DEMO_TAG]: true,
       },
       $setOnInsert: {
         id: input.communityId,
@@ -288,6 +292,7 @@ export async function seedHumanDemoWorld(
         isPriority: false,
         settings: { currencyNames: MERIT_CURRENCY, dailyEmission: 10 },
         createdAt: daysAgo(input.now, 30),
+        [DEMO_TAG]: true,
       },
     },
     { upsert: true },
@@ -330,9 +335,9 @@ export async function seedHumanDemoWorld(
       lotId: deal.listingId,
       bankId: deal.rightId,
       status: deal.status,
-      requestMessage: deal.requestMessage,
+      requestMessage: withMockMarker(deal.requestMessage),
       listingSnapshot: {
-        title: seller.listing.title,
+        title: withMockMarker(seller.listing.title),
         priceRub: seller.listing.priceRub,
         deliveryMode: seller.listing.deliveryMode,
         locationText: seller.listing.locationText,
@@ -358,7 +363,7 @@ export async function seedHumanDemoWorld(
       cancelledAt: deal.status === 'cancelled' ? hoursFrom(requestedAt, 6) : null,
       buyerThankedAt: deal.thanked ? hoursFrom(requestedAt, 32) : null,
       sellerThankedAt: deal.thanked ? hoursFrom(requestedAt, 33) : null,
-      buyerThanksComment: deal.thanksComment ?? null,
+      buyerThanksComment: deal.thanksComment ? withMockMarker(deal.thanksComment) : null,
       sellerThanksComment: deal.thanked ? 'Рада, что зашло.' : null,
       buyerThanksMerits: deal.thanked ? 2 : null,
       sellerThanksMerits: deal.thanked ? 2 : null,
@@ -468,23 +473,72 @@ export async function grantTesterKit(
     createdAt: existingIdentity?.createdAt ?? input.now,
     updatedAt: input.now,
   });
-  await upsert(db, 'wallets', { id: `wallet-${userId}-${input.communityId}` }, {
-    id: `wallet-${userId}-${input.communityId}`,
-    userId,
-    communityId: input.communityId,
-    balance: input.merits,
-    currency: MERIT_CURRENCY,
-    lastUpdated: input.now,
+  await db.collection('wallets').updateOne(
+    { userId, communityId: input.communityId },
+    {
+      $set: {
+        userId,
+        communityId: input.communityId,
+        balance: input.merits,
+        currency: MERIT_CURRENCY,
+        lastUpdated: input.now,
+        [DEMO_TAG]: true,
+      },
+      $setOnInsert: { id: `wallet-${userId}-${input.communityId}` },
+    },
+    { upsert: true },
+  );
+  const globalWallet = await db.collection('wallets').findOne({
+    userId, communityId: GLOBAL_COMMUNITY_ID,
   });
-  await upsert(db, 'wallets', { id: `wallet-${userId}-${GLOBAL_COMMUNITY_ID}` }, {
-    id: `wallet-${userId}-${GLOBAL_COMMUNITY_ID}`,
-    userId,
-    communityId: GLOBAL_COMMUNITY_ID,
-    balance: input.merits,
-    currency: MERIT_CURRENCY,
-    lastUpdated: input.now,
-  });
+  if (!globalWallet) {
+    await upsert(db, 'wallets', { id: `wallet-${userId}-${GLOBAL_COMMUNITY_ID}` }, {
+      id: `wallet-${userId}-${GLOBAL_COMMUNITY_ID}`,
+      userId,
+      communityId: GLOBAL_COMMUNITY_ID,
+      balance: input.merits,
+      currency: MERIT_CURRENCY,
+      lastUpdated: input.now,
+    });
+  }
   return { userId, merits: input.merits };
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export async function resolveSeedCommunityId(
+  db: DemoDb,
+  args: Pick<SeedArguments, 'communityId' | 'communityName'>,
+): Promise<{ communityId: string; communityName: string | null; telegramChatId: string | null }> {
+  if (!args.communityName) {
+    const current = await db.collection('communities').findOne({ id: args.communityId });
+    return {
+      communityId: args.communityId,
+      communityName: typeof current?.name === 'string' ? current.name : null,
+      telegramChatId: current?.telegramChatId ? String(current.telegramChatId) : null,
+    };
+  }
+  const rows = await db.collection('communities').find({
+    name: { $regex: escapeRegex(args.communityName), $options: 'i' },
+  }).toArray();
+  const withChat = rows.filter((row) => row.telegramChatId);
+  const pool = withChat.length ? withChat : rows;
+  if (pool.length === 0) {
+    throw new Error(`COMMUNITY_NOT_FOUND: ${args.communityName}`);
+  }
+  if (pool.length > 1) {
+    throw new Error(
+      `COMMUNITY_AMBIGUOUS: ${pool.map((row) => `${row.id}:${row.name}`).join(', ')}`,
+    );
+  }
+  const selected = pool[0]!;
+  return {
+    communityId: String(selected.id),
+    communityName: typeof selected.name === 'string' ? selected.name : args.communityName,
+    telegramChatId: selected.telegramChatId ? String(selected.telegramChatId) : null,
+  };
 }
 
 async function main() {
@@ -497,9 +551,13 @@ async function main() {
   try {
     const db = client.db();
     const now = new Date();
+    const resolved = await resolveSeedCommunityId(db, prepared.args);
+    console.log(
+      `Community ${resolved.communityId} name=${resolved.communityName ?? 'unknown'} telegramChatId=${resolved.telegramChatId ?? 'none'}`,
+    );
     if (!prepared.args.grantEmail || prepared.args.apply) {
       const summary = await seedHumanDemoWorld(db, {
-        communityId: prepared.args.communityId,
+        communityId: resolved.communityId,
         now,
         apply: prepared.args.apply,
       });
@@ -511,11 +569,29 @@ async function main() {
       } else {
         const kit = await grantTesterKit(db, {
           email: prepared.args.grantEmail,
-          communityId: prepared.args.communityId,
+          communityId: resolved.communityId,
           merits: 40,
           now,
         });
         console.log('Tester kit granted', kit);
+      }
+    }
+    if (prepared.args.setStand) {
+      if (!prepared.args.apply) {
+        console.log(`Would set stand community to ${resolved.communityId}`);
+      } else {
+        await db.collection('uzz_platform').updateOne(
+          { id: 'stand' },
+          {
+            $set: {
+              id: 'stand',
+              selectedCommunityId: resolved.communityId,
+              updatedAt: now,
+            },
+          },
+          { upsert: true },
+        );
+        console.log(`Stand community set to ${resolved.communityId}`);
       }
     }
   } finally {
@@ -523,7 +599,12 @@ async function main() {
   }
 }
 
-if (require.main === module) {
+function isDirectCli(scriptName: string): boolean {
+  const entry = (process.argv[1] ?? '').replace(/\\/g, '/');
+  return require.main === module && entry.includes(scriptName);
+}
+
+if (isDirectCli('seed-uzz-human-demo')) {
   main().catch((error) => {
     console.error(error instanceof Error ? error.message : error);
     process.exitCode = 1;

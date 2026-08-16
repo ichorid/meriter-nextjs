@@ -187,6 +187,6 @@ async function main() {
   }
 }
 
-if (require.main === module) {
+if (require.main === module && (process.argv[1] ?? '').replace(/\\/g, '/').includes('reset-uzz-pilot-data')) {
   main().catch((error) => { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; });
 }

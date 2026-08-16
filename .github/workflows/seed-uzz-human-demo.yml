@@ -1,0 +1,79 @@
+name: Seed UZZ human demo (dev)
+
+on:
+  workflow_dispatch:
+    inputs:
+      community_name:
+        description: 'Existing community / Telegram chat title to seed'
+        required: true
+        default: 'Meriter Dev Chat'
+        type: string
+      grant_email:
+        description: 'Optional existing tester email'
+        required: false
+        type: string
+      set_stand:
+        description: 'Point the UZZ stand at this community'
+        type: boolean
+        default: true
+
+jobs:
+  seed:
+    name: Seed human demo on dev MongoDB
+    runs-on: ubuntu-latest
+    environment: dev
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bundle seed script
+        run: |
+          npx --yes esbuild api/scripts/seed-uzz-human-demo.ts \
+            --bundle --platform=node --format=cjs \
+            --outfile=/tmp/seed-uzz-human-demo.cjs \
+            --external:mongodb
+
+      - name: Set up SSH agent
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+
+      - name: Seed on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          COMMUNITY_NAME: ${{ inputs.community_name }}
+          GRANT_EMAIL: ${{ inputs.grant_email }}
+          SET_STAND: ${{ inputs.set_stand }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
+          scp /tmp/seed-uzz-human-demo.cjs "deploy@${VPS_HOST}:/tmp/seed-uzz-human-demo.cjs"
+          ssh "deploy@${VPS_HOST}" \
+            env COMMUNITY_NAME="$COMMUNITY_NAME" GRANT_EMAIL="$GRANT_EMAIL" SET_STAND="$SET_STAND" \
+            bash -s <<'REMOTE'
+          set -euo pipefail
+          docker inspect meriter-api >/dev/null
+          docker cp /tmp/seed-uzz-human-demo.cjs meriter-api:/tmp/seed-uzz-human-demo.cjs
+          extra=()
+          extra+=(--community-name="$COMMUNITY_NAME")
+          if [ "$SET_STAND" = "true" ]; then
+            extra+=(--set-stand)
+          fi
+          if [ -n "${GRANT_EMAIL:-}" ]; then
+            extra+=(--grant-email="$GRANT_EMAIL")
+          fi
+          run_seed() {
+            docker exec -w /app meriter-api node /tmp/seed-uzz-human-demo.cjs \
+              --environment=DEV --expected-host=mongodb --expected-db=meriter "$@"
+          }
+          run_seed "${extra[@]}"
+          run_seed "${extra[@]}" --apply --confirm=SEED_UZZ_DEV_MERITER
+          docker exec -u root meriter-api rm -f /tmp/seed-uzz-human-demo.cjs
+          rm -f /tmp/seed-uzz-human-demo.cjs
+          REMOTE

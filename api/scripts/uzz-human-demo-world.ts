@@ -1,6 +1,13 @@
 export const DEMO_TAG = 'uzzHumanDemo' as const;
 export const DEMO_EMAIL_DOMAIN = 'uzz-demo.invalid';
 export const DEFAULT_DEMO_COMMUNITY_ID = 'a1000001-0000-4000-8000-000000000001';
+export const MOCK_MARKER = '[мок]';
+
+export function withMockMarker(text: string): string {
+  const prefix = `${MOCK_MARKER} `;
+  const trimmed = text.trim();
+  return trimmed.startsWith(prefix) ? trimmed : `${prefix}${trimmed}`;
+}
 
 export type DemoPersona = {
   id: string;

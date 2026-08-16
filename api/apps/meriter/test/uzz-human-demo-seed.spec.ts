@@ -6,6 +6,7 @@ import {
   seedConfirmationToken,
   seedHumanDemoWorld,
 } from '../../../scripts/seed-uzz-human-demo';
+import { withMockMarker } from '../../../scripts/uzz-human-demo-world';
 
 const DEV_APPLY = [
   '--environment=DEV',
@@ -19,6 +20,15 @@ describe('UZZ human demo seed safety', () => {
   it('requires environment, host, database and a seed-specific confirmation', () => {
     expect(() => parseSeedArguments([])).toThrow('--environment=');
     expect(seedConfirmationToken('DEV', 'meriter_dev')).toBe('SEED_UZZ_DEV_MERITER_DEV');
+    expect(withMockMarker('Анна Соколова')).toBe('[мок] Анна Соколова');
+    expect(withMockMarker('[мок] Анна Соколова')).toBe('[мок] Анна Соколова');
+    expect(parseSeedArguments([
+      '--environment=DEV',
+      '--expected-host=mongodb',
+      '--expected-db=meriter',
+      '--community-name=Meriter Dev Chat',
+      '--set-stand',
+    ]).communityName).toBe('Meriter Dev Chat');
     expect(() =>
       parseSeedArguments([
         '--environment=DEV',
@@ -104,8 +114,10 @@ describe('UZZ human demo world', () => {
     expect(await db.collection('uzz_listings').countDocuments({ uzzHumanDemo: true })).toBe(first.listings);
 
     const anna = await db.collection('users').findOne({ id: 'a2000001-0000-4000-8000-000000000001' });
-    expect(anna?.displayName).toBe('Анна Соколова');
+    expect(anna?.displayName).toBe('[мок] Анна Соколова');
     expect(String(anna?.authId)).toMatch(/@uzz-demo\.invalid$/);
+    const listing = await db.collection('uzz_listings').findOne({ id: 'a2300001-0000-4000-8000-000000000001' });
+    expect(String(listing?.title)).toMatch(/^\[мок\] /);
   });
 
   it('grants a tester kit only after the user already exists', async () => {
