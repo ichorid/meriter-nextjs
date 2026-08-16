@@ -143,9 +143,19 @@ describe('UZZ required index preflight', () => {
     ).toMatchObject({ expireAfterSeconds: 0 });
   });
 
-  it('fails production startup on incompatible indexes unless the emergency skip is set', async () => {
+  it('creates missing required indexes on production startup, then fails on incompatible ones', async () => {
     const logger = { error: jest.fn() };
 
+    await expect(
+      runUzzIndexPreflight(db, { NODE_ENV: 'production' }, logger),
+    ).resolves.toBeUndefined();
+    expect((await verifyUzzIndexes(db, 'verify')).ok).toBe(true);
+
+    await db.collection('uzz_commands').dropIndexes();
+    await db.collection('uzz_commands').createIndex(
+      { commandId: 1 },
+      { unique: true, name: WRONG_COMMAND_INDEX },
+    );
     await expect(
       runUzzIndexPreflight(db, { NODE_ENV: 'production' }, logger),
     ).rejects.toThrow(/uzz_commands_actor_command_unique/);

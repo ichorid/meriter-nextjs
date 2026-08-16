@@ -46,6 +46,24 @@ export function formatUzzIndexMismatches(mismatches: UzzIndexMismatch[]): string
   return `UZZ index preflight failed:\n${lines.join('\n')}`;
 }
 
+export async function ensureUzzIndexes(db: Db): Promise<void> {
+  for (const index of UZZ_REQUIRED_INDEXES) {
+    const collection = db.collection(index.collection);
+    const existing = await collection.indexes().catch(() => []);
+    if (existing.some((entry) => entry.name === index.name)) continue;
+    await collection.createIndex(index.key, {
+      name: index.name,
+      ...(index.unique ? { unique: true } : {}),
+      ...(index.expireAfterSeconds !== undefined
+        ? { expireAfterSeconds: index.expireAfterSeconds }
+        : {}),
+      ...(index.partialFilterExpression
+        ? { partialFilterExpression: index.partialFilterExpression }
+        : {}),
+    });
+  }
+}
+
 export async function verifyUzzIndexes(
   db: Db,
   mode: UzzIndexVerifyMode,
@@ -120,6 +138,7 @@ export async function runUzzIndexPreflight(
   if (!db) {
     throw new Error('Mongo connection is not ready for UZZ index preflight');
   }
+  await ensureUzzIndexes(db);
   const result = await verifyUzzIndexes(db, 'verify');
   if (!result.ok) {
     throw new Error(formatUzzIndexMismatches(result.mismatches));
