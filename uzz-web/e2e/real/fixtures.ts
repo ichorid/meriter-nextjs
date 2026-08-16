@@ -26,6 +26,12 @@ import {
   readTelegramMessages,
   resetFakeTelegram,
 } from '../../../api/apps/meriter/test/uzz-e2e/fake-telegram-provider';
+import {
+  UZZ_PLATFORM_COLLECTION,
+  UZZ_PLATFORM_STAND_ID,
+  readSelectedCommunityId,
+  writeSelectedCommunityId,
+} from '../../../api/apps/meriter/src/infrastructure/uzz/persistence/uzz-platform-selection';
 
 export {
   delayTelegramSend,
@@ -414,6 +420,7 @@ type SharedGlobalRestore = {
   typeTag: unknown;
   hadTypeTag: boolean;
   userIds: string[];
+  selectedCommunityId: string | null;
 };
 
 let sharedGlobalRestore: SharedGlobalRestore | null = null;
@@ -442,6 +449,14 @@ async function restoreSharedGlobal(): Promise<void> {
       userId: { $in: restore.userIds },
       communityId: GLOBAL_COMMUNITY_ID,
     });
+    if (restore.selectedCommunityId) {
+      await writeSelectedCommunityId(db, restore.selectedCommunityId);
+    } else {
+      await db.collection(UZZ_PLATFORM_COLLECTION).updateOne(
+        { id: UZZ_PLATFORM_STAND_ID },
+        { $unset: { selectedCommunityId: '' }, $set: { updatedAt: now } },
+      );
+    }
   });
 }
 
@@ -455,7 +470,10 @@ async function attachSharedGlobal(userIds: string[]): Promise<void> {
       typeTag: existing?.typeTag,
       hadTypeTag: Boolean(existing && Object.prototype.hasOwnProperty.call(existing, 'typeTag')),
       userIds: [...userIds],
+      selectedCommunityId: await readSelectedCommunityId(db),
     };
+    // Shared wallet mode is local === global, which now follows the persisted stand community.
+    await writeSelectedCommunityId(db, GLOBAL_COMMUNITY_ID);
     await db.collection('communities').updateOne(
       { id: GLOBAL_COMMUNITY_ID },
       {
