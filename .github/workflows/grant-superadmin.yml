@@ -10,16 +10,31 @@ on:
 
 jobs:
   grant:
-    name: Grant superadmin on dev MongoDB
+    name: Seed UZZ human demo on dev MongoDB
     runs-on: ubuntu-latest
     environment: dev
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Bundle seed script
+        run: |
+          npx --yes esbuild api/scripts/seed-uzz-human-demo.ts \
+            --bundle --platform=node --format=cjs \
+            --outfile=/tmp/seed-uzz-human-demo.cjs \
+            --external:mongodb
+
       - name: Set up SSH agent
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
 
-      - name: Grant superadmin role
+      - name: Apply human demo seed
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           EMAIL: ${{ inputs.email }}
@@ -27,43 +42,22 @@ jobs:
           set -euo pipefail
           mkdir -p ~/.ssh
           ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
-
+          scp /tmp/seed-uzz-human-demo.cjs "deploy@${VPS_HOST}:/tmp/seed-uzz-human-demo.cjs"
           ssh "deploy@${VPS_HOST}" bash -s "$EMAIL" <<'REMOTE'
           set -euo pipefail
           EMAIL="$1"
-          SAFE_EMAIL=${EMAIL//\'/\\\'}
-
-          cd /opt/meriter
-          docker exec meriter-mongodb bash -lc "
-            mongosh --quiet meriter \
-              -u \"\$MONGO_INITDB_ROOT_USERNAME\" \
-              -p \"\$MONGO_INITDB_ROOT_PASSWORD\" \
-              --authenticationDatabase admin \
-              --eval \"
-                const email = '${SAFE_EMAIL}';
-                let user = db.users.findOne({ authProvider: 'email', authId: email });
-                if (!user) {
-                  const ident = db.user_auth_identities.findOne({ provider: 'email', authId: email });
-                  if (ident) user = db.users.findOne({ id: ident.userId });
-                }
-                if (!user) {
-                  print('USER_NOT_FOUND: ' + email);
-                  quit(1);
-                }
-                const r = db.users.updateOne(
-                  { id: user.id },
-                  { \\\$set: { globalRole: 'superadmin', updatedAt: new Date() } }
-                );
-                printjson({
-                  matched: r.matchedCount,
-                  modified: r.modifiedCount,
-                  userId: user.id,
-                  email: email,
-                });
-                printjson(db.users.findOne(
-                  { id: user.id },
-                  { id: 1, displayName: 1, globalRole: 1, authProvider: 1, authId: 1 }
-                ));
-              \"
-          "
+          docker inspect meriter-api >/dev/null
+          docker cp /tmp/seed-uzz-human-demo.cjs meriter-api:/tmp/seed-uzz-human-demo.cjs
+          run_seed() {
+            docker exec -w /app meriter-api node /tmp/seed-uzz-human-demo.cjs \
+              --environment=DEV --expected-host=mongodb --expected-db=meriter "$@"
+          }
+          run_seed
+          if [ -n "$EMAIL" ] && [[ "$EMAIL" != seed-only@* ]]; then
+            run_seed --apply --confirm=SEED_UZZ_DEV_MERITER --grant-email="$EMAIL"
+          else
+            run_seed --apply --confirm=SEED_UZZ_DEV_MERITER
+          fi
+          docker exec -u root meriter-api rm -f /tmp/seed-uzz-human-demo.cjs
+          rm -f /tmp/seed-uzz-human-demo.cjs
           REMOTE
