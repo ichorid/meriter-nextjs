@@ -6,7 +6,7 @@ test('email magic link is the only visible sign-in method', async ({ page }) => 
   await page.goto('/login');
 
   await expect(page.getByRole('heading', { name: 'Вход по email' })).toBeVisible();
-  await expect(page.getByText('Других способов входа в продукте нет.')).toBeVisible();
+  await expect(page.getByText('Чтобы авторизоваться, введите ниже e-mail, вам придёт ссылка для входа')).toBeVisible();
   await page.getByLabel('Email').fill('pilot@example.com');
   await page.getByRole('button', { name: 'Получить ссылку' }).click();
   await expect(page.getByText(/Письмо отправлено на pilot@example.com/)).toBeVisible();
@@ -17,8 +17,9 @@ test('guest catalog is readable and does not leak seller contacts', async ({ pag
   await mockGuestApi(page);
   await page.goto('/catalog');
 
-  await expect(page.getByRole('heading', { name: 'Найдите, кто может помочь' })).toBeVisible();
-  await expect(page.getByText(/Каталог открыт без входа/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Найдите услуги, которые вам нужны' })).toBeVisible();
+  await expect(page.getByText(/Вы не авторизованы/)).toBeVisible();
+  await expect(page.getByRole('link', { name: 'войдите по одноразовой ссылке' })).toBeVisible();
   await expect(page.locator('a[href^="https://t.me/"]')).toHaveCount(0);
 });
 

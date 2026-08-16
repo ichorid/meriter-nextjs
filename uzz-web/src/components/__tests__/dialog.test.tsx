@@ -39,6 +39,9 @@ vi.mock('@/lib/trpc/client', () => ({
       banks: { listMine: { invalidate: vi.fn() } },
       wallet: { getBalance: { invalidate: vi.fn() } },
     }),
+    community: {
+      getPublic: { useQuery: () => ({ data: { id: 'community-1', name: 'Пилот' }, isLoading: false, isError: false, refetch: vi.fn() }) },
+    },
     lots: {
       list: { useQuery: () => listingsState },
       canBuy: { useQuery: () => ({ data: { nudge: false }, isLoading: false, isError: false, error: null, refetch: vi.fn() }) },

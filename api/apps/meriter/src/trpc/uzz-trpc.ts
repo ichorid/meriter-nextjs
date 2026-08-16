@@ -1,6 +1,7 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
 import { UzzApplicationFacade } from '../application/uzz/uzz-application.facade';
+import type { EmailLoginLinkSendResult } from '../domain/ports/email-login-link.port';
 import { UzzRateLimitedError } from '../domain/uzz/errors';
 
 interface UzzSessionUser { id: string }
@@ -25,7 +26,7 @@ export interface UzzTrpcContext {
   userService: { getUserById(userId: string): Promise<UzzUserView | null> };
   uzzFacade: UzzApplicationFacade;
   configService: { get(key: string): any };
-  emailLoginLinkService: { sendLoginLink(email: string, options: Record<string, unknown>): Promise<unknown> };
+  emailLoginLinkService: { sendLoginLink(email: string, options: Record<string, unknown>): Promise<EmailLoginLinkSendResult> };
   redeemUzzMagicLinkUseCase: { execute(input: { token: string; ip: string }): Promise<{ jwt: string; user: unknown; isNewUser: boolean }> };
   authService: { authenticateFakeUser(userId?: string): Promise<{ user: unknown; jwt: string }> };
   cookieManager: {

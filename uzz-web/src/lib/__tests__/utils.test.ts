@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { safeAppPath, uzzErrorMessage, walletSourceLabel } from '@/lib/utils';
+import { describe, expect, it, vi } from 'vitest';
+import { navigatePendingExternalWindow, safeAppPath, uzzErrorMessage, walletSourceLabel } from '@/lib/utils';
 
 describe('uzzErrorMessage', () => {
   it.each([
@@ -18,6 +18,15 @@ describe('walletSourceLabel', () => {
     expect(walletSourceLabel('community-1', 'community-1')).toBe('кошелёк сообщества');
     expect(walletSourceLabel('__global__', 'community-1')).toBe('общий кошелёк');
     expect(walletSourceLabel(undefined, 'community-1')).toBeNull();
+  });
+});
+
+describe('navigatePendingExternalWindow', () => {
+  it('reuses the window opened on the user click', () => {
+    const replace = vi.fn();
+    const pending = { closed: false, location: { replace } } as unknown as Window;
+    expect(navigatePendingExternalWindow(pending, 'https://t.me/meriter_bot')).toBe(true);
+    expect(replace).toHaveBeenCalledWith('https://t.me/meriter_bot');
   });
 });
 

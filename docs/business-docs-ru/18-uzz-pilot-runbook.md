@@ -112,6 +112,25 @@ Retry: 1m, 5m, 30m, 2h, 12h. Шестая ошибка → dead-letter. В `last
 - **Подозрение на дубль:** не удалять записи. Проверить `commandId`, `operationId`, версии агрегатов и уникальные индексы.
 - **Нарушение экономического инварианта:** остановить новые UZZ-команды, сохранить дамп и логи, откатить приложение к известному digest; данные исправлять только отдельным проверенным скриптом.
 
+## Человеческий стенд (демо-мир)
+
+Только DEV/UAT. На `cw.ru` и `--environment=PRODUCTION` скрипт отказывается.
+
+NPC (8 человек, почта `@uzz-demo.invalid`) — каталог и история. Тестеры входят своей почтой.
+
+```bash
+pnpm --dir api uzz:seed-human-demo -- --environment=DEV --expected-host=127.0.0.1 --expected-db=meriter_dev
+pnpm --dir api uzz:seed-human-demo -- --environment=DEV --expected-host=127.0.0.1 --expected-db=meriter_dev --apply --confirm=SEED_UZZ_DEV_MERITER_DEV
+```
+
+После первого входа тестера:
+
+```bash
+pnpm --dir api uzz:seed-human-demo -- --environment=DEV --expected-host=127.0.0.1 --expected-db=meriter_dev --apply --confirm=SEED_UZZ_DEV_MERITER_DEV --grant-email=you@example.org
+```
+
+Локальный UI: `http://127.0.0.1:8004`. UAT: `https://uzz-dev.meriter.pro`. Не использовать токен `@meriter_bot` на локальном API — заберёт webhook у dev VPS.
+
 ## Безопасный сброс пилота
 
 Сброс разрешён бизнесом, но затрагивает только UZZ. Команда требует `--environment`, `--expected-host` и `--expected-db`, совпадающие с разобранным `MONGO_URL` (host и database сравниваются до подключения). Dry-run печатает resolved host/database:

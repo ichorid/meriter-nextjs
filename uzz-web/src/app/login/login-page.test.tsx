@@ -12,6 +12,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/lib/trpc/client', () => ({
   trpc: {
+    useUtils: () => ({ auth: { me: { invalidate: vi.fn() } } }),
     auth: {
       me: { useQuery: () => ({ data: meState.data, isLoading: false, error: null }) },
       sendEmailLoginLink: { useMutation: () => ({ mutate: vi.fn(), isPending: false }) },

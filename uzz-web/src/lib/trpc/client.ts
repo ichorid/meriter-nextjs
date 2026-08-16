@@ -14,10 +14,12 @@ export function getTrpcClient(apiBaseUrl: string) {
     ? `${apiUrl}${config.product.trpcPath}`
     : config.product.trpcPath;
 
+  const browserUrl = config.product.trpcPath;
+
   return trpc.createClient({
     links: [
       httpBatchLink({
-        url: trpcUrl,
+        url: typeof window === 'undefined' ? trpcUrl : browserUrl,
         transformer: superjson,
         headers() {
           return { [MERITER_PRODUCT_HEADER]: config.product.header };

@@ -3,6 +3,7 @@ import type { Page, Route } from '@playwright/test';
 const guestResponses: Record<string, unknown> = {
   'auth.me': { error: { json: { message: 'UNAUTHORIZED', code: -32001 } } },
   'lots.list': { result: { data: { json: [] } } },
+  'community.getPublic': { result: { data: { json: { id: 'a1000001-0000-4000-8000-000000000001', name: 'Пилот' } } } },
 };
 
 export async function mockGuestApi(page: Page): Promise<void> {
@@ -62,6 +63,7 @@ export async function mockMemberApi(page: Page, linked: boolean): Promise<void> 
     'wallet.getBalance': { result: { data: { json: { localBalance: 0, globalBalance: 2, canPayFee: true } } } },
     'settings.get': { result: { data: { json: { demurrageRubPerDay: 100, nominalFloorRub: 100 } } } },
     'deals.list': { result: { data: { json: [] } } },
+    'community.getPublic': { result: { data: { json: { id: communityId, name: 'Пилот' } } } },
   };
   await page.route('**/trpc/uzz/**', async (route) => {
     const url = new URL(route.request().url());

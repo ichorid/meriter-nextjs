@@ -64,6 +64,10 @@ export class UzzApplicationFacade {
   updateListing(input: Parameters<UpdateListingUseCase['execute']>[0]) {
     return this.commands.updateListing.execute(input);
   }
+  getPublicCommunity(communityId: string) {
+    return this.platform.getCommunity(communityId);
+  }
+
   async listCatalog(input: Parameters<ListCatalogUseCase['execute']>[0]) {
     const authorIds = input.authorId
       ? await this.authorization.resolveUserIds(input.authorId)

@@ -156,6 +156,23 @@ export function formatWhen(value: Date | string | undefined): string { return va
 export function isDeadlinePassed(value: Date | string | null | undefined): boolean { return Boolean(value && new Date(value).getTime() <= Date.now()); }
 export function isUnauthorizedError(error: unknown): boolean { if (!error || typeof error !== 'object') return false; const candidate = error as { data?: { code?: string }; message?: string }; return candidate.data?.code === 'UNAUTHORIZED' || candidate.message === 'UNAUTHORIZED'; }
 
+/** Open a blank tab on the user click so an async deep link is not popup-blocked. */
+export function openPendingExternalWindow(): Window | null {
+  return window.open('about:blank', '_blank');
+}
+
+export function navigatePendingExternalWindow(pending: Window | null, url: string): boolean {
+  if (pending && !pending.closed) {
+    pending.location.replace(url);
+    return true;
+  }
+  return window.open(url, '_blank', 'noopener,noreferrer') != null;
+}
+
+export function closePendingExternalWindow(pending: Window | null): void {
+  if (pending && !pending.closed) pending.close();
+}
+
 export function uzzErrorMessage(err: { message?: string } | null | undefined): string {
   const message = err?.message?.trim() || '';
   const labels: Record<string, string> = {

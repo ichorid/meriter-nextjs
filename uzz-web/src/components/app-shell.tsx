@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { CircleUserRound, HandCoins, HeartHandshake, ListChecks, Shield, WalletCards, type LucideIcon } from 'lucide-react';
 import { CommunityIdBanner } from '@/components/community-id-banner';
@@ -9,7 +9,7 @@ import { Button, QueryFailed } from '@/components/ui';
 import { config } from '@/config';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { clearUzzSessionFlag, cn, dealNeedsAction, isSafeAppPath, markUzzSession, rememberReturnTo, uzzErrorMessage } from '@/lib/utils';
+import { clearUzzSessionFlag, closePendingExternalWindow, cn, dealNeedsAction, isSafeAppPath, markUzzSession, navigatePendingExternalWindow, openPendingExternalWindow, rememberReturnTo, uzzErrorMessage } from '@/lib/utils';
 
 const NAV = [
   { href: '/catalog', label: 'Обмен', icon: HeartHandshake }, { href: '/', label: 'Моё', icon: ListChecks },
@@ -65,12 +65,28 @@ function NavLink({ href, label, icon: Icon, pathname, badge = 0, stacked = false
 
 function IdentityLinkGate({ email }: { email?: string }) {
   const [error, setError] = useState<string | null>(null);
-  const start = trpc.identity.startTelegramLink.useMutation({ onSuccess: ({ deepLink }) => { if (deepLink) window.location.href = deepLink; }, onError: (err) => setError(uzzErrorMessage(err)) });
+  const telegramWindow = useRef<Window | null>(null);
+  const start = trpc.identity.startTelegramLink.useMutation({
+    onSuccess: ({ deepLink }) => {
+      if (!deepLink) {
+        closePendingExternalWindow(telegramWindow.current);
+        return;
+      }
+      if (!navigatePendingExternalWindow(telegramWindow.current, deepLink)) {
+        setError('Разрешите всплывающие окна, чтобы открыть Telegram.');
+      }
+    },
+    onError: (err) => {
+      closePendingExternalWindow(telegramWindow.current);
+      setError(uzzErrorMessage(err));
+    },
+  });
   const logout = trpc.auth.logout.useMutation({ onSuccess: () => { clearUzzSessionFlag(); window.location.href = '/catalog'; }, onError: (err) => setError(uzzErrorMessage(err)) });
   return <main className="mx-auto flex min-h-[65vh] max-w-lg items-center px-4 py-10"><section className="w-full space-y-4 rounded-2xl border border-stitch-border bg-stitch-surface p-6 text-center">
     <p className="text-xs font-bold uppercase tracking-widest text-stitch-accent-text">Последний шаг</p><h1 className="text-2xl font-black">Привяжите Telegram</h1>
     <p className="text-sm leading-6 text-stitch-muted">{email ? `Вы вошли как ${email}. ` : ''}Telegram нужен, чтобы сопоставить ваши добрые дела и безопасно открыть контакт только после принятия заявки.</p>
-    <Button className="w-full" disabled={start.isPending} onClick={() => start.mutate()}>{start.isPending ? 'Готовим ссылку…' : 'Открыть Telegram'}</Button>
+    <Button className="w-full" disabled={start.isPending} onClick={() => { telegramWindow.current = openPendingExternalWindow(); start.mutate(); }}>{start.isPending ? 'Готовим ссылку…' : 'Открыть Telegram'}</Button>
+    {start.data?.deepLink ? <a href={start.data.deepLink} target="_blank" rel="noopener noreferrer" className="block text-sm text-stitch-accent-text hover:underline">Открыть Telegram в новом окне</a> : null}
     {start.data && !start.data.deepLink ? <p className="text-sm text-amber-200">Ссылка на бота не настроена. Обратитесь к администратору сообщества.</p> : null}
     {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
     <Link href="/catalog" className="block text-sm text-stitch-accent-text hover:underline">Смотреть каталог без привязки</Link>

@@ -147,6 +147,18 @@ export const uzzAppRouter = router({
     return ctx.uzzFacade.bootstrap(ctx.user.id);
   }),
 
+  community: router({
+    getPublic: publicProcedure
+      .input(z.object({ communityId: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        const community = await ctx.uzzFacade.getPublicCommunity(input.communityId);
+        if (!community) {
+          throw new TRPCError({ code: 'NOT_FOUND', message: 'Community not found' });
+        }
+        return { id: community.id, name: community.name };
+      }),
+  }),
+
   settings: router({
     get: protectedProcedure
       .input(z.object({ communityId: z.string().min(1) }))

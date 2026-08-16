@@ -8,6 +8,11 @@ import {
 
 const AUTH_SESSION_SAME_SITE = 'lax' as const;
 
+/** HttpOnly session cookies may be Secure only on HTTPS. HTTP localhost must stay non-Secure. */
+export function resolveSessionCookieSecure(requestIsHttps: boolean): boolean {
+  return requestIsHttps;
+}
+
 /**
  * Centralized JWT and auth session cookie management (domain, Secure, SameSite).
  */
@@ -313,13 +318,10 @@ export class CookieManager {
     const normalizedConfiguredDomain = this.normalizeHostname(cookieDomain ?? this.getCookieDomain());
 
     const isSecure = request ? this.isRequestSecure(request) : false;
-    const requestHost = request ? this.getRequestHostname(request) : undefined;
-    const shouldForceSecure = Boolean(requestHost);
-
     const sameSite = AUTH_SESSION_SAME_SITE;
-
-    const production = isProduction ?? (nodeEnv === 'production' || isSecure || shouldForceSecure);
-    const secure = shouldForceSecure ? true : isSecure || production;
+    const production = isProduction ?? (nodeEnv === 'production' || isSecure);
+    const secure = resolveSessionCookieSecure(isSecure);
+    const requestHost = request ? this.getRequestHostname(request) : undefined;
 
     const cookieOptions: any = {
       httpOnly: true,
@@ -452,19 +454,14 @@ export class CookieManager {
     cookieName: string,
     jwtToken: string,
     cookieDomain: string | undefined,
-    isProduction: boolean | undefined,
+    _isProduction: boolean | undefined,
     request?: any,
   ): void {
-    const nodeEnv = this.configService.get('NODE_ENV', 'development');
     const normalizedConfiguredDomain = this.normalizeHostname(cookieDomain);
 
     const isSecure = request ? this.isRequestSecure(request) : false;
-    const requestHost = request ? this.getRequestHostname(request) : undefined;
-    const shouldForceSecure = Boolean(requestHost);
-
     const sameSite = AUTH_SESSION_SAME_SITE;
-    const production = isProduction ?? (nodeEnv === 'production' || isSecure || shouldForceSecure);
-    const secure = shouldForceSecure ? true : isSecure || production;
+    const secure = resolveSessionCookieSecure(isSecure);
 
     const cookieOptions: Record<string, unknown> = {
       httpOnly: true,

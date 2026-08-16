@@ -38,6 +38,7 @@ async function mockCatalogWithLongListing(page: Page): Promise<void> {
     'wallet.getBalance': { result: { data: { json: { localBalance: 0, globalBalance: 2, canPayFee: true } } } },
     'settings.get': { result: { data: { json: { demurrageRubPerDay: 100, nominalFloorRub: 100 } } } },
     'deals.list': { result: { data: { json: [] } } },
+    'community.getPublic': { result: { data: { json: { id: communityId, name: 'Пилот' } } } },
   });
 }
 
@@ -94,7 +95,7 @@ test('does not clip login, catalog or deals at the project viewport', async ({ p
 
   await mockCatalogWithLongListing(page);
   await page.goto('/catalog');
-  await expect(page.getByRole('heading', { name: 'Найдите, кто может помочь' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Найдите услуги, которые вам нужны' })).toBeVisible();
   await assertNoPageOverflow(page);
 
   await mockDealsWithLongContent(page);

@@ -82,6 +82,18 @@ export class EmailLoginLinkService {
             `Ссылка действует ${ttlMinutes} минут и сработает только один раз.\n` +
             `Если вы не запрашивали вход, просто проигнорируйте это письмо.`;
 
+        const emailConfig = this.configService.get('email');
+        const nodeEnv = this.configService.get('app')?.env
+          ?? this.configService.get('NODE_ENV')
+          ?? process.env.NODE_ENV;
+        if (nodeEnv === 'development' && !emailConfig?.api?.key) {
+            return {
+                expiresIn: ttlMinutes * 60,
+                canResendAt: Math.floor(now.getTime() / 1000) + this.resendCooldownSeconds,
+                devLoginUrl: linkUrl,
+            };
+        }
+
         let providerResult: EmailProviderResult;
         try {
             providerResult = normalizeEmailProviderResult(

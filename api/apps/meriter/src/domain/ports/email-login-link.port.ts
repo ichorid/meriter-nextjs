@@ -5,6 +5,8 @@ export type EmailLoginLinkSendResult = {
   expiresIn: number;
   /** Unix timestamp (seconds) when resend becomes available */
   canResendAt: number;
+  /** Development-only login URL when Unisender is not configured. */
+  devLoginUrl?: string;
 };
 
 export type EmailLoginLinkPort = {

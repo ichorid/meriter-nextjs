@@ -130,7 +130,7 @@ realUzzTest('R1 guest catalog uses the runtime community ID', async ({ page, see
 
   await page.goto('/catalog');
   await expect(page.getByRole('heading', { name: listing.title })).toBeVisible();
-  await expect(page.getByText(/Каталог открыт без входа/)).toBeVisible();
+  await expect(page.getByText(/Вы не авторизованы/)).toBeVisible();
   expect(realTrpcRequestCount()).toBeGreaterThan(0);
   expect(catalogPayloads.some((payload) => payload.includes(RUNTIME_COMMUNITY_ID))).toBe(true);
   expect(catalogPayloads.join('\n')).not.toMatch(/NEXT_PUBLIC_/);
@@ -181,7 +181,7 @@ realUzzTest('R3 redeem sets the auth cookie and opens the requested safe path', 
 
   await page.goto(new URL(url).pathname);
   await expect(page).toHaveURL(/\/catalog$/);
-  await expect(page.getByRole('heading', { name: 'Найдите, кто может помочь' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Найдите услуги, которые вам нужны' })).toBeVisible();
   expect(await hasUzzSession(context)).toBe(true);
   const cookie = (await context.cookies()).find((item) => item.name === UZZ_SESSION_COOKIE);
   expect(cookie?.httpOnly).toBe(true);

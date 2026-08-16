@@ -16,6 +16,7 @@ import { uzzErrorMessage } from '@/lib/utils';
 export default function CatalogPage() {
   const router = useRouter(); const utils = trpc.useUtils();
   const { communityId, loggedIn, sessionLoading, userId } = useUzzCommunityId(); const enabled = Boolean(communityId);
+  const community = trpc.community.getPublic.useQuery({ communityId }, { enabled, retry: false });
   const listings = trpc.lots.list.useQuery({ communityId }, { enabled, retry: false });
   const rights = trpc.banks.listMine.useQuery({ communityId }, { enabled: enabled && loggedIn, retry: false });
   const gate = trpc.lots.canBuy.useQuery({ communityId }, { enabled: enabled && loggedIn, retry: false });
@@ -38,7 +39,7 @@ export default function CatalogPage() {
 
   function requestAction(item: ListingView): { label: string; disabled: boolean } {
     if (sessionLoading) return { label: 'Проверяем вход…', disabled: true };
-    if (!loggedIn) return { label: 'Войти, чтобы запросить', disabled: false };
+    if (!loggedIn) return { label: 'Войти, чтобы оформить', disabled: false };
     if (link.isLoading) return { label: 'Проверяем Telegram…', disabled: true };
     if (link.isError) return { label: 'Не удалось проверить Telegram', disabled: true };
     if (!link.data?.linked) return { label: 'Сначала привяжите Telegram', disabled: false };
@@ -54,8 +55,18 @@ export default function CatalogPage() {
   }
 
   return <AppShell><div className="space-y-8">
-    <PageHeader eyebrow="Внутри вашего сообщества" title="Найдите, кто может помочь">Цена показывает нужный текущий номинал права. Контакт исполнителя откроется только после того, как он примет заявку.</PageHeader>
-    {!loggedIn && !sessionLoading ? <Notice>Каталог открыт без входа. Чтобы оставить заявку, войдите по одноразовой ссылке из письма.</Notice> : null}
+    <PageHeader
+      eyebrow={community.data?.name ? `Услуги сообщества «${community.data.name}»` : 'Услуги сообщества'}
+      title="Найдите услуги, которые вам нужны"
+    >
+      Цена показывает минимальный номинал вашего банка, который нужен для оформления заявки. Контакт исполнителя откроется только после того, как он примет заявку.
+    </PageHeader>
+    {!loggedIn && !sessionLoading ? (
+      <Notice>
+        Вы не авторизованы. Чтобы оставить заявку,{' '}
+        <Link href="/login?next=/catalog" className="text-stitch-accent-text underline">войдите по одноразовой ссылке</Link>.
+      </Notice>
+    ) : null}
     {gate.data?.nudge ? <Notice tone="info"><strong>Добавьте ещё {gate.data.missingListingCount} предлож.</strong> Это мягкая рекомендация: обмен уже доступен, но взаимность делает каталог полезнее. <Link href="/?tab=lots" className="underline">Добавить услугу</Link></Notice> : null}
     {strictGateBlocked ? <Notice tone="warn">Администратор включил обязательный режим: прежде чем заказывать, добавьте нужное количество активных предложений. <Link href="/?tab=lots" className="underline">Перейти к своим услугам</Link></Notice> : null}
     {gate.isError && !strictGateBlocked && loggedIn ? <Notice tone="warn">Не удалось проверить правила покупки. <button className="underline" onClick={() => void gate.refetch()}>Повторить</button></Notice> : null}

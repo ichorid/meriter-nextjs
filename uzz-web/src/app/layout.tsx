@@ -20,9 +20,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const runtimeConfig = readUzzRuntimeConfig({
     NODE_ENV: process.env.NODE_ENV,
-    API_URL: process.env.API_URL,
-    UZZ_WEB_BASE_URL: process.env.UZZ_WEB_BASE_URL,
-    DEFAULT_TELEGRAM_COMMUNITY_ID: process.env.DEFAULT_TELEGRAM_COMMUNITY_ID,
+    API_URL: process.env.API_URL || process.env.NEXT_PUBLIC_API_URL,
+    UZZ_WEB_BASE_URL: process.env.UZZ_WEB_BASE_URL || process.env.NEXT_PUBLIC_APP_URL,
+    DEFAULT_TELEGRAM_COMMUNITY_ID:
+      process.env.DEFAULT_TELEGRAM_COMMUNITY_ID || process.env.NEXT_PUBLIC_DEFAULT_COMMUNITY_ID,
   });
 
   return (
