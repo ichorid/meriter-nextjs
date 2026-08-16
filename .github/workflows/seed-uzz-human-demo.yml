@@ -83,8 +83,8 @@ jobs:
           run_seed() {
             docker run --rm --network "$NETWORK" \
               -e MONGO_URL="$MONGO_URL" \
-              -v /tmp/seed-uzz-human-demo.cjs:/seed.cjs:ro \
-              node:22-alpine node /seed.cjs "$@"
+              -v /tmp/seed-uzz-human-demo.cjs:/seed-uzz-human-demo.cjs:ro \
+              node:22-alpine node /seed-uzz-human-demo.cjs "$@"
           }
           run_seed "${extra[@]}"
           run_seed "${extra[@]}" --apply --confirm="SEED_UZZ_DEV_${DB^^}"
