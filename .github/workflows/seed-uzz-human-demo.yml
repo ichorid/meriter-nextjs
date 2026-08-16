@@ -36,9 +36,14 @@ jobs:
 
       - name: Bundle seed script
         run: |
-          npx --yes esbuild api/scripts/seed-uzz-human-demo.ts \
+          mkdir -p /tmp/m
+          cd /tmp/m
+          npm init -y >/dev/null
+          npm install mongodb
+          npx --yes esbuild "$GITHUB_WORKSPACE/api/scripts/seed-uzz-human-demo.ts" \
             --bundle --platform=node --format=cjs \
-            --outfile=/tmp/seed-uzz-human-demo.cjs
+            --outfile=/tmp/seed-uzz-human-demo.cjs \
+            --alias:mongodb=/tmp/m/node_modules/mongodb
 
       - name: Set up SSH agent
         uses: webfactory/ssh-agent@v0.7.0
