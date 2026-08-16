@@ -20,7 +20,7 @@ describe('UZZ exchange-right emission', () => {
   });
   beforeEach(async () => {
     publication = { id: 'publication-1', communityId: 'community-1', authorId: 'author-1', title: 'Доброе дело', score: 10, deleted: false, postType: 'basic' };
-    const platform: UzzPlatformPort = { configuredCommunityId: async () => 'community-1', setSelectedCommunityId: async () => undefined, async getPublication(id) { return id === publication.id ? publication : null; }, async listUserCommunities() { return []; }, async getCommunity() { return null; }, async getDisplayNames() { return new Map(); }, async listDeedPublications() { return []; } };
+    const platform: UzzPlatformPort = { configuredCommunityId: async () => 'community-1', setSelectedCommunityId: async () => undefined, async getPublication(id) { return id === publication.id ? publication : null; }, async listTelegramCommunities() { return []; }, async getCommunity() { return null; }, async getDisplayNames() { return new Map(); }, async listDeedPublications() { return []; } };
     const clock: Clock = { now: () => new Date(NOW) }; useCase = new EmitExchangeRightUseCase(new MongooseUzzUnitOfWork(connection), platform, clock);
   });
   afterEach(async () => { if (!connection.db) return; const collections = await connection.db.listCollections().toArray(); await Promise.all(collections.map(({ name }) => connection.db!.collection(name).deleteMany({}))); });

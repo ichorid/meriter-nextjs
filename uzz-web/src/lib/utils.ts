@@ -182,6 +182,7 @@ export function uzzErrorMessage(err: { message?: string } | null | undefined): s
     RIGHT_NOT_ACTIVE: 'Этот банк сейчас нельзя использовать', PURCHASE_GATE_BLOCKED: 'Сначала добавьте свои предложения', MIN_LISTINGS_REQUIRED: 'Сначала добавьте свои предложения',
     IDENTITY_LINK_REQUIRED: 'Сначала привяжите Telegram в профиле',
     PILOT_COMMUNITY_NOT_MEMBER: 'Можно выбрать только сообщество, в котором вы состоите',
+    PILOT_COMMUNITY_NOT_TELEGRAM: 'Можно выбрать только Telegram-чат с подключённым ботом',
     INSUFFICIENT_MERITS: 'Недостаточно заслуг: нужна вся сумма либо в кошельке сообщества, либо в общем кошельке', WALLET_INSUFFICIENT_FUNDS: 'Недостаточно заслуг: нужна вся сумма либо в кошельке сообщества, либо в общем кошельке',
     DEAL_CANNOT_CANCEL: 'После принятия заказчик не может отменить сделку',
     'Invalid or expired login link': 'Ссылка недействительна или устарела', 'Email authentication is not enabled': 'Вход по почте сейчас недоступен',

@@ -19,7 +19,7 @@ export interface UzzPlatformPublication {
 export interface UzzPlatformPort {
   configuredCommunityId(): Promise<string>;
   setSelectedCommunityId(communityId: string): Promise<void>;
-  listUserCommunities(userId: string): Promise<UzzPlatformCommunity[]>;
+  listTelegramCommunities(): Promise<UzzPlatformCommunity[]>;
   getCommunity(communityId: string): Promise<UzzPlatformCommunity | null>;
   getPublication(publicationId: string): Promise<UzzPlatformPublication | null>;
   listDeedPublications(communityId: string, authorIds: string[]): Promise<UzzPlatformPublication[]>;

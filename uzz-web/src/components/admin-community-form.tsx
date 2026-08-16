@@ -36,7 +36,7 @@ export function AdminCommunityForm({
       <div>
         <h2 className="text-xl font-black">Сообщество площадки</h2>
         <p className="mt-1 text-sm leading-6 text-stitch-muted">
-          Услуги за заслуги работают в одном сообществе на стенд. Список — сообщества, в которых вы состоите.
+          Услуги за заслуги работают в одном Telegram-чате на стенд. Список — чаты, куда уже подключён бот.
           Смена действует для всех пользователей, включая гостей. Если в новом сообществе нет прав администратора, этот раздел станет недоступен.
         </p>
       </div>
@@ -54,7 +54,7 @@ export function AdminCommunityForm({
           </select>
         </Field>
       ) : (
-        <Notice tone="warn">Нет сообществ, в которых вы состоите. Сначала вступите в нужное сообщество.</Notice>
+        <Notice tone="warn">Нет Telegram-чатов с подключённым ботом. Добавьте бота в нужный чат и завершите подключение.</Notice>
       )}
       {error ? <Notice tone="warn">{error}</Notice> : null}
       <Button type="submit" disabled={pending || !value || value === selectedCommunityId}>

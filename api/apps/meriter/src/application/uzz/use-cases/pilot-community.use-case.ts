@@ -21,8 +21,7 @@ export class ListPilotCommunitiesUseCase {
     if (selectedCommunityId) {
       await this.access.assertCommunityAdmin(selectedCommunityId, adminId);
     }
-    const memberships = await this.platform.listUserCommunities(adminId);
-    const communities = uniqueCommunities(memberships);
+    const communities = uniqueCommunities(await this.platform.listTelegramCommunities());
     if (selectedCommunityId && !communities.some((entry) => entry.id === selectedCommunityId)) {
       const current = await this.platform.getCommunity(selectedCommunityId);
       if (current) communities.unshift({ id: current.id, name: current.name });
@@ -46,11 +45,9 @@ export class SetPilotCommunityUseCase {
     } else {
       await this.access.assertCommunityAdmin(communityId, input.adminId);
     }
-    const memberships = await this.platform.listUserCommunities(input.adminId);
-    const membership = memberships.find((entry) => entry.id === communityId);
-    if (!membership) throw new UzzForbiddenError('PILOT_COMMUNITY_NOT_MEMBER');
     const community = await this.platform.getCommunity(communityId);
     if (!community) throw new UzzNotFoundError('COMMUNITY_NOT_FOUND');
+    if (!community.telegramChatId) throw new UzzForbiddenError('PILOT_COMMUNITY_NOT_TELEGRAM');
     await this.platform.setSelectedCommunityId(community.id);
     return { communityId: community.id, communityName: community.name };
   }
@@ -60,7 +57,7 @@ function uniqueCommunities(communities: UzzPlatformCommunity[]): PilotCommunityO
   const seen = new Set<string>();
   const result: PilotCommunityOption[] = [];
   for (const community of communities) {
-    if (seen.has(community.id)) continue;
+    if (!community.telegramChatId || seen.has(community.id)) continue;
     seen.add(community.id);
     result.push({ id: community.id, name: community.name });
   }

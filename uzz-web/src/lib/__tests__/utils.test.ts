@@ -6,6 +6,7 @@ describe('uzzErrorMessage', () => {
     ['NOMINAL_CHANGED', 'Номинал изменился. Проверьте новую сумму и подтвердите принятие ещё раз'],
     ['MIN_LISTINGS_REQUIRED', 'Сначала добавьте свои предложения'],
     ['IDENTITY_LINK_REQUIRED', 'Сначала привяжите Telegram в профиле'],
+    ['PILOT_COMMUNITY_NOT_TELEGRAM', 'Можно выбрать только Telegram-чат с подключённым ботом'],
     ['WALLET_INSUFFICIENT_FUNDS', 'Недостаточно заслуг: нужна вся сумма либо в кошельке сообщества, либо в общем кошельке'],
     ['DEAL_CANNOT_CANCEL', 'После принятия заказчик не может отменить сделку'],
   ])('maps backend code %s to actionable Russian copy', (code, expected) => {

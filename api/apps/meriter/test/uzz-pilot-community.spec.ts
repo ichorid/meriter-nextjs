@@ -9,20 +9,25 @@ import { resolveConfiguredCommunityId } from '../src/infrastructure/uzz/persiste
 const PILOT = {
   id: 'a1000001-0000-4000-8000-000000000001',
   name: 'Пилот',
-  telegramChatId: '1',
+  telegramChatId: null as string | null,
 };
 const RUSLAN = {
   id: 'community-ruslan',
   name: 'Заслуги бот Руслан',
   telegramChatId: '2',
 };
+const DEV_CHAT = {
+  id: 'community-dev-chat',
+  name: 'Meriter Dev Chat',
+  telegramChatId: '-100123',
+};
 
 function platformStub(overrides: Partial<UzzPlatformPort> = {}): UzzPlatformPort {
   return {
     configuredCommunityId: async () => PILOT.id,
     setSelectedCommunityId: async () => undefined,
-    listUserCommunities: async () => [PILOT, RUSLAN],
-    getCommunity: async (id) => [PILOT, RUSLAN].find((entry) => entry.id === id) ?? null,
+    listTelegramCommunities: async () => [RUSLAN, DEV_CHAT],
+    getCommunity: async (id) => [PILOT, RUSLAN, DEV_CHAT].find((entry) => entry.id === id) ?? null,
     getPublication: async () => null,
     listDeedPublications: async () => [],
     getDisplayNames: async () => new Map(),
@@ -37,11 +42,9 @@ describe('UZZ stand community selection', () => {
     expect(resolveConfiguredCommunityId(null, PILOT.id)).toBe(PILOT.id);
   });
 
-  it('lists memberships and keeps the current stand even if the admin left it', async () => {
+  it('lists Telegram chats with the bot, not Meriter memberships', async () => {
     const useCase = new ListPilotCommunitiesUseCase(
-      platformStub({
-        listUserCommunities: async () => [RUSLAN],
-      }),
+      platformStub(),
       { assertCommunityAdmin: async () => undefined },
     );
 
@@ -50,45 +53,43 @@ describe('UZZ stand community selection', () => {
       communities: [
         { id: PILOT.id, name: PILOT.name },
         { id: RUSLAN.id, name: RUSLAN.name },
+        { id: DEV_CHAT.id, name: DEV_CHAT.name },
       ],
     });
   });
 
-  it('refuses a community the admin does not belong to', async () => {
-    const setSelected = jest.fn();
-    const useCase = new SetPilotCommunityUseCase(
-      platformStub({
-        listUserCommunities: async () => [PILOT],
-        setSelectedCommunityId: setSelected,
-      }),
-      { assertCommunityAdmin: async () => undefined },
-    );
-
-    await expect(useCase.execute({ adminId: 'admin-1', communityId: RUSLAN.id }))
-      .rejects.toBeInstanceOf(UzzForbiddenError);
-    expect(setSelected).not.toHaveBeenCalled();
-  });
-
-  it('persists a membership the current stand admin can see', async () => {
+  it('refuses a community that is not a Telegram chat', async () => {
     const setSelected = jest.fn();
     const useCase = new SetPilotCommunityUseCase(
       platformStub({ setSelectedCommunityId: setSelected }),
       { assertCommunityAdmin: async () => undefined },
     );
 
-    await expect(useCase.execute({ adminId: 'admin-1', communityId: RUSLAN.id }))
-      .resolves.toEqual({ communityId: RUSLAN.id, communityName: RUSLAN.name });
-    expect(setSelected).toHaveBeenCalledWith(RUSLAN.id);
+    await expect(useCase.execute({ adminId: 'admin-1', communityId: PILOT.id }))
+      .rejects.toBeInstanceOf(UzzForbiddenError);
+    expect(setSelected).not.toHaveBeenCalled();
+  });
+
+  it('persists a Telegram chat even when the admin is not a Meriter member', async () => {
+    const setSelected = jest.fn();
+    const useCase = new SetPilotCommunityUseCase(
+      platformStub({ setSelectedCommunityId: setSelected }),
+      { assertCommunityAdmin: async () => undefined },
+    );
+
+    await expect(useCase.execute({ adminId: 'admin-1', communityId: DEV_CHAT.id }))
+      .resolves.toEqual({ communityId: DEV_CHAT.id, communityName: DEV_CHAT.name });
+    expect(setSelected).toHaveBeenCalledWith(DEV_CHAT.id);
   });
 
   it('does not persist an unknown community id', async () => {
     const ghost: UzzPlatformCommunity = {
-      id: 'missing', name: 'Призрак', telegramChatId: null,
+      id: 'missing', name: 'Призрак', telegramChatId: '-1',
     };
     const setSelected = jest.fn();
     const useCase = new SetPilotCommunityUseCase(
       platformStub({
-        listUserCommunities: async () => [ghost],
+        listTelegramCommunities: async () => [ghost],
         getCommunity: async () => null,
         setSelectedCommunityId: setSelected,
       }),

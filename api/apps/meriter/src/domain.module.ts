@@ -203,6 +203,7 @@ import {
   resolveConfiguredCommunityId,
   writeSelectedCommunityId,
 } from './infrastructure/uzz/persistence/uzz-platform-selection';
+import { mongoActiveTelegramCommunityFilter } from './infrastructure/telegram/telegram-community-frozen.util';
 import { SYSTEM_CLOCK } from './application/uzz/ports/clock.port';
 import { GLOBAL_COMMUNITY_ID } from './domain/common/constants/global.constant';
 
@@ -433,8 +434,12 @@ import { EventBus } from './domain/events/event-bus';
           if (!db) throw new Error('Mongo database unavailable');
           await writeSelectedCommunityId(db, communityId);
         },
-        async listUserCommunities(userId) {
-          return (await communities.getUserCommunities(userId)).map((community) => ({
+        async listTelegramCommunities() {
+          const rows = await communities.listCommunitiesByQuery({
+            telegramChatId: { $exists: true, $nin: [null, ''] },
+            ...mongoActiveTelegramCommunityFilter(),
+          }, 500, 0, { name: 1 });
+          return rows.map((community) => ({
             id: community.id, name: community.name,
             telegramChatId: community.telegramChatId ? String(community.telegramChatId) : null,
           }));
