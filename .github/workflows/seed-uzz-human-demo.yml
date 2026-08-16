@@ -62,8 +62,8 @@ jobs:
             docker run --rm \
               --network "$NET" \
               -w /app \
-              -e MONGO_URL \
-              -e UZZ_DOMAIN \
+              -e MONGO_URL="$MONGO_URL" \
+              -e UZZ_DOMAIN="$UZZ_DOMAIN" \
               -e NODE_PATH=/app/node_modules \
               -e DEFAULT_TELEGRAM_COMMUNITY_ID="$COMMUNITY_ID" \
               -v /tmp/seed-uzz-human-demo.cjs:/tmp/seed-uzz-human-demo.cjs:ro \
