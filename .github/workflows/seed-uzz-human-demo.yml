@@ -1,6 +1,9 @@
 name: Seed UZZ human demo (dev)
 
 on:
+  push:
+    branches:
+      - chore/seed-uzz-dev-chat-mocks
   workflow_dispatch:
     inputs:
       community_name:
@@ -46,9 +49,9 @@ jobs:
       - name: Seed on VPS
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
-          COMMUNITY_NAME: ${{ inputs.community_name }}
-          GRANT_EMAIL: ${{ inputs.grant_email }}
-          SET_STAND: ${{ inputs.set_stand }}
+          COMMUNITY_NAME: ${{ github.event.inputs.community_name || 'Meriter Dev Chat' }}
+          GRANT_EMAIL: ${{ github.event.inputs.grant_email || 'dmitrsosnin@gmail.com' }}
+          SET_STAND: ${{ github.event.inputs.set_stand || 'true' }}
         run: |
           set -euo pipefail
           mkdir -p ~/.ssh
