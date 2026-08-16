@@ -47,9 +47,22 @@ jobs:
           set -euo pipefail
           EMAIL="$1"
           docker inspect meriter-api >/dev/null
-          docker cp /tmp/seed-uzz-human-demo.cjs meriter-api:/tmp/seed-uzz-human-demo.cjs
+          IMAGE=$(docker inspect meriter-api --format '{{.Config.Image}}')
+          NET=$(docker inspect meriter-mongodb --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}}{{"\n"}}{{end}}' | head -n1)
+          MONGO_URL=$(docker exec meriter-api printenv MONGO_URL)
+          UZZ_DOMAIN=$(docker exec meriter-api printenv UZZ_DOMAIN)
+          COMMUNITY_ID=$(docker exec meriter-api printenv DEFAULT_TELEGRAM_COMMUNITY_ID)
           run_seed() {
-            docker exec -w /app meriter-api node /tmp/seed-uzz-human-demo.cjs \
+            docker run --rm \
+              --network "$NET" \
+              -w /app \
+              -e MONGO_URL \
+              -e UZZ_DOMAIN \
+              -e DEFAULT_TELEGRAM_COMMUNITY_ID="$COMMUNITY_ID" \
+              -v /tmp/seed-uzz-human-demo.cjs:/tmp/seed-uzz-human-demo.cjs:ro \
+              --entrypoint node \
+              "$IMAGE" \
+              /tmp/seed-uzz-human-demo.cjs \
               --environment=DEV --expected-host=mongodb --expected-db=meriter "$@"
           }
           run_seed
@@ -58,6 +71,5 @@ jobs:
           else
             run_seed --apply --confirm=SEED_UZZ_DEV_MERITER
           fi
-          docker exec -u root meriter-api rm -f /tmp/seed-uzz-human-demo.cjs
           rm -f /tmp/seed-uzz-human-demo.cjs
           REMOTE
