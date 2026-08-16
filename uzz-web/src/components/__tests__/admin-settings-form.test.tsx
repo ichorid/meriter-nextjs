@@ -30,7 +30,7 @@ describe('AdminSettingsForm', () => {
 
   it('lets an admin configure each Telegram notification class', () => {
     render(<AdminSettingsForm settings={settings} pending={false} onSave={vi.fn()} />);
-    expect(screen.getByLabelText('Появилось право на обмен')).toBeChecked();
+    expect(screen.getByLabelText('Появился банк на обмен')).toBeChecked();
     expect(screen.getByLabelText('Новая заявка или отмена')).toBeChecked();
     expect(screen.getByLabelText('Заявка принята или услуга сделана')).toBeChecked();
     expect(screen.getByLabelText('Сделка закрыта')).toBeChecked();

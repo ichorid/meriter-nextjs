@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Услуги за заслуги',
-  description: 'Обмен услугами за права из добрых дел сообщества',
+  description: 'Обмен услугами за банки из добрых дел сообщества',
 };
 export const viewport: Viewport = {
   width: 'device-width',

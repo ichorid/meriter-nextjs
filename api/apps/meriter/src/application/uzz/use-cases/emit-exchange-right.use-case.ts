@@ -20,7 +20,7 @@ export class EmitExchangeRightUseCase {
     const publication = await this.platform.getPublication(input.publicationId);
     if (!publication || publication.deleted ||
         (publication.postType && publication.postType !== 'basic')) return null;
-    const configuredCommunityId = this.platform.configuredCommunityId();
+    const configuredCommunityId = await this.platform.configuredCommunityId();
     if (!configuredCommunityId || publication.communityId !== configuredCommunityId) return null;
     const eligibility = await this.unitOfWork.run(async (repositories) => ({
       existing: await repositories.rights.findBySourcePublicationId(publication.id),
@@ -69,8 +69,8 @@ export class EmitExchangeRightUseCase {
           aggregateId: right.snapshot().id, targetUserId: publication.authorId,
           kind: 'right_emitted',
           text: ready
-            ? 'Появилось право на обмен. Администратор назначит номинал.'
-            : 'Появилось право на обмен. Привяжите email на сайте, чтобы продолжить.',
+            ? 'Появился банк на обмен. Администратор назначит номинал.'
+            : 'Появился банк на обмен. Привяжите email на сайте, чтобы продолжить.',
           now,
         });
         return right.snapshot();

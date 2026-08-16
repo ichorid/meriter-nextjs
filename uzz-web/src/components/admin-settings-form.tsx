@@ -32,8 +32,8 @@ export function AdminSettingsForm({ settings, pending, error, onSave }: { settin
     onSave(form);
   }
   return <Card><form noValidate onSubmit={submit} className="space-y-5"><div><h2 className="text-xl font-black">Правила пилота</h2><p className="mt-1 text-sm leading-6 text-stitch-muted">Изменения действуют для новых событий. Уже созданные сделки сохраняют собственные сроки.</p></div><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-    <Field label="Порог заслуг" hint="После этого результата появляется право."><NumberField min={1} max={1_000_000} step={1} required value={form.emissionThreshold} onChange={(event) => number('emissionThreshold', event.target.value)} /></Field>
-    <Field label="Переходов права" hint="На нижнем номинале право не сгорает."><NumberField min={1} max={1_000} step={1} required value={form.initialHops} onChange={(event) => number('initialHops', event.target.value)} /></Field>
+    <Field label="Порог заслуг" hint="После этого результата появляется банк на обмен."><NumberField min={1} max={1_000_000} step={1} required value={form.emissionThreshold} onChange={(event) => number('emissionThreshold', event.target.value)} /></Field>
+    <Field label="Переходов банка" hint="На нижнем номинале банк не сгорает."><NumberField min={1} max={1_000} step={1} required value={form.initialHops} onChange={(event) => number('initialHops', event.target.value)} /></Field>
     <Field label="Таяние, ₽ в день" hint="Работает и во время сделки."><NumberField min={0} max={1_000_000} step={1} required value={form.demurrageRubPerDay} onChange={(event) => number('demurrageRubPerDay', event.target.value)} /></Field>
     <Field label="Нижний номинал, ₽"><NumberField min={1} max={1_000_000_000} step={1} required value={form.nominalFloorRub} onChange={(event) => number('nominalFloorRub', event.target.value)} /></Field>
     <Field label="Рекомендовано карточек"><NumberField min={0} max={100} step={1} required value={form.minimumListingsToBuy} onChange={(event) => number('minimumListingsToBuy', event.target.value)} /></Field>
@@ -42,7 +42,7 @@ export function AdminSettingsForm({ settings, pending, error, onSave }: { settin
     <Field label="Исполнение, дней"><NumberField min={1} max={3_650} step={1} required value={form.fulfillmentTtlDays} onChange={(event) => number('fulfillmentTtlDays', event.target.value)} /></Field>
     <Field label="Подтверждение, дней"><NumberField min={1} max={3_650} step={1} required value={form.confirmationTtlDays} onChange={(event) => number('confirmationTtlDays', event.target.value)} /></Field>
   </div><fieldset className="space-y-3"><legend className="font-extrabold">Telegram-уведомления</legend><p className="text-sm text-stitch-muted">Отключение влияет только на новые события. Ежедневных уведомлений о таянии нет.</p><div className="grid gap-3 sm:grid-cols-2">{([
-    ['notifyRightEmitted', 'Появилось право на обмен'],
+    ['notifyRightEmitted', 'Появился банк на обмен'],
     ['notifyRequestLifecycle', 'Новая заявка или отмена'],
     ['notifyDealProgress', 'Заявка принята или услуга сделана'],
     ['notifyDealClosed', 'Сделка закрыта'],

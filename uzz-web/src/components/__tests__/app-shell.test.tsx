@@ -68,16 +68,16 @@ describe('AppShell admin discovery', () => {
   it('hides the admin mobile entry for non-admins', () => {
     render(<AppShell><p>контент</p></AppShell>);
 
-    expect(screen.queryByRole('link', { name: 'Управление пилотом' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Настройки платформы' })).not.toBeInTheDocument();
   });
 
-  it('shows Управление пилотом in mobile navigation for admins only', () => {
+  it('shows Настройки платформы in mobile navigation for admins only', () => {
     community.isUzzAdmin = true;
     render(<AppShell><p>контент</p></AppShell>);
 
     const mobileNav = screen.getAllByRole('navigation').at(-1);
     expect(mobileNav).toBeTruthy();
-    expect(mobileNav).toHaveTextContent('Управление пилотом');
+    expect(mobileNav).toHaveTextContent('Настройки платформы');
     expect(mobileNav!.querySelector('a[href="/admin"]')).toHaveAttribute('href', '/admin');
   });
 });
@@ -89,14 +89,14 @@ describe('ProfilePage admin entry and logout', () => {
     logoutHandlers.onError = undefined;
   });
 
-  it('shows Управление пилотом in profile for admins and hides it for others', () => {
+  it('shows Настройки платформы in profile for admins and hides it for others', () => {
     const { rerender } = render(<ProfilePage />);
     expect(screen.queryByRole('heading', { name: 'Аккаунт' })?.parentElement?.querySelector('a[href="/admin"]')).toBeNull();
 
     community.isUzzAdmin = true;
     rerender(<ProfilePage />);
     const profileAdmin = screen.getByRole('heading', { name: 'Аккаунт' }).parentElement?.querySelector('a[href="/admin"]');
-    expect(profileAdmin).toHaveTextContent('Управление пилотом');
+    expect(profileAdmin).toHaveTextContent('Настройки платформы');
     expect(profileAdmin).toHaveAttribute('href', '/admin');
   });
 

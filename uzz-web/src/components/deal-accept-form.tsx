@@ -60,7 +60,7 @@ export function DealAcceptForm({
       <div><dt className="text-xs text-stitch-muted">Согласованный срок</dt><dd>{formatInstant(agreedDeadlineAt) ?? 'ещё не зафиксирован'}</dd></div>
     </dl>
     <Notice tone="warn">Номинал тает каждый день, даже пока заявка открыта. Принятие фиксирует показанную сумму; если она успела измениться, система попросит подтвердить ещё раз.</Notice>
-    {belowPrice ? <Notice tone="warn">Текущий номинал ниже цены услуги. Принять заявку всё равно можно: право перейдёт целиком.</Notice> : null}
+    {belowPrice ? <Notice tone="warn">Текущий номинал ниже цены услуги. Принять заявку всё равно можно: банк перейдёт целиком.</Notice> : null}
     <Field label="Согласованный срок" hint="Можно оставить пожелание заказчика или указать другой срок.">
       <input type="datetime-local" min={minimumLocalDeadline()} value={deadline} onChange={(event) => { setDeadline(event.target.value); setDeadlineError(null); }} className={inputClass} />
     </Field>

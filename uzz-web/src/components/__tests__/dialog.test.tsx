@@ -92,7 +92,7 @@ function Harness({
             onSubmit();
           }}
         >
-          <select aria-label="Право на обмен" defaultValue="right-1">
+          <select aria-label="Банк на обмен" defaultValue="right-1">
             <option value="right-1">до 5000 ₽</option>
           </select>
           <textarea aria-label="Сообщение исполнителю" />
@@ -117,13 +117,13 @@ describe('Dialog', () => {
 
   it('moves initial focus to the first enabled field', async () => {
     render(<Harness open onClose={vi.fn()} onSubmit={vi.fn()} />);
-    await waitFor(() => expect(screen.getByLabelText('Право на обмен')).toHaveFocus());
+    await waitFor(() => expect(screen.getByLabelText('Банк на обмен')).toHaveFocus());
   });
 
   it('wraps Tab and Shift+Tab inside the dialog', async () => {
     const user = userEvent.setup();
     render(<Harness open onClose={vi.fn()} onSubmit={vi.fn()} />);
-    const select = screen.getByLabelText('Право на обмен');
+    const select = screen.getByLabelText('Банк на обмен');
     const submit = screen.getByRole('button', { name: 'Подтвердить заявку' });
     await waitFor(() => expect(select).toHaveFocus());
 
@@ -144,7 +144,7 @@ describe('Dialog', () => {
     const onClose = vi.fn();
     const onSubmit = vi.fn();
     render(<Harness open onClose={onClose} onSubmit={onSubmit} />);
-    await waitFor(() => expect(screen.getByLabelText('Право на обмен')).toHaveFocus());
+    await waitFor(() => expect(screen.getByLabelText('Банк на обмен')).toHaveFocus());
     await user.keyboard('{Escape}');
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onSubmit).not.toHaveBeenCalled();

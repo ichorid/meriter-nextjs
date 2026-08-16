@@ -39,6 +39,7 @@ async function mockCatalogWithLongListing(page: Page): Promise<void> {
     'settings.get': { result: { data: { json: { demurrageRubPerDay: 100, nominalFloorRub: 100 } } } },
     'deals.list': { result: { data: { json: [] } } },
     'community.getPublic': { result: { data: { json: { id: communityId, name: 'Пилот' } } } },
+    'community.getActive': { result: { data: { json: { id: communityId, name: 'Пилот' } } } },
   });
 }
 

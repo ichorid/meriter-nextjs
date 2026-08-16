@@ -60,10 +60,10 @@ function DealsContent() {
     },
   });
   const accept = trpc.deals.accept.useMutation(mutationOptions('accept', 'Заявка принята. Контакты открыты обеим сторонам.'));
-  const reject = trpc.deals.reject.useMutation(mutationOptions('reject', 'Заявка отклонена. Комиссия и право возвращены заказчику.'));
-  const cancel = trpc.deals.cancel.useMutation(mutationOptions('cancel', 'Заявка отменена. Комиссия и право возвращены.'));
+  const reject = trpc.deals.reject.useMutation(mutationOptions('reject', 'Заявка отклонена. Комиссия и банк возвращены заказчику.'));
+  const cancel = trpc.deals.cancel.useMutation(mutationOptions('cancel', 'Заявка отменена. Комиссия и банк возвращены.'));
   const complete = trpc.deals.complete.useMutation(mutationOptions('complete', 'Отмечено как выполненное. Если заказчик не ответит, сделка закроется автоматически.'));
-  const close = trpc.deals.close.useMutation(mutationOptions('close', 'Сделка закрыта, право целиком перешло исполнителю.'));
+  const close = trpc.deals.close.useMutation(mutationOptions('close', 'Сделка закрыта, банк целиком перешёл исполнителю.'));
   const thank = trpc.deals.thank.useMutation(mutationOptions('thanks', 'Благодарность отправлена.'));
   const pending = accept.isPending || reject.isPending || cancel.isPending || complete.isPending || close.isPending || thank.isPending;
   const visible = useMemo(() => (deals.data ?? []).filter((deal) => !openOnly || ['requested', 'accepted', 'completed_by_seller'].includes(deal.status)), [deals.data, openOnly]);
@@ -91,7 +91,7 @@ function DealsContent() {
       {deal.status === 'requested' && deal.myRole === 'buyer' ? <div className="space-y-3"><p className="text-sm text-stitch-muted">До принятия контакт скрыт. Заявку можно отменить без потери комиссии.</p><Button variant="danger" disabled={pending} onClick={() => act('cancel', deal)}>{panel?.dealId === deal.id && panel.kind === 'cancel' ? 'Подтвердить отмену' : 'Отменить заявку'}</Button></div> : null}
       {deal.status === 'accepted' && deal.myRole === 'seller' ? <Button disabled={pending} onClick={() => { clearActionError(deal.id, 'complete'); complete.mutate({ commandId: crypto.randomUUID(), dealId: deal.id }); }}>Услуга выполнена</Button> : null}
       {deal.status === 'accepted' && deal.myRole === 'buyer' ? <p className="text-sm leading-6 text-stitch-muted">Свяжитесь с исполнителем. Когда услуга будет готова, он отметит выполнение, а вы сможете подтвердить закрытие.</p> : null}
-      {deal.status === 'completed_by_seller' && deal.myRole === 'buyer' ? <div className="space-y-3"><Notice>Подтвердите, если всё выполнено. Без ответа сделка закроется автоматически по окончании срока подтверждения.</Notice><Button disabled={pending} onClick={() => act('close', deal)}>{panel?.dealId === deal.id && panel.kind === 'close' ? 'Подтвердить закрытие и передачу права' : 'Всё выполнено'}</Button></div> : null}
+      {deal.status === 'completed_by_seller' && deal.myRole === 'buyer' ? <div className="space-y-3"><Notice>Подтвердите, если всё выполнено. Без ответа сделка закроется автоматически по окончании срока подтверждения.</Notice><Button disabled={pending} onClick={() => act('close', deal)}>{panel?.dealId === deal.id && panel.kind === 'close' ? 'Подтвердить закрытие и передачу банка' : 'Всё выполнено'}</Button></div> : null}
       {deal.status === 'completed_by_seller' && deal.myRole === 'seller' ? <p className="text-sm text-stitch-muted">Ждём подтверждения заказчика. После истечения срока сделка закроется автоматически.</p> : null}
       {deal.status === 'closed' && !(deal.myRole === 'buyer' ? deal.buyerThankedAt : deal.sellerThankedAt) ? panel?.dealId === deal.id && panel.kind === 'thanks' ? <ThanksForm pending={thank.isPending} error={panelError(deal.id)} onCancel={() => setPanel(null)} onSubmit={({ comment, merits }) => { clearActionError(deal.id, 'thanks'); thank.mutate({ commandId: crypto.randomUUID(), dealId: deal.id, comment, merits }); }} /> : <div className="flex flex-wrap items-center gap-3"><Button variant="ghost" onClick={() => { setPanel({ dealId: deal.id, kind: 'thanks' }); }}>Сказать спасибо</Button><span className="text-xs text-stitch-muted">Необязательно</span></div> : null}
     </DealCard></li>)}</ul>}

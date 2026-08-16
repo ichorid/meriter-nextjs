@@ -101,7 +101,7 @@ realUzzTest('R7 local fee reserve then cancel refunds the wallet and ledger', as
 
   await page.getByRole('button', { name: 'Отменить заявку' }).click();
   await page.getByRole('button', { name: 'Подтвердить отмену' }).click();
-  await expect(page.getByText('Заявка отменена. Комиссия и право возвращены.')).toBeVisible();
+  await expect(page.getByText('Заявка отменена. Комиссия и банк возвращены.')).toBeVisible();
   await page.locator('label').filter({ hasText: 'Только активные' }).click();
   await expect(page.getByText(/Возвращена 1 заслуга на кошелька сообщества/)).toBeVisible();
   await firstTrpcJson(cancels);
@@ -251,8 +251,8 @@ realUzzTest('R10 request accept contacts complete close transfers the right', as
     const closes = captureTrpcResponses(page, 'deals.close');
     await page.goto('/deals');
     await page.getByRole('button', { name: 'Всё выполнено' }).click();
-    await page.getByRole('button', { name: 'Подтвердить закрытие и передачу права' }).click();
-    await expect(page.getByText('Сделка закрыта, право целиком перешло исполнителю.')).toBeVisible();
+    await page.getByRole('button', { name: 'Подтвердить закрытие и передачу банка' }).click();
+    await expect(page.getByText('Сделка закрыта, банк целиком перешёл исполнителю.')).toBeVisible();
     expect(closes[0]?.status).toBe(200);
   } finally {
     await sellerSession.close();
@@ -353,7 +353,7 @@ realUzzTest('R12 optional thanks is sent once and appears in both ledger views',
 
   await page.goto('/deals');
   await page.getByRole('button', { name: 'Всё выполнено' }).click();
-  await page.getByRole('button', { name: 'Подтвердить закрытие и передачу права' }).click();
+  await page.getByRole('button', { name: 'Подтвердить закрытие и передачу банка' }).click();
   await expect(page.getByText('Сделка закрыта')).toBeVisible();
   await page.getByRole('button', { name: 'Показать историю' }).click();
   const thanks = captureTrpcResponses(page, 'deals.thank');

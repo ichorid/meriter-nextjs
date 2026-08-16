@@ -157,6 +157,23 @@ export const uzzAppRouter = router({
         }
         return { id: community.id, name: community.name };
       }),
+    getActive: publicProcedure.query(async ({ ctx }) => {
+      const community = await ctx.uzzFacade.getActiveCommunity();
+      if (!community) {
+        throw new TRPCError({ code: 'NOT_FOUND', message: 'Community not found' });
+      }
+      return { id: community.id, name: community.name };
+    }),
+    listMine: protectedProcedure.query(async ({ ctx }) => {
+      return executeUzz(() => ctx.uzzFacade.listPilotCommunities(ctx.user.id));
+    }),
+    setStand: protectedProcedure
+      .input(z.object({ communityId: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        return executeUzz(() => ctx.uzzFacade.setPilotCommunity({
+          adminId: ctx.user.id, communityId: input.communityId,
+        }));
+      }),
   }),
 
   settings: router({

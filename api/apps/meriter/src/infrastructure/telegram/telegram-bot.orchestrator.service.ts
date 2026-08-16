@@ -2370,7 +2370,7 @@ export class TelegramBotOrchestratorService {
       await this.tgBots.tgSend({
         tgChatId: tgUserId,
         text:
-          'Telegram привязан к аккаунту на площадке «Услуги за заслуги». Можно смотреть права на обмен и сделки на сайте.',
+          'Telegram привязан к аккаунту на площадке «Услуги за заслуги». Можно смотреть банки на обмен и сделки на сайте.',
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Не удалось привязать Telegram';

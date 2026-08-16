@@ -29,7 +29,7 @@ test('admin settings expose every configurable business parameter', async ({ pag
 
   for (const name of [
     'Порог заслуг',
-    'Переходов права',
+    'Переходов банка',
     'Таяние, ₽ в день',
     'Нижний номинал, ₽',
     'Рекомендовано карточек',
@@ -37,7 +37,7 @@ test('admin settings expose every configurable business parameter', async ({ pag
     'Ответ на заявку, часов',
     'Исполнение, дней',
     'Подтверждение, дней',
-    'Появилось право на обмен',
+    'Появился банк на обмен',
     'Новая заявка или отмена',
     'Заявка принята или услуга сделана',
     'Сделка закрыта',

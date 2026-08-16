@@ -19,10 +19,16 @@ import { CloseDealUseCase } from './use-cases/close-deal.use-case';
 import { AdminResolveDealUseCase } from './use-cases/admin-resolve-deal.use-case';
 import { SendDealThanksUseCase } from './use-cases/send-deal-thanks.use-case';
 import { StartTelegramLinkUseCase } from './use-cases/start-telegram-link.use-case';
+import {
+  ListPilotCommunitiesUseCase,
+  SetPilotCommunityUseCase,
+} from './use-cases/pilot-community.use-case';
 
 export interface UzzFacadeCommands {
   getSettings: GetSettingsUseCase;
   updateSettings: UpdateSettingsUseCase;
+  listPilotCommunities: ListPilotCommunitiesUseCase;
+  setPilotCommunity: SetPilotCommunityUseCase;
   assignRightNominal: AssignRightNominalUseCase;
   createListing: CreateListingUseCase;
   updateListing: UpdateListingUseCase;
@@ -66,6 +72,17 @@ export class UzzApplicationFacade {
   }
   getPublicCommunity(communityId: string) {
     return this.platform.getCommunity(communityId);
+  }
+  async getActiveCommunity() {
+    const communityId = await this.platform.configuredCommunityId();
+    if (!communityId) return null;
+    return this.platform.getCommunity(communityId);
+  }
+  listPilotCommunities(adminId: string) {
+    return this.commands.listPilotCommunities.execute(adminId);
+  }
+  setPilotCommunity(input: Parameters<SetPilotCommunityUseCase['execute']>[0]) {
+    return this.commands.setPilotCommunity.execute(input);
   }
 
   async listCatalog(input: Parameters<ListCatalogUseCase['execute']>[0]) {
@@ -118,14 +135,8 @@ export class UzzApplicationFacade {
   }
 
   async bootstrap(userId: string) {
-    const communities = await this.platform.listUserCommunities(userId);
-    const configured = this.platform.configuredCommunityId();
-    const withTelegram = communities.filter((entry) => Boolean(entry.telegramChatId));
-    const selected = withTelegram.length === 1
-      ? withTelegram[0]
-      : withTelegram.find((entry) => entry.id === configured)
-        ?? communities.find((entry) => entry.id === configured)
-        ?? (configured ? await this.platform.getCommunity(configured) : null);
+    const configured = await this.platform.configuredCommunityId();
+    const selected = configured ? await this.platform.getCommunity(configured) : null;
     const communityId = selected?.id ?? configured;
     let isUzzAdmin = false;
     if (communityId) {

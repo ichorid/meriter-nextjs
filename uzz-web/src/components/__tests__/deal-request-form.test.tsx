@@ -80,7 +80,7 @@ describe('DealRequestForm', () => {
   it('shows nominal forecast and fee source before confirmation', () => {
     render(<DealRequestForm title="Консультация" priceRub={500} rights={[right]} pending={false} demurrageRubPerDay={100} nominalFloorRub={100} feeSourceLabel="кошелёк сообщества" onCancel={vi.fn()} onSubmit={vi.fn()} />);
 
-    expect(screen.getByText('Сегодня право: до 5 000 ₽')).toBeVisible();
+    expect(screen.getByText('Сегодня банк: до 5 000 ₽')).toBeVisible();
     expect(screen.getByText('Завтра: до 4 900 ₽')).toBeVisible();
     expect(screen.getByText(/Комиссия 1 заслуга: кошелёк сообщества/)).toBeVisible();
   });

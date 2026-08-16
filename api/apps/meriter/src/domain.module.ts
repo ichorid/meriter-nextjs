@@ -1,5 +1,5 @@
 import { Logger, Module, OnModuleInit } from '@nestjs/common';
-import { InjectConnection, MongooseModule } from '@nestjs/mongoose';
+import { getConnectionToken, InjectConnection, MongooseModule } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
 import { ConfigService } from '@nestjs/config';
 import { AppConfig } from './config/configuration';
@@ -194,6 +194,15 @@ import { ApplyDemurrageUseCase } from './application/uzz/use-cases/apply-demurra
 import { ExpireDealsUseCase } from './application/uzz/use-cases/expire-deals.use-case';
 import { SendDealThanksUseCase } from './application/uzz/use-cases/send-deal-thanks.use-case';
 import { EmitExchangeRightUseCase } from './application/uzz/use-cases/emit-exchange-right.use-case';
+import {
+  ListPilotCommunitiesUseCase,
+  SetPilotCommunityUseCase,
+} from './application/uzz/use-cases/pilot-community.use-case';
+import {
+  readSelectedCommunityId,
+  resolveConfiguredCommunityId,
+  writeSelectedCommunityId,
+} from './infrastructure/uzz/persistence/uzz-platform-selection';
 import { SYSTEM_CLOCK } from './application/uzz/ports/clock.port';
 import { GLOBAL_COMMUNITY_ID } from './domain/common/constants/global.constant';
 
@@ -405,15 +414,25 @@ import { EventBus } from './domain/events/event-bus';
     },
     {
       provide: UZZ_PLATFORM_PORT,
-      inject: [ConfigService, CommunityService, PublicationService, UserService],
+      inject: [ConfigService, CommunityService, PublicationService, UserService, getConnectionToken()],
       useFactory: (
         config: ConfigService<AppConfig>,
         communities: CommunityService,
         publications: PublicationService,
         users: UserService,
+        connection: Connection,
       ): UzzPlatformPort => ({
-        configuredCommunityId: () =>
-          config.get('app')?.defaultTelegramCommunityId?.trim() ?? '',
+        async configuredCommunityId() {
+          const env = config.get('app')?.defaultTelegramCommunityId?.trim() ?? '';
+          const db = connection.db;
+          if (!db) return env;
+          return resolveConfiguredCommunityId(await readSelectedCommunityId(db), env);
+        },
+        async setSelectedCommunityId(communityId) {
+          const db = connection.db;
+          if (!db) throw new Error('Mongo database unavailable');
+          await writeSelectedCommunityId(db, communityId);
+        },
         async listUserCommunities(userId) {
           return (await communities.getUserCommunities(userId)).map((community) => ({
             id: community.id, name: community.name,
@@ -565,6 +584,18 @@ import { EventBus } from './domain/events/event-bus';
         new EmitExchangeRightUseCase(unitOfWork, platform, SYSTEM_CLOCK),
     },
     {
+      provide: ListPilotCommunitiesUseCase,
+      inject: [UZZ_PLATFORM_PORT, UzzAuthorizationService],
+      useFactory: (platform: UzzPlatformPort, authorization: UzzAuthorizationService) =>
+        new ListPilotCommunitiesUseCase(platform, authorization),
+    },
+    {
+      provide: SetPilotCommunityUseCase,
+      inject: [UZZ_PLATFORM_PORT, UzzAuthorizationService],
+      useFactory: (platform: UzzPlatformPort, authorization: UzzAuthorizationService) =>
+        new SetPilotCommunityUseCase(platform, authorization),
+    },
+    {
       provide: UzzApplicationFacade,
       inject: [
         UZZ_UNIT_OF_WORK, UzzAuthorizationService, UZZ_PLATFORM_PORT,
@@ -574,6 +605,7 @@ import { EventBus } from './domain/events/event-bus';
         AcceptDealUseCase, RejectDealUseCase, CancelDealUseCase,
         MarkDealCompletedUseCase, CloseDealUseCase, AdminResolveDealUseCase,
         SendDealThanksUseCase, StartTelegramLinkUseCase,
+        ListPilotCommunitiesUseCase, SetPilotCommunityUseCase,
       ],
       useFactory: (
         unitOfWork, authorization, platform, emitRight,
@@ -581,11 +613,13 @@ import { EventBus } from './domain/events/event-bus';
         createListing, updateListing, listCatalog, checkPurchaseGate,
         requestDeal, acceptDeal, rejectDeal, cancelDeal, markDealCompleted,
         closeDeal, adminResolveDeal, sendDealThanks, startTelegramLink,
+        listPilotCommunities, setPilotCommunity,
       ) =>
         new UzzApplicationFacade(
           unitOfWork, authorization, platform, emitRight, GLOBAL_COMMUNITY_ID,
           {
-            getSettings, updateSettings, assignRightNominal,
+            getSettings, updateSettings, listPilotCommunities, setPilotCommunity,
+            assignRightNominal,
             createListing, updateListing, listCatalog, checkPurchaseGate,
             requestDeal, acceptDeal, rejectDeal, cancelDeal, markDealCompleted,
             closeDeal, adminResolveDeal, sendDealThanks, startTelegramLink,
@@ -695,6 +729,8 @@ import { EventBus } from './domain/events/event-bus';
     ExpireDealsUseCase,
     SendDealThanksUseCase,
     EmitExchangeRightUseCase,
+    ListPilotCommunitiesUseCase,
+    SetPilotCommunityUseCase,
     UzzAuthorizationService,
     UzzApplicationFacade,
 

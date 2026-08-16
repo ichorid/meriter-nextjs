@@ -54,12 +54,12 @@ export function bankStatusLabel(status: string): string {
 }
 
 export function ledgerTypeLabel(type: string): string {
-  return ({ right_emitted: 'Появилось право на обмен', bank_emitted: 'Появилось право на обмен', nominal_assigned: 'Назначен номинал', right_nominal_assigned: 'Назначен номинал', bank_nominal_set: 'Назначен номинал', right_sent: 'Право передано', right_received: 'Право получено', right_transferred: 'Право перешло новому владельцу', bank_transferred: 'Право перешло новому владельцу', right_demurrage_applied: 'Номинал уменьшился', demurrage: 'Номинал уменьшился', deal_requested: 'Создана заявка', fee_reserved: 'Комиссия зарезервирована', deal_fee_reserved: 'Комиссия зарезервирована', fee_refunded: 'Комиссия возвращена', deal_fee_refunded: 'Комиссия возвращена', deal_accepted: 'Заявка принята', deal_rejected: 'Заявка отклонена', deal_completed: 'Исполнитель отметил выполнение', deal_completed_by_seller: 'Исполнитель отметил выполнение', deal_closed: 'Сделка закрыта', deal_cancelled: 'Сделка отменена', thanks_sent: 'Благодарность отправлена', thanks_received: 'Благодарность получена', deal_thanks: 'Благодарность', admin_resolution: 'Решение администратора', settings_updated: 'Изменены настройки' } as Record<string, string>)[type] ?? 'Операция';
+  return ({ right_emitted: 'Появился банк на обмен', bank_emitted: 'Появился банк на обмен', nominal_assigned: 'Назначен номинал', right_nominal_assigned: 'Назначен номинал', bank_nominal_set: 'Назначен номинал', right_sent: 'Банк передан', right_received: 'Банк получен', right_transferred: 'Банк перешёл новому владельцу', bank_transferred: 'Банк перешёл новому владельцу', right_demurrage_applied: 'Номинал уменьшился', demurrage: 'Номинал уменьшился', deal_requested: 'Создана заявка', fee_reserved: 'Комиссия зарезервирована', deal_fee_reserved: 'Комиссия зарезервирована', fee_refunded: 'Комиссия возвращена', deal_fee_refunded: 'Комиссия возвращена', deal_accepted: 'Заявка принята', deal_rejected: 'Заявка отклонена', deal_completed: 'Исполнитель отметил выполнение', deal_completed_by_seller: 'Исполнитель отметил выполнение', deal_closed: 'Сделка закрыта', deal_cancelled: 'Сделка отменена', thanks_sent: 'Благодарность отправлена', thanks_received: 'Благодарность получена', deal_thanks: 'Благодарность', admin_resolution: 'Решение администратора', settings_updated: 'Изменены настройки' } as Record<string, string>)[type] ?? 'Операция';
 }
 
 export function bankHeadline(bank: { status: string; nominalRub: number | null; createdAt?: Date | string }): string {
   const since = bank.createdAt ? ` · с ${formatWhen(bank.createdAt)}` : '';
-  return bank.nominalRub == null ? `Право на обмен · номинал ещё не назначен${since}` : `Право на обмен · сегодня до ${bank.nominalRub.toLocaleString('ru-RU')} ₽${since}`;
+  return bank.nominalRub == null ? `Банк на обмен · номинал ещё не назначен${since}` : `Банк на обмен · сегодня до ${bank.nominalRub.toLocaleString('ru-RU')} ₽${since}`;
 }
 export function bankHopsLabel(hopsLeft: number): string { return `Осталось переходов: ${Math.max(0, hopsLeft)}`; }
 
@@ -179,8 +179,9 @@ export function uzzErrorMessage(err: { message?: string } | null | undefined): s
     UNAUTHORIZED: 'Нужно войти по ссылке из письма', FORBIDDEN: 'Для этого действия недостаточно прав',
     LISTING_TITLE_INVALID: 'Название должно содержать от 3 до 120 символов', LISTING_PRICE_INVALID: 'Укажите положительную цену',
     DEAL_REQUEST_MESSAGE_INVALID: 'Напишите исполнителю, что именно вам нужно', RIGHT_NOMINAL_CHANGED: 'Номинал изменился. Проверьте новую сумму и подтвердите принятие ещё раз', NOMINAL_CHANGED: 'Номинал изменился. Проверьте новую сумму и подтвердите принятие ещё раз',
-    RIGHT_NOT_ACTIVE: 'Это право сейчас нельзя использовать', PURCHASE_GATE_BLOCKED: 'Сначала добавьте свои предложения', MIN_LISTINGS_REQUIRED: 'Сначала добавьте свои предложения',
+    RIGHT_NOT_ACTIVE: 'Этот банк сейчас нельзя использовать', PURCHASE_GATE_BLOCKED: 'Сначала добавьте свои предложения', MIN_LISTINGS_REQUIRED: 'Сначала добавьте свои предложения',
     IDENTITY_LINK_REQUIRED: 'Сначала привяжите Telegram в профиле',
+    PILOT_COMMUNITY_NOT_MEMBER: 'Можно выбрать только сообщество, в котором вы состоите',
     INSUFFICIENT_MERITS: 'Недостаточно заслуг: нужна вся сумма либо в кошельке сообщества, либо в общем кошельке', WALLET_INSUFFICIENT_FUNDS: 'Недостаточно заслуг: нужна вся сумма либо в кошельке сообщества, либо в общем кошельке',
     DEAL_CANNOT_CANCEL: 'После принятия заказчик не может отменить сделку',
     'Invalid or expired login link': 'Ссылка недействительна или устарела', 'Email authentication is not enabled': 'Вход по почте сейчас недоступен',

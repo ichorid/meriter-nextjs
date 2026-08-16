@@ -146,13 +146,13 @@ realUzzTest('keyboard-only journey opens and closes a dialog, traverses tabs, su
   await page.keyboard.press('Enter');
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
-  await expect(page.getByLabel('Право на обмен')).toBeFocused();
+  await expect(page.getByLabel('Банк на обмен')).toBeFocused();
   await page.keyboard.press('Escape');
   await expect(dialog).toHaveCount(0);
   await expect(requestButton).toBeFocused();
 
   await page.goto('/');
-  const rightsTab = page.getByRole('tab', { name: 'Права' });
+  const rightsTab = page.getByRole('tab', { name: 'Банки' });
   await expect(rightsTab).toBeVisible();
   await rightsTab.focus();
   await page.keyboard.press('ArrowRight');
@@ -173,7 +173,7 @@ realUzzTest('keyboard-only journey opens and closes a dialog, traverses tabs, su
   if (isMobileViewport(page)) {
     const adminLink = page
       .getByRole('navigation', { name: 'Мобильные разделы' })
-      .getByRole('link', { name: 'Управление пилотом' });
+      .getByRole('link', { name: 'Настройки платформы' });
     await expect(adminLink).toBeVisible();
     await adminLink.focus();
     await expect(adminLink).toBeFocused();

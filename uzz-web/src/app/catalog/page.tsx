@@ -43,8 +43,8 @@ export default function CatalogPage() {
     if (link.isLoading) return { label: 'Проверяем Telegram…', disabled: true };
     if (link.isError) return { label: 'Не удалось проверить Telegram', disabled: true };
     if (!link.data?.linked) return { label: 'Сначала привяжите Telegram', disabled: false };
-    if (rights.isLoading) return { label: 'Проверяем ваши права…', disabled: true };
-    if (rights.isError) return { label: 'Не удалось загрузить права', disabled: true };
+    if (rights.isLoading) return { label: 'Проверяем ваши банки…', disabled: true };
+    if (rights.isError) return { label: 'Не удалось загрузить банки', disabled: true };
     if (gate.isLoading || wallet.isLoading || settings.isLoading) return { label: 'Загружаем условия…', disabled: true };
     if (strictGateBlocked) return { label: 'Сначала добавьте свои услуги', disabled: true };
     if (gate.isError || wallet.isError || settings.isError) return { label: 'Не удалось загрузить условия', disabled: true };
@@ -71,7 +71,7 @@ export default function CatalogPage() {
     {strictGateBlocked ? <Notice tone="warn">Администратор включил обязательный режим: прежде чем заказывать, добавьте нужное количество активных предложений. <Link href="/?tab=lots" className="underline">Перейти к своим услугам</Link></Notice> : null}
     {gate.isError && !strictGateBlocked && loggedIn ? <Notice tone="warn">Не удалось проверить правила покупки. <button className="underline" onClick={() => void gate.refetch()}>Повторить</button></Notice> : null}
     {link.isError && loggedIn ? <Notice tone="warn">Не удалось проверить привязку Telegram. <button className="underline" onClick={() => void link.refetch()}>Повторить</button></Notice> : null}
-    {rights.isError && loggedIn ? <Notice tone="warn">Каталог доступен, но ваши права сейчас не загрузились. <button className="underline" onClick={() => void rights.refetch()}>Повторить</button></Notice> : null}
+    {rights.isError && loggedIn ? <Notice tone="warn">Каталог доступен, но ваши банки сейчас не загрузились. <button className="underline" onClick={() => void rights.refetch()}>Повторить</button></Notice> : null}
     {wallet.data && !wallet.data.canPayFee ? <Notice tone="warn">Для заявки нужна комиссия 1 заслуга. Сначала пополните кошелёк сообщества или общий кошелёк.</Notice> : null}
     <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
       <label><span className="sr-only">Поиск по каталогу</span><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Поиск по названию, описанию или автору" className={inputClass} /></label>

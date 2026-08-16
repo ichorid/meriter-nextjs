@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Link href="/catalog" className="text-base font-black tracking-tight text-stitch-accent sm:text-lg">Услуги за заслуги</Link>
         <nav className="hidden flex-1 gap-1 md:flex" aria-label="Основные разделы">
           {NAV.map((item) => <NavLink key={item.href} {...item} pathname={pathname} badge={item.href === '/deals' ? actionCount : 0} />)}
-          {isUzzAdmin ? <NavLink href="/admin" label="Управление пилотом" pathname={pathname} /> : null}
+          {isUzzAdmin ? <NavLink href="/admin" label="Настройки платформы" pathname={pathname} /> : null}
         </nav>
         {!loggedIn && !sessionLoading ? <Link href={loginHref} className="ml-auto rounded-xl bg-stitch-accent-solid px-4 py-2 text-sm font-semibold text-white">Войти</Link> : null}
       </div>
@@ -51,7 +51,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       : busy ? <main className="mx-auto max-w-6xl px-4 py-8" aria-busy><div className="h-40 animate-pulse rounded-2xl bg-stitch-surface" /></main>
       : <main className="mx-auto max-w-6xl px-4 py-8 pb-28 md:pb-10">{children}</main>}
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-stitch-border bg-stitch-sidebar/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden" aria-label="Мобильные разделы">
-      <div className={cn('mx-auto grid max-w-2xl', isUzzAdmin ? 'grid-cols-6' : 'grid-cols-5')}>{NAV.map((item) => <NavLink key={item.href} {...item} pathname={pathname} badge={item.href === '/deals' ? actionCount : 0} stacked />)}{isUzzAdmin ? <NavLink href="/admin" label="Управление пилотом" icon={Shield} pathname={pathname} stacked /> : null}</div>
+      <div className={cn('mx-auto grid max-w-2xl', isUzzAdmin ? 'grid-cols-6' : 'grid-cols-5')}>{NAV.map((item) => <NavLink key={item.href} {...item} pathname={pathname} badge={item.href === '/deals' ? actionCount : 0} stacked />)}{isUzzAdmin ? <NavLink href="/admin" label="Настройки платформы" icon={Shield} pathname={pathname} stacked /> : null}</div>
     </nav>
   </div>;
 }

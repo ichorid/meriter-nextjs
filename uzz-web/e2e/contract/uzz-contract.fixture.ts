@@ -4,6 +4,7 @@ const guestResponses: Record<string, unknown> = {
   'auth.me': { error: { json: { message: 'UNAUTHORIZED', code: -32001 } } },
   'lots.list': { result: { data: { json: [] } } },
   'community.getPublic': { result: { data: { json: { id: 'a1000001-0000-4000-8000-000000000001', name: 'Пилот' } } } },
+  'community.getActive': { result: { data: { json: { id: 'a1000001-0000-4000-8000-000000000001', name: 'Пилот' } } } },
 };
 
 export async function mockGuestApi(page: Page): Promise<void> {
@@ -47,6 +48,8 @@ export async function mockAdminApi(page: Page): Promise<void> {
       'banks.listHolding': { result: { data: { json: [] } } },
       'deals.adminList': { result: { data: { json: [] } } },
       'ledger.list': { result: { data: { json: { items: [], nextCursor: null } } } },
+      'community.listMine': { result: { data: { json: { selectedCommunityId: communityId, communities: [{ id: communityId, name: 'Пилот' }] } } } },
+      'community.getActive': { result: { data: { json: { id: communityId, name: 'Пилот' } } } },
     };
     await fulfillTrpcBatch(route, path, responses);
   });
@@ -64,6 +67,7 @@ export async function mockMemberApi(page: Page, linked: boolean): Promise<void> 
     'settings.get': { result: { data: { json: { demurrageRubPerDay: 100, nominalFloorRub: 100 } } } },
     'deals.list': { result: { data: { json: [] } } },
     'community.getPublic': { result: { data: { json: { id: communityId, name: 'Пилот' } } } },
+    'community.getActive': { result: { data: { json: { id: communityId, name: 'Пилот' } } } },
   };
   await page.route('**/trpc/uzz/**', async (route) => {
     const url = new URL(route.request().url());

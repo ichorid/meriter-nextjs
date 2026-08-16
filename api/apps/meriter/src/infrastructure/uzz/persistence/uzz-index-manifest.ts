@@ -123,4 +123,10 @@ export const UZZ_REQUIRED_INDEXES: readonly UzzRequiredIndex[] = [
     key: { expiresAt: 1 },
     expireAfterSeconds: 0,
   },
+  {
+    collection: 'uzz_platform',
+    name: 'uzz_platform_id_unique',
+    key: { id: 1 },
+    unique: true,
+  },
 ];

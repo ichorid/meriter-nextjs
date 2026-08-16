@@ -19,11 +19,17 @@ vi.mock('@/lib/trpc/client', () => {
   return {
   trpc: {
     useUtils: () => ({
+      auth: { me: { invalidate: vi.fn() } },
+      community: { listMine: { invalidate: vi.fn() }, getActive: { invalidate: vi.fn() } },
       settings: { get: { invalidate: vi.fn() } },
       banks: { listAwaitingNominal: { invalidate: vi.fn() } },
       deals: { adminList: { invalidate: vi.fn() } },
       ledger: { list: { invalidate: vi.fn() } },
     }),
+    community: {
+      listMine: { useQuery: () => ({ data: { selectedCommunityId: 'community-1', communities: [{ id: 'community-1', name: 'Пилот' }] }, isLoading: false, isError: false, refetch: vi.fn() }) },
+      setStand: { useMutation: () => ({ isPending: false, mutate: vi.fn(), error: null }) },
+    },
     settings: {
       get: { useQuery: () => ({ data: { demurrageRubPerDay: 100, nominalFloorRub: 100 }, isLoading: false, isError: false }) },
       update: { useMutation: () => ({ isPending: false, mutate: vi.fn(), error: null }) },

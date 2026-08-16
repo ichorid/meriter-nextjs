@@ -44,10 +44,10 @@ function TabsHarness() {
   const [value, setValue] = useState('rights');
   return (
     <Tabs value={value} onChange={setValue} aria-label="Личный раздел">
-      <Tab value="rights">Права</Tab>
+      <Tab value="rights">Банки</Tab>
       <Tab value="listings">Мои услуги</Tab>
       <Tab value="deeds">Добрые дела</Tab>
-      <TabPanel value="rights"><p>Права панель</p></TabPanel>
+      <TabPanel value="rights"><p>Банки панель</p></TabPanel>
       <TabPanel value="listings"><p>Услуги панель</p></TabPanel>
       <TabPanel value="deeds"><p>Дела панель</p></TabPanel>
     </Tabs>
@@ -62,13 +62,13 @@ describe('Tabs', () => {
     const panel = screen.getByRole('tabpanel');
 
     expect(tabs).toHaveLength(3);
-    expect(selected).toHaveAccessibleName('Права');
+    expect(selected).toHaveAccessibleName('Банки');
     expect(selected).toHaveAttribute('tabIndex', '0');
     expect(selected).toHaveAttribute('aria-selected', 'true');
     expect(selected).toHaveAttribute('aria-controls', panel.id);
     expect(panel).toHaveAttribute('aria-labelledby', selected.id);
     expect(screen.getAllByRole('tabpanel')).toHaveLength(1);
-    expect(panel).toHaveTextContent('Права панель');
+    expect(panel).toHaveTextContent('Банки панель');
 
     for (const tab of tabs) {
       if (tab !== selected) {
@@ -87,7 +87,7 @@ describe('Tabs', () => {
   it('moves selection with ArrowLeft/Right and Home/End', async () => {
     const user = userEvent.setup();
     render(<TabsHarness />);
-    const rights = screen.getByRole('tab', { name: 'Права' });
+    const rights = screen.getByRole('tab', { name: 'Банки' });
     rights.focus();
 
     await user.keyboard('{ArrowRight}');
@@ -100,14 +100,14 @@ describe('Tabs', () => {
     expect(screen.getByRole('tab', { name: 'Добрые дела' })).toHaveAttribute('aria-selected', 'true');
 
     await user.keyboard('{ArrowRight}');
-    expect(screen.getByRole('tab', { name: 'Права' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Банки' })).toHaveAttribute('aria-selected', 'true');
 
     await user.keyboard('{ArrowLeft}');
     expect(screen.getByRole('tab', { name: 'Добрые дела' })).toHaveAttribute('aria-selected', 'true');
 
     await user.keyboard('{Home}');
-    expect(screen.getByRole('tab', { name: 'Права' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('tab', { name: 'Права' })).toHaveFocus();
+    expect(screen.getByRole('tab', { name: 'Банки' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Банки' })).toHaveFocus();
 
     await user.keyboard('{End}');
     expect(screen.getByRole('tab', { name: 'Добрые дела' })).toHaveAttribute('aria-selected', 'true');
@@ -127,7 +127,7 @@ describe('HomePage tabs', () => {
     render(<HomePage />);
 
     const listings = screen.getByRole('tab', { name: 'Мои услуги' });
-    expect(screen.getByRole('tab', { name: 'Права' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Банки' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getAllByRole('tabpanel')).toHaveLength(1);
 
     await user.click(listings);
@@ -144,6 +144,6 @@ describe('HomePage tabs', () => {
 
     await user.keyboard('{Home}');
     expect(replace).toHaveBeenCalledWith('/', { scroll: false });
-    expect(screen.getByRole('tab', { name: 'Права' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: 'Банки' })).toHaveAttribute('aria-selected', 'true');
   });
 });
