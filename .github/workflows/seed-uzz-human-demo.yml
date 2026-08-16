@@ -68,7 +68,6 @@ jobs:
           SET_STAND="$3"
           docker inspect meriter-api >/dev/null
           MONGO_URL=$(docker exec meriter-api printenv MONGO_URL)
-          NETWORK=$(docker inspect meriter-api --format '{{range $name, $_ := .NetworkSettings.Networks}}{{$name}}{{println}}{{end}}' | head -n1)
           HOST=$(MONGO_URL="$MONGO_URL" python3 -c "from urllib.parse import urlparse; import os; print(urlparse(os.environ['MONGO_URL']).hostname)")
           DB=$(MONGO_URL="$MONGO_URL" python3 -c "from urllib.parse import urlparse; import os; path=urlparse(os.environ['MONGO_URL']).path or '/meriter'; print(path.lstrip('/').split('?')[0] or 'meriter')")
           extra=()
@@ -81,7 +80,7 @@ jobs:
             extra+=(--grant-email="$GRANT_EMAIL")
           fi
           run_seed() {
-            docker run --rm --network "$NETWORK" \
+            docker run --rm --network container:meriter-api \
               -e MONGO_URL="$MONGO_URL" \
               -v /tmp/seed-uzz-human-demo.cjs:/seed-uzz-human-demo.cjs:ro \
               node:22-alpine node /seed-uzz-human-demo.cjs "$@"
