@@ -411,6 +411,8 @@ async function setSuperadmin(userId: string): Promise<void> {
 type SharedGlobalRestore = {
   telegramChatId: unknown;
   hadTelegramChatId: boolean;
+  typeTag: unknown;
+  hadTypeTag: boolean;
   userIds: string[];
 };
 
@@ -422,13 +424,17 @@ async function restoreSharedGlobal(): Promise<void> {
   if (!restore) return;
   const now = new Date();
   await withE2eDb(async (db) => {
-    const telegramUpdate = restore.hadTelegramChatId
-      ? { $set: { telegramChatId: restore.telegramChatId, updatedAt: now } }
-      : { $unset: { telegramChatId: '' }, $set: { updatedAt: now } };
+    const setFields: Record<string, unknown> = { updatedAt: now };
+    const unsetFields: Record<string, string> = {};
+    if (restore.hadTelegramChatId) setFields.telegramChatId = restore.telegramChatId;
+    else unsetFields.telegramChatId = '';
+    if (restore.hadTypeTag) setFields.typeTag = restore.typeTag;
+    else unsetFields.typeTag = '';
     await db.collection('communities').updateOne(
       { id: GLOBAL_COMMUNITY_ID },
       {
-        ...telegramUpdate,
+        $set: setFields,
+        ...(Object.keys(unsetFields).length ? { $unset: unsetFields } : {}),
         $pull: { members: { $in: restore.userIds } },
       },
     );
@@ -446,6 +452,8 @@ async function attachSharedGlobal(userIds: string[]): Promise<void> {
     sharedGlobalRestore = {
       telegramChatId: existing?.telegramChatId,
       hadTelegramChatId: Boolean(existing && Object.prototype.hasOwnProperty.call(existing, 'telegramChatId')),
+      typeTag: existing?.typeTag,
+      hadTypeTag: Boolean(existing && Object.prototype.hasOwnProperty.call(existing, 'typeTag')),
       userIds: [...userIds],
     };
     await db.collection('communities').updateOne(
@@ -455,6 +463,7 @@ async function attachSharedGlobal(userIds: string[]): Promise<void> {
           telegramChatId: 'e2e-shared-global',
           updatedAt: now,
         },
+        $unset: { typeTag: '' },
         $addToSet: { members: { $each: userIds } },
         $setOnInsert: {
           id: GLOBAL_COMMUNITY_ID,

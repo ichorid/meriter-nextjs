@@ -183,13 +183,6 @@ realUzzTest('R9 shared local and global community displays and debits one balanc
   await loginAs(page, buyer.email, '/catalog');
   await seed.seedWallet({ userId: buyer.id, communityId: GLOBAL_COMMUNITY_ID, balance: 5 });
   await page.goto('/wallet');
-  await expect.poll(async () => {
-    const last = balances.at(-1);
-    const payload = last ? parseTrpcJson(last.body) as { mode?: string } | null : null;
-    if (payload?.mode === 'shared') return 'shared';
-    await page.reload();
-    return payload?.mode ?? null;
-  }, { timeout: 20_000 }).toBe('shared');
   await expect(page.getByText('Единый кошелёк сообщества')).toBeVisible();
   await expect(page.getByText('В этом сообществе')).toHaveCount(0);
   await expect(page.getByText('Общий кошелёк')).toHaveCount(0);
