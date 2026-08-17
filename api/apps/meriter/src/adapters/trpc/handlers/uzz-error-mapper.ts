@@ -71,5 +71,9 @@ function mapped(
   code: TRPCError['code'],
   cause: { code: string },
 ) {
-  return new TRPCError({ code, message: cause.code, cause: cause as Error });
+  return new TRPCError({
+    code,
+    message: cause.code,
+    cause: cause instanceof Error ? cause : undefined,
+  });
 }
