@@ -24,13 +24,13 @@ function monthTitle(year: number, month: number): string {
   return raw.charAt(0).toUpperCase() + raw.slice(1);
 }
 
+const MONTHS_LONG_RU = [
+  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+];
+
 function dayLabel(year: number, month: number, day: number): string {
-  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('ru-RU', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+  return `${day} ${MONTHS_LONG_RU[month - 1]} ${year}`;
 }
 
 function nextValidInstant(now: Date): Date {

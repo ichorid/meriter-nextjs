@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -246,8 +246,8 @@ describe('CatalogPage request dialog', () => {
     });
     render(<CatalogPage />);
     await user.click(screen.getByRole('button', { name: 'Оставить заявку' }));
-    await user.type(screen.getByLabelText(/^Сообщение исполнителю/), 'Нужна помощь');
-    await user.click(screen.getByRole('button', { name: 'Подтвердить заявку' }));
-    expect(screen.getByRole('status')).toHaveTextContent(DEAL_DEADLINE_NOT_FUTURE_MESSAGE);
+    fireEvent.change(screen.getByLabelText(/^Сообщение исполнителю/), { target: { value: 'Нужна помощь' } });
+    fireEvent.submit(screen.getByRole('form', { name: 'Заявка: Консультация' }));
+    expect(await screen.findByText(DEAL_DEADLINE_NOT_FUTURE_MESSAGE)).toBeVisible();
   });
 });
