@@ -114,4 +114,15 @@ describe('resolveUzzClientError', () => {
       message: 'Too many login attempts',
     });
   });
+
+  it('keeps EMAIL_DELIVERY_UNAVAILABLE when tRPC stored it as INTERNAL_SERVER_ERROR', () => {
+    const error = new TRPCError({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: 'EMAIL_DELIVERY_UNAVAILABLE',
+    });
+    expect(resolveUzzClientError(error)).toEqual({
+      code: 'BAD_REQUEST',
+      message: 'EMAIL_DELIVERY_UNAVAILABLE',
+    });
+  });
 });

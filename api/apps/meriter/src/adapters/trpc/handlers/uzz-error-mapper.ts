@@ -77,7 +77,10 @@ export function toUzzTrpcError(error: unknown): TRPCError {
           cause: error instanceof Error ? error : undefined,
         });
   }
-  const domain = asUzzDomainError(resolved);
+  const domain =
+    asUzzDomainError(resolved) ??
+    domainFromMessage(resolved) ??
+    domainFromMessage(error);
   if (domain) return mapped(trpcCodeFor(domain), domain);
   if (isDuplicateKey(resolved) || isDuplicateKey(error)) {
     return mapped('CONFLICT', { code: 'UZZ_CONCURRENT_MODIFICATION' });
@@ -127,6 +130,16 @@ function asUzzDomainError(error: unknown): { code: string; name: string } | null
   return { code, name: typeof name === 'string' ? name : '' };
 }
 
+function domainFromMessage(error: unknown): { code: string; name: string } | null {
+  if (!error || typeof error !== 'object') return null;
+  const message = (error as { message?: unknown }).message;
+  if (typeof message !== 'string' || !CODE_LIKE.test(message) || isTrpcCode(message)) {
+    return null;
+  }
+  const name = (error as { name?: unknown }).name;
+  return { code: message, name: typeof name === 'string' ? name : '' };
+}
+
 function trpcCodeFor(error: { code: string; name: string }): TRPCError['code'] {
   if (TRPC_BY_ERROR_NAME[error.name]) return TRPC_BY_ERROR_NAME[error.name];
   if (error.code === 'UZZ_RATE_LIMITED' || error.code.endsWith('_RATE_LIMITED')) {
@@ -143,6 +156,9 @@ function trpcCodeFor(error: { code: string; name: string }): TRPCError['code'] {
     return 'FORBIDDEN';
   }
   if (error.code.endsWith('_INVALID') || error.code.endsWith('_NOT_FUTURE')) {
+    return 'BAD_REQUEST';
+  }
+  if (error.code.endsWith('_UNAVAILABLE')) {
     return 'BAD_REQUEST';
   }
   return 'CONFLICT';

@@ -47,10 +47,15 @@ export const uzzAppRouter = router({
           if (error instanceof UzzRateLimitedError) {
             throw toUzzRateLimitTrpcError(error);
           }
-          if (error instanceof EmailDeliveryUnavailableError) {
+          if (
+            error instanceof EmailDeliveryUnavailableError ||
+            (error &&
+              typeof error === 'object' &&
+              (error as { code?: unknown }).code === 'EMAIL_DELIVERY_UNAVAILABLE')
+          ) {
             throw new TRPCError({
-              code: 'INTERNAL_SERVER_ERROR',
-              message: error.code,
+              code: 'BAD_REQUEST',
+              message: 'EMAIL_DELIVERY_UNAVAILABLE',
             });
           }
           const message = error instanceof Error ? error.message : 'Failed to send link';
