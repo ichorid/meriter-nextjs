@@ -9,7 +9,6 @@ import { DealCard, type DealView } from '@/components/deal-card';
 import { ThanksForm } from '@/components/thanks-form';
 import { Button, EmptyState, Notice, PageHeader, QueryFailed, Skeleton } from '@/components/ui';
 import { parseDealFlash } from '@/lib/flash-message';
-import { mapDeadlineError } from '@/lib/local-datetime';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { uzzErrorMessage } from '@/lib/utils';
@@ -45,7 +44,7 @@ function DealsContent() {
   }, [router, searchParams]);
 
   function mapActionMessage(err: { message?: string }): string {
-    return mapDeadlineError(err.message) ?? uzzErrorMessage(err);
+    return uzzErrorMessage(err);
   }
 
   function clearActionError(dealId: string, action: string) {
@@ -86,7 +85,7 @@ function DealsContent() {
       <Button type="button" variant="ghost" onClick={() => setActionError(null)}>Скрыть</Button>
     </div> : null}
     <label className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stitch-border px-4 text-sm text-stitch-muted"><input type="checkbox" checked={openOnly} onChange={(event) => setOpenOnly(event.target.checked)} />Только активные</label>
-    {deals.isLoading ? <div className="space-y-4" aria-busy><Skeleton className="h-72" /><Skeleton className="h-72" /></div> : deals.isError ? <QueryFailed onRetry={() => void deals.refetch()} /> : !deals.data?.length ? <EmptyState title="Сделок пока нет"><Link className="text-stitch-accent-text underline" href="/catalog">Выбрать услугу в каталоге</Link></EmptyState> : !visible.length ? <EmptyState title="Активных сделок нет"><button className="text-stitch-accent-text underline" onClick={() => setOpenOnly(false)}>Показать историю</button></EmptyState> : <ul aria-label="Сделки" className="space-y-4">{visible.map((deal) => <li key={deal.id}><DealCard deal={deal}>
+    {deals.isLoading ? <div className="space-y-4" aria-busy><Skeleton className="h-72" /><Skeleton className="h-72" /></div> : deals.isError ? <QueryFailed onRetry={() => void deals.refetch()} error={deals.error} /> : !deals.data?.length ? <EmptyState title="Сделок пока нет"><Link className="text-stitch-accent-text underline" href="/catalog">Выбрать услугу в каталоге</Link></EmptyState> : !visible.length ? <EmptyState title="Активных сделок нет"><button className="text-stitch-accent-text underline" onClick={() => setOpenOnly(false)}>Показать историю</button></EmptyState> : <ul aria-label="Сделки" className="space-y-4">{visible.map((deal) => <li key={deal.id}><DealCard deal={deal}>
       {deal.status === 'requested' && deal.myRole === 'seller' ? panel?.dealId === deal.id && panel.kind === 'accept' ? <DealAcceptForm listingPriceRub={deal.listingSnapshot.priceRub} currentNominalRub={deal.currentNominalRub} demurrageRubPerDay={settings.data?.demurrageRubPerDay} requestMessage={deal.requestMessage} requestedDeadlineAt={deal.requestedDeadlineAt} agreedDeadlineAt={deal.agreedDeadlineAt} pending={accept.isPending} error={panelError(deal.id)} onCancel={() => setPanel(null)} onAccept={(deadline) => { clearActionError(deal.id, 'accept'); accept.mutate({ commandId: crypto.randomUUID(), dealId: deal.id, expectedNominalRub: deal.currentNominalRub!, agreedDeadlineAt: deadline }); }} /> : <div className="flex flex-wrap gap-2"><Button onClick={() => act('accept', deal)}>Рассмотреть и принять</Button><Button variant="danger" disabled={pending} onClick={() => act('reject', deal)}>{panel?.dealId === deal.id && panel.kind === 'reject' ? 'Подтвердить отклонение' : 'Отклонить'}</Button></div> : null}
       {deal.status === 'requested' && deal.myRole === 'buyer' ? <div className="space-y-3"><p className="text-sm text-stitch-muted">До принятия контакт скрыт. Заявку можно отменить без потери комиссии.</p><Button variant="danger" disabled={pending} onClick={() => act('cancel', deal)}>{panel?.dealId === deal.id && panel.kind === 'cancel' ? 'Подтвердить отмену' : 'Отменить заявку'}</Button></div> : null}
       {deal.status === 'accepted' && deal.myRole === 'seller' ? <Button disabled={pending} onClick={() => { clearActionError(deal.id, 'complete'); complete.mutate({ commandId: crypto.randomUUID(), dealId: deal.id }); }}>Услуга выполнена</Button> : null}

@@ -17,7 +17,7 @@ const NAV = [
   { href: '/profile', label: 'Профиль', icon: CircleUserRound },
 ] as const;
 const PRIVATE = new Set(['/deals', '/wallet', '/lots', '/deeds', '/admin', '/profile']);
-const NEEDS_LINK = new Set(['/deals', '/wallet', '/admin']);
+const NEEDS_LINK = new Set(['/', '/deals', '/wallet', '/admin']);
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname(); const router = useRouter();
@@ -45,7 +45,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {!loggedIn && !sessionLoading ? <Link href={loginHref} className="ml-auto rounded-xl bg-stitch-accent-solid px-4 py-2 text-sm font-semibold text-white">Войти</Link> : null}
       </div>
     </header>
-    {link.isError && loggedIn && NEEDS_LINK.has(pathname) ? <main className="mx-auto max-w-6xl px-4 py-8"><QueryFailed onRetry={() => void link.refetch()} /></main>
+    {link.isError && loggedIn && NEEDS_LINK.has(pathname) ? <main className="mx-auto max-w-6xl px-4 py-8"><QueryFailed onRetry={() => void link.refetch()} error={link.error} /></main>
       : linkGate ? <IdentityLinkGate email={link.data?.email ?? undefined} />
       : PRIVATE.has(pathname) && sessionUnreachable ? <main className="mx-auto max-w-6xl px-4 py-8"><QueryFailed onRetry={() => window.location.reload()} /></main>
       : busy ? <main className="mx-auto max-w-6xl px-4 py-8" aria-busy><div className="h-40 animate-pulse rounded-2xl bg-stitch-surface" /></main>

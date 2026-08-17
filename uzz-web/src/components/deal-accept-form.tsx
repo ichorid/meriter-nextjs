@@ -7,10 +7,9 @@ import {
   instantToLocalInput,
   isDeadlineTooSoon,
   localInputToInstant,
-  mapDeadlineError,
   minimumLocalDeadline,
 } from '@/lib/local-datetime';
-import { cn, formatSignedRub } from '@/lib/utils';
+import { cn, formatSignedRub, uzzErrorMessage } from '@/lib/utils';
 
 function formatInstant(value: Date | string | null | undefined): string | null {
   if (!value) return null;
@@ -35,7 +34,7 @@ export function DealAcceptForm({
   const initialDeadline = agreedDeadlineAt ?? requestedDeadlineAt;
   const [deadline, setDeadline] = useState(initialDeadline ? instantToLocalInput(initialDeadline) : '');
   const [deadlineError, setDeadlineError] = useState<string | null>(null);
-  const serverError = mapDeadlineError(error) ?? error;
+  const serverError = error ? uzzErrorMessage({ message: error }) : null;
   const difference = listingPriceRub != null && currentNominalRub != null ? currentNominalRub - listingPriceRub : null;
   const belowPrice = difference != null && difference < 0;
 

@@ -7,6 +7,7 @@ import {
 import { UzzAccessPolicy } from '../policies/uzz-access-policy';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
+import { assertReadyMember } from './deal-use-case.helpers';
 
 export type CreateListingCommand = Omit<CreateListingInput, 'id'> & {
   commandId: string;
@@ -30,17 +31,12 @@ export class CreateListingUseCase {
       type: 'create_listing',
       payload,
       work: async (repositories) => {
-        const identity = await repositories.identities.findByCanonicalUserId(
+        await assertReadyMember(
+          repositories,
+          this.accessPolicy,
+          command.communityId,
           command.authorId,
         );
-        const aliases = identity
-          ? await repositories.identities.listAliases(identity.id)
-          : [];
-        await this.accessPolicy.assertMember(command.communityId, [
-          command.authorId,
-          ...aliases.map((alias) => alias.aliasUserId),
-        ]);
-        this.accessPolicy.assertIdentityReady(identity);
 
         const listing = Listing.create({
           ...payload,

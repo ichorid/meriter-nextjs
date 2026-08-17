@@ -1,3 +1,4 @@
+import { uzzErrorMessage } from '@/lib/uzz-error-messages';
 import { cn } from '@/lib/utils';
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from 'react';
 
@@ -59,8 +60,8 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
   return <Card className="border-dashed bg-stitch-surface/60 p-8 text-center"><p className="font-extrabold">{title}</p>{children ? <div className="mt-2 text-sm leading-6 text-stitch-muted">{children}</div> : null}</Card>;
 }
 
-export function QueryFailed({ onRetry }: { onRetry?: () => void }) {
-  return <Notice tone="warn">Не удалось загрузить данные. {onRetry ? <button type="button" className="font-semibold underline" onClick={onRetry}>Попробовать ещё раз</button> : null}</Notice>;
+export function QueryFailed({ onRetry, error }: { onRetry?: () => void; error?: unknown }) {
+  return <Notice tone="warn" role="alert">{error ? uzzErrorMessage(error) : 'Не удалось загрузить данные.'} {onRetry ? <button type="button" className="font-semibold underline" onClick={onRetry}>Попробовать ещё раз</button> : null}</Notice>;
 }
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {

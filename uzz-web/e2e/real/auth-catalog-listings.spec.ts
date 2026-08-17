@@ -207,12 +207,12 @@ realUzzTest('R4 concurrent redeem yields one session and a retryable identity fa
       otherPage.goto(new URL(concurrentUrl).pathname),
     ]);
     await Promise.all([
-      expect(page.getByRole('heading', { name: /Моё|Не удалось войти/ })).toBeVisible(),
-      expect(otherPage.getByRole('heading', { name: /Моё|Не удалось войти/ })).toBeVisible(),
+      expect(page.getByRole('heading', { name: /Моё|Привяжите Telegram|Не удалось войти/ })).toBeVisible(),
+      expect(otherPage.getByRole('heading', { name: /Моё|Привяжите Telegram|Не удалось войти/ })).toBeVisible(),
     ]);
     await expectOneSession([context, other]);
-    const winnerHasHome = (await page.getByRole('heading', { name: 'Моё' }).count())
-      + (await otherPage.getByRole('heading', { name: 'Моё' }).count());
+    const winnerHasHome = (await page.getByRole('heading', { name: /Моё|Привяжите Telegram/ }).count())
+      + (await otherPage.getByRole('heading', { name: /Моё|Привяжите Telegram/ }).count());
     const loserHasError = (await page.getByRole('heading', { name: 'Не удалось войти' }).count())
       + (await otherPage.getByRole('heading', { name: 'Не удалось войти' }).count());
     expect(winnerHasHome).toBeGreaterThan(0);
@@ -234,11 +234,25 @@ realUzzTest('R4 concurrent redeem yields one session and a retryable identity fa
     await clearIdentityFailureInjection();
     await page.goto('/login');
     await page.goto(new URL(retryUrl).pathname);
-    await expect(page.getByRole('heading', { name: 'Моё' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Моё|Привяжите Telegram/ })).toBeVisible();
     expect(await hasUzzSession(context)).toBe(true);
   } finally {
     await clearIdentityFailureInjection();
   }
+});
+
+realUzzTest('unlinked member cannot open listing editor on the personal hub', async ({
+  page,
+  seed,
+}) => {
+  const user = await seed.seedUser({
+    email: `unlinked-${seed.runId}@uzz.example.test`,
+  });
+  const { url } = await loginViaEmail(page, user.email, '/?tab=lots');
+  await page.goto(new URL(url).pathname);
+  await expect(page.getByRole('heading', { name: 'Привяжите Telegram' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Добавить услугу' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Опубликовать' })).toHaveCount(0);
 });
 
 realUzzTest('R5 listing create and update replay the same command without duplicates', async ({

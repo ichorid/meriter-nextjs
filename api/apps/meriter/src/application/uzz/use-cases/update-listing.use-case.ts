@@ -5,6 +5,7 @@ import { UzzNotFoundError } from '../../../domain/uzz/errors';
 import { UzzAccessPolicy } from '../policies/uzz-access-policy';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
+import { assertReadyMember } from './deal-use-case.helpers';
 
 export type UpdateListingCommand = {
   commandId: string;
@@ -48,18 +49,13 @@ export class UpdateListingUseCase {
           throw new UzzNotFoundError('LISTING_NOT_FOUND');
         }
         const current = listing.snapshot();
-        const identity = await repositories.identities.findByCanonicalUserId(
+        await assertReadyMember(
+          repositories,
+          this.accessPolicy,
+          current.communityId,
           command.actorId,
         );
-        const aliases = identity
-          ? await repositories.identities.listAliases(identity.id)
-          : [];
-        await this.accessPolicy.assertMember(current.communityId, [
-          command.actorId,
-          ...aliases.map((alias) => alias.aliasUserId),
-        ]);
         this.accessPolicy.assertListingAuthor(current.authorId, command.actorId);
-        this.accessPolicy.assertIdentityReady(identity);
 
         const {
           listingId: _listingId,

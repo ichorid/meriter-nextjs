@@ -2,14 +2,8 @@
 
 import { FormEvent, useMemo, useState } from 'react';
 import { Button, Field, Notice, inputClass } from '@/components/ui';
-import {
-  DEAL_DEADLINE_NOT_FUTURE_MESSAGE,
-  isDeadlineTooSoon,
-  localInputToInstant,
-  mapDeadlineError,
-  minimumLocalDeadline,
-} from '@/lib/local-datetime';
-import { tomorrowNominal } from '@/lib/utils';
+import { DEAL_DEADLINE_NOT_FUTURE_MESSAGE, isDeadlineTooSoon, localInputToInstant, minimumLocalDeadline } from '@/lib/local-datetime';
+import { tomorrowNominal, uzzErrorMessage } from '@/lib/utils';
 
 interface RightOption { id: string; nominalRub: number | null; status: string; hopsLeft: number; }
 
@@ -29,7 +23,7 @@ export function DealRequestForm({
   const selectedRight = available.find((right) => right.id === bankId);
   const settingsReady = demurrageRubPerDay != null && nominalFloorRub != null;
   const nominalTomorrow = settingsReady ? tomorrowNominal(selectedRight?.nominalRub ?? null, demurrageRubPerDay, nominalFloorRub) : null;
-  const serverError = mapDeadlineError(error) ?? error;
+  const serverError = error ? uzzErrorMessage({ message: error }) : null;
 
   function submit(event: FormEvent) {
     event.preventDefault();

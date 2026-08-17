@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { community, logoutHandlers, pathname } = vi.hoisted(() => ({
+const { community, logoutHandlers, pathname, linkStatus, configState } = vi.hoisted(() => ({
   community: {
     communityId: 'community-1',
     isUzzAdmin: false,
@@ -15,6 +15,8 @@ const { community, logoutHandlers, pathname } = vi.hoisted(() => ({
     onError: undefined as ((err: { message?: string }) => void) | undefined,
   },
   pathname: { value: '/profile' },
+  linkStatus: { linked: true, email: 'a@b.c' as string | null },
+  configState: { fakeDataMode: true },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -30,7 +32,7 @@ vi.mock('@/lib/trpc/client', () => ({
   trpc: {
     identity: {
       getLinkStatus: {
-        useQuery: () => ({ data: { linked: true, email: 'a@b.c' }, isLoading: false, isError: false, refetch: vi.fn() }),
+        useQuery: () => ({ data: linkStatus, isLoading: false, isError: false, refetch: vi.fn() }),
       },
       startTelegramLink: { useMutation: () => ({ isPending: false, mutate: vi.fn(), data: undefined }) },
     },
@@ -53,7 +55,7 @@ vi.mock('@/lib/trpc/client', () => ({
 }));
 
 vi.mock('@/config', () => ({
-  config: { development: { fakeDataMode: true } },
+  config: { development: configState },
 }));
 
 import { AppShell } from '@/components/app-shell';
@@ -63,6 +65,8 @@ describe('AppShell admin discovery', () => {
   beforeEach(() => {
     community.isUzzAdmin = false;
     pathname.value = '/catalog';
+    configState.fakeDataMode = true;
+    linkStatus.linked = true;
   });
 
   it('hides the admin mobile entry for non-admins', () => {
@@ -82,11 +86,31 @@ describe('AppShell admin discovery', () => {
   });
 });
 
+describe('AppShell identity gate', () => {
+  beforeEach(() => {
+    community.isUzzAdmin = false;
+    community.loggedIn = true;
+    pathname.value = '/';
+    configState.fakeDataMode = false;
+    linkStatus.linked = false;
+    linkStatus.email = 'ruslan@example.com';
+  });
+
+  it('blocks the personal hub until Telegram is linked', () => {
+    render(<AppShell><p>скрытый контент</p></AppShell>);
+
+    expect(screen.getByRole('heading', { name: 'Привяжите Telegram' })).toBeVisible();
+    expect(screen.queryByText('скрытый контент')).not.toBeInTheDocument();
+  });
+});
+
 describe('ProfilePage admin entry and logout', () => {
   beforeEach(() => {
     community.isUzzAdmin = false;
     pathname.value = '/profile';
     logoutHandlers.onError = undefined;
+    configState.fakeDataMode = true;
+    linkStatus.linked = true;
   });
 
   it('shows Настройки платформы in profile for admins and hides it for others', () => {

@@ -30,8 +30,8 @@ export async function assertReadyMember(
   userId: string,
 ) {
   const context = await resolveIdentityContext(repositories, userId);
-  await access.assertMember(communityId, context.userIds);
   access.assertIdentityReady(context.identity);
+  await access.assertMember(communityId, context.userIds);
   return { ...context, identity: context.identity! };
 }
 

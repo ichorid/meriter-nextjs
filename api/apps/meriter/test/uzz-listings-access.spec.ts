@@ -92,7 +92,25 @@ describe('UZZ listings access', () => {
     }
   });
 
-  it('R: rejects listing and deal actions by an outsider', async () => {
+  it('rejects publishing before Telegram identity is linked', async () => {
+    members.add('outsider');
+    await expect(
+      createListing.execute(validCommand({ authorId: 'outsider' })),
+    ).rejects.toMatchObject({ code: 'IDENTITY_LINK_REQUIRED' });
+  });
+
+  it('rejects a linked identity that is not a community member', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({
+      id: 'identity-outsider',
+      canonicalUserId: 'outsider',
+      normalizedEmail: 'outsider@example.com',
+      telegramUserId: '1999',
+      telegramUsername: 'outsider',
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    });
     await expect(
       createListing.execute(validCommand({ authorId: 'outsider' })),
     ).rejects.toMatchObject({ code: 'COMMUNITY_MEMBERSHIP_REQUIRED' });

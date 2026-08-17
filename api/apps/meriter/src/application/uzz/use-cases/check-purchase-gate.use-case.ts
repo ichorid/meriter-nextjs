@@ -1,5 +1,6 @@
 import { UzzAccessPolicy } from '../policies/uzz-access-policy';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
+import { assertReadyMember } from './deal-use-case.helpers';
 
 const DEFAULT_MINIMUM_LISTINGS = 3;
 
@@ -11,21 +12,12 @@ export class CheckPurchaseGateUseCase {
 
   async execute(input: { communityId: string; buyerId: string }) {
     return this.unitOfWork.run(async (repositories) => {
-      const identity = await repositories.identities.findByCanonicalUserId(
+      const { userIds } = await assertReadyMember(
+        repositories,
+        this.accessPolicy,
+        input.communityId,
         input.buyerId,
       );
-      const aliases = identity
-        ? await repositories.identities.listAliases(identity.id)
-        : [];
-      await this.accessPolicy.assertMember(input.communityId, [
-        input.buyerId,
-        ...aliases.map((alias) => alias.aliasUserId),
-      ]);
-      this.accessPolicy.assertIdentityReady(identity);
-      const userIds = [
-        input.buyerId,
-        ...aliases.map((alias) => alias.aliasUserId),
-      ];
       const [settings, listingCounts] = await Promise.all([
         repositories.settings.findByCommunityId(input.communityId),
         Promise.all(userIds.map((authorId) =>
