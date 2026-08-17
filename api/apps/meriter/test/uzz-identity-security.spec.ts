@@ -5,6 +5,7 @@ import { Connection, createConnection } from 'mongoose';
 import { ConfirmTelegramLinkUseCase } from '../src/application/uzz/use-cases/confirm-telegram-link.use-case';
 import { RedeemUzzMagicLinkUseCase } from '../src/application/uzz/use-cases/redeem-uzz-magic-link.use-case';
 import { StartTelegramLinkUseCase } from '../src/application/uzz/use-cases/start-telegram-link.use-case';
+import { ExchangeRight } from '../src/domain/uzz/entities/exchange-right';
 import { AppConfig } from '../src/config/configuration';
 import {
   AuthMagicLink,
@@ -156,6 +157,121 @@ describe('UZZ identity security', () => {
     await expect(repositories.identities.listAliases('identity-1')).resolves.toEqual([
       expect.objectContaining({ aliasUserId: 'telegram-meriter-user-1' }),
     ]);
+  });
+
+  it('promotes a holding bank owned by the Telegram alias after linking', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({
+      id: 'identity-hold',
+      canonicalUserId: 'email-user-hold',
+      normalizedEmail: 'hold@example.com',
+      telegramUserId: null,
+      telegramUsername: null,
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    });
+    await repositories.rights.insert(ExchangeRight.restore({
+      id: 'right-hold',
+      communityId: 'community-1',
+      ownerId: 'telegram-meriter-hold',
+      sourcePublicationId: 'publication-hold',
+      nominalRub: null,
+      nominalAssignedAt: null,
+      lastDemurrageAt: null,
+      hopsLeft: 10,
+      status: 'holding',
+      lockedByDealId: null,
+      ownerHistory: [{ userId: 'telegram-meriter-hold', at: NOW, reason: 'emission_holding' }],
+      version: 0,
+      createdAt: NOW,
+      updatedAt: NOW,
+    }));
+    const limiter = new InMemoryUzzRateLimiter();
+    const start = new StartTelegramLinkUseCase(uow, hasher, limiter);
+    const confirm = new ConfirmTelegramLinkUseCase(uow, hasher, limiter);
+    const { token } = await start.execute({ userId: 'email-user-hold', now: NOW });
+
+    await confirm.execute({
+      token,
+      telegramUserId: '4004',
+      telegramUsername: 'hold_user',
+      linkedUserId: 'telegram-meriter-hold',
+      now: new Date('2026-08-14T00:01:00.000Z'),
+    });
+
+    expect(
+      (await repositories.rights.findById('right-hold'))?.snapshot().status,
+    ).toBe('awaiting_nominal');
+  });
+
+  it('starts a Telegram link from an alias of the email identity', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({
+      id: 'identity-alias-start',
+      canonicalUserId: 'email-user-alias',
+      normalizedEmail: 'alias@example.com',
+      telegramUserId: null,
+      telegramUsername: null,
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    });
+    await repositories.identities.insertAlias({
+      id: 'identity-alias-start:alias-user',
+      identityId: 'identity-alias-start',
+      aliasUserId: 'alias-user',
+      createdAt: NOW,
+    });
+    const start = new StartTelegramLinkUseCase(uow, hasher, new InMemoryUzzRateLimiter());
+
+    await expect(
+      start.execute({ userId: 'alias-user', now: NOW }),
+    ).resolves.toMatchObject({ token: expect.any(String) });
+  });
+
+  it('promotes holding banks when email is attached to a Telegram identity', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({
+      id: 'identity-tg-first',
+      canonicalUserId: 'user-1',
+      normalizedEmail: null,
+      telegramUserId: '5005',
+      telegramUsername: 'tg_first',
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    });
+    await repositories.rights.insert(ExchangeRight.restore({
+      id: 'right-tg-first',
+      communityId: 'community-1',
+      ownerId: 'user-1',
+      sourcePublicationId: 'publication-tg-first',
+      nominalRub: null,
+      nominalAssignedAt: null,
+      lastDemurrageAt: null,
+      hopsLeft: 10,
+      status: 'holding',
+      lockedByDealId: null,
+      ownerHistory: [{ userId: 'user-1', at: NOW, reason: 'emission_holding' }],
+      version: 0,
+      createdAt: NOW,
+      updatedAt: NOW,
+    }));
+    const { token } = await magicLinks.createToken('email', 'tg-first@example.com');
+    const redeem = new RedeemUzzMagicLinkUseCase(
+      magicLinks,
+      createIdentityGateway(),
+      uow,
+      hasher,
+      new InMemoryUzzRateLimiter(),
+    );
+
+    await redeem.execute({ token, ip: '127.0.0.1', now: NOW });
+
+    expect(
+      (await repositories.rights.findById('right-tg-first'))?.snapshot().status,
+    ).toBe('awaiting_nominal');
   });
 
   it('B: links a new Telegram participant from the site', async () => {

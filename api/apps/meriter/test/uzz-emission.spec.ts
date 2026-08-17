@@ -52,4 +52,100 @@ describe('UZZ exchange-right emission', () => {
     publication.score = 9; expect(await useCase.execute({ publicationId: publication.id })).toBeNull();
     publication.score = 10; publication.communityId = 'other'; expect(await useCase.execute({ publicationId: publication.id })).toBeNull();
   });
+
+  it('treats a Telegram alias of a fully linked profile as ready', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({
+      id: 'identity-1',
+      canonicalUserId: 'email-user-1',
+      normalizedEmail: 'author@example.com',
+      telegramUserId: '1001',
+      telegramUsername: 'author',
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    });
+    await repositories.identities.insertAlias({
+      id: 'identity-1:author-1',
+      identityId: 'identity-1',
+      aliasUserId: 'author-1',
+      createdAt: NOW,
+    });
+
+    expect(await useCase.execute({ publicationId: publication.id })).toMatchObject({
+      status: 'awaiting_nominal',
+      ownerId: 'author-1',
+    });
+  });
+
+  it('auto-assigns the default nominal when the setting is on and the profile is linked', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({
+      id: 'identity-1',
+      canonicalUserId: 'author-1',
+      normalizedEmail: 'author@example.com',
+      telegramUserId: '1001',
+      telegramUsername: 'author',
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    });
+    await repositories.settings.upsert({
+      communityId: 'community-1',
+      emissionThreshold: 10,
+      initialHops: 10,
+      demurrageRubPerDay: 100,
+      nominalFloorRub: 100,
+      defaultNominalRub: 500,
+      autoAssignNominal: true,
+      minimumListingsToBuy: 3,
+      purchaseGateMode: 'nudge',
+      requestTtlHours: 48,
+      fulfillmentTtlDays: 7,
+      confirmationTtlDays: 7,
+      notifyRightEmitted: true,
+      notifyRequestLifecycle: true,
+      notifyDealProgress: true,
+      notifyDealClosed: true,
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    }, null);
+
+    expect(await useCase.execute({ publicationId: publication.id })).toMatchObject({
+      status: 'active',
+      nominalRub: 500,
+      ownerId: 'author-1',
+    });
+  });
+
+  it('keeps an unlinked right in holding even when auto-assign is on', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.settings.upsert({
+      communityId: 'community-1',
+      emissionThreshold: 10,
+      initialHops: 10,
+      demurrageRubPerDay: 100,
+      nominalFloorRub: 100,
+      defaultNominalRub: 500,
+      autoAssignNominal: true,
+      minimumListingsToBuy: 3,
+      purchaseGateMode: 'nudge',
+      requestTtlHours: 48,
+      fulfillmentTtlDays: 7,
+      confirmationTtlDays: 7,
+      notifyRightEmitted: true,
+      notifyRequestLifecycle: true,
+      notifyDealProgress: true,
+      notifyDealClosed: true,
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    }, null);
+
+    expect(await useCase.execute({ publicationId: publication.id })).toMatchObject({
+      status: 'holding',
+      nominalRub: null,
+    });
+  });
 });

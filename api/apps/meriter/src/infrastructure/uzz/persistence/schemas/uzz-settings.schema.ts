@@ -9,6 +9,8 @@ export const UzzSettingsPersistenceSchema = new Schema(
     initialHops: { type: Number, required: true, default: 10 },
     demurrageRubPerDay: { type: Number, required: true, default: 100 },
     nominalFloorRub: { type: Number, required: true, default: 100 },
+    defaultNominalRub: { type: Number, required: true, default: 100 },
+    autoAssignNominal: { type: Boolean, required: true, default: false },
     minimumListingsToBuy: { type: Number, required: true, default: 3 },
     purchaseGateMode: {
       type: String,

@@ -9,6 +9,8 @@ export interface UzzSettingsRecord {
   initialHops: number;
   demurrageRubPerDay: number;
   nominalFloorRub: number;
+  defaultNominalRub: number;
+  autoAssignNominal: boolean;
   minimumListingsToBuy: number;
   purchaseGateMode: 'nudge' | 'require_min_lots';
   requestTtlHours: number;

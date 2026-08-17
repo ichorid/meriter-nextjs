@@ -7,6 +7,12 @@ import {
   PurchaseGateMode,
 } from '../../../domain/uzz/policies/purchase-gate-policy';
 
+export function isIdentityReady(
+  identity: UzzIdentityRecord | null | undefined,
+): boolean {
+  return Boolean(identity?.normalizedEmail && identity.telegramUserId);
+}
+
 export class UzzAccessPolicy {
   constructor(private readonly communityAccess: UzzCommunityAccessPort) {}
 
@@ -17,10 +23,7 @@ export class UzzAccessPolicy {
   }
 
   assertIdentityReady(identity: UzzIdentityRecord | null): void {
-    if (
-      !identity?.normalizedEmail ||
-      !identity.telegramUserId
-    ) {
+    if (!isIdentityReady(identity)) {
       throw new UzzForbiddenError('IDENTITY_LINK_REQUIRED');
     }
   }

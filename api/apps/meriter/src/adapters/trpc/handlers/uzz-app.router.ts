@@ -195,6 +195,8 @@ export const uzzAppRouter = router({
               initialHops: z.number().int().optional(),
               demurrageRubPerDay: z.number().int().optional(),
               nominalFloorRub: z.number().int().optional(),
+              defaultNominalRub: z.number().int().optional(),
+              autoAssignNominal: z.boolean().optional(),
               minimumListingsToBuy: z.number().int().optional(),
               purchaseGateMode: z.enum(['nudge', 'require_min_lots']).optional(),
               requestTtlHours: z.number().int().optional(),

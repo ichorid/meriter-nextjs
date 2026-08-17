@@ -22,7 +22,7 @@ vi.mock('@/lib/trpc/client', () => {
       auth: { me: { invalidate: vi.fn() } },
       community: { listMine: { invalidate: vi.fn() }, getActive: { invalidate: vi.fn() } },
       settings: { get: { invalidate: vi.fn() } },
-      banks: { listAwaitingNominal: { invalidate: vi.fn() } },
+      banks: { listAwaitingNominal: { invalidate: vi.fn() }, listHolding: { invalidate: vi.fn() } },
       deals: { adminList: { invalidate: vi.fn() } },
       ledger: { list: { invalidate: vi.fn() } },
     }),

@@ -8,6 +8,7 @@ import {
   UzzIdentityConflictError,
   UzzInvalidTokenError,
 } from '../../../domain/uzz/errors';
+import { releaseHoldingRightsAfterIdentityReady } from './identity-link.helpers';
 
 export class ConfirmTelegramLinkUseCase {
   constructor(
@@ -71,11 +72,7 @@ export class ConfirmTelegramLinkUseCase {
       const ownerIds = [identity.canonicalUserId];
       const aliases = await repositories.identities.listAliases(identity.id);
       ownerIds.push(...aliases.map((entry) => entry.aliasUserId));
-      const holdingRights = await repositories.rights.listHoldingByOwners(ownerIds);
-      for (const right of holdingRights) {
-        right.promoteAfterIdentityLink(now);
-        await repositories.rights.update(right);
-      }
+      await releaseHoldingRightsAfterIdentityReady(repositories, ownerIds, now);
       return { canonicalUserId: identity.canonicalUserId };
     });
   }

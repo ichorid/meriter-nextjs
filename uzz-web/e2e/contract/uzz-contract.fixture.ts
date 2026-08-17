@@ -26,6 +26,8 @@ export async function mockAdminApi(page: Page): Promise<void> {
     initialHops: 10,
     demurrageRubPerDay: 100,
     nominalFloorRub: 100,
+    defaultNominalRub: 100,
+    autoAssignNominal: false,
     minimumListingsToBuy: 3,
     purchaseGateMode: 'nudge',
     requestTtlHours: 48,

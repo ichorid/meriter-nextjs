@@ -5,6 +5,7 @@ import {
 } from '../ports/uzz-identity.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { UzzIdentityConflictError } from '../../../domain/uzz/errors';
+import { resolveIdentityContext } from './deal-use-case.helpers';
 
 const TELEGRAM_LINK_TTL_MS = 30 * 60 * 1000;
 
@@ -31,9 +32,7 @@ export class StartTelegramLinkUseCase {
     const expiresAt = new Date(now.getTime() + TELEGRAM_LINK_TTL_MS);
 
     await this.unitOfWork.run(async (repositories) => {
-      const identity = await repositories.identities.findByCanonicalUserId(
-        input.userId,
-      );
+      const { identity } = await resolveIdentityContext(repositories, input.userId);
       if (!identity) {
         throw new UzzIdentityConflictError('IDENTITY_NOT_FOUND');
       }

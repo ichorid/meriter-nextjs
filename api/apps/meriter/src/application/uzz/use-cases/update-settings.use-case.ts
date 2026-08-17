@@ -1,8 +1,9 @@
 import { Clock } from '../ports/clock.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
-import { defaultSettings, UzzSettingsPatch, validateSettingsPatch } from '../uzz-settings';
+import { defaultSettings, UzzSettingsPatch, validateMergedSettings, validateSettingsPatch } from '../uzz-settings';
 import { UzzAdminAccess } from './admin-resolve-deal.use-case';
 import { CommandExecutor } from './command-executor';
+import { maybeAutoAssignNominal } from './identity-link.helpers';
 
 export class UpdateSettingsUseCase {
   private readonly commands: CommandExecutor;
@@ -38,7 +39,25 @@ export class UpdateSettingsUseCase {
           updatedAt: now,
           version: base.version + 1,
         };
+        validateMergedSettings(next);
         await repositories.settings.upsert(next, existing ? existing.version : null);
+        if (next.autoAssignNominal) {
+          const awaiting = await repositories.rights.listByStatus(
+            input.communityId,
+            ['awaiting_nominal'],
+          );
+          for (const right of awaiting) {
+            await maybeAutoAssignNominal(
+              repositories,
+              right,
+              next,
+              now,
+              input.adminId,
+              `${input.commandId}:${right.snapshot().id}`,
+            );
+            await repositories.rights.update(right);
+          }
+        }
         return next;
       },
     });

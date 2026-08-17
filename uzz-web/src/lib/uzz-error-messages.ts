@@ -130,6 +130,8 @@ export const UZZ_ERROR_MESSAGES: Record<string, string> = {
   WALLET_OPERATION_INVALID: 'Нельзя выполнить эту операцию с кошельком',
 
   SETTINGS_VALUE_INVALID: 'Проверьте значение настройки: оно вне допустимого диапазона',
+  SETTINGS_DEFAULT_NOMINAL_BELOW_FLOOR:
+    'Номинал по умолчанию не может быть ниже нижнего номинала',
   SETTINGS_PURCHASE_GATE_INVALID: 'Выберите режим взаимности: рекомендация или обязательный минимум',
   SETTINGS_VERSION_CONFLICT: 'Настройки уже изменились. Обновите страницу и сохраните снова',
   DEMURRAGE_INPUT_INVALID: 'Некорректные параметры таяния номинала',

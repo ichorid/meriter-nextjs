@@ -2,6 +2,10 @@ import { UzzUnitOfWork } from './ports/uzz-unit-of-work';
 import { UzzPlatformPort } from './ports/uzz-platform.port';
 import { UzzAuthorizationService } from './uzz-authorization.service';
 import { defaultSettings } from './uzz-settings';
+import { UzzConflictError } from '../../domain/uzz/errors';
+import { isIdentityReady } from './policies/uzz-access-policy';
+import { resolveIdentityContext } from './use-cases/deal-use-case.helpers';
+import { releaseHoldingRightsAfterIdentityReady, releaseReadyHoldingRightsInCommunity } from './use-cases/identity-link.helpers';
 import { EmitExchangeRightUseCase } from './use-cases/emit-exchange-right.use-case';
 import { GetSettingsUseCase } from './use-cases/get-settings.use-case';
 import { UpdateSettingsUseCase } from './use-cases/update-settings.use-case';
@@ -155,34 +159,36 @@ export class UzzApplicationFacade {
   }
 
   async getLinkStatus(userId: string) {
-    const ids = await this.authorization.resolveUserIds(userId);
+    await this.catchUpReadyHoldingForUser(userId);
     return this.unitOfWork.run(async (repositories) => {
-      for (const id of ids) {
-        const identity = await repositories.identities.findByCanonicalUserId(id);
-        if (identity) {
-          return {
-            linked: Boolean(identity.normalizedEmail && identity.telegramUserId),
-            telegramUserId: identity.telegramUserId,
-            telegramUsername: identity.telegramUsername,
-            email: identity.normalizedEmail,
-          };
-        }
+      const { identity } = await resolveIdentityContext(repositories, userId);
+      if (!identity) {
+        return { linked: false, telegramUserId: null, telegramUsername: null, email: null };
       }
-      return { linked: false, telegramUserId: null, telegramUsername: null, email: null };
+      return {
+        linked: isIdentityReady(identity),
+        telegramUserId: identity.telegramUserId,
+        telegramUsername: identity.telegramUsername,
+        email: identity.normalizedEmail,
+      };
     });
   }
 
   async listMyRights(userId: string, communityId: string) {
     await this.authorization.assertCommunityParticipant(communityId, userId);
-    const userIds = await this.authorization.resolveUserIds(userId);
-    const rights = await this.unitOfWork.run((repositories) =>
-      repositories.rights.listByOwners(communityId, userIds),
-    );
+    await this.catchUpReadyHoldingForUser(userId);
+    const rights = await this.unitOfWork.run(async (repositories) => {
+      const { userIds } = await resolveIdentityContext(repositories, userId);
+      return repositories.rights.listByOwners(communityId, userIds);
+    });
     return this.enrichRights(rights.map((right) => right.snapshot()));
   }
 
   async listRightsForAdmin(communityId: string, adminId: string, statuses: string[]) {
     await this.authorization.assertCommunityAdmin(communityId, adminId);
+    if (statuses.includes('holding') || statuses.includes('awaiting_nominal')) {
+      await this.catchUpReadyHoldingInCommunity(communityId);
+    }
     const rights = await this.unitOfWork.run((repositories) =>
       repositories.rights.listByStatus(communityId, statuses),
     );
@@ -302,6 +308,28 @@ export class UzzApplicationFacade {
 
   assertCanTriggerEmission(publicationId: string, userId: string) {
     return this.emitRight.assertCanTrigger(publicationId, userId, this.authorization);
+  }
+
+  private async catchUpReadyHoldingForUser(userId: string): Promise<void> {
+    try {
+      await this.unitOfWork.run(async (repositories) => {
+        const { identity, userIds } = await resolveIdentityContext(repositories, userId);
+        if (!isIdentityReady(identity)) return;
+        await releaseHoldingRightsAfterIdentityReady(repositories, userIds, new Date());
+      });
+    } catch (error) {
+      if (!(error instanceof UzzConflictError)) throw error;
+    }
+  }
+
+  private async catchUpReadyHoldingInCommunity(communityId: string): Promise<void> {
+    try {
+      await this.unitOfWork.run(async (repositories) => {
+        await releaseReadyHoldingRightsInCommunity(repositories, communityId, new Date());
+      });
+    } catch (error) {
+      if (!(error instanceof UzzConflictError)) throw error;
+    }
   }
 
   private async enrichRights<T extends {

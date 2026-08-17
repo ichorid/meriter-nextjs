@@ -6,6 +6,8 @@ export const UZZ_SETTINGS_DEFAULTS = {
   initialHops: 10,
   demurrageRubPerDay: 100,
   nominalFloorRub: 100,
+  defaultNominalRub: 100,
+  autoAssignNominal: false,
   minimumListingsToBuy: 3,
   purchaseGateMode: 'nudge' as const,
   requestTtlHours: 48,
@@ -27,6 +29,7 @@ type IntegerSettingKey =
   | 'initialHops'
   | 'demurrageRubPerDay'
   | 'nominalFloorRub'
+  | 'defaultNominalRub'
   | 'minimumListingsToBuy'
   | 'requestTtlHours'
   | 'fulfillmentTtlDays'
@@ -37,6 +40,7 @@ const INTEGER_BOUNDS: Record<IntegerSettingKey, [number, number]> = {
   initialHops: [1, 1_000],
   demurrageRubPerDay: [0, 1_000_000],
   nominalFloorRub: [1, 1_000_000_000],
+  defaultNominalRub: [1, 1_000_000_000],
   minimumListingsToBuy: [0, 100],
   requestTtlHours: [1, 8_760],
   fulfillmentTtlDays: [1, 3_650],
@@ -62,12 +66,26 @@ export function validateSettingsPatch(patch: UzzSettingsPatch): void {
     'notifyRequestLifecycle',
     'notifyDealProgress',
     'notifyDealClosed',
+    'autoAssignNominal',
   ] as const) {
     if (patch[key] !== undefined && typeof patch[key] !== 'boolean') {
       throw new UzzValidationError('SETTINGS_VALUE_INVALID', 'SETTINGS_VALUE_INVALID', {
         field: key,
       });
     }
+  }
+}
+
+export function validateMergedSettings(settings: UzzSettingsRecord): void {
+  if (
+    settings.autoAssignNominal &&
+    settings.defaultNominalRub < settings.nominalFloorRub
+  ) {
+    throw new UzzValidationError(
+      'SETTINGS_DEFAULT_NOMINAL_BELOW_FLOOR',
+      'SETTINGS_DEFAULT_NOMINAL_BELOW_FLOOR',
+      { field: 'defaultNominalRub', minimum: settings.nominalFloorRub },
+    );
   }
 }
 

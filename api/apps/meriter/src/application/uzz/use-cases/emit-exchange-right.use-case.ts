@@ -4,9 +4,11 @@ import { UzzForbiddenError } from '../../../domain/uzz/errors';
 import { Clock } from '../ports/clock.port';
 import { UzzPlatformPort } from '../ports/uzz-platform.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
+import { isIdentityReady } from '../policies/uzz-access-policy';
 import { defaultSettings } from '../uzz-settings';
 import { CommandExecutor } from './command-executor';
-import { appendDealLedger, appendTelegramNotification } from './deal-use-case.helpers';
+import { appendDealLedger, appendTelegramNotification, resolveIdentityContext } from './deal-use-case.helpers';
+import { maybeAutoAssignNominal } from './identity-link.helpers';
 
 export class EmitExchangeRightUseCase {
   private readonly commands: CommandExecutor;
@@ -38,13 +40,17 @@ export class EmitExchangeRightUseCase {
       work: async (repositories) => {
         const existing = await repositories.rights.findBySourcePublicationId(publication.id);
         if (existing) return existing.snapshot();
-        const identity = await repositories.identities.findByCanonicalUserId(publication.authorId);
-        const ready = Boolean(identity?.normalizedEmail && identity.telegramUserId);
+        const { identity } = await resolveIdentityContext(
+          repositories,
+          publication.authorId,
+        );
+        const ready = isIdentityReady(identity);
+        const settings = eligibility.settings;
         const right = ExchangeRight.restore({
           id: randomUUID(), communityId: publication.communityId,
           ownerId: publication.authorId, sourcePublicationId: publication.id,
           nominalRub: null, nominalAssignedAt: null, lastDemurrageAt: null,
-          hopsLeft: eligibility.settings.initialHops,
+          hopsLeft: settings.initialHops,
           status: ready ? 'awaiting_nominal' : 'holding', lockedByDealId: null,
           ownerHistory: [{
             userId: publication.authorId, at: now,
@@ -52,28 +58,41 @@ export class EmitExchangeRightUseCase {
           }],
           version: 0, createdAt: now, updatedAt: now,
         });
+        if (ready) {
+          await maybeAutoAssignNominal(
+            repositories,
+            right,
+            settings,
+            now,
+            publication.authorId,
+            `emit-right:${publication.id}:nominal`,
+          );
+        }
         await repositories.rights.insert(right);
+        const emitted = right.snapshot();
         await appendDealLedger(repositories, {
           operationId: `emit-right:${publication.id}`,
           communityId: publication.communityId, userId: publication.authorId,
           type: 'right_emitted', amount: 0, createdAt: now,
           metadata: {
-            rightId: right.snapshot().id, publicationId: publication.id,
+            rightId: emitted.id, publicationId: publication.id,
             score: publication.score,
-            emissionThreshold: eligibility.settings.emissionThreshold,
-            status: right.snapshot().status,
+            emissionThreshold: settings.emissionThreshold,
+            status: emitted.status,
           },
         });
         await appendTelegramNotification(repositories, {
           operationId: `emit-right:${publication.id}`, communityId: publication.communityId,
-          aggregateId: right.snapshot().id, targetUserId: publication.authorId,
+          aggregateId: emitted.id, targetUserId: publication.authorId,
           kind: 'right_emitted',
-          text: ready
-            ? 'Появился банк на обмен. Администратор назначит номинал.'
-            : 'Появился банк на обмен. Привяжите email на сайте, чтобы продолжить.',
+          text: emitted.status === 'active'
+            ? 'Появился банк на обмен. Номинал назначен автоматически.'
+            : ready
+              ? 'Появился банк на обмен. Администратор назначит номинал.'
+              : 'Появился банк на обмен. Привяжите email на сайте, чтобы продолжить.',
           now,
         });
-        return right.snapshot();
+        return emitted;
       },
     });
   }

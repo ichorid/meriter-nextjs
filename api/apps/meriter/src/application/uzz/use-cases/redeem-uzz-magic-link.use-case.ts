@@ -13,6 +13,8 @@ import {
   UzzIdentityConflictError,
   UzzInvalidTokenError,
 } from '../../../domain/uzz/errors';
+import { isIdentityReady } from '../policies/uzz-access-policy';
+import { releaseHoldingRightsAfterIdentityReady } from './identity-link.helpers';
 
 const MAGIC_LINK_CLAIM_LEASE_MS = 120_000;
 
@@ -121,6 +123,14 @@ export class RedeemUzzMagicLinkUseCase {
         byUser.normalizedEmail = normalizedEmail;
         byUser.updatedAt = now;
         await repositories.identities.update(byUser);
+        if (isIdentityReady(byUser)) {
+          const aliases = await repositories.identities.listAliases(byUser.id);
+          await releaseHoldingRightsAfterIdentityReady(
+            repositories,
+            [byUser.canonicalUserId, ...aliases.map((entry) => entry.aliasUserId)],
+            now,
+          );
+        }
         return;
       }
       if (!byEmail) {

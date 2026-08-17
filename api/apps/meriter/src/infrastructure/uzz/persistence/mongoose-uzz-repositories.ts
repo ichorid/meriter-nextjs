@@ -582,6 +582,8 @@ function mapSettings(raw: unknown): UzzSettingsRecord {
     initialHops: Number(record.initialHops ?? record.bankInitialHops ?? 10),
     demurrageRubPerDay: Number(record.demurrageRubPerDay ?? 100),
     nominalFloorRub: Number(record.nominalFloorRub ?? 100),
+    defaultNominalRub: Number(record.defaultNominalRub ?? record.nominalFloorRub ?? 100),
+    autoAssignNominal: record.autoAssignNominal === true,
     minimumListingsToBuy: Number(record.minimumListingsToBuy ?? record.minLotsToBuy ?? 3),
     purchaseGateMode: record.purchaseGateMode === 'require_min_lots' ||
       record.purchaseGate === 'require_min_lots' ? 'require_min_lots' : 'nudge',
