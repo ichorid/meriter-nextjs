@@ -13,18 +13,26 @@ export class MongooseUzzUnitOfWork implements UzzUnitOfWork {
     const session = await this.connection.startSession();
     let result: T | undefined;
     let completed = false;
+    let workError: unknown;
 
     try {
       await session.withTransaction(async () => {
-        result = await work(createMongooseUzzRepositories(this.connection, session));
-        completed = true;
+        try {
+          result = await work(createMongooseUzzRepositories(this.connection, session));
+          completed = true;
+        } catch (error) {
+          workError = error;
+          throw error;
+        }
       });
+    } catch (error) {
+      throw workError ?? error;
     } finally {
       await session.endSession();
     }
 
     if (!completed) {
-      throw new Error('UZZ transaction ended without completing its work');
+      throw workError ?? new Error('UZZ transaction ended without completing its work');
     }
     return result as T;
   }

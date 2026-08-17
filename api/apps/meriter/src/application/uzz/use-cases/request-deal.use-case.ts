@@ -86,7 +86,7 @@ export class RequestDealUseCase {
             listingState.authorId,
           );
         } catch (error) {
-          if (error instanceof UzzForbiddenError && error.code === 'IDENTITY_LINK_REQUIRED') {
+          if (hasCode(error, 'IDENTITY_LINK_REQUIRED')) {
             throw new UzzForbiddenError('DEAL_COUNTERPARTY_IDENTITY_REQUIRED');
           }
           throw error;
@@ -119,7 +119,12 @@ export class RequestDealUseCase {
           listingId: listingState.id,
           exchangeRightId: rightState.id,
           requestMessage: input.requestMessage,
-          listingSnapshot: listingState,
+          listingSnapshot: {
+            title: listingState.title,
+            priceRub: listingState.priceRub,
+            deliveryMode: listingState.deliveryMode,
+            locationText: listingState.locationText ?? '',
+          },
           requestedDeadlineAt,
           requestExpiresAt: addHours(now, settings?.requestTtlHours ?? 48),
           now,
@@ -160,5 +165,13 @@ function isDuplicateKey(error: unknown): boolean {
     error &&
       typeof error === 'object' &&
       (error as { code?: unknown }).code === 11000,
+  );
+}
+
+function hasCode(error: unknown, code: string): boolean {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      (error as { code?: unknown }).code === code,
   );
 }

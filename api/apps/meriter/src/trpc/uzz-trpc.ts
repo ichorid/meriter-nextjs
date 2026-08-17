@@ -1,8 +1,11 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import superjson from 'superjson';
+import {
+  httpStatusFor,
+  resolveUzzClientError,
+} from '../adapters/trpc/handlers/uzz-error-mapper';
 import { UzzApplicationFacade } from '../application/uzz/uzz-application.facade';
 import type { EmailLoginLinkSendResult } from '../domain/ports/email-login-link.port';
-import { UzzRateLimitedError } from '../domain/uzz/errors';
 
 interface UzzSessionUser { id: string }
 interface UzzUserView {
@@ -40,27 +43,32 @@ export function formatUzzTrpcError<TShape extends { data: object }>({
   error,
 }: {
   shape: TShape;
-  error: { cause?: unknown };
+  error: { cause?: unknown; code?: string; message?: string };
 }): TShape {
-  const retryAfterSeconds = readRetryAfterSeconds(error.cause);
-  if (retryAfterSeconds === undefined) {
-    return shape;
-  }
+  const resolved = resolveUzzClientError(error);
+  const retryAfterSeconds = readRetryAfterSeconds(error);
   return {
     ...shape,
+    message: resolved.message,
     data: {
       ...shape.data,
-      details: { retryAfterSeconds },
+      code: resolved.code,
+      httpStatus: httpStatusFor(resolved.code),
+      ...(retryAfterSeconds !== undefined ? { details: { retryAfterSeconds } } : {}),
     },
   };
 }
 
-function readRetryAfterSeconds(cause: unknown): number | undefined {
-  if (!(cause instanceof UzzRateLimitedError)) {
-    return undefined;
+function readRetryAfterSeconds(error: unknown): number | undefined {
+  let current = error;
+  for (let depth = 0; depth < 8 && current && typeof current === 'object'; depth += 1) {
+    const details = (current as { details?: { retryAfterSeconds?: unknown } }).details;
+    if (typeof details?.retryAfterSeconds === 'number' && Number.isFinite(details.retryAfterSeconds)) {
+      return details.retryAfterSeconds;
+    }
+    current = (current as { cause?: unknown }).cause;
   }
-  const value = cause.details?.retryAfterSeconds;
-  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+  return undefined;
 }
 
 const t = initTRPC.context<UzzTrpcContext>().create({

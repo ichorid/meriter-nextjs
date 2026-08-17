@@ -210,6 +210,9 @@ function requireText(
   max: number,
   code: string,
 ): string {
+  if (typeof value !== 'string') {
+    throw new UzzValidationError(code);
+  }
   const normalized = value.trim();
   const length = Array.from(normalized).length;
   if (length < min || length > max) {

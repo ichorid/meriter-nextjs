@@ -2,7 +2,6 @@ import { UzzUnitOfWork } from './ports/uzz-unit-of-work';
 import { UzzPlatformPort } from './ports/uzz-platform.port';
 import { UzzAuthorizationService } from './uzz-authorization.service';
 import { defaultSettings } from './uzz-settings';
-import { UzzConflictError } from '../../domain/uzz/errors';
 import { isIdentityReady } from './policies/uzz-access-policy';
 import { resolveIdentityContext } from './use-cases/deal-use-case.helpers';
 import { releaseHoldingRightsAfterIdentityReady, releaseReadyHoldingRightsInCommunity } from './use-cases/identity-link.helpers';
@@ -318,7 +317,7 @@ export class UzzApplicationFacade {
         await releaseHoldingRightsAfterIdentityReady(repositories, userIds, new Date());
       });
     } catch (error) {
-      if (!(error instanceof UzzConflictError)) throw error;
+      if (!isIgnorableCatchUpConflict(error)) throw error;
     }
   }
 
@@ -328,7 +327,7 @@ export class UzzApplicationFacade {
         await releaseReadyHoldingRightsInCommunity(repositories, communityId, new Date());
       });
     } catch (error) {
-      if (!(error instanceof UzzConflictError)) throw error;
+      if (!isIgnorableCatchUpConflict(error)) throw error;
     }
   }
 
@@ -355,4 +354,15 @@ export class UzzApplicationFacade {
 function displayName(value: string | undefined) {
   const normalized = value?.trim();
   return normalized || 'Участник';
+}
+
+function isIgnorableCatchUpConflict(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      typeof (error as { code?: unknown }).code === 'string' &&
+      ((error as { code: string }).code === 'UZZ_CONCURRENT_MODIFICATION' ||
+        (error as { code: string }).code.endsWith('_CONFLICT') ||
+        (error as { name?: unknown }).name === 'UzzConflictError'),
+  );
 }
