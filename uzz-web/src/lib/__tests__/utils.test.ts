@@ -51,6 +51,8 @@ describe('uzzErrorMessage', () => {
     ['DEAL_DEADLINE_NOT_FUTURE', DEAL_DEADLINE_NOT_FUTURE_MESSAGE],
     ['LISTING_TITLE_INVALID', 'Название должно содержать от 3 до 120 символов'],
     ['You must be logged in to access this resource', 'Нужно войти по ссылке из письма'],
+    ['EMAIL_DELIVERY_UNAVAILABLE', 'Не удалось отправить письмо. Попробуйте ещё раз через минуту'],
+    ['TOO_MANY_REQUESTS', 'Слишком много попыток. Подождите немного и попробуйте снова'],
   ])('maps backend code %s to actionable Russian copy', (code, expected) => {
     expect(uzzErrorMessage({ message: code })).toBe(expected);
   });

@@ -151,7 +151,7 @@ realUzzTest('R2 email request reaches the fake provider and the UI never sees th
   await failNextEmailSend();
   await requestLoginLink(page, failingUser.email);
 
-  await expect(page.getByRole('status')).toContainText(/недоступ|не получилось/i);
+  await expect(page.getByRole('status')).toContainText(/Не удалось отправить письмо/i);
   await expect(page.getByText(/Письмо отправлено/)).toHaveCount(0);
   expect(await visibleText(page)).not.toMatch(/\/a\/[A-Za-z0-9_-]{10,}/);
   watch.assertNotLeaked('/a/');
@@ -348,6 +348,6 @@ realUzzTest('R6 email and IP rate limits hold across two API replicas', async ({
   }
 
   await page.getByRole('button', { name: 'Отправить ещё раз' }).click();
-  await expect(page.getByRole('status')).toContainText(/недоступ|не получилось|много/i);
+  await expect(page.getByRole('status')).toContainText(/Слишком много попыток/i);
   expect(await visibleText(page)).not.toMatch(/\/a\/[A-Za-z0-9_-]{10,}/);
 });

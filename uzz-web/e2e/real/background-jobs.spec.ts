@@ -166,7 +166,7 @@ realUzzTest('R15 injected transaction failure leaves wallet right deal ledger an
     await requestButton.click();
     await page.getByLabel('Сообщение исполнителю').fill('Эта заявка должна откатиться');
     await page.getByRole('button', { name: 'Подтвердить заявку' }).click();
-    await expect(page.getByRole('dialog')).toContainText(/не получилось|попробуйте/i);
+    await expect(page.getByRole('dialog')).toContainText(/Сервер не смог|не получилось|попробуйте/i);
   } finally {
     await clearIdentityFailureInjection();
   }
