@@ -1,8 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DealAcceptForm } from '@/components/deal-accept-form';
 import { DealRequestForm } from '@/components/deal-request-form';
-import { DEAL_DEADLINE_NOT_FUTURE_MESSAGE, minimumLocalDeadline } from '@/lib/local-datetime';
+import { DEAL_DEADLINE_NOT_FUTURE_MESSAGE, formatDeadlineLabel } from '@/lib/local-datetime';
 
 const right = { id: 'right-1', nominalRub: 5000, status: 'active', hopsLeft: 10 };
 
@@ -12,7 +13,7 @@ describe('DealAcceptForm local deadline', () => {
     vi.useRealTimers();
   });
 
-  it('prefills datetime-local from calendar components instead of a UTC ISO slice', () => {
+  it('prefills the calendar trigger from local calendar parts instead of a UTC ISO slice', () => {
     vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-420);
     render(
       <DealAcceptForm
@@ -24,8 +25,10 @@ describe('DealAcceptForm local deadline', () => {
       />,
     );
 
-    expect(screen.getByLabelText(/^Согласованный срок/)).toHaveValue('2026-08-14T18:00');
-    expect(screen.getByLabelText(/^Согласованный срок/)).not.toHaveValue('2026-08-14T11:00');
+    expect(screen.getByRole('button', { name: /Согласованный срок/ })).toHaveTextContent(
+      formatDeadlineLabel('2026-08-14T11:00:00.000Z', -420),
+    );
+    expect(screen.queryByDisplayValue('2026-08-14T11:00')).not.toBeInTheDocument();
   });
 
   it('submits the agreed deadline as the original UTC instant', () => {
@@ -49,20 +52,21 @@ describe('DealAcceptForm local deadline', () => {
     expect(deadline.toISOString()).toBe('2026-08-14T11:00:00.000Z');
   });
 
-  it('blocks a past deadline with a dedicated Russian inline error', () => {
+  it('blocks a too-soon deadline with a dedicated Russian inline error', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-14T11:00:00.000Z'));
-    vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(0);
     const onAccept = vi.fn();
     render(
-      <DealAcceptForm currentNominalRub={600} pending={false} onCancel={vi.fn()} onAccept={onAccept} />,
+      <DealAcceptForm
+        currentNominalRub={600}
+        agreedDeadlineAt="2026-08-14T11:04:00.000Z"
+        pending={false}
+        onCancel={vi.fn()}
+        onAccept={onAccept}
+      />,
     );
 
-    const input = screen.getByLabelText(/^Согласованный срок/);
-    expect(input).toHaveAttribute('min', minimumLocalDeadline(new Date('2026-08-14T11:00:00.000Z'), 0));
-    fireEvent.change(input, { target: { value: '2026-08-14T11:04' } });
-    fireEvent.submit(input.closest('form')!);
-
+    fireEvent.submit(screen.getByRole('button', { name: /Принять на 600 ₽/ }).closest('form')!);
     expect(screen.getByRole('alert')).toHaveTextContent(DEAL_DEADLINE_NOT_FUTURE_MESSAGE);
     expect(onAccept).not.toHaveBeenCalled();
   });
@@ -88,7 +92,31 @@ describe('DealRequestForm local deadline', () => {
     vi.useRealTimers();
   });
 
-  it('blocks a past requested deadline with a dedicated Russian inline error', () => {
+  it('submits without a deadline when the calendar stays empty', async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(
+      <DealRequestForm
+        title="Консультация"
+        priceRub={500}
+        rights={[right]}
+        pending={false}
+        onCancel={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    await user.type(screen.getByLabelText(/^Сообщение исполнителю/), 'Тест');
+    expect(screen.getByRole('button', { name: /Желаемый срок/ })).toHaveTextContent('Не указан');
+    await user.click(screen.getByRole('button', { name: 'Подтвердить заявку' }));
+    expect(onSubmit).toHaveBeenCalledWith({
+      bankId: 'right-1',
+      requestMessage: 'Тест',
+      requestedDeadlineAt: undefined,
+    });
+  });
+
+  it('lets the buyer pick a future day from the calendar', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-14T11:00:00.000Z'));
     vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(0);
@@ -104,13 +132,13 @@ describe('DealRequestForm local deadline', () => {
       />,
     );
 
-    fireEvent.change(screen.getByLabelText(/^Сообщение исполнителю/), { target: { value: 'Нужна помощь' } });
-    const input = screen.getByLabelText(/^Желаемый срок/);
-    expect(input).toHaveAttribute('min', minimumLocalDeadline(new Date('2026-08-14T11:00:00.000Z'), 0));
-    fireEvent.change(input, { target: { value: '2026-08-13T18:00' } });
-    fireEvent.submit(input.closest('form')!);
+    fireEvent.change(screen.getByLabelText(/^Сообщение исполнителю/), { target: { value: 'Тест' } });
+    fireEvent.click(screen.getByRole('button', { name: /Желаемый срок/ }));
+    fireEvent.click(screen.getByRole('button', { name: /20 августа 2026/ }));
+    fireEvent.submit(screen.getByRole('button', { name: 'Подтвердить заявку' }).closest('form')!);
 
-    expect(screen.getByRole('alert')).toHaveTextContent(DEAL_DEADLINE_NOT_FUTURE_MESSAGE);
-    expect(onSubmit).not.toHaveBeenCalled();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    const payload = onSubmit.mock.calls[0][0] as { requestedDeadlineAt?: Date };
+    expect(payload.requestedDeadlineAt?.toISOString()).toBe('2026-08-20T11:15:00.000Z');
   });
 });

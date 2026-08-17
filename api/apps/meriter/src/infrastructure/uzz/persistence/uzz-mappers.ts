@@ -30,6 +30,10 @@ export function dealToPersistence(deal: Deal): DealSnapshot {
   const snapshot = deal.snapshot();
   const record = {
     ...snapshot,
+    listingSnapshot: {
+      ...snapshot.listingSnapshot,
+      locationText: snapshot.listingSnapshot.locationText ?? '',
+    },
     lotId: snapshot.listingId,
     bankId: snapshot.exchangeRightId,
   } as DealSnapshot & { lotId: string; bankId: string };

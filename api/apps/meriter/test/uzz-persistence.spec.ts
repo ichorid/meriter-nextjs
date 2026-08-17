@@ -393,4 +393,34 @@ describe('UZZ persistence boundary', () => {
       expectedIds,
     );
   });
+
+  it('stores a requested deal whose listing has an empty location', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    const deal = Deal.request({
+      id: 'deal-online-no-place',
+      communityId: 'community-1',
+      buyerId: 'buyer-1',
+      sellerId: 'seller-1',
+      listingId: 'listing-online',
+      exchangeRightId: 'right-online',
+      requestMessage: 'Тест',
+      listingSnapshot: {
+        title: 'Обучаю работе с платформой',
+        priceRub: 500,
+        deliveryMode: 'online',
+        locationText: '',
+      },
+      requestedDeadlineAt: null,
+      requestExpiresAt: new Date('2026-08-16T00:00:00.000Z'),
+      now: NOW,
+    });
+
+    await expect(repositories.deals.insert(deal)).resolves.toBeUndefined();
+    const stored = await connection.db
+      .collection('uzz_deals')
+      .findOne({ id: 'deal-online-no-place' });
+    expect(stored?.listingSnapshot).toEqual(
+      expect.objectContaining({ locationText: '', deliveryMode: 'online' }),
+    );
+  });
 });

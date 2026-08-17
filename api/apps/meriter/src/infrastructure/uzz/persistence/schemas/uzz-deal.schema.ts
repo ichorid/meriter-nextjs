@@ -40,7 +40,7 @@ export const UzzDealPersistenceSchema = new Schema(
             enum: ['online', 'offline', 'both'],
             required: true,
           },
-          locationText: { type: String, required: true, default: '' },
+          locationText: { type: String, default: '' },
         },
         { _id: false },
       ),

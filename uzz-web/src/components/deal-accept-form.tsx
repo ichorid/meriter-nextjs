@@ -1,19 +1,20 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
-import { Button, Field, Notice, inputClass, userContentClass } from '@/components/ui';
-import {
-  DEAL_DEADLINE_NOT_FUTURE_MESSAGE,
-  instantToLocalInput,
-  isDeadlineTooSoon,
-  localInputToInstant,
-  minimumLocalDeadline,
-} from '@/lib/local-datetime';
+import { DeadlinePicker } from '@/components/deadline-picker';
+import { Button, Notice, userContentClass } from '@/components/ui';
+import { DEAL_DEADLINE_NOT_FUTURE_MESSAGE, isInstantTooSoon } from '@/lib/local-datetime';
 import { cn, formatSignedRub, uzzErrorMessage } from '@/lib/utils';
 
 function formatInstant(value: Date | string | null | undefined): string | null {
   if (!value) return null;
   return new Date(value).toLocaleString('ru-RU');
+}
+
+function toDate(value: Date | string | null | undefined): Date | null {
+  if (!value) return null;
+  const instant = new Date(value);
+  return Number.isNaN(instant.getTime()) ? null : instant;
 }
 
 export function DealAcceptForm({
@@ -31,8 +32,7 @@ export function DealAcceptForm({
   onCancel: () => void;
   onAccept: (deadline?: Date) => void;
 }) {
-  const initialDeadline = agreedDeadlineAt ?? requestedDeadlineAt;
-  const [deadline, setDeadline] = useState(initialDeadline ? instantToLocalInput(initialDeadline) : '');
+  const [deadline, setDeadline] = useState<Date | null>(toDate(agreedDeadlineAt ?? requestedDeadlineAt));
   const [deadlineError, setDeadlineError] = useState<string | null>(null);
   const serverError = error ? uzzErrorMessage({ message: error }) : null;
   const difference = listingPriceRub != null && currentNominalRub != null ? currentNominalRub - listingPriceRub : null;
@@ -40,12 +40,12 @@ export function DealAcceptForm({
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (deadline && isDeadlineTooSoon(deadline)) {
+    if (deadline && isInstantTooSoon(deadline)) {
       setDeadlineError(DEAL_DEADLINE_NOT_FUTURE_MESSAGE);
       return;
     }
     setDeadlineError(null);
-    onAccept(deadline.trim() ? localInputToInstant(deadline) : undefined);
+    onAccept(deadline ?? undefined);
   }
 
   return <form noValidate onSubmit={submit} className="space-y-4">
@@ -60,9 +60,13 @@ export function DealAcceptForm({
     </dl>
     <Notice tone="warn">Номинал тает каждый день, даже пока заявка открыта. Принятие фиксирует показанную сумму; если она успела измениться, система попросит подтвердить ещё раз.</Notice>
     {belowPrice ? <Notice tone="warn">Текущий номинал ниже цены услуги. Принять заявку всё равно можно: банк перейдёт целиком.</Notice> : null}
-    <Field label="Согласованный срок" hint="Можно оставить пожелание заказчика или указать другой срок.">
-      <input type="datetime-local" min={minimumLocalDeadline()} value={deadline} onChange={(event) => { setDeadline(event.target.value); setDeadlineError(null); }} className={inputClass} />
-    </Field>
+    <DeadlinePicker
+      id="deal-accept-deadline"
+      label="Согласованный срок"
+      hint="Можно оставить пожелание заказчика, выбрать другой срок или сбросить поле."
+      value={deadline}
+      onChange={(next) => { setDeadline(next); setDeadlineError(null); }}
+    />
     {deadlineError ? <p role="alert" className="text-sm text-amber-200">{deadlineError}</p> : null}
     {serverError ? <Notice tone="warn">{serverError}</Notice> : null}
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

@@ -1,10 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEAL_DEADLINE_NOT_FUTURE_MESSAGE,
+  formatDeadlineLabel,
   instantToLocalInput,
+  isInstantTooSoon,
+  isLocalDayTooSoon,
   localInputToInstant,
   mapDeadlineError,
   minimumLocalDeadline,
+  monthGrid,
 } from '@/lib/local-datetime';
 
 describe('local calendar conversion', () => {
@@ -55,5 +59,16 @@ describe('local calendar conversion', () => {
     expect(mapDeadlineError('DEAL_DEADLINE_NOT_FUTURE')).toBe(DEAL_DEADLINE_NOT_FUTURE_MESSAGE);
     expect(DEAL_DEADLINE_NOT_FUTURE_MESSAGE).toMatch(/5 минут/);
     expect(mapDeadlineError('FORBIDDEN')).toBeNull();
+  });
+
+  it('builds a Monday-first month grid and labels local instants without datetime-local', () => {
+    const cells = monthGrid(2026, 8);
+    expect(cells[0]).toEqual({ year: 2026, month: 7, day: 27, inMonth: false });
+    expect(cells[5]).toEqual({ year: 2026, month: 8, day: 1, inMonth: true });
+    expect(cells).toHaveLength(42);
+    expect(formatDeadlineLabel('2026-08-14T11:00:00Z', -420)).toBe('14 авг. 2026, 18:00');
+    expect(isInstantTooSoon(new Date('2026-08-14T11:04:00.000Z'), new Date('2026-08-14T11:00:00.000Z'))).toBe(true);
+    expect(isLocalDayTooSoon(2026, 8, 13, new Date('2026-08-14T11:00:00.000Z'), 0)).toBe(true);
+    expect(isLocalDayTooSoon(2026, 8, 14, new Date('2026-08-14T11:00:00.000Z'), 0)).toBe(false);
   });
 });
