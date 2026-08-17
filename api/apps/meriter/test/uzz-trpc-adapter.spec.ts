@@ -136,6 +136,24 @@ describe('UZZ tRPC adapter boundary', () => {
     );
   });
 
+  it('treats an empty deadline string as omitted', async () => {
+    const facade = { requestDeal: jest.fn().mockResolvedValue({ id: 'deal-1' }) };
+    const caller = uzzAppRouter.createCaller(context('buyer-1', facade));
+
+    await caller.deals.request({
+      commandId: '55555555-5555-4555-8555-555555555555',
+      communityId: 'community-1',
+      lotId: 'listing-1',
+      bankId: 'right-1',
+      requestMessage: 'Need help',
+      requestedDeadlineAt: '' as unknown as Date,
+    });
+
+    expect(facade.requestDeal).toHaveBeenCalledWith(
+      expect.objectContaining({ requestedDeadlineAt: null }),
+    );
+  });
+
   it('sets the UZZ cookie from fake login without returning the jwt', async () => {
     const ctx = context(null, {});
     (ctx.configService.get as jest.Mock).mockReturnValue({ fakeDataMode: true });

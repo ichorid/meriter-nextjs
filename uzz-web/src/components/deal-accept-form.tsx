@@ -45,7 +45,7 @@ export function DealAcceptForm({
       return;
     }
     setDeadlineError(null);
-    onAccept(deadline ? localInputToInstant(deadline) : undefined);
+    onAccept(deadline.trim() ? localInputToInstant(deadline) : undefined);
   }
 
   return <form noValidate onSubmit={submit} className="space-y-4">

@@ -28,11 +28,18 @@ export function listingFromPersistence(raw: unknown): Listing {
 
 export function dealToPersistence(deal: Deal): DealSnapshot {
   const snapshot = deal.snapshot();
-  return {
+  const record = {
     ...snapshot,
     lotId: snapshot.listingId,
     bankId: snapshot.exchangeRightId,
-  } as DealSnapshot;
+  } as DealSnapshot & { lotId: string; bankId: string };
+  if (record.buyerContact == null) {
+    delete (record as { buyerContact?: unknown }).buyerContact;
+  }
+  if (record.sellerContact == null) {
+    delete (record as { sellerContact?: unknown }).sellerContact;
+  }
+  return record;
 }
 
 export function dealFromPersistence(raw: unknown): Deal {

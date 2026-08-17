@@ -125,4 +125,21 @@ describe('resolveUzzClientError', () => {
       message: 'EMAIL_DELIVERY_UNAVAILABLE',
     });
   });
+
+  it('maps mongoose ValidationError to the failing document path', async () => {
+    const cause = Object.assign(new Error('Deal validation failed'), {
+      name: 'ValidationError',
+      errors: {
+        buyerContact: { path: 'buyerContact.telegramUsername', message: 'required' },
+      },
+    });
+    await expect(
+      executeUzz(async () => {
+        throw cause;
+      }),
+    ).rejects.toMatchObject({
+      code: 'BAD_REQUEST',
+      message: 'UZZ_DOC_BUYERCONTACT_TELEGRAMUSERNAME',
+    });
+  });
 });

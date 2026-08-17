@@ -33,7 +33,7 @@ export function DealRequestForm({
       return;
     }
     setDeadlineError(null);
-    onSubmit({ bankId, requestMessage: message.trim(), requestedDeadlineAt: deadline ? localInputToInstant(deadline) : undefined });
+    onSubmit({ bankId, requestMessage: message.trim(), requestedDeadlineAt: deadline.trim() ? localInputToInstant(deadline) : undefined });
   }
 
   return <form noValidate onSubmit={submit} className="space-y-4" aria-label={`Заявка: ${title}`}>

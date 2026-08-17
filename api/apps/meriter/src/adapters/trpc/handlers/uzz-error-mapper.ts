@@ -86,7 +86,9 @@ export function toUzzTrpcError(error: unknown): TRPCError {
     return mapped('CONFLICT', { code: 'UZZ_CONCURRENT_MODIFICATION' });
   }
   if (isMongooseValidation(resolved) || isMongooseValidation(error)) {
-    return mapped('BAD_REQUEST', { code: 'INVALID_INPUT' });
+    return mapped('BAD_REQUEST', {
+      code: mongooseValidationCode(resolved) ?? mongooseValidationCode(error) ?? 'INVALID_INPUT',
+    });
   }
   return mapped('BAD_REQUEST', { code: unexpectedCode(resolved ?? error) });
 }
@@ -180,6 +182,18 @@ function isMongooseValidation(error: unknown): boolean {
       (error as { errors?: unknown }).errors &&
       typeof (error as { errors?: unknown }).errors === 'object',
   );
+}
+
+function mongooseValidationCode(error: unknown): string | null {
+  if (!isMongooseValidation(error)) return null;
+  const errors = (error as { errors: Record<string, { path?: unknown }> }).errors;
+  const first = Object.values(errors)[0];
+  const path = typeof first?.path === 'string' && first.path
+    ? first.path
+    : Object.keys(errors)[0];
+  if (!path) return 'INVALID_INPUT';
+  const slug = path.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '').toUpperCase();
+  return `UZZ_DOC_${slug || 'INVALID'}`.slice(0, 60);
 }
 
 function unexpectedCode(error: unknown): string {

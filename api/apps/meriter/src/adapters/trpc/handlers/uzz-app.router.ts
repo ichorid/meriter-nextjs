@@ -16,7 +16,16 @@ import {
 } from '../../../domain/uzz/errors';
 import { executeUzz } from './uzz-error-mapper';
 
-const optionalDealDeadlineInput = z.coerce.date().nullable().optional();
+function emptyToNullDate(value: unknown): unknown {
+  if (value == null || value === '') return null;
+  if (value instanceof Date && Number.isNaN(value.getTime())) return null;
+  return value;
+}
+
+const optionalDealDeadlineInput = z.preprocess(
+  emptyToNullDate,
+  z.coerce.date().nullable(),
+);
 const commandIdInput = z.string().uuid();
 
 /**
