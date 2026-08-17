@@ -193,7 +193,9 @@ describe('UZZ deal use cases', () => {
       now: new Date('2026-08-14T00:30:00.000Z'),
     });
     const persisted = await createMongooseUzzRepositories(connection, null).deals.findById(deal.id);
+    const right = await createMongooseUzzRepositories(connection, null).rights.findById('right-1');
     expect(persisted?.snapshot()).toMatchObject({ status: 'cancelled', feeReserved: false });
+    expect(right?.snapshot()).toMatchObject({ status: 'active', lockedByDealId: null });
     expect((await rawDb.collection('wallets').findOne({ id: 'wallet-1' }))?.balance).toBe(1);
   });
 
@@ -208,6 +210,35 @@ describe('UZZ deal use cases', () => {
       commandId: 'cancel-after-accept', dealId: deal.id, buyerId: 'buyer-1',
       now: new Date('2026-08-14T01:00:00.000Z'),
     })).rejects.toMatchObject({ code: 'DEAL_CANNOT_CANCEL' });
+  });
+
+  it('rejects a second open request against the same bank with a domain error', async () => {
+    const first = await createRequest();
+    const locked = await createMongooseUzzRepositories(connection, null).rights.findById('right-1');
+    expect(locked?.snapshot()).toMatchObject({ status: 'in_deal', lockedByDealId: first.id });
+    await expect(
+      request.execute({
+        commandId: 'request-2', communityId: 'community-1', buyerId: 'buyer-1',
+        listingId: 'listing-1', exchangeRightId: 'right-1',
+        requestMessage: 'Повторная заявка', requestedDeadlineAt: null, now: NOW,
+      }),
+    ).rejects.toMatchObject({ code: 'RIGHT_ALREADY_LOCKED' });
+  });
+
+  it('rejects a request when the seller has not finished identity linking', async () => {
+    await createMongooseUzzRepositories(connection, null).identities.update({
+      id: 'identity-seller-1',
+      canonicalUserId: 'seller-1',
+      normalizedEmail: 'seller@example.com',
+      telegramUserId: null,
+      telegramUsername: null,
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    });
+    await expect(createRequest()).rejects.toMatchObject({
+      code: 'DEAL_COUNTERPARTY_IDENTITY_REQUIRED',
+    });
   });
 
   it('uses a pre-existing Telegram alias right and wallet from the email account', async () => {

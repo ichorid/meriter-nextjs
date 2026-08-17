@@ -1,7 +1,7 @@
 import { UzzNotFoundError } from '../../../domain/uzz/errors';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
-import { appendDealLedger, appendTelegramNotification, assertEquivalentActor } from './deal-use-case.helpers';
+import { appendDealLedger, appendTelegramNotification, assertEquivalentActor, releaseDealLockIfHeld } from './deal-use-case.helpers';
 
 export class CancelDealUseCase {
   private readonly commands: CommandExecutor;
@@ -29,6 +29,7 @@ export class CancelDealUseCase {
           operationId: `${input.commandId}:refund`,
         });
         deal.clearReservedFee(now);
+        await releaseDealLockIfHeld(repositories, before.exchangeRightId, before.id, now);
         await repositories.deals.update(deal);
         await appendDealLedger(repositories, {
           operationId: input.commandId, communityId: state.communityId,

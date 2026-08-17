@@ -44,6 +44,7 @@ describe('uzzErrorMessage', () => {
     ['NOMINAL_CHANGED', 'Номинал изменился. Проверьте новую сумму и подтвердите принятие ещё раз'],
     ['MIN_LISTINGS_REQUIRED', 'Сначала добавьте свои предложения'],
     ['IDENTITY_LINK_REQUIRED', 'Сначала привяжите Telegram в профиле'],
+    ['DEAL_COUNTERPARTY_IDENTITY_REQUIRED', 'Исполнитель ещё не завершил привязку профиля. Заявку можно отправить, когда связка email и Telegram будет готова'],
     ['COMMUNITY_MEMBERSHIP_REQUIRED', 'Публиковать и меняться услугами можно только участникам выбранного сообщества. Вступите в его Telegram-чат'],
     ['PILOT_COMMUNITY_NOT_TELEGRAM', 'Можно выбрать только Telegram-чат с подключённым ботом'],
     ['WALLET_INSUFFICIENT_FUNDS', 'Недостаточно заслуг: нужна вся сумма либо в кошельке сообщества, либо в общем кошельке'],

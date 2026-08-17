@@ -80,6 +80,18 @@ export function appendDealLedger(
   return repositories.ledger.append({ id: randomUUID(), ...entry });
 }
 
+export async function releaseDealLockIfHeld(
+  repositories: UzzRepositories,
+  exchangeRightId: string,
+  dealId: string,
+  now: Date,
+): Promise<void> {
+  const right = await repositories.rights.findById(exchangeRightId);
+  if (!right || right.snapshot().lockedByDealId !== dealId) return;
+  right.unlockAfterDeal(dealId, now);
+  await repositories.rights.update(right);
+}
+
 export async function appendTelegramNotification(
   repositories: UzzRepositories,
   input: {

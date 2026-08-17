@@ -63,6 +63,8 @@ export const UZZ_ERROR_MESSAGES: Record<string, string> = {
   DEAL_DEADLINE_NOT_FUTURE: DEAL_DEADLINE_NOT_FUTURE_MESSAGE,
   DEAL_REQUEST_MESSAGE_INVALID: 'Напишите исполнителю, что именно вам нужно',
   DEAL_SELF_REQUEST_FORBIDDEN: 'Нельзя заказать собственную услугу',
+  DEAL_COUNTERPARTY_IDENTITY_REQUIRED:
+    'Исполнитель ещё не завершил привязку профиля. Заявку можно отправить, когда связка email и Telegram будет готова',
   DEAL_NOT_FOUND: 'Сделка не найдена. Обновите список',
   DEAL_STATUS_INVALID: 'Это действие сейчас недоступно для статуса сделки',
   DEAL_CANNOT_CANCEL: 'После принятия заказчик не может отменить сделку',

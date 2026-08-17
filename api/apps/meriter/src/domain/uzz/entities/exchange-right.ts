@@ -78,6 +78,9 @@ export class ExchangeRight {
 
   lockForDeal(dealId: string, now: Date): void {
     requireId(dealId, 'DEAL_ID_INVALID');
+    if (this.state.lockedByDealId === dealId && this.state.status === 'in_deal') {
+      return;
+    }
     if (this.state.status !== 'active' || this.state.lockedByDealId !== null) {
       throw new UzzConflictError('RIGHT_ALREADY_LOCKED');
     }

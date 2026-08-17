@@ -4,6 +4,7 @@ import {
   UzzConflictError,
   UzzForbiddenError,
   UzzNotFoundError,
+  UzzValidationError,
 } from '../../../domain/uzz/errors';
 import { DealDeadline } from '../../../domain/uzz/value-objects/deal-deadline';
 import { UzzAccessPolicy } from '../policies/uzz-access-policy';
@@ -61,6 +62,9 @@ export class RequestDealUseCase {
           listingState.communityId !== input.communityId ||
           rightState.communityId !== input.communityId
         ) throw new UzzConflictError('COMMUNITY_MISMATCH');
+        if (await repositories.deals.findOpenByRightId(input.exchangeRightId)) {
+          throw new UzzConflictError('RIGHT_ALREADY_LOCKED');
+        }
         if (rightState.status !== 'active' || rightState.nominalRub === null)
           throw new UzzConflictError('RIGHT_NOT_ACTIVE');
         if (listingState.priceRub > rightState.nominalRub)
@@ -71,12 +75,22 @@ export class RequestDealUseCase {
         );
         if (!buyer.userIds.includes(rightState.ownerId))
           throw new UzzForbiddenError('RIGHT_OWNER_REQUIRED');
-        await assertReadyMember(
-          repositories,
-          this.access,
-          input.communityId,
-          listingState.authorId,
-        );
+        if (buyer.userIds.includes(listingState.authorId)) {
+          throw new UzzValidationError('DEAL_SELF_REQUEST_FORBIDDEN');
+        }
+        try {
+          await assertReadyMember(
+            repositories,
+            this.access,
+            input.communityId,
+            listingState.authorId,
+          );
+        } catch (error) {
+          if (error instanceof UzzForbiddenError && error.code === 'IDENTITY_LINK_REQUIRED') {
+            throw new UzzForbiddenError('DEAL_COUNTERPARTY_IDENTITY_REQUIRED');
+          }
+          throw error;
+        }
         const settings = await repositories.settings.findByCommunityId(input.communityId);
         const count = (await Promise.all(buyer.userIds.map((authorId) =>
           repositories.listings.countActiveByAuthor(input.communityId, authorId),
@@ -96,8 +110,9 @@ export class RequestDealUseCase {
           amount: 1,
           operationId: input.commandId,
         });
+        const dealId = randomUUID();
         const deal = Deal.request({
-          id: randomUUID(),
+          id: dealId,
           communityId: input.communityId,
           buyerId: rightState.ownerId,
           sellerId: listingState.authorId,
@@ -110,7 +125,14 @@ export class RequestDealUseCase {
           now,
         });
         deal.reserveFee(reservation.sourceCommunityId, now, feePayerUserId);
-        await repositories.deals.insert(deal);
+        right.lockForDeal(dealId, now);
+        try {
+          await repositories.deals.insert(deal);
+        } catch (error) {
+          if (isDuplicateKey(error)) throw new UzzConflictError('RIGHT_ALREADY_LOCKED');
+          throw error;
+        }
+        await repositories.rights.update(right);
         const state = deal.snapshot();
         await appendDealLedger(repositories, {
           operationId: input.commandId, communityId: input.communityId,
@@ -131,4 +153,12 @@ export class RequestDealUseCase {
       },
     });
   }
+}
+
+function isDuplicateKey(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === 'object' &&
+      (error as { code?: unknown }).code === 11000,
+  );
 }
