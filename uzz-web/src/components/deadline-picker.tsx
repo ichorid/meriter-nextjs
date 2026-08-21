@@ -122,7 +122,15 @@ export function DeadlinePicker({
           aria-labelledby={`${id}-label`}
           aria-expanded={open}
           aria-haspopup="dialog"
-          onClick={() => setOpen((current) => !current)}
+          onClick={() => setOpen((current) => {
+            // Browsing away without picking a day must not leave the calendar
+            // parked months ahead the next time it opens.
+            if (!current) {
+              const base = localPartsFromInstant(value ?? new Date());
+              setView({ year: base.year, month: base.month });
+            }
+            return !current;
+          })}
           className={cn(inputClass, 'flex flex-1 items-center justify-between text-left')}
         >
           <span>{value ? formatDeadlineLabel(value) : 'Не указан'}</span>
