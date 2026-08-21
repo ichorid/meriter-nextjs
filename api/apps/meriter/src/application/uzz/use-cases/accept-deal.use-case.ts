@@ -74,8 +74,14 @@ export class AcceptDealUseCase {
           acceptedNominal: Rubles.create(input.expectedNominalRub),
           agreedDeadlineAt,
           fulfillmentExpiresAt: addDays(now, settings?.fulfillmentTtlDays ?? 7),
-          buyerContact: { telegramUsername: buyer.identity.telegramUsername! },
-          sellerContact: { telegramUsername: seller.identity.telegramUsername! },
+          buyerContact: {
+            telegramUserId: buyer.identity.telegramUserId!,
+            telegramUsername: buyer.identity.telegramUsername ?? null,
+          },
+          sellerContact: {
+            telegramUserId: seller.identity.telegramUserId!,
+            telegramUsername: seller.identity.telegramUsername ?? null,
+          },
           now,
         });
         right.lockForDeal(state.id, now);

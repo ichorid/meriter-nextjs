@@ -72,6 +72,9 @@ const acceptedSeller: DealView = {
   currentNominalRub: 600,
 };
 
+// Always in the future: a hardcoded date silently turns this suite green-to-red once it passes.
+const FUTURE_DEADLINE = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
 const requestedSeller: DealView = {
   id: 'deal-accept',
   status: 'requested',
@@ -79,7 +82,7 @@ const requestedSeller: DealView = {
   listingSnapshot: { title: 'Ремонт', priceRub: 800, deliveryMode: 'offline', locationText: 'Дом' },
   requestMessage: 'Можно завтра?',
   currentNominalRub: 900,
-  requestedDeadlineAt: '2026-08-20T11:00:00.000Z',
+  requestedDeadlineAt: FUTURE_DEADLINE,
 };
 
 describe('DealsPage action errors', () => {
@@ -123,6 +126,36 @@ describe('DealsPage action errors', () => {
     await user.click(screen.getByRole('button', { name: 'Скрыть' }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Назад' })).toBeVisible();
+  });
+});
+
+describe('DealsPage counterparty contact', () => {
+  beforeEach(() => {
+    dealsState.isLoading = false;
+    dealsState.isError = false;
+    window.history.replaceState({}, '', '/deals');
+  });
+
+  it('links to the public username when the counterparty has one', () => {
+    dealsState.data = [{ ...acceptedSeller, buyerContact: { telegramUserId: '1001', telegramUsername: 'buyer' } }];
+    render(<DealsPage />);
+
+    expect(screen.getByRole('link', { name: 'Написать @buyer' })).toHaveAttribute('href', 'https://t.me/buyer');
+  });
+
+  it('falls back to a telegram user id link when the counterparty has no username', () => {
+    dealsState.data = [{ ...acceptedSeller, buyerContact: { telegramUserId: '1001', telegramUsername: null } }];
+    render(<DealsPage />);
+
+    expect(screen.getByRole('link', { name: 'Открыть чат в Telegram' })).toHaveAttribute('href', 'tg://user?id=1001');
+    expect(screen.getByText(/не задан публичный @username/)).toBeInTheDocument();
+  });
+
+  it('hides the contact entirely while the request is still pending', () => {
+    dealsState.data = [{ ...requestedSeller, buyerContact: { telegramUserId: '1001', telegramUsername: 'buyer' } }];
+    render(<DealsPage />);
+
+    expect(screen.queryByRole('link', { name: /Написать|Открыть чат/ })).not.toBeInTheDocument();
   });
 });
 

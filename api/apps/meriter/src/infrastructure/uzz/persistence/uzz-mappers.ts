@@ -47,7 +47,23 @@ export function dealToPersistence(deal: Deal): DealSnapshot {
 }
 
 export function dealFromPersistence(raw: unknown): Deal {
-  return Deal.restore(toPlainObject(raw) as unknown as DealSnapshot);
+  const record = toPlainObject(raw) as unknown as DealSnapshot;
+  return Deal.restore({
+    ...record,
+    // Deals accepted before contacts carried telegramUserId keep only a username.
+    buyerContact: restoreContact(record.buyerContact),
+    sellerContact: restoreContact(record.sellerContact),
+  });
+}
+
+function restoreContact(
+  contact: DealSnapshot['buyerContact'],
+): DealSnapshot['buyerContact'] {
+  if (!contact) return null;
+  return {
+    telegramUserId: contact.telegramUserId ?? '',
+    telegramUsername: contact.telegramUsername ?? null,
+  };
 }
 
 function toPlainObject(raw: unknown): Record<string, unknown> {

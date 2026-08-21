@@ -262,6 +262,34 @@ describe('UZZ deal use cases', () => {
     expect((await repositories.rights.findById('right-1'))?.snapshot()).toMatchObject({ ownerId: 'seller-1' });
   });
 
+  it('accepts a deal when a participant has no public Telegram username', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.update({
+      id: 'identity-seller-1',
+      canonicalUserId: 'seller-1',
+      normalizedEmail: 'seller@example.com',
+      telegramUserId: '1002',
+      telegramUsername: null,
+      createdAt: NOW,
+      updatedAt: NOW,
+      version: 0,
+    });
+    const deal = await createRequest();
+    const accepted = await accept.execute({
+      commandId: 'accept-without-username', dealId: deal.id, sellerId: 'seller-1',
+      expectedNominalRub: 500, agreedDeadlineAt: null, now: new Date('2026-08-14T01:00:00Z'),
+    });
+    expect(accepted).toMatchObject({
+      status: 'accepted',
+      sellerContact: { telegramUserId: '1002', telegramUsername: null },
+      buyerContact: { telegramUserId: '1001', telegramUsername: 'buyer' },
+    });
+    const persisted = await repositories.deals.findById(deal.id);
+    expect(persisted?.snapshot().sellerContact).toEqual({
+      telegramUserId: '1002', telegramUsername: null,
+    });
+  });
+
   it('requires a meaningful reason for an administrative resolution', async () => {
     const deal = await createRequest();
     await expect(adminResolve.execute({

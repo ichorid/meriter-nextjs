@@ -3,7 +3,10 @@ import { Schema } from 'mongoose';
 export const UZZ_DEAL_MODEL = 'UzzDealV2';
 
 const contactSchema = new Schema(
-  { telegramUsername: { type: String, required: true } },
+  {
+    telegramUserId: { type: String, required: false, default: null },
+    telegramUsername: { type: String, required: false, default: null },
+  },
   { _id: false },
 );
 

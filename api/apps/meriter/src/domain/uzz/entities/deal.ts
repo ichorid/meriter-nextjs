@@ -24,7 +24,8 @@ export interface DealListingSnapshot {
 }
 
 export interface DealContactSnapshot {
-  telegramUsername: string;
+  telegramUserId: string;
+  telegramUsername: string | null;
 }
 
 export interface RequestDealInput {
@@ -438,13 +439,19 @@ function normalizeListingSnapshot(
 }
 
 function normalizeContact(contact: DealContactSnapshot): DealContactSnapshot {
+  const rawUsername = typeof contact.telegramUsername === 'string'
+    ? contact.telegramUsername.trim().replace(/^@/, '')
+    : '';
   return {
-    telegramUsername: requireText(
-      contact.telegramUsername,
+    telegramUserId: requireText(
+      contact.telegramUserId,
       1,
       64,
       'DEAL_CONTACT_INVALID',
-    ).replace(/^@/, ''),
+    ),
+    telegramUsername: rawUsername
+      ? requireText(rawUsername, 1, 64, 'DEAL_CONTACT_INVALID')
+      : null,
   };
 }
 
