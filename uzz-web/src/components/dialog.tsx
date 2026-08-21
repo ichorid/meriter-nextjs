@@ -113,7 +113,7 @@ export function Dialog({
       aria-modal="true"
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
-      className="fixed inset-0 z-50 grid place-items-end bg-black/70 p-0 sm:place-items-center sm:p-6"
+      className="fixed inset-0 z-50 grid place-items-end bg-black/80 p-0 backdrop-blur-sm sm:place-items-center sm:p-6"
       onMouseDown={onBackdrop}
     >
       <div ref={panelRef} className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-t-2xl border border-stitch-border bg-stitch-surface p-5 sm:rounded-2xl sm:p-6">
