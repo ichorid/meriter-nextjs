@@ -7,7 +7,7 @@ import {
   UZZ_UNKNOWN_ERROR_MESSAGE,
   uzzErrorMessage,
 } from '@/lib/uzz-error-messages';
-import { navigatePendingExternalWindow, safeAppPath, walletSourceLabel } from '@/lib/utils';
+import { ledgerReasonLabel, meritsLabel, meritsWord, navigatePendingExternalWindow, safeAppPath, walletSourceLabel } from '@/lib/utils';
 
 function walkTsFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -102,4 +102,40 @@ describe('safeAppPath', () => {
     ['javascript:alert(1)', '/'],
     ['/deals?requested=1', '/deals?requested=1'],
   ])('normalizes %s', (input, expected) => expect(safeAppPath(input, '/')).toBe(expected));
+});
+
+describe('meritsWord', () => {
+  it.each([
+    [1, 'заслуга'],
+    [2, 'заслуги'],
+    [4, 'заслуги'],
+    [5, 'заслуг'],
+    [11, 'заслуг'],
+    [14, 'заслуг'],
+    [21, 'заслуга'],
+    [22, 'заслуги'],
+    [111, 'заслуг'],
+    [0, 'заслуг'],
+  ])('declines %d as %s', (value, expected) => expect(meritsWord(value)).toBe(expected));
+
+  it.each([0.5, 1.5, 2.5, 21.5])('uses the genitive singular for the fraction %d', (value) => {
+    expect(meritsWord(value)).toBe('заслуги');
+  });
+
+  it('formats a fractional label the way Russian reads it', () => {
+    expect(meritsLabel(0.5)).toBe('0,5 заслуги');
+    expect(meritsLabel(1)).toBe('1 заслуга');
+    expect(meritsLabel(5)).toBe('5 заслуг');
+  });
+});
+
+describe('ledgerReasonLabel', () => {
+  it('translates known ledger reason codes', () => {
+    expect(ledgerReasonLabel('expired')).toBe('Заявка истекла по сроку');
+    expect(ledgerReasonLabel('auto_close')).toBe('Сделка закрыта автоматически по истечении срока подтверждения');
+  });
+
+  it('passes an admin-written reason through untouched', () => {
+    expect(ledgerReasonLabel('Договорились об отмене')).toBe('Договорились об отмене');
+  });
 });

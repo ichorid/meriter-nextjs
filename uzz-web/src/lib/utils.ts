@@ -64,13 +64,27 @@ export function bankHeadline(bank: { status: string; nominalRub: number | null; 
 export function bankHopsLabel(hopsLeft: number): string { return `Осталось переходов: ${Math.max(0, hopsLeft)}`; }
 
 export function meritsWord(n: number): string {
-  const value = Math.abs(Math.round(n));
+  const value = Math.abs(n);
+  // Russian fractions take the genitive singular: «0,5 заслуги», not «0,5 заслуга».
+  if (!Number.isInteger(value)) return 'заслуги';
   const mod10 = value % 10; const mod100 = value % 100;
   if (mod10 === 1 && mod100 !== 11) return 'заслуга';
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'заслуги';
   return 'заслуг';
 }
-export function meritsLabel(n: number): string { return `${n} ${meritsWord(n)}`; }
+export function meritsLabel(n: number): string { return `${n.toLocaleString('ru-RU')} ${meritsWord(n)}`; }
+
+const LEDGER_REASON_LABELS: Record<string, string> = {
+  expired: 'Заявка истекла по сроку',
+  auto_close: 'Сделка закрыта автоматически по истечении срока подтверждения',
+  emission: 'Эмиссия за доброе дело',
+  emission_holding: 'Эмиссия: ждёт привязку профиля',
+  auto_assign: 'Номинал назначен автоматически',
+};
+
+export function ledgerReasonLabel(reason: string): string {
+  return LEDGER_REASON_LABELS[reason] ?? reason;
+}
 export function feeSourceFromWallet(wallet: unknown): 'community' | 'global' | null { return wallet === 'community' || wallet === 'global' ? wallet : null; }
 export function feeWalletPhrase(source: 'community' | 'global' | null | undefined): string { return source === 'community' ? 'кошелёк сообщества' : source === 'global' ? 'общий кошелёк' : ''; }
 export function feeChargedCopy(source: 'community' | 'global' | null | undefined, amount = 1): string { return `Списано ${meritsLabel(amount)}: ${feeWalletPhrase(source) || 'кошелёк'}`; }
