@@ -20,3 +20,19 @@ describe('ListingCard request action', () => {
     expect(screen.getByRole('button', { name: 'Проверяем ваши права…' })).toBeDisabled();
   });
 });
+
+describe('ListingCard long content', () => {
+  it('clamps a long description so one card cannot stretch a catalog row', () => {
+    render(<ListingCard listing={{ ...listing, description: `Начало описания. ${'Очень '.repeat(400)}` }} own />);
+
+    const description = screen.getByText(/^Начало описания\./);
+    expect(description.className).toContain('line-clamp-4');
+  });
+
+  it('clamps the title and the availability line as well', () => {
+    render(<ListingCard listing={{ ...listing, title: 'Заголовок '.repeat(30) }} own />);
+
+    expect(screen.getByRole('heading', { level: 2 }).className).toContain('line-clamp-2');
+    expect(screen.getByText(/^Когда:/).className).toContain('line-clamp-2');
+  });
+});

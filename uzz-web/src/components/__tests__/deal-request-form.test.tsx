@@ -133,3 +133,38 @@ describe('CatalogPage request gating', () => {
     expect(screen.getByRole('button', { name: 'Оставить заявку' })).toBeEnabled();
   });
 });
+
+describe('DealRequestForm listing description', () => {
+  it('shows the full description that the catalog card had to clamp', () => {
+    render(
+      <DealRequestForm
+        title="Консультация"
+        description={`Начало описания. ${'Подробности. '.repeat(100)}`}
+        priceRub={500}
+        rights={[{ id: 'right-1', nominalRub: 900, status: 'active', hopsLeft: 3 }]}
+        pending={false}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    const description = screen.getByText(/^Начало описания\./);
+    expect(description).toBeVisible();
+    expect(description.className).not.toContain('line-clamp');
+  });
+
+  it('renders no description block when the listing has none', () => {
+    render(
+      <DealRequestForm
+        title="Консультация"
+        priceRub={500}
+        rights={[{ id: 'right-1', nominalRub: 900, status: 'active', hopsLeft: 3 }]}
+        pending={false}
+        onCancel={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText(/Подробности/)).not.toBeInTheDocument();
+  });
+});

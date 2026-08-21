@@ -2,17 +2,17 @@
 
 import { FormEvent, useMemo, useState } from 'react';
 import { DeadlinePicker } from '@/components/deadline-picker';
-import { Button, Field, Notice, inputClass } from '@/components/ui';
+import { Button, Field, Notice, inputClass, userContentClass } from '@/components/ui';
 import { DEAL_DEADLINE_NOT_FUTURE_MESSAGE, isInstantTooSoon } from '@/lib/local-datetime';
-import { tomorrowNominal, uzzErrorMessage } from '@/lib/utils';
+import { cn, tomorrowNominal, uzzErrorMessage } from '@/lib/utils';
 
 interface RightOption { id: string; nominalRub: number | null; status: string; hopsLeft: number; }
 
 export function DealRequestForm({
-  title, priceRub, rights, pending, error, demurrageRubPerDay, nominalFloorRub,
+  title, description, priceRub, rights, pending, error, demurrageRubPerDay, nominalFloorRub,
   feeSourceLabel, onCancel, onSubmit,
 }: {
-  title: string; priceRub: number; rights: RightOption[]; pending: boolean; error?: string | null;
+  title: string; description?: string; priceRub: number; rights: RightOption[]; pending: boolean; error?: string | null;
   demurrageRubPerDay?: number; nominalFloorRub?: number; feeSourceLabel?: string; onCancel: () => void;
   onSubmit: (data: { bankId: string; requestMessage: string; requestedDeadlineAt?: Date }) => void;
 }) {
@@ -38,7 +38,7 @@ export function DealRequestForm({
   }
 
   return <form noValidate onSubmit={submit} className="space-y-4" aria-label={`Заявка: ${title}`}>
-    <div><h2 className="text-xl font-black">{title}</h2><p className="mt-1 text-sm text-stitch-muted">Цена {priceRub.toLocaleString('ru-RU')} ₽. Банк перейдёт целиком, без сдачи, только после закрытия сделки.</p></div>
+    <div><h2 className={cn('text-xl font-black', userContentClass)}>{title}</h2><p className="mt-1 text-sm text-stitch-muted">Цена {priceRub.toLocaleString('ru-RU')} ₽. Банк перейдёт целиком, без сдачи, только после закрытия сделки.</p>{description ? <p className={cn('mt-3 max-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl bg-stitch-canvas/60 p-3 text-sm leading-6 text-stitch-text/90', userContentClass)}>{description}</p> : null}</div>
     {!available.length ? <Notice tone="warn">Нет активного банка с достаточным номиналом. Номинал продолжает уменьшаться ежедневно, в том числе во время сделки.</Notice> : null}
     <Field label="Банк на обмен" hint="Показываем только активные банки, которые покрывают цену."><select required value={bankId} onChange={(event) => setBankId(event.target.value)} className={inputClass}><option value="">Выберите банк</option>{available.map((right) => <option key={right.id} value={right.id}>до {right.nominalRub} ₽ · переходов {right.hopsLeft}</option>)}</select></Field>
     {selectedRight?.nominalRub != null ? settingsReady ? <div className="grid gap-2 rounded-xl bg-stitch-canvas/60 p-4 text-sm sm:grid-cols-2"><p>Сегодня банк: до {selectedRight.nominalRub.toLocaleString('ru-RU')} ₽</p><p>Завтра: до {nominalTomorrow?.toLocaleString('ru-RU')} ₽</p>{feeSourceLabel ? <p className="text-stitch-muted sm:col-span-2">Комиссия 1 заслуга: {feeSourceLabel}.</p> : null}</div> : <p className="rounded-xl bg-stitch-canvas/60 p-4 text-sm text-stitch-muted">Загружаем условия…</p> : null}
