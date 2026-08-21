@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { community, createHandlers, settingsState, rightsState } = vi.hoisted(() => ({
+const { community, createHandlers, settingsState, rightsState, myLotsState } = vi.hoisted(() => ({
   community: { communityId: 'community-1', loggedIn: true, sessionLoading: false },
   createHandlers: {
     onError: undefined as ((err: { message?: string }) => void) | undefined,
@@ -14,6 +14,12 @@ const { community, createHandlers, settingsState, rightsState } = vi.hoisted(() 
   },
   rightsState: {
     data: [] as Array<{ id: string; sourceTitle: string; status: string; hopsLeft: number; nominalRub: number | null }>,
+    isLoading: false,
+    isError: false,
+    refetch: vi.fn(),
+  },
+  myLotsState: {
+    data: [] as Array<Record<string, unknown>>,
     isLoading: false,
     isError: false,
     refetch: vi.fn(),
@@ -41,7 +47,7 @@ vi.mock('@/lib/trpc/client', () => ({
     banks: { listMine: { useQuery: () => rightsState } },
     settings: { get: { useQuery: () => settingsState } },
     lots: {
-      myLots: { useQuery: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }) },
+      myLots: { useQuery: () => myLotsState },
       create: {
         useMutation: (options?: { onError?: (err: { message?: string }) => void }) => {
           createHandlers.onError = options?.onError;
@@ -65,6 +71,7 @@ describe('HomePage listings and forecast', () => {
     settingsState.data = undefined;
     settingsState.isLoading = true;
     rightsState.data = [];
+    myLotsState.data = [];
     window.history.replaceState({}, '', '/?tab=lots');
   });
 
@@ -86,6 +93,26 @@ describe('HomePage listings and forecast', () => {
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(screen.queryByText('Название должно содержать от 3 до 120 символов')).not.toBeInTheDocument();
+  });
+
+  it('lets each listing card keep its own height so the action buttons stay reachable', async () => {
+    const user = userEvent.setup();
+    myLotsState.data = [
+      { id: 'lot-1', authorId: 'me', title: 'Короткая', description: 'Кратко', priceRub: 100, deliveryMode: 'online', locationText: '', durationText: '', availabilityText: '', active: true },
+      { id: 'lot-2', authorId: 'me', title: 'Длинная', description: 'Очень '.repeat(200), priceRub: 200, deliveryMode: 'online', locationText: '', durationText: '', availabilityText: '', active: true },
+    ];
+    render(<HomePage />);
+
+    await user.click(screen.getByRole('tab', { name: 'Мои услуги' }));
+
+    // Without items-start the grid stretches every row to its tallest cell and the
+    // buttons rendered under a short card slide beneath the next row.
+    const grid = screen.getAllByRole('list').find((node) => node.className.includes('md:grid-cols-2'));
+    expect(grid?.className).toContain('items-start');
+    for (const item of grid?.querySelectorAll(':scope > li') ?? []) {
+      expect(item.className).toContain('flex-col');
+    }
+    expect(screen.getAllByRole('button', { name: 'Редактировать' })).toHaveLength(2);
   });
 
   it('does not forecast tomorrow nominal from hard-coded 100/100 while settings load', () => {
