@@ -1,16 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppShell } from '@/components/app-shell';
 import { DealRequestForm } from '@/components/deal-request-form';
 import { Dialog, DialogTitle } from '@/components/dialog';
 import { ListingCard, type ListingView } from '@/components/listing-card';
+import { OnboardingStrip } from '@/components/onboarding-strip';
 import { Button, EmptyState, Notice, PageHeader, QueryFailed, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { listingsWord, uzzErrorMessage } from '@/lib/utils';
+
+const ONBOARDING_KEY = 'uzz_onboarding_dismissed';
 
 export default function CatalogPage() {
   const router = useRouter(); const utils = trpc.useUtils();
@@ -22,12 +25,23 @@ export default function CatalogPage() {
   const wallet = trpc.wallet.getBalance.useQuery({ communityId }, { enabled: enabled && loggedIn, retry: false });
   const settings = trpc.settings.get.useQuery({ communityId }, { enabled: enabled && loggedIn, retry: false });
   const link = trpc.identity.getLinkStatus.useQuery(undefined, { enabled: loggedIn, retry: false });
-  const [query, setQuery] = useState(''); const [onlineOnly, setOnlineOnly] = useState(false); const [affordableOnly, setAffordableOnly] = useState(false); const [selected, setSelected] = useState<ListingView | null>(null); const [error, setError] = useState<string | null>(null);
+  const [onboardingHidden, setOnboardingHidden] = useState(true); const [query, setQuery] = useState(''); const [onlineOnly, setOnlineOnly] = useState(false); const [affordableOnly, setAffordableOnly] = useState(false); const [selected, setSelected] = useState<ListingView | null>(null); const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+      setOnboardingHidden(window.localStorage.getItem(ONBOARDING_KEY) === '1');
+    } catch {
+      setOnboardingHidden(false);
+    }
+  }, []);
 
   const request = trpc.deals.request.useMutation({ onSuccess: (deal) => { void Promise.all([utils.deals.list.invalidate(), utils.banks.listMine.invalidate(), utils.wallet.getBalance.invalidate()]); const feeSource = deal.feeSourceCommunityId === communityId ? 'local' : 'global'; router.push(`/deals?requested=1&feeSource=${feeSource}`); }, onError: (err) => setError(uzzErrorMessage(err)) });
   const activeRights = rights.data?.filter((right) => right.status === 'active' && right.nominalRub != null) ?? [];
   const maxNominal = Math.max(0, ...activeRights.map((right) => right.nominalRub ?? 0));
   const visible = useMemo(() => { const needle = query.trim().toLocaleLowerCase('ru-RU'); return (listings.data ?? []).filter((item) => (!onlineOnly || item.deliveryMode !== 'offline') && (!affordableOnly || item.priceRub <= maxNominal) && (!needle || `${item.title} ${item.description} ${item.ownerName}`.toLocaleLowerCase('ru-RU').includes(needle))); }, [affordableOnly, listings.data, maxNominal, onlineOnly, query]);
+  const showOnboarding = !onboardingHidden && loggedIn && link.data?.linked === true
+    && !rights.isLoading && !rights.data?.length
+    && !listings.isLoading && !listings.data?.some((item) => item.authorId === userId);
   const strictGateBlocked = gate.isError && gate.error.message.includes('MIN_LISTINGS_REQUIRED');
   const identityGateBlocked = gate.isError && gate.error.message.includes('IDENTITY_LINK_REQUIRED');
   const membershipGateBlocked = gate.isError && gate.error.message.includes('COMMUNITY_MEMBERSHIP_REQUIRED');
@@ -71,6 +85,10 @@ export default function CatalogPage() {
         <Link href="/login?next=/catalog" className="text-stitch-accent-text underline">войдите по одноразовой ссылке</Link>.
       </Notice>
     ) : null}
+    {showOnboarding ? <OnboardingStrip onDismiss={() => {
+      try { window.localStorage.setItem(ONBOARDING_KEY, '1'); } catch { /* private mode: hide for this visit only */ }
+      setOnboardingHidden(true);
+    }} /> : null}
     {gate.data?.nudge ? <Notice tone="info"><strong>Добавьте ещё {gate.data.missingListingCount} {listingsWord(gate.data.missingListingCount)}.</strong> Это мягкая рекомендация: обмен уже доступен, но взаимность делает каталог полезнее. <Link href="/?tab=lots" className="underline">Добавить услугу</Link></Notice> : null}
     {strictGateBlocked ? <Notice tone="warn">Администратор включил обязательный режим: прежде чем заказывать, добавьте нужное количество активных предложений. <Link href="/?tab=lots" className="underline">Перейти к своим услугам</Link></Notice> : null}
     {membershipGateBlocked ? <Notice tone="warn" role="alert">{uzzErrorMessage(gate.error)}</Notice> : null}
