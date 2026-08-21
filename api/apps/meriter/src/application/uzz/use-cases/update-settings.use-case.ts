@@ -39,6 +39,16 @@ export class UpdateSettingsUseCase {
           updatedAt: now,
           version: base.version + 1,
         };
+        // Raising the floor alone must not strand the default below it: the admin
+        // edits those two values in separate forms, and the nominal form would
+        // otherwise keep failing validation on every later save.
+        if (
+          input.patch.nominalFloorRub != null &&
+          input.patch.defaultNominalRub == null &&
+          next.defaultNominalRub < next.nominalFloorRub
+        ) {
+          next.defaultNominalRub = next.nominalFloorRub;
+        }
         validateMergedSettings(next);
         await repositories.settings.upsert(next, existing ? existing.version : null);
         if (next.autoAssignNominal) {

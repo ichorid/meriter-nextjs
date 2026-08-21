@@ -63,6 +63,60 @@ describe('UZZ nominal settings', () => {
     ).rejects.toBeInstanceOf(UzzValidationError);
   });
 
+  it('lifts the default nominal when the floor is raised above it', async () => {
+    await updateSettings.execute({
+      commandId: 'settings-seed-floor',
+      communityId: 'community-1',
+      adminId: 'admin-1',
+      patch: { nominalFloorRub: 100, defaultNominalRub: 100 },
+    });
+
+    const next = await updateSettings.execute({
+      commandId: 'settings-raise-floor',
+      communityId: 'community-1',
+      adminId: 'admin-1',
+      patch: { nominalFloorRub: 500 },
+    });
+
+    expect(next).toMatchObject({ nominalFloorRub: 500, defaultNominalRub: 500 });
+  });
+
+  it('still rejects an explicit default nominal below an explicit floor', async () => {
+    await expect(
+      updateSettings.execute({
+        commandId: 'settings-explicit-conflict',
+        communityId: 'community-1',
+        adminId: 'admin-1',
+        patch: { autoAssignNominal: true, nominalFloorRub: 500, defaultNominalRub: 300 },
+      }),
+    ).rejects.toBeInstanceOf(UzzValidationError);
+  });
+
+  it('keeps the nominal assignment form working after the floor was raised', async () => {
+    await updateSettings.execute({
+      commandId: 'settings-autoassign-on',
+      communityId: 'community-1',
+      adminId: 'admin-1',
+      patch: { autoAssignNominal: true, defaultNominalRub: 100, nominalFloorRub: 100 },
+    });
+    // "Правила пилота" raises the floor without touching the nominal block.
+    await updateSettings.execute({
+      commandId: 'settings-floor-up',
+      communityId: 'community-1',
+      adminId: 'admin-1',
+      patch: { nominalFloorRub: 800 },
+    });
+    // "Сохранить назначение номинала" re-submits only its own two fields.
+    const saved = await updateSettings.execute({
+      commandId: 'settings-nominal-block',
+      communityId: 'community-1',
+      adminId: 'admin-1',
+      patch: { autoAssignNominal: true, defaultNominalRub: 800 },
+    });
+
+    expect(saved).toMatchObject({ nominalFloorRub: 800, defaultNominalRub: 800 });
+  });
+
   it('releases a stuck holding bank when the owner is already fully linked', async () => {
     const repositories = createMongooseUzzRepositories(connection, null);
     await repositories.identities.insert({
