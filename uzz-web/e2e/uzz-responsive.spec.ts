@@ -121,3 +121,68 @@ test('300-character unbroken listing fields stay in the 320px viewport', async (
   await assertHorizontallyInViewport(badges.nth(1), page);
   await assertNoPageOverflow(page);
 });
+
+async function mockMyListings(page: Page): Promise<void> {
+  const communityId = 'a1000001-0000-4000-8000-000000000001';
+  const base = {
+    authorId: 'buyer-1', ownerName: 'Вы', priceRub: 500, deliveryMode: 'online',
+    locationText: '', durationText: '', availabilityText: '', active: true,
+  };
+  await fulfillUzz(page, {
+    'auth.me': { result: { data: { json: { id: 'buyer-1', communityId, communityName: 'Пилот', isUzzAdmin: false } } } },
+    'identity.getLinkStatus': { result: { data: { json: { linked: true, email: 'buyer@example.com', telegramUsername: 'buyer', telegramUserId: '1001' } } } },
+    'community.getActive': { result: { data: { json: { id: communityId, name: 'Пилот' } } } },
+    'deals.list': { result: { data: { json: [] } } },
+    'banks.listMine': { result: { data: { json: [] } } },
+    'settings.get': { result: { data: { json: { demurrageRubPerDay: 100, nominalFloorRub: 100 } } } },
+    'deeds.list': { result: { data: { json: [] } } },
+    'lots.myLots': {
+      result: {
+        data: {
+          json: [
+            { ...base, id: 'lot-short', title: 'Короткая услуга', description: 'Кратко.' },
+            { ...base, id: 'lot-long', title: 'Длинная услуга', description: 'Подробное описание. '.repeat(60) },
+            { ...base, id: 'lot-third', title: 'Третья услуга', description: 'Ещё одна.' },
+          ],
+        },
+      },
+    },
+  });
+}
+
+test('listing actions stay clear of the next card in Мои услуги', async ({ page }) => {
+  await mockMyListings(page);
+  await page.goto('/?tab=lots');
+
+  const cards = page.getByRole('listitem').filter({ has: page.getByRole('button', { name: 'Редактировать' }) });
+  await expect(cards).toHaveCount(3);
+
+  // The short card's own buttons must sit inside its own cell, not underneath
+  // the neighbouring card that used to stretch the whole grid row.
+  for (let index = 0; index < 3; index += 1) {
+    const card = cards.nth(index);
+    const cardBox = await card.boundingBox();
+    const editBox = await card.getByRole('button', { name: 'Редактировать' }).boundingBox();
+    expect(cardBox).toBeTruthy();
+    expect(editBox).toBeTruthy();
+    expect(editBox!.y + editBox!.height).toBeLessThanOrEqual(cardBox!.y + cardBox!.height + 1);
+    await expect(card.getByRole('button', { name: 'Редактировать' })).toBeVisible();
+  }
+  await assertNoPageOverflow(page);
+});
+
+test('the inline listing editor opens fully inside its own card', async ({ page }) => {
+  await mockMyListings(page);
+  await page.goto('/?tab=lots');
+
+  // Editing swaps the buttons out for the form, so anchor on the card itself.
+  const firstCard = page.getByRole('listitem').filter({ hasText: 'Короткая услуга' }).first();
+  await firstCard.getByRole('button', { name: 'Редактировать' }).click();
+
+  const publish = firstCard.getByRole('button', { name: 'Сохранить изменения' });
+  await expect(publish).toBeVisible();
+  const cardBox = await firstCard.boundingBox();
+  const publishBox = await publish.boundingBox();
+  expect(publishBox!.y + publishBox!.height).toBeLessThanOrEqual(cardBox!.y + cardBox!.height + 1);
+  await assertNoPageOverflow(page);
+});

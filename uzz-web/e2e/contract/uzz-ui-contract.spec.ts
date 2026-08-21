@@ -6,7 +6,7 @@ test('email magic link is the only visible sign-in method', async ({ page }) => 
   await page.goto('/login');
 
   await expect(page.getByRole('heading', { name: 'Вход по email' })).toBeVisible();
-  await expect(page.getByText('Чтобы авторизоваться, введите ниже e-mail, вам придёт ссылка для входа')).toBeVisible();
+  await expect(page.getByText('Введите email — пришлём одноразовую ссылку для входа. Пароль не нужен.')).toBeVisible();
   await page.getByLabel('Email').fill('pilot@example.com');
   await page.getByRole('button', { name: 'Получить ссылку' }).click();
   await expect(page.getByText(/Письмо отправлено на pilot@example.com/)).toBeVisible();
