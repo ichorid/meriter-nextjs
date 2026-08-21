@@ -337,6 +337,59 @@ describe('UZZ persistence boundary', () => {
     ).resolves.toMatchObject({ insertedCount: 2 });
   });
 
+  it('reads deals accepted before contacts carried a telegram user id', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await connection.db.collection('uzz_deals').insertOne({
+      id: 'legacy-accepted-deal',
+      communityId: 'community-1',
+      buyerId: 'buyer-1',
+      sellerId: 'seller-1',
+      listingId: 'listing-1',
+      lotId: 'listing-1',
+      exchangeRightId: 'right-1',
+      bankId: 'right-1',
+      status: 'accepted',
+      requestMessage: 'Нужна помощь',
+      listingSnapshot: { title: 'Настрою отчёт', priceRub: 500, deliveryMode: 'online', locationText: '' },
+      requestedDeadlineAt: null,
+      agreedDeadlineAt: null,
+      acceptedNominalRub: 500,
+      dealAmountRub: null,
+      requestExpiresAt: new Date('2026-08-16T00:00:00.000Z'),
+      fulfillmentExpiresAt: new Date('2026-08-21T00:00:00.000Z'),
+      confirmationExpiresAt: null,
+      // The shape written before telegramUserId joined the contact snapshot.
+      buyerContact: { telegramUsername: 'buyer' },
+      sellerContact: { telegramUsername: 'seller' },
+      feeReserved: true,
+      feeSourceCommunityId: 'community-1',
+      adminResolutionReason: null,
+      requestedAt: NOW,
+      acceptedAt: NOW,
+      completedBySellerAt: null,
+      closedAt: null,
+      rejectedAt: null,
+      cancelledAt: null,
+      buyerThankedAt: null,
+      sellerThankedAt: null,
+      buyerThanksComment: null,
+      sellerThanksComment: null,
+      buyerThanksMerits: null,
+      sellerThanksMerits: null,
+      version: 1,
+      createdAt: NOW,
+      updatedAt: NOW,
+    });
+
+    const deal = await repositories.deals.findById('legacy-accepted-deal');
+
+    expect(deal?.snapshot()).toMatchObject({
+      status: 'accepted',
+      buyerContact: { telegramUserId: '', telegramUsername: 'buyer' },
+      sellerContact: { telegramUserId: '', telegramUsername: 'seller' },
+    });
+  });
+
   it('pages ledger entries by createdAt+id cursor without duplicates or gaps', async () => {
     const repositories = createMongooseUzzRepositories(connection, null);
     const entries = Array.from({ length: 75 }, (_, index) => ({
