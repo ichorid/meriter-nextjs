@@ -47,8 +47,9 @@ RUN mkdir -p /out && \
     # Copy public directory (favicon)
     cp -R api/apps/meriter/public /out/public && \
     mkdir -p /out/scripts && \
-    cp api/scripts/setup-webhook.js /out/scripts/setup-webhook.js && \
-    cp api/scripts/setup-bot-menu.js /out/scripts/setup-bot-menu.js && \
+    # All runtime helpers compose invokes are .js (migrations are .ts/.mjs and stay out).
+    # Copied as a set: a hand-listed subset drifts — configure-s3-cors.js was missing.
+    cp api/scripts/*.js /out/scripts/ && \
     # Demo seed TSV (webpack bundle does not include these; platformDemo.seedDemoWorld reads from here)
     mkdir -p /out/dist/apps/meriter/seed-data && \
     cp -R api/apps/meriter/seed-data/. /out/dist/apps/meriter/seed-data/
