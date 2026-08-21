@@ -13,6 +13,20 @@ import {
 } from './telegram-command-routing';
 import { normalizeTelegramHashtag } from '../../common/helpers/telegram-hashtag';
 
+/**
+ * Accusative form of «заслуга» for a counted amount: «1 заслугу», «2 заслуги»,
+ * «5 заслуг». Fractions take the genitive singular, like «0,5 заслуги».
+ */
+export function meritsAccusative(amount: number): string {
+  const value = Math.abs(amount);
+  if (!Number.isInteger(value)) return 'заслуги';
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'заслугу';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'заслуги';
+  return 'заслуг';
+}
+
 export type CommunityUsageRulesInput = {
   communityName: string;
   hashtags?: string[];
@@ -784,8 +798,8 @@ export const TG_MSG = {
       ? ` (номинация от ${recipient.nominator})`
       : '';
     return direction === 'up'
-      ? `${voterName} начислил ${credit} ${amount} заслуг${nominationSuffix}.`
-      : `${voterName} списал у ${debit} ${amount} заслуг${nominationSuffix}.`;
+      ? `${voterName} начислил ${credit} ${amount} ${meritsAccusative(amount)}${nominationSuffix}.`
+      : `${voterName} списал у ${debit} ${amount} ${meritsAccusative(amount)}${nominationSuffix}.`;
   },
   voteAmountWrongUser:
     'Эти кнопки — не для вас. Чтобы проголосовать, поставьте ❤️ или 👎 под постом.',

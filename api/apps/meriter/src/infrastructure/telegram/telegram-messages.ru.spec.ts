@@ -290,7 +290,11 @@ describe('telegram group welcome copy', () => {
 
   it('voteSuccess includes voter name', () => {
     expect(TG_MSG.voteSuccess('Иван', 5, 'up')).toBe('Иван начислил автору 5 заслуг.');
-    expect(TG_MSG.voteSuccess('Мария', 3, 'down')).toBe('Мария списал у автора 3 заслуг.');
+    expect(TG_MSG.voteSuccess('Мария', 3, 'down')).toBe('Мария списал у автора 3 заслуги.');
+    expect(TG_MSG.voteSuccess('Иван', 1, 'up')).toBe('Иван начислил автору 1 заслугу.');
+    expect(TG_MSG.voteSuccess('Иван', 2, 'up')).toBe('Иван начислил автору 2 заслуги.');
+    expect(TG_MSG.voteSuccess('Иван', 11, 'up')).toBe('Иван начислил автору 11 заслуг.');
+    expect(TG_MSG.voteSuccess('Иван', 21, 'up')).toBe('Иван начислил автору 21 заслугу.');
     expect(
       TG_MSG.voteSuccess('Иван', 5, 'up', { credit: 'Петру', debit: 'Петра' }),
     ).toBe('Иван начислил Петру 5 заслуг.');
