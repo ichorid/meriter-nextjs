@@ -78,7 +78,7 @@ elif [ -n "${COMMIT_SHA:-}" ]; then
   export VERSION_UZZ_WEB="sha-${COMMIT_SHA}"
   echo "[deploy] Using SHA-based image tags: ${VERSION_WEB}, ${VERSION_API}, ${VERSION_COMMUNITY_WEB}, ${VERSION_UZZ_WEB}"
 else
-  echo "[deploy] No COMMIT_SHA / USE_DEV_IMAGE_TAGS; using compose defaults (often :latest)"
+  echo "[deploy] No COMMIT_SHA / USE_DEV_IMAGE_TAGS; using the VERSION_* pins already in .env"
 fi
 
 TELEGRAM_PROFILE=""
@@ -111,6 +111,30 @@ if [ "$compose_up_ok" != "true" ]; then
   echo "[deploy] docker compose up -d failed after retries"
   deploy_mongo_diagnostics
   exit 1
+fi
+
+# Record the tags this deploy actually started. docker-compose.yml resolves every
+# image tag from VERSION_*, and those only exist in this script's shell; a later
+# manual `docker compose up -d` has none of them and would otherwise resolve to a
+# different image than the one running. Written after a successful `up -d` so .env
+# always describes what is live: had the deploy failed, the previous known-good
+# pins stay untouched.
+if [ -f .env ] && [ -f scripts/vps/upsert-env.sh ]; then
+  # shellcheck source=scripts/vps/upsert-env.sh
+  . scripts/vps/upsert-env.sh
+  _pinned=""
+  for _var in VERSION_WEB VERSION_API VERSION_COMMUNITY_WEB VERSION_UZZ_WEB; do
+    _val="${!_var:-}"
+    if [ -n "$_val" ]; then
+      upsert_env .env "$_var" "$_val"
+      _pinned="${_pinned} ${_var}=${_val}"
+    fi
+  done
+  if [ -n "$_pinned" ]; then
+    echo "[deploy] Pinned image tags in .env:${_pinned}"
+  else
+    echo "[deploy] WARNING: no VERSION_* resolved; .env pins left as-is"
+  fi
 fi
 
 echo "[deploy] Reloading Caddy (CSP / routing from Caddyfile)..."

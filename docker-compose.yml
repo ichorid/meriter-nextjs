@@ -81,7 +81,7 @@ services:
       - no-new-privileges:true
 
   api:
-    image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:-latest}
+    image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:?not set - run deploy.sh, or pin VERSION_API in .env for a manual compose run}
     container_name: meriter-api
     restart: unless-stopped
     env_file:
@@ -124,7 +124,7 @@ services:
       - /var/tmp
 
   bot-webhook-init:
-    image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:-latest}
+    image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:?not set - run deploy.sh, or pin VERSION_API in .env for a manual compose run}
     container_name: meriter-bot-webhook-init
     restart: "no"
     env_file:
@@ -148,7 +148,7 @@ services:
       - no-new-privileges:true
 
   s3-cors-init:
-    image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:-latest}
+    image: ghcr.io/ichorid/meriter-nextjs-api:${VERSION_API:?not set - run deploy.sh, or pin VERSION_API in .env for a manual compose run}
     container_name: meriter-s3-cors-init
     restart: "no"
     env_file:
@@ -173,7 +173,7 @@ services:
       - no-new-privileges:true
 
   web:
-    image: ghcr.io/ichorid/meriter-nextjs-web:${VERSION_WEB:-latest}
+    image: ghcr.io/ichorid/meriter-nextjs-web:${VERSION_WEB:?not set - run deploy.sh, or pin VERSION_WEB in .env for a manual compose run}
     container_name: meriter-web
     restart: unless-stopped
     env_file:
@@ -214,7 +214,7 @@ services:
       - /var/tmp
 
   community-web:
-    image: ghcr.io/ichorid/meriter-nextjs-community-web:${VERSION_COMMUNITY_WEB:-latest}
+    image: ghcr.io/ichorid/meriter-nextjs-community-web:${VERSION_COMMUNITY_WEB:?not set - run deploy.sh, or pin VERSION_COMMUNITY_WEB in .env for a manual compose run}
     container_name: meriter-community-web
     restart: unless-stopped
     env_file:
@@ -250,7 +250,7 @@ services:
       - /var/tmp
 
   uzz-web:
-    image: ghcr.io/ichorid/meriter-nextjs-uzz-web:${VERSION_UZZ_WEB:-latest}
+    image: ghcr.io/ichorid/meriter-nextjs-uzz-web:${VERSION_UZZ_WEB:?not set - run deploy.sh, or pin VERSION_UZZ_WEB in .env for a manual compose run}
     container_name: meriter-uzz-web
     restart: unless-stopped
     env_file:

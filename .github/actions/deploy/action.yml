@@ -60,10 +60,12 @@ runs:
         ssh "deploy@${VPS_HOST}" "mkdir -p /opt/meriter/scripts/docker /opt/meriter/scripts/vps/profiles"
         scp scripts/docker/mongo-docker-entry.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/docker/mongo-docker-entry.sh"
         scp scripts/vps/apply-telegram-profile.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/apply-telegram-profile.sh"
+        # deploy.sh sources this to pin the resolved image tags into .env.
+        scp scripts/vps/upsert-env.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/upsert-env.sh"
         scp scripts/vps/profiles/dev.env "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/profiles/dev.env"
         scp scripts/vps/profiles/prod.env "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/profiles/prod.env"
         scp scripts/vps/mongodb-backup.sh "deploy@${VPS_HOST}:/opt/meriter/scripts/vps/mongodb-backup.sh"
-        ssh "deploy@${VPS_HOST}" "sed -i 's/\\r\$//' /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh /opt/meriter/scripts/vps/apply-telegram-profile.sh /opt/meriter/scripts/vps/mongodb-backup.sh && chmod +x /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh /opt/meriter/scripts/vps/apply-telegram-profile.sh /opt/meriter/scripts/vps/mongodb-backup.sh"
+        ssh "deploy@${VPS_HOST}" "sed -i 's/\\r\$//' /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh /opt/meriter/scripts/vps/apply-telegram-profile.sh /opt/meriter/scripts/vps/upsert-env.sh /opt/meriter/scripts/vps/mongodb-backup.sh && chmod +x /opt/meriter/deploy.sh /opt/meriter/scripts/docker/mongo-docker-entry.sh /opt/meriter/scripts/vps/apply-telegram-profile.sh /opt/meriter/scripts/vps/mongodb-backup.sh"
         ssh "deploy@${VPS_HOST}" "rm -rf /opt/meriter/mongodb-init"
         scp -r mongodb-init "deploy@${VPS_HOST}:/opt/meriter/"
     - name: Run remote deploy script
