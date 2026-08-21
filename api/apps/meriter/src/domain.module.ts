@@ -194,6 +194,7 @@ import { ApplyDemurrageUseCase } from './application/uzz/use-cases/apply-demurra
 import { ExpireDealsUseCase } from './application/uzz/use-cases/expire-deals.use-case';
 import { SendDealThanksUseCase } from './application/uzz/use-cases/send-deal-thanks.use-case';
 import { EmitExchangeRightUseCase } from './application/uzz/use-cases/emit-exchange-right.use-case';
+import { ListDeedsUseCase } from './application/uzz/use-cases/list-deeds.use-case';
 import {
   ListPilotCommunitiesUseCase,
   SetPilotCommunityUseCase,
@@ -601,6 +602,19 @@ import { EventBus } from './domain/events/event-bus';
         new SetPilotCommunityUseCase(platform, authorization),
     },
     {
+      provide: ListDeedsUseCase,
+      inject: [
+        UZZ_UNIT_OF_WORK, UZZ_PLATFORM_PORT, EmitExchangeRightUseCase,
+        UzzAuthorizationService,
+      ],
+      useFactory: (
+        unitOfWork: UzzUnitOfWork,
+        platform: UzzPlatformPort,
+        emitRight: EmitExchangeRightUseCase,
+        authorization: UzzAuthorizationService,
+      ) => new ListDeedsUseCase(unitOfWork, platform, emitRight, authorization),
+    },
+    {
       provide: UzzApplicationFacade,
       inject: [
         UZZ_UNIT_OF_WORK, UzzAuthorizationService, UZZ_PLATFORM_PORT,
@@ -610,7 +624,7 @@ import { EventBus } from './domain/events/event-bus';
         AcceptDealUseCase, RejectDealUseCase, CancelDealUseCase,
         MarkDealCompletedUseCase, CloseDealUseCase, AdminResolveDealUseCase,
         SendDealThanksUseCase, StartTelegramLinkUseCase,
-        ListPilotCommunitiesUseCase, SetPilotCommunityUseCase,
+        ListPilotCommunitiesUseCase, SetPilotCommunityUseCase, ListDeedsUseCase,
       ],
       useFactory: (
         unitOfWork, authorization, platform, emitRight,
@@ -618,7 +632,7 @@ import { EventBus } from './domain/events/event-bus';
         createListing, updateListing, listCatalog, checkPurchaseGate,
         requestDeal, acceptDeal, rejectDeal, cancelDeal, markDealCompleted,
         closeDeal, adminResolveDeal, sendDealThanks, startTelegramLink,
-        listPilotCommunities, setPilotCommunity,
+        listPilotCommunities, setPilotCommunity, listDeeds,
       ) =>
         new UzzApplicationFacade(
           unitOfWork, authorization, platform, emitRight, GLOBAL_COMMUNITY_ID,
@@ -628,6 +642,7 @@ import { EventBus } from './domain/events/event-bus';
             createListing, updateListing, listCatalog, checkPurchaseGate,
             requestDeal, acceptDeal, rejectDeal, cancelDeal, markDealCompleted,
             closeDeal, adminResolveDeal, sendDealThanks, startTelegramLink,
+            listDeeds,
           },
         ),
     },
@@ -734,6 +749,7 @@ import { EventBus } from './domain/events/event-bus';
     ExpireDealsUseCase,
     SendDealThanksUseCase,
     EmitExchangeRightUseCase,
+    ListDeedsUseCase,
     ListPilotCommunitiesUseCase,
     SetPilotCommunityUseCase,
     UzzAuthorizationService,

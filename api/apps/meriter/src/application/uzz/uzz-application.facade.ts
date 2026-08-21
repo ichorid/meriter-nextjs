@@ -1,7 +1,6 @@
 import { UzzUnitOfWork } from './ports/uzz-unit-of-work';
 import { UzzPlatformPort } from './ports/uzz-platform.port';
 import { UzzAuthorizationService } from './uzz-authorization.service';
-import { defaultSettings } from './uzz-settings';
 import { isIdentityReady } from './policies/uzz-access-policy';
 import { resolveIdentityContext } from './use-cases/deal-use-case.helpers';
 import { releaseHoldingRightsAfterIdentityReady, releaseReadyHoldingRightsInCommunity } from './use-cases/identity-link.helpers';
@@ -22,6 +21,7 @@ import { CloseDealUseCase } from './use-cases/close-deal.use-case';
 import { AdminResolveDealUseCase } from './use-cases/admin-resolve-deal.use-case';
 import { SendDealThanksUseCase } from './use-cases/send-deal-thanks.use-case';
 import { StartTelegramLinkUseCase } from './use-cases/start-telegram-link.use-case';
+import { ListDeedsUseCase } from './use-cases/list-deeds.use-case';
 import {
   ListPilotCommunitiesUseCase,
   SetPilotCommunityUseCase,
@@ -46,6 +46,7 @@ export interface UzzFacadeCommands {
   adminResolveDeal: AdminResolveDealUseCase;
   sendDealThanks: SendDealThanksUseCase;
   startTelegramLink: StartTelegramLinkUseCase;
+  listDeeds: ListDeedsUseCase;
 }
 
 export class UzzApplicationFacade {
@@ -278,27 +279,8 @@ export class UzzApplicationFacade {
     }));
   }
 
-  async listDeeds(userId: string, communityId: string) {
-    await this.authorization.assertCommunityParticipant(communityId, userId);
-    const userIds = await this.authorization.resolveUserIds(userId);
-    const [publications, settings, rights] = await Promise.all([
-      this.platform.listDeedPublications(communityId, userIds),
-      this.unitOfWork.run(async (repositories) =>
-        await repositories.settings.findByCommunityId(communityId)
-          ?? defaultSettings(communityId, new Date())),
-      this.unitOfWork.run((repositories) => repositories.rights.listByOwners(communityId, userIds)),
-    ]);
-    const byPublication = new Map(rights.map((right) => [
-      right.snapshot().sourcePublicationId, right.snapshot(),
-    ]));
-    return publications.map((publication) => ({
-      publicationId: publication.id,
-      title: publication.title,
-      score: publication.score,
-      emissionThreshold: settings.emissionThreshold,
-      progress: Math.min(1, publication.score / Math.max(1, settings.emissionThreshold)),
-      bankStatus: byPublication.get(publication.id)?.status,
-    }));
+  listDeeds(userId: string, communityId: string) {
+    return this.commands.listDeeds.execute({ userId, communityId });
   }
 
   maybeEmitRight(publicationId: string) {

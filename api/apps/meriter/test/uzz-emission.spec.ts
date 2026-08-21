@@ -3,6 +3,7 @@ import { Connection, createConnection } from 'mongoose';
 import { Clock } from '../src/application/uzz/ports/clock.port';
 import { UzzPlatformPort } from '../src/application/uzz/ports/uzz-platform.port';
 import { EmitExchangeRightUseCase } from '../src/application/uzz/use-cases/emit-exchange-right.use-case';
+import { ListDeedsUseCase } from '../src/application/uzz/use-cases/list-deeds.use-case';
 import { createMongooseUzzRepositories, initializeUzzModels } from '../src/infrastructure/uzz/persistence/mongoose-uzz-repositories';
 import { MongooseUzzUnitOfWork } from '../src/infrastructure/uzz/persistence/mongoose-uzz-unit-of-work';
 import { createMongoMemoryReplSetWithRetry } from './mongo-memory-shared';
@@ -14,14 +15,18 @@ describe('UZZ exchange-right emission', () => {
   jest.setTimeout(60_000);
   let replSet: MongoMemoryReplSet; let connection: Connection; let useCase: EmitExchangeRightUseCase;
   let publication = { id: 'publication-1', communityId: 'community-1', authorId: 'author-1', title: 'Доброе дело', score: 10, deleted: false, postType: 'basic' };
+  let deedPublications: Array<{ id: string; title: string; score: number }> = [];
+  let listDeeds: ListDeedsUseCase;
 
   beforeAll(async () => {
     replSet = await createMongoMemoryReplSetWithRetry(); connection = await createConnection(replSet.getUri()).asPromise(); await initializeUzzModels(connection);
   });
   beforeEach(async () => {
     publication = { id: 'publication-1', communityId: 'community-1', authorId: 'author-1', title: 'Доброе дело', score: 10, deleted: false, postType: 'basic' };
-    const platform: UzzPlatformPort = { configuredCommunityId: async () => 'community-1', setSelectedCommunityId: async () => undefined, async getPublication(id) { return id === publication.id ? publication : null; }, async listTelegramCommunities() { return []; }, async getCommunity() { return null; }, async getDisplayNames() { return new Map(); }, async listDeedPublications() { return []; } };
+    deedPublications = [];
+    const platform: UzzPlatformPort = { configuredCommunityId: async () => 'community-1', setSelectedCommunityId: async () => undefined, async getPublication(id) { return id === publication.id ? publication : null; }, async listTelegramCommunities() { return []; }, async getCommunity() { return null; }, async getDisplayNames() { return new Map(); }, async listDeedPublications() { return deedPublications; } };
     const clock: Clock = { now: () => new Date(NOW) }; useCase = new EmitExchangeRightUseCase(new MongooseUzzUnitOfWork(connection), platform, clock);
+    listDeeds = new ListDeedsUseCase(new MongooseUzzUnitOfWork(connection), platform, useCase, { assertCommunityParticipant: async () => undefined, resolveUserIds: async (userId: string) => [userId] });
   });
   afterEach(async () => { if (!connection.db) return; const collections = await connection.db.listCollections().toArray(); await Promise.all(collections.map(({ name }) => connection.db!.collection(name).deleteMany({}))); });
   afterAll(async () => { await connection.close(); unregisterReplSet(replSet); await replSet.stop(); });
@@ -76,6 +81,40 @@ describe('UZZ exchange-right emission', () => {
       status: 'awaiting_nominal',
       ownerId: 'author-1',
     });
+  });
+
+  it('emits a bank for a deed that is already over the threshold when the list is opened', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({ id: 'identity-1', canonicalUserId: 'author-1', normalizedEmail: 'author@example.com', telegramUserId: '1001', telegramUsername: 'author', createdAt: NOW, updatedAt: NOW, version: 0 });
+    deedPublications = [{ id: publication.id, title: publication.title, score: publication.score }];
+
+    const deeds = await listDeeds.execute({ userId: 'author-1', communityId: 'community-1' });
+
+    expect(deeds).toEqual([expect.objectContaining({
+      publicationId: publication.id, score: 10, emissionThreshold: 10, bankStatus: 'awaiting_nominal',
+    })]);
+    expect(await connection.db!.collection('uzz_rights').countDocuments({ sourcePublicationId: publication.id })).toBe(1);
+  });
+
+  it('does not emit a second bank when the deed list is opened again', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({ id: 'identity-1', canonicalUserId: 'author-1', normalizedEmail: 'author@example.com', telegramUserId: '1001', telegramUsername: 'author', createdAt: NOW, updatedAt: NOW, version: 0 });
+    deedPublications = [{ id: publication.id, title: publication.title, score: publication.score }];
+
+    await listDeeds.execute({ userId: 'author-1', communityId: 'community-1' });
+    await listDeeds.execute({ userId: 'author-1', communityId: 'community-1' });
+
+    expect(await connection.db!.collection('uzz_rights').countDocuments({ sourcePublicationId: publication.id })).toBe(1);
+  });
+
+  it('leaves a below-threshold deed without a bank and reports its progress', async () => {
+    publication.score = 4;
+    deedPublications = [{ id: publication.id, title: publication.title, score: 4 }];
+
+    const deeds = await listDeeds.execute({ userId: 'author-1', communityId: 'community-1' });
+
+    expect(deeds).toEqual([expect.objectContaining({ bankStatus: undefined, progress: 0.4 })]);
+    expect(await connection.db!.collection('uzz_rights').countDocuments({})).toBe(0);
   });
 
   it('auto-assigns the default nominal when the setting is on and the profile is linked', async () => {
