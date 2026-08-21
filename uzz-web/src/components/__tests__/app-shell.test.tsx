@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { community, logoutHandlers, pathname, linkStatus, configState } = vi.hoisted(() => ({
+const { community, logoutHandlers, pathname, linkStatus, configState, dealsState } = vi.hoisted(() => ({
   community: {
     communityId: 'community-1',
     isUzzAdmin: false,
@@ -17,6 +17,7 @@ const { community, logoutHandlers, pathname, linkStatus, configState } = vi.hois
   pathname: { value: '/profile' },
   linkStatus: { linked: true, email: 'a@b.c' as string | null },
   configState: { fakeDataMode: true },
+  dealsState: { data: [] as Array<{ status: string; myRole: 'buyer' | 'seller' | 'other' }> },
 }));
 
 vi.mock('next/navigation', () => ({
@@ -37,7 +38,7 @@ vi.mock('@/lib/trpc/client', () => ({
       startTelegramLink: { useMutation: () => ({ isPending: false, mutate: vi.fn(), data: undefined }) },
     },
     deals: {
-      list: { useQuery: () => ({ data: [], isLoading: false, isError: false }) },
+      list: { useQuery: () => ({ data: dealsState.data, isLoading: false, isError: false }) },
     },
     auth: {
       me: { useQuery: () => ({ data: { displayName: 'Анна', communityName: 'Пилот' }, isLoading: false, isError: false, refetch: vi.fn() }) },
@@ -81,8 +82,43 @@ describe('AppShell admin discovery', () => {
 
     const mobileNav = screen.getAllByRole('navigation').at(-1);
     expect(mobileNav).toBeTruthy();
-    expect(mobileNav).toHaveTextContent('Настройки платформы');
-    expect(mobileNav!.querySelector('a[href="/admin"]')).toHaveAttribute('href', '/admin');
+    const adminLink = mobileNav!.querySelector('a[href="/admin"]');
+    expect(adminLink).toHaveAttribute('href', '/admin');
+    // Six columns cannot fit the full name on 390px without pushing that one
+    // item taller than its neighbours, so the visible label is shortened while
+    // the accessible name stays complete.
+    expect(adminLink).toHaveAccessibleName('Настройки платформы');
+    expect(adminLink).toHaveTextContent('Настройки');
+    expect(adminLink).not.toHaveTextContent('Настройки платформы');
+  });
+});
+
+describe('AppShell deals counter', () => {
+  beforeEach(() => {
+    community.isUzzAdmin = false;
+    pathname.value = '/catalog';
+    configState.fakeDataMode = true;
+    linkStatus.linked = true;
+    dealsState.data = [];
+  });
+
+  it('keeps the desktop counter beside the label instead of on top of it', () => {
+    dealsState.data = [{ status: 'requested', myRole: 'seller' }];
+    render(<AppShell><p>контент</p></AppShell>);
+
+    const desktopNav = screen.getAllByRole('navigation')[0];
+    const badge = desktopNav.querySelector('a[href="/deals"] span:last-of-type');
+    expect(badge).toHaveTextContent('1');
+    expect(badge!.className).not.toContain('absolute');
+  });
+
+  it('renders no counter when nothing needs an answer', () => {
+    dealsState.data = [{ status: 'accepted', myRole: 'buyer' }];
+    render(<AppShell><p>контент</p></AppShell>);
+
+    const desktopNav = screen.getAllByRole('navigation')[0];
+    expect(desktopNav.querySelector('a[href="/deals"]')).toHaveTextContent('Сделки');
+    expect(desktopNav.querySelector('a[href="/deals"]')).not.toHaveTextContent('1');
   });
 });
 

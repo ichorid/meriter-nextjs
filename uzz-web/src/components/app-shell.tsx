@@ -51,15 +51,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       : busy ? <main className="mx-auto max-w-6xl px-4 py-8" aria-busy><div className="h-40 animate-pulse rounded-2xl bg-stitch-surface" /></main>
       : <main className="mx-auto max-w-6xl px-4 py-8 pb-28 md:pb-10">{children}</main>}
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-stitch-border bg-stitch-sidebar/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden" aria-label="Мобильные разделы">
-      <div className={cn('mx-auto grid max-w-2xl', isUzzAdmin ? 'grid-cols-6' : 'grid-cols-5')}>{NAV.map((item) => <NavLink key={item.href} {...item} pathname={pathname} badge={item.href === '/deals' ? actionCount : 0} stacked />)}{isUzzAdmin ? <NavLink href="/admin" label="Настройки платформы" icon={Shield} pathname={pathname} stacked /> : null}</div>
+      <div className={cn('mx-auto grid max-w-2xl', isUzzAdmin ? 'grid-cols-6' : 'grid-cols-5')}>{NAV.map((item) => <NavLink key={item.href} {...item} pathname={pathname} badge={item.href === '/deals' ? actionCount : 0} stacked />)}{isUzzAdmin ? <NavLink href="/admin" label="Настройки платформы" shortLabel="Настройки" icon={Shield} pathname={pathname} stacked /> : null}</div>
     </nav>
   </div>;
 }
 
-function NavLink({ href, label, icon: Icon, pathname, badge = 0, stacked = false }: { href: string; label: string; icon?: LucideIcon; pathname: string; badge?: number; stacked?: boolean }) {
+function NavLink({ href, label, shortLabel, icon: Icon, pathname, badge = 0, stacked = false }: { href: string; label: string; shortLabel?: string; icon?: LucideIcon; pathname: string; badge?: number; stacked?: boolean }) {
   const active = href === '/' ? pathname === '/' || pathname === '/lots' || pathname === '/deeds' : pathname === href || pathname.startsWith(`${href}/`);
-  return <Link href={href} aria-current={active ? 'page' : undefined} className={cn('relative rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent', stacked && 'flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-[11px]', active ? 'bg-stitch-accent/15 text-stitch-text' : 'text-stitch-muted hover:bg-stitch-surface hover:text-stitch-text')}>
-    {stacked && Icon ? <Icon aria-hidden className="h-5 w-5" strokeWidth={2} /> : null}{label}{badge > 0 ? <span className="absolute right-1 top-1 min-w-4 rounded-full bg-stitch-accent-solid px-1 text-center text-[10px] font-bold text-white">{badge}</span> : null}
+  return <Link href={href} aria-label={stacked && shortLabel ? label : undefined} aria-current={active ? 'page' : undefined} className={cn('relative rounded-xl px-3 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stitch-accent', stacked && 'flex min-h-14 flex-col items-center justify-center gap-0.5 px-1 text-center text-[11px] leading-tight', active ? 'bg-stitch-accent/15 text-stitch-text' : 'text-stitch-muted hover:bg-stitch-surface hover:text-stitch-text')}>
+    {stacked && Icon ? <Icon aria-hidden className="h-5 w-5 shrink-0" strokeWidth={2} /> : null}
+    <span className={cn(stacked && 'w-full truncate')}>{stacked && shortLabel ? shortLabel : label}</span>
+    {badge > 0 ? (
+      stacked
+        ? <span className="absolute right-1 top-1 min-w-4 rounded-full bg-stitch-accent-solid px-1 text-center text-[10px] font-bold text-white">{badge}</span>
+        : <span className="ml-1.5 inline-flex min-w-4 items-center justify-center rounded-full bg-stitch-accent-solid px-1 align-middle text-[10px] font-bold text-white">{badge}</span>
+    ) : null}
   </Link>;
 }
 
