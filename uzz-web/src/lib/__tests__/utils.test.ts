@@ -7,7 +7,7 @@ import {
   UZZ_UNKNOWN_ERROR_MESSAGE,
   uzzErrorMessage,
 } from '@/lib/uzz-error-messages';
-import { ledgerReasonLabel, meritsLabel, meritsWord, navigatePendingExternalWindow, safeAppPath, walletSourceLabel } from '@/lib/utils';
+import { ledgerReasonLabel, listingsWord, meritsLabel, meritsWord, navigatePendingExternalWindow, safeAppPath, walletSourceLabel } from '@/lib/utils';
 
 function walkTsFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -138,4 +138,15 @@ describe('ledgerReasonLabel', () => {
   it('passes an admin-written reason through untouched', () => {
     expect(ledgerReasonLabel('Договорились об отмене')).toBe('Договорились об отмене');
   });
+});
+
+describe('listingsWord', () => {
+  it.each([
+    [1, 'предложение'],
+    [2, 'предложения'],
+    [4, 'предложения'],
+    [5, 'предложений'],
+    [11, 'предложений'],
+    [21, 'предложение'],
+  ])('declines %d as %s', (value, expected) => expect(listingsWord(value)).toBe(expected));
 });

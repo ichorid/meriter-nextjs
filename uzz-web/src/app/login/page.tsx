@@ -52,7 +52,7 @@ export default function LoginPage() {
           <p className="text-xs font-bold uppercase tracking-widest text-stitch-accent-text">Без пароля</p>
           <h1 className="mt-2 text-2xl font-black">Вход по email</h1>
           <p className="mt-2 text-sm leading-6 text-stitch-muted">
-            Чтобы авторизоваться, введите ниже e-mail, вам придёт ссылка для входа
+            Введите email — пришлём одноразовую ссылку для входа. Пароль не нужен.
           </p>
         </div>
         {sent ? (

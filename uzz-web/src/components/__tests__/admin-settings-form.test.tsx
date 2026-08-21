@@ -11,8 +11,8 @@ describe('AdminSettingsForm', () => {
     const user = userEvent.setup();
     const onSave = vi.fn();
     render(<AdminSettingsForm settings={settings} pending={false} onSave={onSave} />);
-    await user.clear(screen.getByLabelText('Нижний номинал, ₽'));
-    await user.type(screen.getByLabelText('Нижний номинал, ₽'), '200');
+    await user.clear(screen.getByLabelText(/^Нижний номинал/));
+    await user.type(screen.getByLabelText(/^Нижний номинал/), '200');
     await user.click(screen.getByRole('button', { name: 'Сохранить настройки' }));
 
     expect(onSave).not.toHaveBeenCalled();
@@ -43,7 +43,7 @@ describe('AdminSettingsForm', () => {
 
     const demurrage = screen.getByLabelText(/^Таяние/);
     expect(demurrage).toHaveAttribute('step', '1');
-    expect(screen.getByLabelText('Нижний номинал, ₽')).toHaveAttribute('step', '1');
+    expect(screen.getByLabelText(/^Нижний номинал/)).toHaveAttribute('step', '1');
 
     await user.clear(demurrage);
     await user.type(demurrage, '12.5');

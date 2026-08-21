@@ -10,7 +10,7 @@ import { ListingCard, type ListingView } from '@/components/listing-card';
 import { Button, EmptyState, Notice, PageHeader, QueryFailed, Skeleton, inputClass } from '@/components/ui';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { uzzErrorMessage } from '@/lib/utils';
+import { listingsWord, uzzErrorMessage } from '@/lib/utils';
 
 export default function CatalogPage() {
   const router = useRouter(); const utils = trpc.useUtils();
@@ -71,7 +71,7 @@ export default function CatalogPage() {
         <Link href="/login?next=/catalog" className="text-stitch-accent-text underline">войдите по одноразовой ссылке</Link>.
       </Notice>
     ) : null}
-    {gate.data?.nudge ? <Notice tone="info"><strong>Добавьте ещё {gate.data.missingListingCount} предлож.</strong> Это мягкая рекомендация: обмен уже доступен, но взаимность делает каталог полезнее. <Link href="/?tab=lots" className="underline">Добавить услугу</Link></Notice> : null}
+    {gate.data?.nudge ? <Notice tone="info"><strong>Добавьте ещё {gate.data.missingListingCount} {listingsWord(gate.data.missingListingCount)}.</strong> Это мягкая рекомендация: обмен уже доступен, но взаимность делает каталог полезнее. <Link href="/?tab=lots" className="underline">Добавить услугу</Link></Notice> : null}
     {strictGateBlocked ? <Notice tone="warn">Администратор включил обязательный режим: прежде чем заказывать, добавьте нужное количество активных предложений. <Link href="/?tab=lots" className="underline">Перейти к своим услугам</Link></Notice> : null}
     {membershipGateBlocked ? <Notice tone="warn" role="alert">{uzzErrorMessage(gate.error)}</Notice> : null}
     {gate.isError && !strictGateBlocked && !identityGateBlocked && !membershipGateBlocked && loggedIn ? <Notice tone="warn" role="alert">{uzzErrorMessage(gate.error)} <button className="underline" onClick={() => void gate.refetch()}>Повторить</button></Notice> : null}
