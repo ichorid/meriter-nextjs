@@ -1,21 +1,24 @@
 ---
-description: Local development commands for Linux/macOS. Include when need to run, build, or test the project.
+description: Canonical local-dev commands (Linux/WSL). Native Windows is not supported. Include when need to run, build, or test the project.
 globs: []
 alwaysApply: false
 ---
 
-# Local Development Commands (Linux/macOS)
+# Local Development Commands (Linux/WSL)
 
-## MongoDB (без Docker)
+Native Windows is not supported. Do not run PowerShell, `.ps1`, `$env:`, `Start-Process`, or `mongod --dbpath C:\data\db`.
 
-Передача заслуг и другие операции с **транзакциями** требуют **replica set** (одного члена достаточно). В `/etc/mongod.conf` (или вашем конфиге) добавьте:
+## MongoDB
 
-```yaml
-replication:
-  replSetName: rs0
+Обычный путь — Docker: контейнер `meriter-mongo-dev` на `:27017` (replica set, транзакции работают).
+
+```bash
+docker ps --filter name=meriter-mongo-dev
 ```
 
-Перезапустите `mongod`, затем один раз: `mongosh --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'` (подставьте хост/порт, если отличаются). В `api/.env`: `MONGO_URL=mongodb://127.0.0.1:27017/meriter?replicaSet=rs0`.
+В `api/.env`: `MONGO_URL=mongodb://127.0.0.1:27017/meriter` (добавьте `?replicaSet=rs0`, если драйвер требует имя набора).
+
+Без Docker: `mongod` на Linux с `replication.replSetName: rs0`, затем `mongosh --eval 'rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]})'`.
 
 Подробнее: `docs/LOCAL_DEVELOPMENT_SETUP.md`.
 
@@ -84,17 +87,25 @@ lsof -ti:8002 | xargs kill -9
 ## Codegraph (Dependency Graph)
 
 ```bash
-# Install (once, requires Node >= 22.6)
+# Install (once, requires Node >= 22.6). Use nvm npm — NOT Windows npm from /mnt/c.
+export PATH="$HOME/.nvm/versions/node/v22.11.0/bin:$PATH"
+hash -r
+command -v npm   # must be ~/.nvm/.../bin/npm
 npm install -g @optave/codegraph
 
 # Initialize graph (first time or after clean checkout)
-codegraph build && codegraph embed && codegraph co-change --analyze
+codegraph build && codegraph embed --model jina-code && codegraph co-change --analyze
 
 # Keep graph fresh during development (run in a terminal tab)
 codegraph watch
 ```
 
-Codegraph MCP server is configured in `.cursor/mcp.json`. Graph data lives in `.codegraph/` (gitignored). Config: `.codegraphrc.json`.
+Codegraph MCP is `.cursor/mcp.json` (`codegraph mcp`, workspace cwd — no machine-specific path). Graph data lives in `.codegraph/` (gitignored). Config: `.codegraphrc.json`. After installing the CLI, reload MCP in Cursor if the `codegraph` server is not listed.
+
+**WSL footguns**
+
+- Windows PATH is appended (`/mnt/c/Program Files/nodejs`, `/mnt/c/Users/.../AppData/Roaming/npm`). If `which npm` / `which pnpm` / `which codegraph` starts with `/mnt/c`, prepend nvm: `export PATH="$HOME/.nvm/versions/node/v22.11.0/bin:$PATH"`.
+- `codegraph embed` may `npm install` `@huggingface/transformers` at the **nvm global** root and prune `npm`/`pnpm`. If that happens: `nvm install 22.11.0` then `corepack enable && corepack prepare pnpm@10.26.2 --activate && npm install -g @optave/codegraph`. Structural commands (`where`, `context`, `fn-impact`) do not need embeddings.
 
 ## Full Setup Guide
 See `docs/LOCAL_DEVELOPMENT_SETUP.md` for detailed instructions.

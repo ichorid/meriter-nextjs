@@ -2,8 +2,7 @@
   "mcpServers": {
     "codegraph": {
       "command": "codegraph",
-      "args": ["mcp"],
-      "cwd": "/home/vader/MY_SRC/meriter-nextjs"
+      "args": ["mcp"]
     }
   }
 }

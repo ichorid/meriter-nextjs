@@ -11,17 +11,13 @@
 
 ## Local stack (agent self-service)
 
-Из корня репозитория — см. [LOCAL_DEVELOPMENT_SETUP.md](../LOCAL_DEVELOPMENT_SETUP.md).
+Из корня репозитория. Среда — Linux/WSL (@local-dev-linux.mdc). Mongo — Docker `meriter-mongo-dev` на `:27017`. Native Windows не поддерживается.
 
-Кратко:
-
-```powershell
-# MongoDB (Windows — manual mongod if service fails)
-mongod --dbpath C:\data\db
-
-# Repo root
+```bash
+docker ps --filter name=meriter-mongo-dev
 pnpm install
-pnpm dev   # или отдельно api + web
+pnpm dev:api   # :8002
+pnpm dev:web   # :8001
 ```
 
 API health: `http://localhost:8002/api/v1/health` (или аналог из setup doc).
@@ -93,7 +89,7 @@ Session 02 и 00.9 требуют оба.
 
 From repo root after code changes:
 
-```powershell
+```bash
 pnpm lint
 pnpm lint:fix
 pnpm test

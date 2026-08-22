@@ -12,7 +12,7 @@ Under the hood (root `package.json`) both scripts cover **four** packages — `@
 - `pnpm lint` — api runs eslint **with `--fix`** (may modify files); web, community-web and uzz-web are check-only.
 - `pnpm lint:fix` — same api step, then `lint:fix` (eslint `--fix`) for the three web apps. Only those steps differ from `pnpm lint`.
 
-Dev setup and per-OS commands: @local-dev-linux.mdc (canonical) or `docs/LOCAL_DEVELOPMENT_SETUP.md`.
+Dev setup: @local-dev-linux.mdc (Linux/WSL only). Native Windows is not supported. Never run `git reset --hard` / `git clean -fd` unless the human explicitly asked to wipe the tree.
 
 ### API tests and mongodb-memory-server
 

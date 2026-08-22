@@ -69,8 +69,7 @@ meriter-nextjs/
 | `ARCHITECTURE.md` (корень) | Human | Краткая карта репо → ссылка на `architecture.mdc` |
 | `frontend.mdc` | Pattern | React/Next.js паттерны, компоненты, хуки |
 | `backend.mdc` | Pattern | NestJS/tRPC паттерны, сервисы, роутеры |
-| `local-dev-win.mdc` | Manual | Команды для Windows |
-| `local-dev-linux.mdc` | Manual | Команды для Linux/macOS |
+| `local-dev-linux.mdc` | Manual | Локальная разработка (Linux/WSL). Native Windows не поддерживается |
 | `appversioning.mdc` | Always | Semantic versioning при изменениях |
 | `buildcheck.mdc` | Always | Запуск тестов и билда после задач |
 | `kiss.mdc` | Always | KISS/DRY/SOLID, проверка логики, no `any` |

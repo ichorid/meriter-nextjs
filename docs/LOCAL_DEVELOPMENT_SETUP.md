@@ -1,883 +1,109 @@
-\# Инструкция по локальному запуску проекта Meriter
+# Локальный запуск Meriter (Linux/WSL)
 
+Каноническая среда — **Linux/WSL**. Native Windows не поддерживается. Команды для агента: `.cursor/rules/local-dev-linux.mdc`.
 
+Не выполнять `git restore` / `git clean -fd` / `git reset --hard`, если человек явно не попросил снести рабочее дерево.
 
-\## Быстрый старт (для AI ассистента)
+## Быстрый старт
 
+```bash
+# Mongo (Docker)
+docker ps --filter name=meriter-mongo-dev
+# если контейнера нет — поднять compose из документации / привычного compose-файла проекта
 
-
-Эта инструкция содержит все необходимые шаги для запуска проекта с нуля, включая решение типичных проблем.
-
-
-
----
-
-
-
-\## Шаг 1: Подготовка репозитория
-
-
-
-\### 1.1. Отмена незакомиченных изменений
-
-```powershell
-
-git restore .
-
-git clean -fd
-
-```
-
-
-
-\### 1.2. Синхронизация с origin/dev
-
-```powershell
-
-git fetch origin dev
-
-git reset --hard origin/dev
-
-```
-
-
-
-\### 1.3. Очистка кэша Git
-
-```powershell
-
-git gc --prune=now
-
-```
-
-
-
-\*\*Проверка:\*\*
-
-```powershell
-
-git status
-
-\# Должно показать: "Your branch is up to date with 'origin/dev'"
-
-\# И не должно быть незакомиченных изменений
-
-```
-
-
-
----
-
-
-
-\## Шаг 2: Установка зависимостей
-
-
-
-```powershell
-
+# зависимости
 pnpm install
 
+# env (если ещё нет)
+cp -n api/env.example api/.env
+cp -n web/env.example web/.env
 ```
 
-
-
-\*\*Важно:\*\* Проект использует `pnpm`, не `npm` или `yarn`.
-
-
-
-\*\*Проверка:\*\* Команда должна завершиться без критических ошибок (предупреждения о peer dependencies допустимы).
-
-
-
----
-
-
-
-\## Шаг 3: Настройка переменных окружения
-
-
-
-\### 3.1. Создание .env файлов из примеров
-
-
-
-```powershell
-
-\# API
-
-Copy-Item api\\env.example api\\.env
-
-
-
-\# Web
-
-Copy-Item web\\env.example web\\.env
-
-```
-
-
-
-\### 3.2. Настройка API (.env в папке api)
-
-
-
-\*\*Критически важные переменные:\*\*
-
-
+В `api/.env`:
 
 ```env
-
-\# Обязательно для работы Next.js SSR
-
 DOMAIN=localhost
-
-
-
-\# Режим Test User Fake Data (для локальной разработки)
-
-FAKE\_DATA\_MODE=true
-
-TEST\_AUTH\_MODE=true
-
-
-
-\# MongoDB (для локальной разработки без Docker; replica set обязателен для транзакций — см. шаг 3.2.1)
-
-MONGO\_URL=mongodb://127.0.0.1:27017/meriter?replicaSet=rs0
-
-
-
-\# JWT Secret (можно оставить дефолтный для dev)
-
-JWT\_SECRET=your-super-secret-jwt-key-change-this-in-production
-
+FAKE_DATA_MODE=true
+TEST_AUTH_MODE=true
+MONGO_URL=mongodb://127.0.0.1:27017/meriter
 ```
 
+Для фич с многодокументными транзакциями (передача заслуг) Mongo должна быть **replica set**. Compose-контейнер `meriter-mongo-dev` это уже обеспечивает. Если `MONGO_URL` указывает на standalone — будет ошибка `Transaction numbers are only allowed on a replica set member or mongos`; тогда в URL добавьте `?replicaSet=rs0` (или как назван набор в контейнере).
 
-
-\*\*Проверка:\*\*
-
-```powershell
-
-Get-Content api\\.env | Select-String -Pattern "^DOMAIN|^FAKE\_DATA\_MODE|^TEST\_AUTH\_MODE"
-
-\# Должно показать:
-
-\# DOMAIN=localhost
-
-\# FAKE\_DATA\_MODE=true
-
-\# TEST\_AUTH\_MODE=true
-
-```
-
-
-
-\### 3.2.1. MongoDB replica set (Windows, служба MongoDB, без Docker)
-
-
-
-Много-документные транзакции (в т.ч. **передача заслуг**) на **standalone** MongoDB не работают — будет ошибка `Transaction numbers are only allowed on a replica set member or mongos`. Нужен одноузловой replica set `rs0`.
-
-
-
-\*\*Автоматически (рекомендуется):\*\* откройте PowerShell \*\*от имени администратора\*\* и выполните из корня репозитория:
-
-
-
-```powershell
-
-Set-Location путь\\к\\meriter-nextjs
-
-.\\scripts\\windows\\enable-mongodb-replica-set.ps1
-
-```
-
-
-
-Либо одной командой с запросом UAC:
-
-
-
-```powershell
-
-Start-Process powershell -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File ".\\scripts\\windows\\enable-mongodb-replica-set.ps1"' -Verb RunAs -Wait
-
-```
-
-
-
-Скрипт добавляет в `mongod.cfg` блок `replication.replSetName: rs0`, перезапускает службу `MongoDB`, выполняет `replSetInitiate` (через Node и драйвер `mongodb` из пакета `api`). Перед правкой создаётся резервная копия `mongod.cfg.bak`.
-
-
-
-\*\*Если replica set уже прописан в конфиге,\*\* но набор ещё не инициализирован:
-
-
-
-```powershell
-
-cd путь\\к\\meriter-nextjs
-
-pnpm --filter @meriter/api exec node scripts/windows/mongo-rs-initiate.cjs
-
-```
-
-
-
-\*\*Linux / macOS (кратко):\*\* в конфиге `mongod` добавьте `replication.replSetName: rs0`, перезапустите демон, затем `mongosh` / `rs.initiate({ _id: \"rs0\", members: [{ _id: 0, host: \"127.0.0.1:27017\" }] })` (хост замените при необходимости). Строка `MONGO\_URL` — как в примере выше с `?replicaSet=rs0`.
-
-
-
-\### 3.3. Настройка Web (.env в папке web)
-
-
-
-\*\*Критически важные переменные:\*\*
-
-
+В `web/.env`:
 
 ```env
-
-\# Обязательно для работы Next.js SSR
-
 DOMAIN=localhost
-
-
-
-\# Режим Test User Fake Data
-
-NEXT\_PUBLIC\_FAKE\_DATA\_MODE=true
-
-NEXT\_PUBLIC\_TEST\_AUTH\_MODE=true
-
-
-
-\# ВАЖНО: НЕ устанавливайте NEXT\_PUBLIC\_API\_URL!
-
-\# Оставьте его закомментированным, чтобы использовалось проксирование через Next.js
-
-\# NEXT\_PUBLIC\_API\_URL=http://localhost:8002
-
+NEXT_PUBLIC_FAKE_DATA_MODE=true
+NEXT_PUBLIC_TEST_AUTH_MODE=true
+# NEXT_PUBLIC_API_URL не задавать — иначе tRPC ходит мимо Next-прокси
 ```
 
+Два терминала из корня репозитория:
 
-
-\*\*Почему не нужно NEXT\_PUBLIC\_API\_URL:\*\*
-
-\- Если установлен `NEXT\_PUBLIC\_API\_URL`, tRPC клиент будет обращаться напрямую к API
-
-\- Это вызывает проблемы с CORS и "Failed to fetch" ошибки
-
-\- Без этой переменной Next.js автоматически проксирует `/trpc/\*` и `/api/\*` на `http://localhost:8002`
-
-
-
-\*\*Проверка:\*\*
-
-```powershell
-
-Get-Content web\\.env | Select-String -Pattern "^DOMAIN|^NEXT\_PUBLIC\_FAKE\_DATA\_MODE|^NEXT\_PUBLIC\_TEST\_AUTH\_MODE|^NEXT\_PUBLIC\_API\_URL"
-
-\# Должно показать:
-
-\# DOMAIN=localhost
-
-\# NEXT\_PUBLIC\_FAKE\_DATA\_MODE=true
-
-\# NEXT\_PUBLIC\_TEST\_AUTH\_MODE=true
-
-\# NEXT\_PUBLIC\_API\_URL должно быть закомментировано (# в начале строки)
-
+```bash
+DOMAIN=localhost pnpm dev:api    # :8002
+DOMAIN=localhost NEXT_PUBLIC_FAKE_DATA_MODE=true NEXT_PUBLIC_TEST_AUTH_MODE=true pnpm dev:web   # :8001
 ```
 
+Проверки:
 
-
----
-
-
-
-\## Шаг 4: Запуск серверов
-
-
-
-\### 4.1. Запуск API сервера (NestJS)
-
-
-
-\*\*Терминал 1:\*\*
-
-```powershell
-
-cd api
-
-$env:DOMAIN="localhost"
-
-pnpm dev
-
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8002/api/v1/config   # 200
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8001               # 200
+curl -s -o /dev/null -w "%{http_code}\n" http://localhost:8001/trpc/users.getMe
+# 401 — нормально без сессии, значит прокси жив
 ```
 
+Приложение: `http://localhost:8001`.
 
+## Порты
 
-\*\*Ожидаемый вывод:\*\*
+- **8001** — Next.js
+- **8002** — NestJS API
+- **8080** — Caddy (опционально)
+- **27017** — Mongo (`meriter-mongo-dev`)
 
+Без Caddy фронт ходит на `:8001`, Next проксирует `/trpc/*` и `/api/*` на `:8002`.
+
+## Типичные проблемы
+
+**Failed to fetch (tRPC):** в `web/.env` задан `NEXT_PUBLIC_API_URL`. Закомментировать и перезапустить web.
+
+**DOMAIN environment variable is required:** добавить `DOMAIN=localhost` в `api/.env` и `web/.env`.
+
+**Порты заняты:**
+
+```bash
+lsof -ti:8001 | xargs -r kill
+lsof -ti:8002 | xargs -r kill
 ```
 
-Application is running on: http://localhost:8002
+**Mongo недоступна:**
 
-✅ tRPC middleware mounted at /trpc
-
-CORS enabled for development
-
+```bash
+docker ps --filter name=meriter-mongo-dev
+# или: ss -ltn | grep 27017
 ```
 
+## Fake auth
 
+При `FAKE_DATA_MODE=true` и `TEST_AUTH_MODE=true` на localhost: кнопки Fake user / Fake superadmin на `/meriter/login`. Только для разработки.
 
-\*\*Проверка:\*\*
-
-```powershell
-
-\# В другом терминале
-
-try { 
-
-&nbsp;   $response = Invoke-WebRequest -Uri "http://localhost:8002/api/v1/config" -TimeoutSec 3 -UseBasicParsing
-
-&nbsp;   Write-Host "API Status: $($response.StatusCode)" 
-
-} catch { 
-
-&nbsp;   Write-Host "API Error: $($\_.Exception.Message)" 
-
-}
-
-\# Должно показать: API Status: 200
-
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:8002/api/v1/auth/fake
+# 201
 ```
 
+## Чеклист
 
+- [ ] `pnpm install`
+- [ ] `api/.env` и `web/.env` с `DOMAIN=localhost` и fake-флагами
+- [ ] `NEXT_PUBLIC_API_URL` не задан
+- [ ] `meriter-mongo-dev` слушает `:27017`
+- [ ] API `:8002` и web `:8001` отвечают
+- [ ] `/trpc/users.getMe` через `:8001` даёт 401 без сессии
 
-\### 4.2. Запуск Web сервера (Next.js)
+## Codegraph
 
-
-
-\*\*Терминал 2:\*\*
-
-```powershell
-
-cd web
-
-$env:DOMAIN="localhost"
-
-$env:NEXT\_PUBLIC\_FAKE\_DATA\_MODE="true"
-
-$env:NEXT\_PUBLIC\_TEST\_AUTH\_MODE="true"
-
-pnpm dev
-
-```
-
-
-
-\*\*Ожидаемый вывод:\*\*
-
-```
-
-▲ Next.js 16.1.1
-
-\- Local:        http://localhost:8001
-
-```
-
-
-
-\*\*Проверка:\*\*
-
-```powershell
-
-\# В другом терминале
-
-try { 
-
-&nbsp;   $response = Invoke-WebRequest -Uri "http://localhost:8001" -TimeoutSec 3 -UseBasicParsing
-
-&nbsp;   Write-Host "Web Status: $($response.StatusCode)" 
-
-} catch { 
-
-&nbsp;   Write-Host "Web Error: $($\_.Exception.Message)" 
-
-}
-
-\# Должно показать: Web Status: 200
-
-```
-
-
-
-\*\*Проверка проксирования tRPC:\*\*
-
-```powershell
-
-try { 
-
-&nbsp;   $response = Invoke-WebRequest -Uri "http://localhost:8001/trpc/users.getMe" -TimeoutSec 3 -UseBasicParsing
-
-&nbsp;   Write-Host "tRPC Status: $($response.StatusCode)" 
-
-} catch { 
-
-&nbsp;   if ($\_.Exception.Response.StatusCode -eq 401) {
-
-&nbsp;       Write-Host "tRPC работает! (401 - нормально для неавторизованных запросов)"
-
-&nbsp;   } else {
-
-&nbsp;       Write-Host "tRPC Error: $($\_.Exception.Message)"
-
-&nbsp;   }
-
-}
-
-\# Должно показать: tRPC работает! (401 - нормально для неавторизованных запросов)
-
-```
-
-
-
----
-
-
-
-\## Шаг 5: Открытие приложения
-
-
-
-```powershell
-
-Start-Process "http://localhost:8001"
-
-```
-
-
-
----
-
-
-
-\## Типичные проблемы и решения
-
-
-
-\### Проблема: "Failed to fetch" при tRPC запросах
-
-
-
-\*\*Причина:\*\* Установлен `NEXT\_PUBLIC\_API\_URL` в `web/.env`
-
-
-
-\*\*Решение:\*\*
-
-```powershell
-
-\# Закомментировать NEXT\_PUBLIC\_API\_URL в web/.env
-
-(Get-Content web\\.env) -replace '^NEXT\_PUBLIC\_API\_URL=', '# NEXT\_PUBLIC\_API\_URL=' | Set-Content web\\.env
-
-
-
-\# Перезапустить web сервер
-
-```
-
-
-
-\### Проблема: Next.js не запускается, ошибка "DOMAIN environment variable is required"
-
-
-
-\*\*Причина:\*\* Отсутствует `DOMAIN=localhost` в `.env` файлах
-
-
-
-\*\*Решение:\*\*
-
-```powershell
-
-\# Добавить в api/.env
-
-Add-Content api\\.env "`nDOMAIN=localhost"
-
-
-
-\# Добавить в web/.env
-
-Add-Content web\\.env "`nDOMAIN=localhost"
-
-
-
-\# Перезапустить серверы
-
-```
-
-
-
-\### Проблема: Сервер не отвечает на запросы
-
-
-
-\*\*Проверка портов:\*\*
-
-```powershell
-
-netstat -ano | findstr ":8001 :8002"
-
-\# Должно показать LISTENING для обоих портов
-
-```
-
-
-
-\*\*Если порты заняты:\*\*
-
-```powershell
-
-\# Найти процесс на порту 8001
-
-$port8001 = Get-NetTCPConnection -LocalPort 8001 -ErrorAction SilentlyContinue
-
-if ($port8001) { Stop-Process -Id $port8001.OwningProcess -Force }
-
-
-
-\# Найти процесс на порту 8002
-
-$port8002 = Get-NetTCPConnection -LocalPort 8002 -ErrorAction SilentlyContinue
-
-if ($port8002) { Stop-Process -Id $port8002.OwningProcess -Force }
-
-```
-
-
-
-\### Проблема: MongoDB не подключен
-
-
-
-\*\*Проверка:\*\*
-
-```powershell
-
-\# Проверить, запущен ли MongoDB
-
-Get-Service -Name MongoDB -ErrorAction SilentlyContinue
-
-
-
-\# Или проверить подключение
-
-try {
-
-&nbsp;   $mongo = New-Object System.Net.Sockets.TcpClient("127.0.0.1", 27017)
-
-&nbsp;   $mongo.Close()
-
-&nbsp;   Write-Host "MongoDB доступен"
-
-} catch {
-
-&nbsp;   Write-Host "MongoDB недоступен. Запустите службу MongoDB (Windows: Get-Service MongoDB)"
-
-}
-
-```
-
-
-
----
-
-
-
-\## Режим Test User Fake Data
-
-
-
-При включенных `FAKE\_DATA\_MODE=true` и `TEST\_AUTH\_MODE=true`:
-
-
-
-1\. \*\*Аутентификация:\*\* Используйте эндпоинт `/api/v1/auth/fake` для входа
-
-2\. \*\*Данные:\*\* Генерируются автоматически, не требуют реального Telegram аккаунта
-
-3\. \*\*Безопасность:\*\* Работает только в режиме разработки, никогда не использовать в production
-
-
-
-\*\*Проверка работы fake auth:\*\*
-
-```powershell
-
-try {
-
-&nbsp;   $response = Invoke-WebRequest -Uri "http://localhost:8002/api/v1/auth/fake" -Method POST -TimeoutSec 3 -UseBasicParsing
-
-&nbsp;   Write-Host "Fake Auth Status: $($response.StatusCode)"
-
-} catch {
-
-&nbsp;   Write-Host "Fake Auth Error: $($\_.Exception.Message)"
-
-}
-
-\# Должно показать: Fake Auth Status: 201
-
-```
-
-
-
----
-
-
-
-\## Структура портов
-
-
-
-\- \*\*8001\*\* - Next.js Web сервер (фронтенд)
-
-\- \*\*8002\*\* - NestJS API сервер (бэкенд)
-
-\- \*\*8080\*\* - Caddy reverse proxy (опционально, если установлен)
-
-
-
-\*\*Без Caddy:\*\*
-
-\- Фронтенд: `http://localhost:8001`
-
-\- API: `http://localhost:8002`
-
-\- Next.js проксирует `/trpc/\*` и `/api/\*` на API сервер
-
-
-
-\*\*С Caddy:\*\*
-
-\- Единая точка входа: `http://localhost:8080`
-
-\- Caddy проксирует `/api/\*` и `/trpc/\*` на порт 8002
-
-\- Всё остальное на порт 8001
-
-
-
----
-
-
-
-\## Чеклист перед началом работы
-
-
-
-\- \[ ] Репозиторий синхронизирован с `origin/dev`
-
-\- \[ ] Нет незакомиченных изменений
-
-\- \[ ] Зависимости установлены (`pnpm install`)
-
-\- \[ ] `api/.env` создан и содержит `DOMAIN=localhost`, `FAKE\_DATA\_MODE=true`, `TEST\_AUTH\_MODE=true`
-
-\- \[ ] `web/.env` создан и содержит `DOMAIN=localhost`, `NEXT\_PUBLIC\_FAKE\_DATA\_MODE=true`, `NEXT\_PUBLIC\_TEST\_AUTH\_MODE=true`
-
-\- \[ ] `NEXT\_PUBLIC\_API\_URL` закомментирован в `web/.env`
-
-\- \[ ] MongoDB запущена; для транзакций — replica set `rs0` и `MONGO_URL` с `replicaSet=rs0` (см. §3.2.1)
-
-\- \[ ] API сервер запущен на порту 8002 и отвечает
-
-\- \[ ] Web сервер запущен на порту 8001 и отвечает
-
-\- \[ ] tRPC запросы проходят через прокси (проверка через `/trpc/users.getMe`)
-\- \[ ] Codegraph установлен (`npm i -g @optave/codegraph`) и граф собран (`codegraph build && codegraph embed && codegraph co-change --analyze`)
-
-
-
----
-
-
-
-\## Дополнительные команды
-
-
-
-\### Остановка всех серверов
-
-```powershell
-
-Get-Process | Where-Object {$\_.ProcessName -eq "node" -and (Get-NetTCPConnection -OwningProcess $\_.Id -ErrorAction SilentlyContinue | Where-Object {$\_.LocalPort -in @(8001,8002)})} | Stop-Process -Force
-
-```
-
-
-
-\### Проверка статуса всех сервисов
-
-```powershell
-
-Write-Host "=== Статус серверов ===" -ForegroundColor Green
-
-
-
-\# API
-
-try { 
-
-&nbsp;   $r = Invoke-WebRequest -Uri "http://localhost:8002/api/v1/config" -TimeoutSec 2 -UseBasicParsing
-
-&nbsp;   Write-Host "API (8002): Работает ($($r.StatusCode))" -ForegroundColor Green
-
-} catch { 
-
-&nbsp;   Write-Host "API (8002): Не работает" -ForegroundColor Red
-
-}
-
-
-
-\# Web
-
-try { 
-
-&nbsp;   $r = Invoke-WebRequest -Uri "http://localhost:8001" -TimeoutSec 2 -UseBasicParsing
-
-&nbsp;   Write-Host "Web (8001): Работает ($($r.StatusCode))" -ForegroundColor Green
-
-} catch { 
-
-&nbsp;   Write-Host "Web (8001): Не работает" -ForegroundColor Red
-
-}
-
-
-
-\# tRPC
-
-try { 
-
-&nbsp;   $r = Invoke-WebRequest -Uri "http://localhost:8001/trpc/users.getMe" -TimeoutSec 2 -UseBasicParsing
-
-&nbsp;   Write-Host "tRPC: Работает ($($r.StatusCode))" -ForegroundColor Green
-
-} catch { 
-
-&nbsp;   if ($\_.Exception.Response.StatusCode -eq 401) {
-
-&nbsp;       Write-Host "tRPC: Работает (401 - нормально)" -ForegroundColor Green
-
-&nbsp;   } else {
-
-&nbsp;       Write-Host "tRPC: Не работает" -ForegroundColor Red
-
-&nbsp;   }
-
-}
-
-```
-
-
-
----
-
-
-
-\## Примечания для Windows
-
-
-
-\- Используйте PowerShell, а не CMD
-
-\- Учитывайте кодировку при работе с .env файлами (используйте UTF-8)
-
-\- Для переменных окружения в PowerShell используйте `$env:VARIABLE\_NAME="value"`
-
-\- Команды `\&\&` не работают в PowerShell, используйте `;` или отдельные команды
-
-
-
----
-
-
-
-\## Быстрая команда для полного перезапуска
-
-
-
-```powershell
-
-\# Остановка всех серверов
-
-Get-Process | Where-Object {$\_.ProcessName -eq "node" -and (Get-NetTCPConnection -OwningProcess $\_.Id -ErrorAction SilentlyContinue | Where-Object {$\_.LocalPort -in @(8001,8002)})} | Stop-Process -Force
-
-
-
-\# Синхронизация
-
-git fetch origin dev
-
-git reset --hard origin/dev
-
-
-
-\# Очистка
-
-git restore .
-
-git clean -fd
-
-
-
-\# Установка зависимостей
-
-pnpm install
-
-
-
-\# Запуск API (в отдельном терминале)
-
-cd api; $env:DOMAIN="localhost"; pnpm dev
-
-
-
-\# Запуск Web (в отдельном терминале)
-
-cd web; $env:DOMAIN="localhost"; $env:NEXT\_PUBLIC\_FAKE\_DATA\_MODE="true"; $env:NEXT\_PUBLIC\_TEST\_AUTH\_MODE="true"; pnpm dev
-
-```
-
-
-
----
-
-
-
-\## Демо-данные и вайп платформы
-
-
-
-Суперадмин: в интерфейсе «О платформе» → настройки платформы — операции **вайп** и **демо-сид**. Подробности и порядок действий: [DEMO\_SEED.md](./DEMO_SEED.md).
-
-
-
----
-
-
-
-\*\*Последнее обновление:\*\* 2024 (на основе опыта устранения проблем с запуском)
-
-
-
-
-
+Опционально, машина локальная (`.codegraph/` в gitignore). Установка и сборка: `.cursor/rules/local-dev-linux.mdc`. CLI должен быть nvm/Linux, не `/mnt/c/...`.
