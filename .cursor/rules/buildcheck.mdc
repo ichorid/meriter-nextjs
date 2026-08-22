@@ -1,31 +1,35 @@
 ---
-description: After finishing a plan, run lint, lint:fix, tests, and build; on structural/pattern changes update .cursor/rules. Clean AI slop.
+description: Required verification before calling work done — fast check per change, full check before release; clean AI slop first.
 alwaysApply: true
 ---
 
-## After each step completion
+# Verification
 
-Before marking a step as done, briefly state what existing behavior could break and why you believe it won't.
+## After each step
 
-## After finishing all todos for a plan
+Before marking a step done, briefly state what existing behavior could break and why you believe it won't.
 
-1. **Slop clean** — before running tests, clean up:
-   - Remove all `console.log` / `console.debug` (keep `console.error` / `console.warn` only if intentional)
-   - Remove commented-out code blocks
-   - Remove TODO/FIXME/HACK comments that don't reference a task ID
-   - Remove unused imports (let lint catch these too)
-   - Remove redundant comments that just restate the code (e.g. `// increment counter` above `counter++`)
-   - Remove any `// AI-generated`, `// Added by Cursor`, or similar markers
-   - Check for overengineered abstractions: if a wrapper/helper is used only once and adds no clarity, inline it
+## Before finishing a plan
 
-2. **Run lint, tests, and build** to check for errors (from repository root; align with `pnpm.mdc`):
-   ```
-   pnpm lint
-   pnpm lint:fix
-   pnpm test
-   pnpm build
-   ```
+**1. Slop clean.** Remove `console.log`/`console.debug` (keep intentional `console.error`/`warn`), commented-out code, TODO/FIXME without a task id, unused imports, comments that restate the code, `// AI-generated`-style markers, and single-use wrappers that add no clarity.
 
-3. **If there are errors**, iterate until you fix them.
+**2. Run the fast check** — required for every code change. Lint and test **the packages you touched** (`@meriter/api`, `@meriter/web`, `@meriter/community-web`, `@meriter/uzz-web`, `@meriter/shared-types`):
 
-4. **If this change introduces a new module, changes project structure, or changes an established pattern** — update the relevant `.cursor/rules/*.mdc` file.
+```
+pnpm --filter @meriter/<package> lint
+pnpm --filter @meriter/<package> test
+```
+
+**3. Run the full check** before a release, and for any high-risk change (auth, permissions, wallet/merit math, migrations, cross-package contracts):
+
+```
+pnpm lint && pnpm test && pnpm build
+```
+
+`pnpm test` covers api + web only; the extra apps have smoke tests: `pnpm test:community-web`, `pnpm test:uzz-web`. `pnpm build` builds all four apps and is the **type gate** — there is no separate typecheck script.
+
+**4. Iterate until green.** Report the command you actually ran and its result. Never claim a change is verified without running something. If verification is impossible, say so explicitly and why.
+
+**5. If the change adds a module, alters project structure, or changes an established pattern**, update the relevant `.cursor/rules/*.mdc`.
+
+Command details and the `lint` vs `lint:fix` difference: @pnpm.mdc.

@@ -1,3 +1,12 @@
+---
+description: YouGile integration (A2) — webhook on task done → auto-post from the assignee, `yougile.*` tRPC, settings tab. Apply when working on YouGile connect/configure, webhook ingress, or `yougile_integrations`.
+globs:
+  - "**/yougile*.ts"
+  - "**/yougile/**"
+  - "**/*Yougile*.tsx"
+alwaysApply: false
+---
+
 # YouGile Integration (variant A2)
 
 > One-way integration: YouGile task moved to the configured "done" column → auto-post in a Meriter community on behalf of the task assignee. Merits come from community votes on the post (no direct emission).

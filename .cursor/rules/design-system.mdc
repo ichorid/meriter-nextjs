@@ -1,61 +1,56 @@
 ---
-description: Meriter Obsidian Nocturne — layered dark UI, light secondary, Manrope, copy policy
-alwaysApply: true
+description: Meriter Obsidian Nocturne — layered dark UI, light secondary, Manrope, layout and copy policy. Include when working on web UI.
+globs:
+  - web/**/*.tsx
+  - web/**/*.css
+  - web/tailwind.config.ts
+alwaysApply: false
 ---
 
 # Meriter Design System: Obsidian Nocturne
 
-## 1. Overview & creative north star
+## Creative north star
 
 **The Obsidian Architect** — reject flat grey SaaS default. Build on **layered obsidian** depth so the app reads as a **secure vault** for заслуги and achievement. Depth comes from **tone steps** (sidebar → canvas → cards), **soft shadow**, and **electric purple** accents — not noisy borders or decorative gradients.
 
-## 2. Typography
+## Typography
 
-- **Primary font:** **Manrope** (Google Fonts) — `font-sans` in `web/tailwind.config.ts`, loaded in `web/src/app/layout.tsx`.
-- **Headings:** **ExtraBold**, **`tracking-tight`** (−0.02em) on `h1–h6` in `web/src/app/globals.css` `@layer base`.
-- **Body:** regular / medium, **`line-height: 1.5`** on `body`.
+- **Font:** **Manrope** (Google Fonts) — `font-sans` in `web/tailwind.config.ts`, loaded in `web/src/app/layout.tsx`.
+- **Headings:** ExtraBold, `tracking-tight` (−0.02em) on `h1–h6` in `globals.css` `@layer base`.
+- **Body:** regular / medium, `line-height: 1.5`.
 
-## 3. Color palette (implementation = CSS vars)
+## Color palette
 
 Canonical hex → implemented as **`--stitch-*-rgb`** (Tailwind `stitch.*`) and Daisy/shadcn tokens in **`web/src/app/globals.css`** (`:root` = light, `[data-theme="dark"]` = dark). **No green/teal tint** in obsidian surfaces — cool neutral slate only.
 
-### Dark mode (primary) — Obsidian Nocturne
+### Dark mode (primary)
 
-| Token / role | Hex | Role |
+| Token / role | Hex | Implemented as |
 |----------------|-----|------|
-| **Sidebar / nav rail** | `#020617` | Deepest anchor — `--stitch-sidebar-rgb` |
-| **Main content** | `#0f172a` | Base app surface — `--stitch-canvas-rgb`, `--base-100` |
-| **Cards & elevated panels** | `#1e293b` | Raised slate — `--stitch-surface-rgb`, `--brand-surface`, `--card` |
-| **Nested / hover planes** | stepped slate-700 / 600 | `--stitch-surface2-rgb`, `--stitch-elevated-rgb` (no hue shift off slate) |
-| **Primary accent** | `#A855F7` | Buttons, key icons, merit highlights — `--primary`, `--stitch-accent-rgb` |
-| **Secondary accent (gradients)** | `#9333ea` | `--stitch-accent2-rgb` |
-| **Text primary** | `#f1f5f9` | `--stitch-text-rgb`, `--base-content` |
-| **Text muted** | `#94a3b8` | `--stitch-muted-rgb`, `--brand-text-muted` |
-| **Borders** | `#334155` | Sparse — `--stitch-border-rgb`, `--border` |
+| Sidebar / nav rail | `#020617` | `--stitch-sidebar-rgb` |
+| Main content | `#0f172a` | `--stitch-canvas-rgb`, `--base-100` |
+| Cards & elevated panels | `#1e293b` | `--stitch-surface-rgb`, `--brand-surface`, `--card` |
+| Nested / hover planes | stepped slate-700 / 600 | `--stitch-surface2-rgb`, `--stitch-elevated-rgb` (no hue shift off slate) |
+| Primary accent | `#A855F7` | `--primary`, `--stitch-accent-rgb` |
+| Secondary accent (gradients) | `#9333ea` | `--stitch-accent2-rgb` |
+| Text primary | `#f1f5f9` | `--stitch-text-rgb`, `--base-content` |
+| Text muted | `#94a3b8` | `--stitch-muted-rgb`, `--brand-text-muted` |
+| Borders (sparse) | `#334155` | `--stitch-border-rgb`, `--border` |
 
 ### Light mode (secondary)
 
-| Role | Hex |
-|------|-----|
-| Background | `#f8fafc` |
-| Cards | `#ffffff` |
-| Accent | `#9333ea` |
-| Text | `#0f172a` |
+Background `#f8fafc` · Cards `#ffffff` · Accent `#9333ea` · Text `#0f172a`.
 
-## 4. Components & layout
+## Components & layout
 
-- **Desktop sidebar:** fixed **280px** (product target; layout may use `--left-sidebar-width` where set). **Darkest** obsidian (`#020617`). Logo, primary hubs, communities/projects, one primary **«Создать»** CTA.
+- **Desktop sidebar:** fixed **280px** (product target; layout may use `--left-sidebar-width` where set). Darkest obsidian (`#020617`). Logo, primary hubs, communities/projects, one primary **«Создать»** CTA.
 - **Mobile:** bottom bar — **5 tabs**: Образы, Биржа, Проекты, Уведомления, Профиль (existing routes — do not rename without product sign-off).
-- **Cards:** **12px** radius (`--radius`, `rounded-xl`). Soft deep shadows where lift is needed; purple-tint shadow only for emphasis (see prior vault shadow token).
+- **Cards:** **12px** radius (`--radius`, `rounded-xl`). Soft deep shadows where lift is needed; purple-tint shadow only for emphasis.
 - **Buttons:** **8px** radius (`rounded-lg` on shared `Button` in `web/src/components/ui/shadcn/button.tsx`). Primary = purple fill, white label.
 
-## 5. Content policy & terminology
+## Content policy
 
-- **Currency (RU):** always **«Заслуги»**. Never «мериты», G-MRT, Credits.
-- **Social noise:** no online status, no verification badges, no follower counts in product chrome.
+Currency is always **«Заслуги»** and product chrome carries no social noise (see @index.mdc). Additionally:
+
 - **Projects (lists / marketing):** title, status, description only — **no** investment totals unless the screen is explicitly financial/admin.
 - **Contacts:** email + plaintext **«Другие контакты»** block.
-
-## 6. Prompt for AI / Cursor
-
-Design using **Meriter Obsidian Nocturne**: main background **`#0f172a`**, sidebar **`#020617`**, cards **`#1e293b`**, accents **`#A855F7`**. **Manrope**. Terminology: **«Заслуги»**. No social noise (verification / online). Follow **layered depth**: rail darkest, canvas lighter, cards elevated; borders **`#334155`** sparingly.

@@ -7,7 +7,7 @@ alwaysApply: false
 
 # Backend Patterns (NestJS + tRPC + REST)
 
-Layer model, dependency rules, migration phases, and violation waivers: @architecture.mdc · full spec: `.index/architecture/TARGET_ARCHITECTURE.md`.
+Layer model, dependency rules, migration phases, and violation waivers: @architecture.mdc (authoritative — the `.index/` blueprint tree is gitignored and absent from fresh checkouts).
 
 ## Tech Stack
 - NestJS 10 + TypeScript (strict)
@@ -90,7 +90,7 @@ See @architecture.mdc **Remaining debt** for Tier-3 `@InjectModel` scripts and O
 - **Do not** import logic from other routers (Zone 9).
 - No new REST business endpoints; dual transport = tRPC primary + REST auth narrow.
 - tRPC procedures use shared middleware for Sentry profiling and `HttpException` -> `TRPCError` mapping (`trpc/trpc.ts`).
-- Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`, `platformDev`, `meritTransfer`.
+- Current router groups: `users`, `communities`, `auth`, `config`, `publications`, `comments`, `votes`, `polls`, `wallets`, `notifications`, `search`, `uploads`, `favorites`, `categories`, `about`, `tappalka`, `investments`, `teams`, `platformSettings`, `project`, `ticket`, `platformDev`, `meritTransfer`, `events`, `documents`, `documentVariants`, `yougile`.
 - Investments group is mounted as `investments` in appRouter, with implementation file `trpc/routers/investment.router.ts`.
 - Platform dev group is mounted as `platformDev` in appRouter, with implementation file `trpc/routers/platform-dev.router.ts` (superadmin-only procedures).
 
@@ -118,7 +118,7 @@ See @architecture.mdc **Remaining debt** for Tier-3 `@InjectModel` scripts and O
 
 **Nest DI (Phase 3):** `PermissionGatesPort` token → `PermissionGatesAdapter` in `infrastructure/permissions/permissions.module.ts`; adapter is sole infra importer of `permissions-helper`. Engine injects port via `@Inject(PermissionGatesPort)`.
 
-**OD-3 sign-off:** product signatures on `.index/architecture/od3-matrix-signed.yaml` required before Phase 5 permissions migration merge.
+**OD-3 sign-off:** product sign-off required before the Phase 5 permissions migration merge — see @architecture.mdc (the tracking file lives in the gitignored `.index/` tree and is absent from fresh checkouts).
 
 Never rely on UI assumptions for security-critical checks.
 
@@ -140,16 +140,18 @@ Never rely on UI assumptions for security-critical checks.
 
 ## Service Pattern
 
+New domain services depend on a **persistence port**, never on `@InjectModel` (Mongoose lives in `infrastructure/persistence/`). Tier-3 exceptions — migration scripts and `tg-bots` — are tagged `// V-12-residual`.
+
 ```typescript
 @Injectable()
 export class ExampleService {
   constructor(
-    @InjectModel(ExampleSchemaClass.name)
-    private readonly exampleModel: Model<ExampleDocument>,
+    @Inject(EXAMPLE_PERSISTENCE_PORT)
+    private readonly persistence: ExamplePersistencePort,
   ) {}
 
   async execute(input: Input): Promise<Output> {
-    // business logic, validation, persistence
+    // business rules + validation, persistence via the port
   }
 }
 ```

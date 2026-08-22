@@ -1,10 +1,12 @@
 ---
-description: Local development commands for Windows. Include when need to run, build, or test the project.
+description: Local development commands for Windows PowerShell. Legacy — the canonical dev environment is Linux/WSL (@local-dev-linux.mdc); use this only when actually running on Windows.
 globs: []
 alwaysApply: false
 ---
 
 # Local Development Commands (Windows PowerShell)
+
+> **Legacy.** The canonical development environment is Linux/WSL — see @local-dev-linux.mdc. Do not quote the PowerShell commands below when working in WSL.
 
 ## MongoDB (без Docker)
 

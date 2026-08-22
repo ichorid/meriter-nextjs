@@ -2,8 +2,9 @@
 description: Refactoring and change quality — KISS, DRY, SOLID; no TS/type bypass.
 alwaysApply: true
 ---
-When refactoring, apply KISS, DRY, SOLID, CLEAN rules. Avoid overengineering like hell. Disregard backwards compatibility. Do the "proper thing"
 
-When proposing a change, RECHECK YOUR LOGIC: would these changes make sense? Would it break other, adjacent systems? Explore and investigate long-term consequences of your solution
+When refactoring, apply KISS, DRY, SOLID, CLEAN. Avoid overengineering like hell. Disregard backwards compatibility. Do the "proper thing".
 
-Never leave TypeScript errors unresolved in code you ship (`tsc`/build must succeed). Avoid `any` and type-check bypasses (`@ts-expect-error`, `@ts-ignore`); prefer `unknown`, generics, and narrowing. The repo does not uniformly enforce this in ESLint: `api/.eslintrc.js` disables `@typescript-eslint/no-explicit-any`; `web/eslint.config.js` sets it to `warn` — still avoid introducing new `any` in new or refactored code unless strictly necessary.
+When proposing a change, RECHECK YOUR LOGIC: would these changes make sense? Would they break adjacent systems? Explore the long-term consequences of your solution.
+
+Never ship unresolved TypeScript errors — `pnpm build` is the type gate (there is no separate typecheck script). Avoid `any` and type-check bypasses (`@ts-expect-error`, `@ts-ignore`); prefer `unknown`, generics, and narrowing. ESLint does not enforce this uniformly (`api/.eslintrc.js` disables `@typescript-eslint/no-explicit-any`; `web/eslint.config.js` sets it to `warn`) — still do not introduce new `any` in new or refactored code unless strictly necessary.

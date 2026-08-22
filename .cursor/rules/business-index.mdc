@@ -5,125 +5,62 @@ alwaysApply: true
 
 # Meriter Business Rules — Master Index
 
-> Start here. This document provides overview of all business logic rules.
+> Routing file. Open **one** relevant `business-*.mdc` for detail — never load them all.
 
----
-
-## Platform Overview
-
-**Meriter** — merit-based social platform where users earn and spend "merits" (internal currency) to promote their ideas and projects.
-
-**Current Status:** MVP "Marathon of Good" — gamified platform for schoolchildren doing good deeds.
-
-**Core Principle:** More merits earned = higher trust = easier to get community support.
-
----
-
-## Quick Reference: Key Rules
-
-### Merit System Fundamentals
-- Wallet + Quota; priority: Quota FIRST, then Wallet. Fee: ALWAYS global (burned). Start: `welcomeMeritsGlobal`; quota: `settings.dailyEmission` + `meritSettings.quotaEnabled`. Details: @business-merits.mdc.
-
-### Community Types
-- Global: auto-joined, one merit, cannot leave. Local: user-created, own merit, can leave. Details: @business-communities.mdc.
-
-### Content Rules
-- Costs: `postCost`, `pollCost`, `forwardCost` (default 1). Post fee: quota first if `canPayPostFromQuota`, else wallet. Self-vote: wallet only, never quota. Negative rating: author can close (manual); no 24h auto-deduction. Details: @business-content.mdc.
-
-### Tappalka
-- 10 comparisons = 1 merit (`comparisonsRequired`, `userReward`); show 0.1/post (`showCost`); win 1 merit (`winReward`). Details: @business-tappalka.mdc.
-
-### Investments
-- `investingEnabled`; contract `investorShareMin/Max` (1..99); `commentMode`; lifecycle: `requireTTLForInvestPosts`, `maxTTL`, `inactiveCloseDays`, `distributeAllByContractOnClose`. Details: @business-investing.mdc.
-
-### Peer merit transfer
-- `meritTransfer` tRPC: wallet-only P2P moves in a shared team/project context; recorded in `merit_transfers`; optional **`eventPostId`** for transfers in an **event** thread (RSVP / invite rules). Details: @business-merit-transfer.mdc, @business-events.mdc.
-
-### Merit History (global wallet feed + aggregate context)
-- **`wallets.getTransactions`** full global-wallet ledger + categories + enrichment; **`wallets.getMeritHistoryDashboard`** KPIs / daily net / breakdown (7–90 UTC days); other-user access via `permissionCommunityId` / superadmin. **`wallets.getCommunityMeritHistory`** — aggregate ledger for a **community or project** context (member wallets + context transfers); UI: **`/meriter/communities/[id]/merit-history`**, **`/meriter/projects/[id]/merit-history`**. Peer-only lists unchanged. Details: @business-merit-history.mdc.
-
-### Community / project events
-- **`postType === 'event'`** publications: RSVP, token invites, `settings.eventCreation`, no voting/forward/Birzha; **`events.*`** tRPC. Details: @business-events.mdc.
-
-### Future Vision (ОБ) and cooperative projects
-- **ОБ** hub + **лента ОБ** (`/meriter/future-visions`, `communities.getFutureVisions`) vs **`isProject`** communities (Birzha `sourceEntity*`, `CommunityWallet`, tickets): @business-future-vision.mdc · @business-projects.mdc — open the relevant file for detail.
-
-### Collaborative documents (shared-document)
-- **`documents.*`** / **`documentVariants.*`**, votes **`targetType === 'document-variant'`**, OB/description **`documentsMode`**, waves + cron + manual/auto apply: @business-shared-document.mdc.
-
----
-
-## Business Rules File Structure
-
-Use this file for routing only. Details and full rule text live in the listed business-*.mdc files; do not load all business rules at once — open only the one(s) relevant to the task.
-
-| File | Content | When to Use |
-|------|---------|-------------|
-| `business-glossary.mdc` | All terminology and concepts | Understanding any term |
-| `business-merits.mdc` | Merit system, wallet, quota, fees | Working with balances |
-| `business-communities.mdc` | Community types, all settings | Community features |
-| `business-content.mdc` | Posts, polls, comments, voting | Content features |
-| `business-tappalka.mdc` | Comparison mechanics | Tappalka features |
-| `business-investing.mdc` | Investment contracts, pool, distribution | Investment features |
-| `business-merit-transfer.mdc` | Peer merit transfers (`meritTransfer`), `merit_transfers`, transfer UI | Transfer button, context/profile feeds, wallet `merit_transfer` lines |
-| `business-merit-history.mdc` | Merit History (`wallets.getTransactions`, `wallets.getMeritHistoryDashboard`, `wallets.getCommunityMeritHistory`), enrichment, UI | Profile hub, user ledger, aggregate community/project **`…/merit-history`**, peer-only routes |
-| `business-events.mdc` | Event publications (`postType === 'event'`), RSVP, invites, `eventCreation`, `events.*` tRPC | Event pages, community/project events hubs, merit transfer on event thread |
-| `business-projects.mdc` | Cooperative projects (isProject), Birzha source, tickets, CommunityWallet | Project / ticket / Birzha-from-project; web hub **`/meriter/projects`** |
-| `business-future-vision.mdc` | ОБ hub (`typeTag === 'future-vision'`), OB posts, Future Visions feed, tags | OB / `getFutureVisions`; web **`/meriter/future-visions`** |
-| `business-shared-document.mdc` | Collaborative documents, variants, voting waves, apply modes, mirror to ОБ/description | `documents` / `documentVariants` / document-variant votes; web **`/meriter/communities/.../documents`** |
-| `business-yougile.mdc` | YouGile integration (A2): webhook → auto-post from assignee, `yougile.*` tRPC, settings tab | YouGile connect/configure, `yougile_integrations`, webhook ingress |
-| `business-users.mdc` | Users, roles, permissions | Auth, permissions |
-| `business-mvp.mdc` | MVP-specific settings | Domain, tRPC, meriter routes, features (globs) |
-
----
-
-## MVP Communities Quick Reference
-
-| Community | Withdraw? (`settings.allowWithdraw`) | Self-vote? (`permissionRules`) | Tappalka? (`tappalkaSettings.enabled`) | Costs (`settings.*Cost`) | Investing (`settings.investingEnabled`) |
-|-----------|--------------------------------------|-------------------------------|-------------------------------------|---------------------------|-----------------------------------|
-| **ОБ** (Image of Future) | No | Yes | No | Standard | No |
-| **МД** (Marathon of Good) | Yes | No | Yes | Standard | Yes (current v1) |
-| **Projects** | No | Yes | Yes | Standard | No |
-| **Feedback** | Yes | No | No | Free defaults possible | No |
+**Platform:** merit-based social platform where users earn and spend merits to promote their ideas and projects. **Current status:** MVP "Marathon of Good" — gamified platform for schoolchildren doing good deeds. **Core principle:** more merits earned = higher trust = easier to get community support.
 
 ---
 
 ## Critical Implementation Rules
 
-### 1. Fee Always Global
-```
-ANY community (including local) →
-  Fee paid in GLOBAL merits →
-    Merits BURNED
-```
+These are invariants — violating them is a bug, not a style choice.
 
-### 2. Voting Source Priority
+**1. Fee always global.** Any community (including local) → fee paid in GLOBAL merits → merits BURNED.
+
+**2. Voting source priority.**
 ```
-Upvote: Quota → Wallet
-Downvote: Wallet ONLY
+Upvote:    Quota → Wallet
+Downvote:  Wallet ONLY
 Self-vote: Wallet ONLY (quota forbidden)
 ```
 
-### 3. Forwarding (source community rule)
-```
-Forward mode = source community `settings.forwardRule`:
-- `standard` (default): copy without merits, original preserved.
-- `project`: transfer with merits, original deleted.
-Participant-initiated forward (`proposeForward`) only when source `typeTag === 'team'`.
-Lead/superadmin direct `forward`: no forward fee charged in current code.
-```
+**3. Forwarding = source community rule.** Mode is the **source** community's `settings.forwardRule`: `standard` (default — copy without merits, original preserved) or `project` (transfer with merits, original deleted). Participant-initiated `proposeForward` only when source `typeTag === 'team'`. Lead/superadmin direct `forward` charges no fee in current code. Transfer-with-merits is **not** restricted to a single hardcoded route.
 
-### 4. Transfer with merits
-```
-Transfer with merits happens when source community has `settings.forwardRule === 'project'` (e.g. Projects → МД). Code does not restrict this to a single route.
-```
+**4. Negative rating.** Rating can go negative. Author can close the post manually (`closeReason: 'negative_rating'`). Closed → archive, cannot re-publish. Automatic 24h deduction from the author wallet is **not implemented**.
 
-### 5. Negative Rating Handling
-```
-Rating can be negative. Author can close post (manual, closeReason: 'negative_rating').
-Closed post → Archive (cannot re-publish).
-Automatic deduction from author wallet after 24h is not implemented.
-```
+---
+
+## Quick Reference
+
+| Area | Key facts | Detail |
+|------|-----------|--------|
+| **Merits** | Wallet + Quota; quota spent FIRST; fee always global/burned; start = `welcomeMeritsGlobal`; quota volume `settings.dailyEmission` + `meritSettings.quotaEnabled` | @business-merits.mdc |
+| **Communities** | Global/priority: auto-joined, global merit, cannot leave. Local: user-created, own merit, leavable | @business-communities.mdc |
+| **Content** | Costs `postCost`/`pollCost`/`forwardCost` (default 1); post fee quota-first if `canPayPostFromQuota`, else wallet; self-vote wallet only | @business-content.mdc |
+| **Tappalka** | `comparisonsRequired` comparisons = `userReward` merit (default 10 → 1); `showCost` 0.1/post; win = `winReward` | @business-tappalka.mdc |
+| **Investments** | `investingEnabled`; contract `investorShareMin/Max` (1..99); lifecycle `requireTTLForInvestPosts`, `maxTTL`, `inactiveCloseDays`, `distributeAllByContractOnClose` | @business-investing.mdc |
+| **Peer transfer** | `meritTransfer.*` — wallet-only P2P in a shared team/project context; optional `eventPostId` | @business-merit-transfer.mdc |
+| **Merit history** | `wallets.getTransactions` (global ledger), `getMeritHistoryDashboard` (KPIs), `getCommunityMeritHistory` (community/project aggregate) | @business-merit-history.mdc |
+| **Events** | `postType === 'event'`; RSVP, token invites, `settings.eventCreation`; no voting/forward/Birzha | @business-events.mdc |
+| **ОБ / Projects** | ОБ hub + feed (`communities.getFutureVisions`) vs `isProject` cooperative communities (Birzha source, `CommunityWallet`, tickets) | @business-future-vision.mdc · @business-projects.mdc |
+| **Documents** | `documents.*` / `documentVariants.*`, votes on `document-variant`, waves + cron, manual/auto apply | @business-shared-document.mdc |
+| **YouGile** | Webhook → auto-post from task assignee, `yougile.*` tRPC, settings tab | @business-yougile.mdc |
+| **Users / roles** | Roles are per-community (`UserCommunityRole`); `participant` / `lead` / global `superadmin` | @business-users.mdc |
+| **Terminology** | Any unfamiliar term | @business-glossary.mdc |
+| **MVP config** | Per-hub settings, main user flows, MVP terminology | @business-mvp.mdc |
+
+---
+
+## MVP Communities Quick Reference
+
+| Community | Withdraw? (`settings.allowWithdraw`) | Self-vote? (`permissionRules`) | Tappalka? (`tappalkaSettings.enabled`) | Investing (`settings.investingEnabled`) |
+|-----------|---------------------|------------|-----------|-----------|
+| **ОБ** (`future-vision`) | No | Yes | No | No |
+| **МД** (`marathon-of-good`) | Yes | No | Yes | Yes (v1) |
+| **Projects** (`team-projects`) | No | Yes | Yes | No |
+| **Feedback** (`support`) | Yes | No | No | No |
+
+Costs are standard (1) except Feedback, where free defaults are possible. Full per-hub settings: @business-mvp.mdc.
 
 ---
 
@@ -131,53 +68,10 @@ Automatic deduction from author wallet after 24h is not implemented.
 
 | Action | Check |
 |--------|-------|
-| Publish | `permissionRules` allow action + `settings.postCost` payable (quota first if `settings.canPayPostFromQuota`, else wallet; global context) |
+| Publish | `permissionRules` allow action + `settings.postCost` payable (quota first if `canPayPostFromQuota`, else wallet; global context) |
 | Comment/Vote | `permissionRules` allow action + `votingSettings.currencySource` + `settings.commentMode` |
-| Self-vote | `permissionRules.conditions.canVoteForOwnPosts` + wallet-only constraint; when `votingSettings.currencySource === 'quota-only'`, self-vote is effectively unavailable (quota cannot be used for own posts). |
-| Withdraw | `settings.allowWithdraw` |
-| Tappalka | `tappalkaSettings.enabled` + post can pay show cost (see @business-tappalka.mdc; not a simple global `minRating` gate) |
+| Self-vote | `permissionRules.conditions.canVoteForOwnPosts` + wallet-only constraint; effectively unavailable when `votingSettings.currencySource === 'quota-only'` |
+| Withdraw | `settings.allowWithdraw` (checked before other authorization) |
+| Tappalka | `tappalkaSettings.enabled` + post can pay show cost — not a simple `minRating` gate, see @business-tappalka.mdc |
 
-**Implementation notes (current code):** Publication withdrawal = `publications.withdraw`, gated by `settings.allowWithdraw` (checked in both manual withdraw and auto-withdraw on close). Comment (vote) score withdrawal = `votes.withdrawFromVote`. `votes.withdraw` exists but is deprecated in favor of `publications.withdraw`. `wallets.withdraw` and `wallets.transfer` exist but return NOT_IMPLEMENTED. No dedicated `commentFee`/`commentCost`; vote amounts and direction rules apply.
-
----
-
-## Before Implementing Any Feature
-
-1. ✅ Read relevant business rules file
-2. ✅ Check feature status (implemented/not)
-3. ✅ Check dependencies
-4. ✅ Check MVP scope
-5. ✅ Follow existing code patterns — layer placement: @architecture.mdc (`use-cases/` vs `domain/services/` vs thin `trpc/`)
-6. ✅ Consider all community settings
-7. ✅ Handle all role permissions
-8. ✅ Follow merit flow rules
-
----
-
-## Related Documentation
-
-| Document | Location | Content |
-|----------|----------|---------|
-| AI Development Context | `docs/AI_DEVELOPMENT_CONTEXT.md` | How to work with this project |
-| Cursor Workflow | `docs/CURSOR-WORKFLOW.md` | Step-by-step workflow |
-| PRD Template | `docs/templates/PRD-TEMPLATE.md` | For new features |
-| Architecture (map) | `ARCHITECTURE.md` | Short repo map (humans); agents use `.cursor/rules/architecture.mdc` |
-| Business Logic (full) | `BUSINESS_LOGIC_DOCUMENTATION.md` | Complete business logic |
-
----
-
-## Version History
-
-| Version | Date | Changes |
-|---------|------|---------|
-| 1.0 | January 2026 | Initial structured version |
-| 1.1 | February 2026 | Module split, decision integration |
-| 1.2 | February 2026 | Align index with code: welcomeMeritsGlobal, negative rating not auto-deducted, forwardRule, wallet API notes |
-| 1.3 | February 2026 | Align with code: quota volume (dailyEmission, quotaEnabled), tappalka configurable defaults, allowWithdraw wording, votes.withdrawFromVote and deprecated votes.withdraw, self-vote vs quota-only note |
-| 1.4 | February 2026 | Remove redundant globs (alwaysApply makes them irrelevant) |
-| 1.5 | April 2026 | Add `business-projects.mdc` to index and quick reference |
-| 1.6 | April 2026 | Add `business-future-vision.mdc` to index and quick reference |
-| 1.7 | April 2026 | Quick Reference: single line for ОБ + projects; table routes for future-vision / projects web paths |
-| 1.8 | April 2026 | Tappalka permission row; cross-links to business-tappalka for eligibility |
-| 1.9 | April 2026 | Add `business-merit-transfer.mdc` to index and quick reference (peer transfers) |
-| 1.10 | April 2026 | Add `business-events.mdc` to index and quick reference (community/project events) |
+**Implementation notes (current code):** post rating withdrawal = `publications.withdraw`; comment (vote) score withdrawal = `votes.withdrawFromVote`; `votes.withdraw` is deprecated; `wallets.withdraw` / `wallets.transfer` return `NOT_IMPLEMENTED`. There is no dedicated `commentFee` / `commentCost` — vote amounts and direction rules drive balance changes.

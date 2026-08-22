@@ -8,7 +8,7 @@ alwaysApply: false
 
 # Notifications list (Meriter)
 
-Architecture: inv-25 · backend matrix in `target_architecture.yaml` → `notification_routing_matrix` · OD-12 (inline `ob_vote_join_offer` in `vote.service.ts` — Phase 5 remediation).
+Architecture: inv-25 · OD-12 (inline `ob_vote_join_offer` in `vote.service.ts` — Phase 5 remediation). The historical backend matrix lived in the gitignored `.index/` tree; the live contract is `NotificationRoutingSchema` in `libs/shared-types`.
 
 ## Routing architecture (interim → target)
 
