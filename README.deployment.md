@@ -142,7 +142,9 @@ DOMAIN=localhost
 
 ### S3 CORS Configuration (Required for Image Loading)
 
-If you're using S3-compatible storage for avatar images, you need to configure CORS to avoid browser blocking errors. Docker Compose now runs the configuration automatically during `docker-compose up` via the `s3-cors-init` service, provided the required environment variables are set.
+If you're using S3-compatible storage for avatar images, you need to configure CORS to avoid browser blocking errors. This is a **manual, occasional step** — run it when the bucket or the domain changes, not on every deploy.
+
+It is not automated on purpose. Configuring a bucket needs `GetBucketCors`/`PutBucketCors`, which the deploy keys do not have; they return `403 AccessDenied`. Only an admin key can apply it, so an automated step would fail on every deploy for everyone but the key's owner.
 
 1. **Set up environment variables**
    ```bash
@@ -163,19 +165,29 @@ If you're using S3-compatible storage for avatar images, you need to configure C
    DOMAIN=meriter.pro
    ```
 
-3. **Compose will configure CORS automatically**
+3. **Apply the CORS rules with an admin key**
+
+   On a server, the script ships inside the api image, so no checkout is needed.
+   Put the admin credentials in the command rather than in `.env`, so the deploy
+   keys stay unprivileged:
+
    ```bash
-   docker-compose up -d
-   # s3-cors-init runs once and exits after applying the CORS rules
+   cd /opt/meriter
+   docker compose run --rm --no-deps \
+     -e S3_ACCESS_KEY_ID=admin_key -e S3_SECRET_ACCESS_KEY=admin_secret \
+     api node scripts/configure-s3-cors.js "$S3_BUCKET_NAME" your-domain.com
    ```
 
-If you need to re-run the configuration manually (for example, after changing domains), you can still invoke the script directly:
+   From a local checkout instead:
 
-```bash
-cd api
-export $(grep -E 'S3_ACCESS_KEY_ID|S3_SECRET_ACCESS_KEY|S3_ENDPOINT' .env | xargs)
-node scripts/configure-s3-cors.js "$S3_BUCKET_NAME" your-domain.com
-```
+   ```bash
+   cd api
+   export $(grep -E 'S3_ACCESS_KEY_ID|S3_SECRET_ACCESS_KEY|S3_ENDPOINT' .env | xargs)
+   node scripts/configure-s3-cors.js "$S3_BUCKET_NAME" your-domain.com
+   ```
+
+   The script prints the endpoint, bucket and origins it is about to apply, so
+   check those before trusting a success message.
 
 See `api/scripts/README.md` for detailed documentation on the CORS configuration utility.
 
