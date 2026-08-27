@@ -67,6 +67,7 @@ import {
   type TelegramInlineReplyMarkup,
   buildOnboardingDoneMessage,
   buildTelegramHelpMessage,
+  uzzBotErrorMessage,
   getOnboardingPrompt,
   getSettingsEditPrompt,
   buildSettingsLeadSummary,
@@ -2398,8 +2399,10 @@ export class TelegramBotOrchestratorService {
           'Telegram привязан к аккаунту на площадке «Услуги за заслуги». Можно смотреть банки на обмен и сделки на сайте.',
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Не удалось привязать Telegram';
-      await this.tgBots.tgSend({ tgChatId: tgUserId, text: message });
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: uzzBotErrorMessage(error, 'Не удалось привязать Telegram'),
+      });
     }
   }
 
@@ -2442,8 +2445,10 @@ export class TelegramBotOrchestratorService {
           : `Не удалось отправить письмо на ${result.email}. Попробуйте позже или привяжите Telegram с сайта.`,
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Не удалось начать привязку';
-      await this.tgBots.tgSend({ tgChatId: tgUserId, text: message });
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: uzzBotErrorMessage(error, 'Не удалось начать привязку'),
+      });
     }
   }
 
@@ -2462,8 +2467,10 @@ export class TelegramBotOrchestratorService {
         text: 'Почта привязана. Аккаунт Telegram и площадка «Услуги за заслуги» связаны.',
       });
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Неверный код';
-      await this.tgBots.tgSend({ tgChatId: tgUserId, text: message });
+      await this.tgBots.tgSend({
+        tgChatId: tgUserId,
+        text: uzzBotErrorMessage(error, 'Неверный код'),
+      });
     }
   }
 

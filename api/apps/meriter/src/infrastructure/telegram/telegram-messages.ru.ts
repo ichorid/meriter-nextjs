@@ -667,6 +667,40 @@ export function buildUzzPilotBlock(catalogUrl: string): string {
   );
 }
 
+const UZZ_BOT_ERROR_MESSAGES: Record<string, string> = {
+  IDENTITY_TOKEN_INVALID:
+    'Ссылка привязки уже использована или устарела. Если выше есть сообщение об успешной привязке — всё в порядке. Иначе запросите новую ссылку в профиле на сайте «Услуги за заслуги».',
+  IDENTITY_NOT_FOUND:
+    'Профиль входа не найден. Войдите на сайт «Услуги за заслуги» по ссылке из письма и запросите привязку заново.',
+  IDENTITY_CONFLICT:
+    'Этот Telegram или email уже связан с другим аккаунтом. Войдите тем способом, которым пользовались раньше.',
+  UZZ_RATE_LIMITED:
+    'Слишком много попыток. Подождите несколько минут и попробуйте снова.',
+};
+
+const UZZ_BOT_CODE_LIKE = /^[A-Z][A-Z0-9_]{2,}$/;
+
+/** Human-readable Telegram copy for UZZ domain errors (never dump raw codes). */
+export function uzzBotErrorMessage(
+  error: unknown,
+  fallback = 'Не удалось выполнить действие. Попробуйте ещё раз.',
+): string {
+  const code =
+    error && typeof error === 'object' && typeof (error as { code?: unknown }).code === 'string'
+      ? (error as { code: string }).code
+      : error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+          ? error
+          : '';
+  if (code && UZZ_BOT_ERROR_MESSAGES[code]) return UZZ_BOT_ERROR_MESSAGES[code];
+  if (error instanceof Error && /[А-Яа-яЁё]/.test(error.message)) return error.message;
+  if (code && UZZ_BOT_CODE_LIKE.test(code)) {
+    return `${fallback} (код: ${code})`;
+  }
+  return fallback;
+}
+
 export function buildGroupWelcomeMessage(
   input: CommunityUsageRulesInput,
   uzzCatalogUrl?: string,

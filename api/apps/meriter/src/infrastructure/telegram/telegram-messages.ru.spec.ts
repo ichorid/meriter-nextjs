@@ -17,6 +17,7 @@ import {
   formatVoteAmountBalanceHint,
   getOnboardingPrompt,
   mapTelegramUserFacingError,
+  uzzBotErrorMessage,
   TG_BOT_OPEN_BUTTON_LABELS,
   TG_MSG,
   buildPollMiniAppUrl,
@@ -475,5 +476,27 @@ describe('mapTelegramUserFacingError', () => {
 
   it('passes through Russian messages', () => {
     expect(mapTelegramUserFacingError('Уже голосовали')).toBe('Уже голосовали');
+  });
+});
+
+describe('uzzBotErrorMessage', () => {
+  it('maps IDENTITY_TOKEN_INVALID to a human Russian explanation', () => {
+    const text = uzzBotErrorMessage({ code: 'IDENTITY_TOKEN_INVALID', message: 'IDENTITY_TOKEN_INVALID' });
+    expect(text).toMatch(/уже использована или устарела/i);
+    expect(text).not.toBe('IDENTITY_TOKEN_INVALID');
+  });
+
+  it('maps Error instances that carry the domain code as message', () => {
+    expect(uzzBotErrorMessage(new Error('IDENTITY_CONFLICT'))).toMatch(/уже связан/i);
+  });
+
+  it('keeps an already-Russian Error message', () => {
+    expect(uzzBotErrorMessage(new Error('Код пуст'))).toBe('Код пуст');
+  });
+
+  it('falls back without dumping unknown codes as the only text', () => {
+    expect(uzzBotErrorMessage(new Error('SOME_UNKNOWN_CODE'), 'Не удалось')).toBe(
+      'Не удалось (код: SOME_UNKNOWN_CODE)',
+    );
   });
 });
