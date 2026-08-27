@@ -275,7 +275,7 @@ realUzzTest('R5 listing create and update replay the same command without duplic
   const updatedTitle = `Обновлено ${seed.runId.slice(0, 8)}`;
 
   await page.goto('/?tab=lots');
-  await expect(page.getByRole('heading', { name: 'Ваши предложения' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Ваши услуги' })).toBeVisible();
   await page.getByRole('button', { name: 'Добавить услугу' }).click();
   await page.getByLabel('Название').fill(title);
   await page.getByLabel('Цена, ₽').fill('700');
@@ -348,6 +348,8 @@ realUzzTest('R6 email and IP rate limits hold across two API replicas', async ({
   }
 
   await page.getByRole('button', { name: 'Отправить ещё раз' }).click();
-  await expect(page.getByRole('status')).toContainText(/Слишком много попыток/i);
+  // A failed resend keeps the "letter sent" notice on screen, so two status
+  // regions are visible: the success notice and the rate-limit error.
+  await expect(page.getByRole('status').filter({ hasText: /Слишком много попыток/i })).toBeVisible();
   expect(await visibleText(page)).not.toMatch(/\/a\/[A-Za-z0-9_-]{10,}/);
 });
