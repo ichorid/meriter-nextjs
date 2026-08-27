@@ -45,10 +45,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {!loggedIn && !sessionLoading ? <Link href={loginHref} className="ml-auto rounded-xl bg-stitch-accent-solid px-4 py-2 text-sm font-semibold text-white">Войти</Link> : null}
       </div>
     </header>
-    {link.isError && loggedIn && NEEDS_LINK.has(pathname) ? <main className="mx-auto max-w-6xl px-4 py-8"><QueryFailed onRetry={() => void link.refetch()} error={link.error} /></main>
+    {link.isError && loggedIn && NEEDS_LINK.has(pathname) ? <main className="mx-auto max-w-6xl px-4 py-8 pb-28 md:pb-10"><QueryFailed onRetry={() => void link.refetch()} error={link.error} /></main>
       : linkGate ? <IdentityLinkGate email={link.data?.email ?? undefined} />
-      : PRIVATE.has(pathname) && sessionUnreachable ? <main className="mx-auto max-w-6xl px-4 py-8"><QueryFailed onRetry={() => window.location.reload()} /></main>
-      : busy ? <main className="mx-auto max-w-6xl px-4 py-8" aria-busy><div className="h-40 animate-pulse rounded-2xl bg-stitch-surface" /></main>
+      : PRIVATE.has(pathname) && sessionUnreachable ? <main className="mx-auto max-w-6xl px-4 py-8 pb-28 md:pb-10"><QueryFailed onRetry={() => window.location.reload()} /></main>
+      : busy ? <main className="mx-auto max-w-6xl px-4 py-8 pb-28 md:pb-10" aria-busy><div className="h-40 animate-pulse rounded-2xl bg-stitch-surface" /></main>
       : <main className="mx-auto max-w-6xl px-4 py-8 pb-28 md:pb-10">{children}</main>}
     <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-stitch-border bg-stitch-sidebar/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl md:hidden" aria-label="Мобильные разделы">
       <div className={cn('mx-auto grid max-w-2xl', isUzzAdmin ? 'grid-cols-6' : 'grid-cols-5')}>{NAV.map((item) => <NavLink key={item.href} {...item} pathname={pathname} badge={item.href === '/deals' ? actionCount : 0} stacked />)}{isUzzAdmin ? <NavLink href="/admin" label="Настройки платформы" shortLabel="Настройки" icon={Shield} pathname={pathname} stacked /> : null}</div>
@@ -88,7 +88,7 @@ function IdentityLinkGate({ email }: { email?: string }) {
     },
   });
   const logout = trpc.auth.logout.useMutation({ onSuccess: () => { clearUzzSessionFlag(); window.location.href = '/catalog'; }, onError: (err) => setError(uzzErrorMessage(err)) });
-  return <main className="mx-auto flex min-h-[65vh] max-w-lg items-center px-4 py-10"><section className="w-full space-y-4 rounded-2xl border border-stitch-border bg-stitch-surface p-6 text-center">
+  return <main className="mx-auto flex min-h-[65vh] max-w-lg items-center px-4 py-10 pb-28 md:pb-10"><section className="w-full space-y-4 rounded-2xl border border-stitch-border bg-stitch-surface p-6 text-center">
     <p className="text-xs font-bold uppercase tracking-widest text-stitch-accent-text">Последний шаг</p><h1 className="text-2xl font-black">Привяжите Telegram</h1>
     <p className="text-sm leading-6 text-stitch-muted">{email ? `Вы вошли как ${email}. ` : ''}Telegram нужен, чтобы сопоставить ваши добрые дела и безопасно открыть контакт только после принятия заявки.</p>
     <Button className="w-full" disabled={start.isPending} onClick={() => { telegramWindow.current = openPendingExternalWindow(); start.mutate(); }}>{start.isPending ? 'Готовим ссылку…' : 'Открыть Telegram'}</Button>

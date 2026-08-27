@@ -42,7 +42,7 @@ function extractThrownCodes(root: string): string[] {
 describe('uzzErrorMessage', () => {
   it.each([
     ['NOMINAL_CHANGED', 'Номинал изменился. Проверьте новую сумму и подтвердите принятие ещё раз'],
-    ['MIN_LISTINGS_REQUIRED', 'Сначала добавьте свои предложения'],
+    ['MIN_LISTINGS_REQUIRED', 'Сначала добавьте свои услуги'],
     ['IDENTITY_LINK_REQUIRED', 'Сначала привяжите Telegram в профиле'],
     ['DEAL_COUNTERPARTY_IDENTITY_REQUIRED', 'Исполнитель ещё не завершил привязку профиля. Заявку можно отправить, когда связка email и Telegram будет готова'],
     ['COMMUNITY_MEMBERSHIP_REQUIRED', 'Публиковать и меняться услугами можно только участникам выбранного сообщества. Вступите в его Telegram-чат'],
@@ -142,11 +142,11 @@ describe('ledgerReasonLabel', () => {
 
 describe('listingsWord', () => {
   it.each([
-    [1, 'предложение'],
-    [2, 'предложения'],
-    [4, 'предложения'],
-    [5, 'предложений'],
-    [11, 'предложений'],
-    [21, 'предложение'],
+    [1, 'услугу'],
+    [2, 'услуги'],
+    [4, 'услуги'],
+    [5, 'услуг'],
+    [11, 'услуг'],
+    [21, 'услугу'],
   ])('declines %d as %s', (value, expected) => expect(listingsWord(value)).toBe(expected));
 });

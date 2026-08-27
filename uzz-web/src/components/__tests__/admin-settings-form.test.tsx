@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AdminSettingsForm, type AdminSettings } from '@/components/admin-settings-form';
 import { dealStatusLabel } from '@/lib/utils';
 
-const settings: AdminSettings = { emissionThreshold: 10, initialHops: 10, demurrageRubPerDay: 100, nominalFloorRub: 100, minimumListingsToBuy: 3, purchaseGateMode: 'nudge', requestTtlHours: 48, fulfillmentTtlDays: 7, confirmationTtlDays: 7, notifyRightEmitted: true, notifyRequestLifecycle: true, notifyDealProgress: true, notifyDealClosed: true };
+const settings: AdminSettings = { emissionThreshold: 10, initialHops: 10, demurrageRubPerDay: 100, nominalFloorRub: 100, minimumListingsToBuy: 3, purchaseGateMode: 'nudge', requestTtlHours: 48, fulfillmentTtlDays: 7, confirmationTtlDays: 7, notifyRightEmitted: true, notifyRequestLifecycle: true, notifyDealProgress: true, notifyDealClosed: true, groupAnnounceRightEmitted: true, groupAnnounceDealClosed: true };
 
 describe('AdminSettingsForm', () => {
   it('requires explicit confirmation for floor and TTL changes', async () => {
@@ -24,7 +24,7 @@ describe('AdminSettingsForm', () => {
   it('uses exact integer bounds and keeps nudge as default', () => {
     render(<AdminSettingsForm settings={settings} pending={false} onSave={vi.fn()} />);
     expect(screen.getByLabelText(/^Порог заслуг/)).toHaveAttribute('max', '1000000');
-    expect(screen.getByLabelText('Рекомендовано карточек')).toHaveAttribute('max', '100');
+    expect(screen.getByLabelText(/^Рекомендовано услуг/)).toHaveAttribute('max', '100');
     expect(screen.getByLabelText('Режим взаимности')).toHaveValue('nudge');
   });
 

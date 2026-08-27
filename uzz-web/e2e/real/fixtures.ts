@@ -971,12 +971,12 @@ async function main(): Promise<void> {
       },
     };
     const sender = {
-      async send(_eventId: string, payload: { telegramUserId: string; text: string; path?: string }) {
+      async send(_eventId: string, payload: { telegramChatId?: string; telegramUserId?: string; text: string; path?: string }) {
         const response = await fetch(\`\${input.telegramUrl.replace(/\\/$/, '')}/bot${process.env.BOT_TOKEN ?? 'e2e-bot-token-1234'}/sendMessage\`, {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
-            chat_id: payload.telegramUserId,
+            chat_id: payload.telegramChatId ?? payload.telegramUserId,
             text: payload.path ? \`\${payload.text}\\n\\n\${payload.path}\` : payload.text,
           }),
         });

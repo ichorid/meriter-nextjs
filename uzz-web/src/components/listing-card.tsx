@@ -23,7 +23,7 @@ export function ListingCard({ listing, own, affordable, requestLabel, requestDis
     </div>
     {listing.availabilityText ? <p className={cn('mt-3 line-clamp-2 text-xs leading-5 text-stitch-muted', userContentClass)}>Когда: {listing.availabilityText}</p> : null}
     <div className="mt-auto pt-5">
-      {own ? <Badge>Ваше предложение</Badge> : onRequest ? <Button className="w-full" disabled={requestDisabled ?? !affordable} onClick={onRequest}>{requestLabel ?? (affordable ? 'Оставить заявку' : 'Нужен больший номинал')}</Button> : null}
+      {own ? <Badge>Ваша услуга</Badge> : onRequest ? <Button className="w-full" disabled={requestDisabled ?? !affordable} onClick={onRequest}>{requestLabel ?? (affordable ? 'Оставить заявку' : 'Нужен больший номинал')}</Button> : null}
     </div>
   </Card>;
 }

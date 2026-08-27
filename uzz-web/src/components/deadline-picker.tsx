@@ -191,6 +191,7 @@ export function DeadlinePicker({
               );
             })}
           </div>
+          {!selected ? <p className="text-xs text-stitch-muted">Сначала выберите день — затем станет доступно время.</p> : null}
           <div className="grid grid-cols-2 gap-2">
             <label className="space-y-1 text-xs text-stitch-muted">
               Часы

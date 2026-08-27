@@ -54,8 +54,8 @@ export const UZZ_ERROR_MESSAGES: Record<string, string> = {
   LISTING_AUTHOR_ID_INVALID: 'Некорректный автор объявления',
   LISTING_VERSION_INVALID: 'Объявление изменилось. Обновите страницу',
   LISTING_PRICE_EXCEEDS_NOMINAL: 'Цена объявления больше номинала выбранного банка',
-  MIN_LISTINGS_REQUIRED: 'Сначала добавьте свои предложения',
-  PURCHASE_GATE_BLOCKED: 'Сначала добавьте свои предложения',
+  MIN_LISTINGS_REQUIRED: 'Сначала добавьте свои услуги',
+  PURCHASE_GATE_BLOCKED: 'Сначала добавьте свои услуги',
   PURCHASE_GATE_INPUT_INVALID: 'Некорректные условия взаимности. Обновите страницу',
 
   RUBLES_INVALID: 'Укажите положительную цену целым числом рублей',

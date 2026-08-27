@@ -28,8 +28,9 @@ export default function LoginPage() {
       setError(null);
       setDevLoginUrl(result.devLoginUrl ?? null);
     },
+    // Keep `sent` as-is on error: a failed resend must not flip the screen
+    // back to the email form as if the first letter was never sent.
     onError: (err) => {
-      setSent(false);
       setError(uzzErrorMessage(err));
     },
   });

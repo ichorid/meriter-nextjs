@@ -3,12 +3,12 @@
 import { FormEvent, useState } from 'react';
 import { DeadlinePicker } from '@/components/deadline-picker';
 import { Button, Notice, userContentClass } from '@/components/ui';
-import { DEAL_DEADLINE_NOT_FUTURE_MESSAGE, isInstantTooSoon } from '@/lib/local-datetime';
+import { DEAL_DEADLINE_NOT_FUTURE_MESSAGE, formatDeadlineLabel, isInstantTooSoon } from '@/lib/local-datetime';
 import { cn, formatSignedRub, uzzErrorMessage } from '@/lib/utils';
 
 function formatInstant(value: Date | string | null | undefined): string | null {
   if (!value) return null;
-  return new Date(value).toLocaleString('ru-RU');
+  return formatDeadlineLabel(value);
 }
 
 function toDate(value: Date | string | null | undefined): Date | null {

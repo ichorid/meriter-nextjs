@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useRef, useState } from 'react';
 import { Button, Card, Field, Notice, NumberField } from '@/components/ui';
 import { INTEGER_RUBLES_MESSAGE } from '@/lib/utils';
 
@@ -26,13 +26,31 @@ export function AdminNominalSettings({
   const [defaultNominal, setDefaultNominal] = useState(String(settings?.defaultNominalRub ?? floor));
   const [confirmation, setConfirmation] = useState(false);
   const [integerError, setIntegerError] = useState<string | null>(null);
+  // Background refetches must not overwrite unsaved edits; resync after a save.
+  // `pending`/`error` are shared with the pilot-rules form (same tRPC mutation),
+  // so only a save initiated *here* may reset the dirty flag.
+  const [dirty, setDirty] = useState(false);
+  const savingRef = useRef(false);
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending) {
+      if (savingRef.current && !error) setDirty(false);
+      savingRef.current = false;
+    }
+    wasPending.current = pending;
+  }, [pending, error]);
+  const save = (patch: Pick<NominalAssignSettings, 'autoAssignNominal' | 'defaultNominalRub'>) => {
+    savingRef.current = true;
+    onSave(patch);
+  };
 
   useEffect(() => {
+    if (dirty) return;
     setAutoAssign(settings?.autoAssignNominal === true);
     setDefaultNominal(String(settings?.defaultNominalRub ?? settings?.nominalFloorRub ?? 100));
     setConfirmation(false);
     setIntegerError(null);
-  }, [settings?.autoAssignNominal, settings?.defaultNominalRub, settings?.nominalFloorRub]);
+  }, [dirty, settings?.autoAssignNominal, settings?.defaultNominalRub, settings?.nominalFloorRub]);
 
   function parsedNominal() {
     const value = Number(defaultNominal);
@@ -51,7 +69,7 @@ export function AdminNominalSettings({
       setConfirmation(true);
       return;
     }
-    onSave({ autoAssignNominal: autoAssign, defaultNominalRub: nominal });
+    save({ autoAssignNominal: autoAssign, defaultNominalRub: nominal });
   }
 
   return (
@@ -69,6 +87,7 @@ export function AdminNominalSettings({
             checked={autoAssign}
             onChange={(event) => {
               setConfirmation(false);
+              setDirty(true);
               setAutoAssign(event.target.checked);
             }}
           />
@@ -83,6 +102,7 @@ export function AdminNominalSettings({
             value={defaultNominal}
             onChange={(event) => {
               setIntegerError(null);
+              setDirty(true);
               setDefaultNominal(event.target.value);
             }}
           />
@@ -99,7 +119,7 @@ export function AdminNominalSettings({
                   const nominal = parsedNominal();
                   if (nominal == null) return;
                   setConfirmation(false);
-                  onSave({ autoAssignNominal: true, defaultNominalRub: nominal });
+                  save({ autoAssignNominal: true, defaultNominalRub: nominal });
                 }}
               >
                 Включить автоназначение

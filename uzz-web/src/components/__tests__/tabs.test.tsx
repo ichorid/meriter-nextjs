@@ -133,7 +133,7 @@ describe('HomePage tabs', () => {
     await user.click(listings);
     expect(replace).toHaveBeenCalledWith('/?tab=lots', { scroll: false });
     expect(listings).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByRole('heading', { name: 'Ваши предложения' })).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Ваши услуги' })).toBeVisible();
     expect(screen.getAllByRole('tabpanel')).toHaveLength(1);
 
     screen.getByRole('tab', { name: 'Мои услуги' }).focus();

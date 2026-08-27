@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { DealAcceptForm } from '@/components/deal-accept-form';
 import { DealCard, type DealView } from '@/components/deal-card';
+import { formatDeadlineLabel } from '@/lib/local-datetime';
 
 const deal: DealView = { id: 'deal-1', status: 'requested', myRole: 'buyer', listingSnapshot: { title: 'Консультация', priceRub: 500, deliveryMode: 'online', locationText: 'Telegram' }, requestMessage: 'Нужна помощь', currentNominalRub: 600, sellerContact: { telegramUsername: 'seller' } };
 
@@ -45,8 +46,8 @@ describe('DealCard', () => {
     expect(screen.getByText('+100 ₽')).toBeVisible();
     expect(screen.getByText('75 ₽ в день')).toBeVisible();
     expect(screen.getAllByText('Нужна помощь').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(new Date(requestedDeadlineAt).toLocaleString('ru-RU')).length).toBeGreaterThan(0);
-    expect(screen.getAllByText(new Date(agreedDeadlineAt).toLocaleString('ru-RU')).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(formatDeadlineLabel(requestedDeadlineAt)).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(formatDeadlineLabel(agreedDeadlineAt)).length).toBeGreaterThan(0);
   });
 
   it('warns when nominal is below listing price without blocking acceptance', () => {
