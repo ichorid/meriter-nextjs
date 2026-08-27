@@ -459,22 +459,30 @@ import { EventBus } from './domain/events/event-bus';
           return {
             id: snapshot.id, communityId: snapshot.communityId,
             authorId: snapshot.authorId,
+            ownerId: snapshot.beneficiaryId || snapshot.authorId,
             title: (snapshot.title?.trim() || snapshot.content.replace(/<[^>]+>/g, ' ').trim() || 'Доброе дело').slice(0, 160),
             score: snapshot.metrics.score ?? 0,
             postType: snapshot.postType ?? null,
             deleted: Boolean(snapshot.deleted),
           };
         },
-        async listDeedPublications(communityId, authorIds) {
-          const batches = await Promise.all(
-            authorIds.map((authorId) => publications.getPublicationsByAuthor(authorId, 100, 0)),
-          );
+        async listDeedPublications(communityId, userIds) {
+          const batches = await Promise.all([
+            ...userIds.map((userId) => publications.getPublicationsByAuthor(userId, 100, 0)),
+            ...userIds.map((userId) => publications.getPublicationsByBeneficiary(userId, 100, 0)),
+          ]);
+          const userIdSet = new Set(userIds);
+          const seen = new Set<string>();
           return batches.flat().map((publication) => publication.toSnapshot())
             .filter((snapshot) => snapshot.communityId === communityId &&
-              !snapshot.deleted && (!snapshot.postType || snapshot.postType === 'basic'))
+              !snapshot.deleted && (!snapshot.postType || snapshot.postType === 'basic') &&
+              // Merits belong to the nomination beneficiary when set, else the author.
+              userIdSet.has(snapshot.beneficiaryId || snapshot.authorId))
+            .filter((snapshot) => !seen.has(snapshot.id) && seen.add(snapshot.id))
             .map((snapshot) => ({
               id: snapshot.id, communityId: snapshot.communityId,
               authorId: snapshot.authorId,
+              ownerId: snapshot.beneficiaryId || snapshot.authorId,
               title: (snapshot.title?.trim() || snapshot.content.replace(/<[^>]+>/g, ' ').trim() || 'Доброе дело').slice(0, 160),
               score: snapshot.metrics.score ?? 0,
               postType: snapshot.postType ?? null,

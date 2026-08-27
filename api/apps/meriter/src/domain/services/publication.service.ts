@@ -571,6 +571,21 @@ export class PublicationService {
     );
   }
 
+  async getPublicationsByBeneficiary(
+    beneficiaryId: string,
+    limit: number = 50,
+    skip: number = 0,
+  ): Promise<Publication[]> {
+    const docs = await this.publicationPersistence.findPublicationsByBeneficiary(
+      beneficiaryId,
+      limit,
+      skip,
+    );
+    return docs.map((doc) =>
+      Publication.fromSnapshot(doc as IPublicationDocument),
+    );
+  }
+
   /**
    * Count active publications by author excluding project posts (aligns with profile publications tab).
    */

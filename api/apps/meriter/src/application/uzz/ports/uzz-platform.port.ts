@@ -10,6 +10,8 @@ export interface UzzPlatformPublication {
   id: string;
   communityId: string;
   authorId: string;
+  /** Who the earned merits belong to: beneficiary of a nomination post, else the author. */
+  ownerId: string;
   title: string;
   score: number;
   postType: string | null;
@@ -22,6 +24,7 @@ export interface UzzPlatformPort {
   listTelegramCommunities(): Promise<UzzPlatformCommunity[]>;
   getCommunity(communityId: string): Promise<UzzPlatformCommunity | null>;
   getPublication(publicationId: string): Promise<UzzPlatformPublication | null>;
-  listDeedPublications(communityId: string, authorIds: string[]): Promise<UzzPlatformPublication[]>;
+  /** Deed publications whose merits belong to any of the users (as author or nomination beneficiary). */
+  listDeedPublications(communityId: string, userIds: string[]): Promise<UzzPlatformPublication[]>;
   getDisplayNames(userIds: string[]): Promise<Map<string, string>>;
 }

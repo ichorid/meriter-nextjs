@@ -164,6 +164,12 @@ export interface PublicationPersistencePort {
     skip: number,
   ): Promise<PublicationSnapshot[]>;
 
+  findPublicationsByBeneficiary(
+    beneficiaryId: string,
+    limit: number,
+    skip: number,
+  ): Promise<PublicationSnapshot[]>;
+
   countProfilePublicationsByAuthor(authorId: string): Promise<number>;
 
   findPublicationsByHashtag(

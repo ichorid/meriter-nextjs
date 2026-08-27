@@ -14,7 +14,7 @@ const NOW = new Date('2026-08-14T00:00:00Z');
 describe('UZZ exchange-right emission', () => {
   jest.setTimeout(60_000);
   let replSet: MongoMemoryReplSet; let connection: Connection; let useCase: EmitExchangeRightUseCase;
-  let publication = { id: 'publication-1', communityId: 'community-1', authorId: 'author-1', title: 'Доброе дело', score: 10, deleted: false, postType: 'basic' };
+  let publication = { id: 'publication-1', communityId: 'community-1', authorId: 'author-1', ownerId: 'author-1', title: 'Доброе дело', score: 10, deleted: false, postType: 'basic' };
   let deedPublications: Array<{ id: string; title: string; score: number }> = [];
   let listDeeds: ListDeedsUseCase;
 
@@ -22,7 +22,7 @@ describe('UZZ exchange-right emission', () => {
     replSet = await createMongoMemoryReplSetWithRetry(); connection = await createConnection(replSet.getUri()).asPromise(); await initializeUzzModels(connection);
   });
   beforeEach(async () => {
-    publication = { id: 'publication-1', communityId: 'community-1', authorId: 'author-1', title: 'Доброе дело', score: 10, deleted: false, postType: 'basic' };
+    publication = { id: 'publication-1', communityId: 'community-1', authorId: 'author-1', ownerId: 'author-1', title: 'Доброе дело', score: 10, deleted: false, postType: 'basic' };
     deedPublications = [];
     const platform: UzzPlatformPort = { configuredCommunityId: async () => 'community-1', setSelectedCommunityId: async () => undefined, async getPublication(id) { return id === publication.id ? publication : null; }, async listTelegramCommunities() { return []; }, async getCommunity() { return null; }, async getDisplayNames() { return new Map(); }, async listDeedPublications() { return deedPublications; } };
     const clock: Clock = { now: () => new Date(NOW) }; useCase = new EmitExchangeRightUseCase(new MongooseUzzUnitOfWork(connection), platform, clock);
@@ -71,6 +71,24 @@ describe('UZZ exchange-right emission', () => {
 
     expect(await connection.db!.collection('uzz_outbox').findOne({ 'payload.kind': 'group_right_emitted' })).toMatchObject({
       payload: { telegramChatId: '-100200300', path: '/catalog' },
+    });
+  });
+
+  it('emits the bank to the nomination beneficiary, not the post author', async () => {
+    publication.ownerId = 'beneficiary-1';
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({ id: 'identity-2', canonicalUserId: 'beneficiary-1', normalizedEmail: 'beneficiary@example.com', telegramUserId: '2002', telegramUsername: 'beneficiary', createdAt: NOW, updatedAt: NOW, version: 0 });
+
+    expect(await useCase.execute({ publicationId: publication.id })).toMatchObject({
+      status: 'awaiting_nominal',
+      ownerId: 'beneficiary-1',
+      ownerHistory: [expect.objectContaining({ userId: 'beneficiary-1' })],
+    });
+    expect(await connection.db!.collection('uzz_outbox').findOne({ 'payload.kind': 'right_emitted' })).toMatchObject({
+      payload: { telegramUserId: '2002' },
+    });
+    expect(await connection.db!.collection('uzz_ledger').findOne({ type: 'right_emitted' })).toMatchObject({
+      userId: 'beneficiary-1',
     });
   });
 

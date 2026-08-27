@@ -362,6 +362,20 @@ export class PublicationPersistenceAdapter implements PublicationPersistencePort
     return docs.map((d) => mapPublicationDocumentToSnapshot(d as PublicationSnapshot));
   }
 
+  async findPublicationsByBeneficiary(
+    beneficiaryId: string,
+    limit: number,
+    skip: number,
+  ): Promise<PublicationSnapshot[]> {
+    const docs = await this.publicationModel
+      .find({ beneficiaryId, deleted: { $ne: true } })
+      .limit(limit)
+      .skip(skip)
+      .sort({ createdAt: -1 })
+      .lean();
+    return docs.map((d) => mapPublicationDocumentToSnapshot(d as PublicationSnapshot));
+  }
+
   async countProfilePublicationsByAuthor(authorId: string): Promise<number> {
     return this.publicationModel.countDocuments({
       authorId,

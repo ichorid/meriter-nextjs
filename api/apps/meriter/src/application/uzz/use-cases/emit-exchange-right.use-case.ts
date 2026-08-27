@@ -37,43 +37,43 @@ export class EmitExchangeRightUseCase {
     if (eligibility.existing) return eligibility.existing.snapshot();
     if (publication.score < eligibility.settings.emissionThreshold) return null;
     const now = this.clock.now();
+    // The bank belongs to whoever earned the merits: the nomination
+    // beneficiary when the post has one, otherwise the author.
+    const ownerId = publication.ownerId;
     // The optional group announcement must never block the emission itself.
     let groupChatId: string | null = null;
-    let authorName: string | null = null;
+    let ownerName: string | null = null;
     if (eligibility.settings.groupAnnounceRightEmitted) {
       try {
         groupChatId = (await this.platform.getCommunity(publication.communityId))?.telegramChatId ?? null;
         if (groupChatId) {
-          authorName = (await this.platform.getDisplayNames([publication.authorId]))
-            .get(publication.authorId)?.trim() || 'Участник';
+          ownerName = (await this.platform.getDisplayNames([ownerId]))
+            .get(ownerId)?.trim() || 'Участник';
         }
       } catch {
         groupChatId = null;
-        authorName = null;
+        ownerName = null;
       }
     }
     return this.commands.execute({
       commandId: `emit-right:${publication.id}`,
-      actorId: publication.authorId,
+      actorId: ownerId,
       type: 'emit_exchange_right',
       payload: { publicationId: publication.id },
       work: async (repositories) => {
         const existing = await repositories.rights.findBySourcePublicationId(publication.id);
         if (existing) return existing.snapshot();
-        const { identity } = await resolveIdentityContext(
-          repositories,
-          publication.authorId,
-        );
+        const { identity } = await resolveIdentityContext(repositories, ownerId);
         const ready = isIdentityReady(identity);
         const settings = eligibility.settings;
         const right = ExchangeRight.restore({
           id: randomUUID(), communityId: publication.communityId,
-          ownerId: publication.authorId, sourcePublicationId: publication.id,
+          ownerId, sourcePublicationId: publication.id,
           nominalRub: null, nominalAssignedAt: null, lastDemurrageAt: null,
           hopsLeft: settings.initialHops,
           status: ready ? 'awaiting_nominal' : 'holding', lockedByDealId: null,
           ownerHistory: [{
-            userId: publication.authorId, at: now,
+            userId: ownerId, at: now,
             reason: ready ? 'emission' : 'emission_holding',
           }],
           version: 0, createdAt: now, updatedAt: now,
@@ -84,7 +84,7 @@ export class EmitExchangeRightUseCase {
             right,
             settings,
             now,
-            publication.authorId,
+            ownerId,
             `emit-right:${publication.id}:nominal`,
           );
         }
@@ -92,7 +92,7 @@ export class EmitExchangeRightUseCase {
         const emitted = right.snapshot();
         await appendDealLedger(repositories, {
           operationId: `emit-right:${publication.id}`,
-          communityId: publication.communityId, userId: publication.authorId,
+          communityId: publication.communityId, userId: ownerId,
           type: 'right_emitted', amount: 0, createdAt: now,
           metadata: {
             rightId: emitted.id, publicationId: publication.id,
@@ -103,7 +103,7 @@ export class EmitExchangeRightUseCase {
         });
         await appendTelegramNotification(repositories, {
           operationId: `emit-right:${publication.id}`, communityId: publication.communityId,
-          aggregateId: emitted.id, targetUserId: publication.authorId,
+          aggregateId: emitted.id, targetUserId: ownerId,
           kind: 'right_emitted',
           text: emitted.status === 'active'
             ? 'Появился банк на обмен. Номинал назначен автоматически.'
@@ -121,7 +121,7 @@ export class EmitExchangeRightUseCase {
             telegramChatId: groupChatId,
             kind: 'right_emitted',
             text:
-              `🏦 У ${authorName} появился банк на обмен: пост «${postLabel}» ` +
+              `🏦 У ${ownerName} появился банк на обмен: пост «${postLabel}» ` +
               `набрал ${publication.score} заслуг. Банком можно оплатить услугу из каталога.`,
             now,
           });
@@ -138,7 +138,7 @@ export class EmitExchangeRightUseCase {
     const publication = await this.platform.getPublication(publicationId);
     if (!publication) throw new UzzForbiddenError('PUBLICATION_NOT_FOUND');
     const ids = await authorization.resolveUserIds(userId);
-    if (ids.includes(publication.authorId)) return;
+    if (ids.includes(publication.authorId) || ids.includes(publication.ownerId)) return;
     await authorization.assertCommunityAdmin(publication.communityId, userId);
   }
 }
