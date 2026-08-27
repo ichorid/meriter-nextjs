@@ -30,6 +30,7 @@ function platformStub(overrides: Partial<UzzPlatformPort> = {}): UzzPlatformPort
     getCommunity: async (id) => [PILOT, RUSLAN, DEV_CHAT].find((entry) => entry.id === id) ?? null,
     getPublication: async () => null,
     listDeedPublications: async () => [],
+    listEligibleDeedPublications: async () => [],
     getUserLabels: async () => new Map(),
     ...overrides,
   };

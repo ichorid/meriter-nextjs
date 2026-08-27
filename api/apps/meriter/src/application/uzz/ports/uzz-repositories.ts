@@ -22,6 +22,13 @@ export interface UzzSettingsRecord {
   notifyDealClosed: boolean;
   groupAnnounceRightEmitted: boolean;
   groupAnnounceDealClosed: boolean;
+  /** Set while a launch backfill is in flight; cleared conceptually by backfillEmittedAt. */
+  backfillStartedAt: Date | null;
+  backfillEmittedAt: Date | null;
+  backfillEmittedBy: string | null;
+  backfillScanned: number | null;
+  backfillEmitted: number | null;
+  backfillSkipped: number | null;
   createdAt: Date;
   updatedAt: Date;
   version: number;
@@ -77,7 +84,8 @@ export interface UzzLedgerEntry {
     | 'deal_cancelled'
     | 'demurrage'
     | 'nominal_assigned'
-    | 'right_emitted';
+    | 'right_emitted'
+    | 'rights_backfilled';
   amount: number;
   createdAt: Date;
   metadata: Record<string, unknown>;

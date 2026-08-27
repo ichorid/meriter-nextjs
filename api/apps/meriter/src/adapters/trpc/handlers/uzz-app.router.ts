@@ -232,6 +232,18 @@ export const uzzAppRouter = router({
           adminId: ctx.user.id, patch: input.patch,
         }));
       }),
+    previewBackfill: protectedProcedure
+      .input(z.object({ communityId: z.string().min(1) }))
+      .query(async ({ ctx, input }) => {
+        return executeUzz(() =>
+          ctx.uzzFacade.previewBackfill(ctx.user.id, input.communityId));
+      }),
+    backfillRights: protectedProcedure
+      .input(z.object({ communityId: z.string().min(1) }))
+      .mutation(async ({ ctx, input }) => {
+        return executeUzz(() =>
+          ctx.uzzFacade.backfillRights(ctx.user.id, input.communityId));
+      }),
   }),
 
   banks: router({

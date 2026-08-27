@@ -28,6 +28,7 @@ import { AdminResolveDealUseCase } from './use-cases/admin-resolve-deal.use-case
 import { SendDealThanksUseCase } from './use-cases/send-deal-thanks.use-case';
 import { StartTelegramLinkUseCase } from './use-cases/start-telegram-link.use-case';
 import { ListDeedsUseCase } from './use-cases/list-deeds.use-case';
+import { BackfillExchangeRightsUseCase } from './use-cases/backfill-exchange-rights.use-case';
 import {
   ListPilotCommunitiesUseCase,
   SetPilotCommunityUseCase,
@@ -53,6 +54,7 @@ export interface UzzFacadeCommands {
   sendDealThanks: SendDealThanksUseCase;
   startTelegramLink: StartTelegramLinkUseCase;
   listDeeds: ListDeedsUseCase;
+  backfillRights: BackfillExchangeRightsUseCase;
 }
 
 export class UzzApplicationFacade {
@@ -352,6 +354,14 @@ export class UzzApplicationFacade {
 
   listDeeds(userId: string, communityId: string) {
     return this.commands.listDeeds.execute({ userId, communityId });
+  }
+
+  previewBackfill(adminId: string, communityId: string) {
+    return this.commands.backfillRights.preview({ communityId, adminId });
+  }
+
+  backfillRights(adminId: string, communityId: string) {
+    return this.commands.backfillRights.execute({ communityId, adminId });
   }
 
   maybeEmitRight(publicationId: string) {

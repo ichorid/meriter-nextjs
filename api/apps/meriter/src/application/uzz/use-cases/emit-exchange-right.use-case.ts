@@ -23,7 +23,8 @@ export class EmitExchangeRightUseCase {
     private readonly clock: Clock,
   ) { this.commands = new CommandExecutor(unitOfWork); }
 
-  async execute(input: { publicationId: string }) {
+  async execute(input: { publicationId: string; notify?: boolean }) {
+    const notify = input.notify !== false;
     const publication = await this.platform.getPublication(input.publicationId);
     if (!publication || publication.deleted ||
         (publication.postType && publication.postType !== 'basic')) return null;
@@ -43,7 +44,7 @@ export class EmitExchangeRightUseCase {
     // The optional group announcement must never block the emission itself.
     let groupChatId: string | null = null;
     let ownerName: string | null = null;
-    if (eligibility.settings.groupAnnounceRightEmitted) {
+    if (notify && eligibility.settings.groupAnnounceRightEmitted) {
       try {
         groupChatId = (await this.platform.getCommunity(publication.communityId))?.telegramChatId ?? null;
         if (groupChatId) {
@@ -103,18 +104,20 @@ export class EmitExchangeRightUseCase {
             status: emitted.status,
           },
         });
-        await appendTelegramNotification(repositories, {
-          operationId: `emit-right:${publication.id}`, communityId: publication.communityId,
-          aggregateId: emitted.id, targetUserId: ownerId,
-          kind: 'right_emitted',
-          text: emitted.status === 'active'
-            ? 'Появился банк на обмен. Номинал назначен автоматически.'
-            : ready
-              ? 'Появился банк на обмен. Администратор назначит номинал.'
-              : 'Появился банк на обмен. Привяжите email на сайте, чтобы продолжить.',
-          now,
-        });
-        if (groupChatId) {
+        if (notify) {
+          await appendTelegramNotification(repositories, {
+            operationId: `emit-right:${publication.id}`, communityId: publication.communityId,
+            aggregateId: emitted.id, targetUserId: ownerId,
+            kind: 'right_emitted',
+            text: emitted.status === 'active'
+              ? 'Появился банк на обмен. Номинал назначен автоматически.'
+              : ready
+                ? 'Появился банк на обмен. Администратор назначит номинал.'
+                : 'Появился банк на обмен. Привяжите email на сайте, чтобы продолжить.',
+            now,
+          });
+        }
+        if (notify && groupChatId) {
           const postLabel = publication.title.trim() || 'Доброе дело';
           await appendGroupTelegramAnnouncement(repositories, {
             operationId: `emit-right:${publication.id}`,

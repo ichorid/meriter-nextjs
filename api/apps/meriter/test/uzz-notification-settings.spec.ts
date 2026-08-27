@@ -1,21 +1,23 @@
+import { Connection } from 'mongoose';
 import { UzzRepositories } from '../src/application/uzz/ports/uzz-repositories';
 import {
   appendGroupTelegramAnnouncement,
   appendTelegramNotification,
 } from '../src/application/uzz/use-cases/deal-use-case.helpers';
 import { defaultSettings } from '../src/application/uzz/uzz-settings';
+import { silenceLegacyGroupAnnouncements } from '../src/infrastructure/uzz/persistence/mongoose-uzz-repositories';
 
 const NOW = new Date('2026-08-14T00:00:00.000Z');
 
 describe('UZZ notification settings', () => {
-  it('enables every supported Telegram notification by default', () => {
+  it('enables personal Telegram notifications and keeps the group chat quiet by default', () => {
     expect(defaultSettings('community-1', NOW)).toMatchObject({
       notifyRightEmitted: true,
       notifyRequestLifecycle: true,
       notifyDealProgress: true,
       notifyDealClosed: true,
-      groupAnnounceRightEmitted: true,
-      groupAnnounceDealClosed: true,
+      groupAnnounceRightEmitted: false,
+      groupAnnounceDealClosed: false,
     });
   });
 
@@ -70,7 +72,12 @@ describe('UZZ notification settings', () => {
   it('enqueues a group announcement to the community chat', async () => {
     const append = jest.fn();
     const repositories = {
-      settings: { findByCommunityId: jest.fn().mockResolvedValue(defaultSettings('community-1', NOW)) },
+      settings: {
+        findByCommunityId: jest.fn().mockResolvedValue({
+          ...defaultSettings('community-1', NOW),
+          groupAnnounceRightEmitted: true,
+        }),
+      },
       outbox: { append },
     } as unknown as UzzRepositories;
 
@@ -86,6 +93,21 @@ describe('UZZ notification settings', () => {
         kind: 'group_right_emitted',
       }),
     }));
+  });
+
+  it('skips a group announcement when settings are missing (opt-in)', async () => {
+    const append = jest.fn();
+    const repositories = {
+      settings: { findByCommunityId: jest.fn().mockResolvedValue(null) },
+      outbox: { append },
+    } as unknown as UzzRepositories;
+
+    await appendGroupTelegramAnnouncement(repositories, {
+      operationId: 'operation-3b', aggregateId: 'right-1', communityId: 'community-1',
+      telegramChatId: '-100200300', kind: 'right_emitted', text: 'Появился банк', now: NOW,
+    });
+
+    expect(append).not.toHaveBeenCalled();
   });
 
   it('skips a group announcement when the class is disabled', async () => {
@@ -106,5 +128,27 @@ describe('UZZ notification settings', () => {
     });
 
     expect(append).not.toHaveBeenCalled();
+  });
+});
+
+describe('legacy group-chat opt-in migration', () => {
+  it('turns stored group announces off once and stamps the opt-in flag', async () => {
+    const updateMany = jest.fn();
+    const connection = {
+      db: { collection: jest.fn().mockReturnValue({ updateMany }) },
+    } as unknown as Connection;
+
+    await silenceLegacyGroupAnnouncements(connection);
+
+    expect(updateMany).toHaveBeenCalledWith(
+      { groupChatOptInMigrated: { $ne: true } },
+      {
+        $set: {
+          groupAnnounceRightEmitted: false,
+          groupAnnounceDealClosed: false,
+          groupChatOptInMigrated: true,
+        },
+      },
+    );
   });
 });

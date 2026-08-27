@@ -17,13 +17,22 @@ export const UZZ_SETTINGS_DEFAULTS = {
   notifyRequestLifecycle: true,
   notifyDealProgress: true,
   notifyDealClosed: true,
-  groupAnnounceRightEmitted: true,
-  groupAnnounceDealClosed: true,
+  groupAnnounceRightEmitted: false,
+  groupAnnounceDealClosed: false,
 };
 
 export type UzzSettingsPatch = Partial<Omit<
   UzzSettingsRecord,
-  'communityId' | 'createdAt' | 'updatedAt' | 'version'
+  | 'communityId'
+  | 'createdAt'
+  | 'updatedAt'
+  | 'version'
+  | 'backfillStartedAt'
+  | 'backfillEmittedAt'
+  | 'backfillEmittedBy'
+  | 'backfillScanned'
+  | 'backfillEmitted'
+  | 'backfillSkipped'
 >>;
 
 type IntegerSettingKey =
@@ -97,6 +106,12 @@ export function defaultSettings(communityId: string, now: Date): UzzSettingsReco
   return {
     communityId,
     ...UZZ_SETTINGS_DEFAULTS,
+    backfillStartedAt: null,
+    backfillEmittedAt: null,
+    backfillEmittedBy: null,
+    backfillScanned: null,
+    backfillEmitted: null,
+    backfillSkipped: null,
     createdAt: new Date(now),
     updatedAt: new Date(now),
     version: 0,

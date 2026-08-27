@@ -116,7 +116,7 @@ export async function appendTelegramNotification(
     payload: {
       telegramUserId: identity.telegramUserId,
       text: input.text,
-      path: input.kind === 'right_emitted' ? '/' : '/deals',
+      path: input.kind === 'right_emitted' || input.kind === 'rights_backfilled' ? '/' : '/deals',
       kind: input.kind,
       targetUserId: input.targetUserId,
     },
@@ -148,7 +148,7 @@ export async function appendGroupTelegramAnnouncement(
   const settingKey = input.kind === 'right_emitted'
     ? 'groupAnnounceRightEmitted' as const
     : 'groupAnnounceDealClosed' as const;
-  if (settings?.[settingKey] === false) return;
+  if (settings?.[settingKey] !== true) return;
   await repositories.outbox.append({
     id: `${input.operationId}:telegram-group:${input.kind}`,
     topic: 'uzz.telegram',
@@ -177,7 +177,7 @@ function notificationSettingKey(kind: string):
   | 'notifyDealProgress'
   | 'notifyDealClosed'
   | null {
-  if (kind === 'right_emitted') return 'notifyRightEmitted';
+  if (kind === 'right_emitted' || kind === 'rights_backfilled') return 'notifyRightEmitted';
   if (['deal_requested', 'deal_cancelled', 'deal_rejected'].includes(kind)) {
     return 'notifyRequestLifecycle';
   }

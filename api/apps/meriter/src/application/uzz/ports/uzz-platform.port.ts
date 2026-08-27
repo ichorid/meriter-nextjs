@@ -32,5 +32,11 @@ export interface UzzPlatformPort {
   getPublication(publicationId: string): Promise<UzzPlatformPublication | null>;
   /** Deed publications whose merits belong to any of the users (as author or nomination beneficiary). */
   listDeedPublications(communityId: string, userIds: string[]): Promise<UzzPlatformPublication[]>;
+  /** Non-deleted basic posts in the stand community at or above the emission threshold. */
+  listEligibleDeedPublications(
+    communityId: string,
+    minScore: number,
+    limit: number,
+  ): Promise<UzzPlatformPublication[]>;
   getUserLabels(userIds: string[]): Promise<Map<string, UzzUserLabel>>;
 }

@@ -1,7 +1,7 @@
 import { MongoMemoryReplSet } from 'mongodb-memory-server';
 import { Connection, createConnection } from 'mongoose';
 import { Clock } from '../src/application/uzz/ports/clock.port';
-import { UzzPlatformPort } from '../src/application/uzz/ports/uzz-platform.port';
+import { UzzPlatformPort, UzzPlatformPublication } from '../src/application/uzz/ports/uzz-platform.port';
 import { EmitExchangeRightUseCase } from '../src/application/uzz/use-cases/emit-exchange-right.use-case';
 import { ListDeedsUseCase } from '../src/application/uzz/use-cases/list-deeds.use-case';
 import { createMongooseUzzRepositories, initializeUzzModels } from '../src/infrastructure/uzz/persistence/mongoose-uzz-repositories';
@@ -15,7 +15,7 @@ describe('UZZ exchange-right emission', () => {
   jest.setTimeout(60_000);
   let replSet: MongoMemoryReplSet; let connection: Connection; let useCase: EmitExchangeRightUseCase;
   let publication = { id: 'publication-1', communityId: 'community-1', authorId: 'author-1', ownerId: 'author-1', title: 'Доброе дело', score: 10, deleted: false, postType: 'basic' };
-  let deedPublications: Array<{ id: string; title: string; score: number }> = [];
+  let deedPublications: UzzPlatformPublication[] = [];
   let listDeeds: ListDeedsUseCase;
 
   beforeAll(async () => {
@@ -24,7 +24,7 @@ describe('UZZ exchange-right emission', () => {
   beforeEach(async () => {
     publication = { id: 'publication-1', communityId: 'community-1', authorId: 'author-1', ownerId: 'author-1', title: 'Доброе дело', score: 10, deleted: false, postType: 'basic' };
     deedPublications = [];
-    const platform: UzzPlatformPort = { configuredCommunityId: async () => 'community-1', setSelectedCommunityId: async () => undefined, async getPublication(id) { return id === publication.id ? publication : null; }, async listTelegramCommunities() { return []; }, async getCommunity() { return null; }, async getUserLabels() { return new Map(); }, async listDeedPublications() { return deedPublications; } };
+    const platform: UzzPlatformPort = { configuredCommunityId: async () => 'community-1', setSelectedCommunityId: async () => undefined, async getPublication(id) { return id === publication.id ? publication : null; }, async listTelegramCommunities() { return []; }, async getCommunity() { return null; }, async getUserLabels() { return new Map(); }, async listDeedPublications() { return deedPublications; }, async listEligibleDeedPublications() { return []; } };
     const clock: Clock = { now: () => new Date(NOW) }; useCase = new EmitExchangeRightUseCase(new MongooseUzzUnitOfWork(connection), platform, clock);
     listDeeds = new ListDeedsUseCase(new MongooseUzzUnitOfWork(connection), platform, useCase, { assertCommunityParticipant: async () => undefined, resolveUserIds: async (userId: string) => [userId] });
   });
@@ -56,6 +56,19 @@ describe('UZZ exchange-right emission', () => {
   it('announces the emitted bank in the community group chat', async () => {
     const repositories = createMongooseUzzRepositories(connection, null);
     await repositories.identities.insert({ id: 'identity-1', canonicalUserId: 'author-1', normalizedEmail: 'author@example.com', telegramUserId: '1001', telegramUsername: 'author', createdAt: NOW, updatedAt: NOW, version: 0 });
+    await repositories.settings.upsert({
+      communityId: 'community-1',
+      emissionThreshold: 10, initialHops: 10, demurrageRubPerDay: 100,
+      nominalFloorRub: 100, defaultNominalRub: 100, autoAssignNominal: false,
+      minimumListingsToBuy: 3, purchaseGateMode: 'nudge',
+      requestTtlHours: 48, fulfillmentTtlDays: 7, confirmationTtlDays: 7,
+      notifyRightEmitted: true, notifyRequestLifecycle: true,
+      notifyDealProgress: true, notifyDealClosed: true,
+      groupAnnounceRightEmitted: true, groupAnnounceDealClosed: false,
+      backfillStartedAt: null, backfillEmittedAt: null, backfillEmittedBy: null,
+      backfillScanned: null, backfillEmitted: null, backfillSkipped: null,
+      createdAt: NOW, updatedAt: NOW, version: 0,
+    }, null);
     const platform: UzzPlatformPort = {
       configuredCommunityId: async () => 'community-1',
       setSelectedCommunityId: async () => undefined,
@@ -64,6 +77,7 @@ describe('UZZ exchange-right emission', () => {
       async getCommunity() { return { id: 'community-1', name: 'Тест', telegramChatId: '-100200300' }; },
       async getUserLabels() { return new Map([['author-1', { name: 'Автор', username: 'author' }]]); },
       async listDeedPublications() { return []; },
+      async listEligibleDeedPublications() { return []; },
     };
     const emit = new EmitExchangeRightUseCase(new MongooseUzzUnitOfWork(connection), platform, { now: () => new Date(NOW) });
 
@@ -74,6 +88,34 @@ describe('UZZ exchange-right emission', () => {
       payload: { telegramChatId: '-100200300', path: '/catalog' },
     });
     expect((announcement?.payload as { text: string }).text).toContain('У Автор (@author) появился банк');
+  });
+
+  it('does not announce in the group chat unless the admin opts in', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({
+      id: 'identity-1', canonicalUserId: 'author-1', normalizedEmail: 'author@example.com',
+      telegramUserId: '1001', telegramUsername: 'author', createdAt: NOW, updatedAt: NOW, version: 0,
+    });
+    const platform: UzzPlatformPort = {
+      configuredCommunityId: async () => 'community-1',
+      setSelectedCommunityId: async () => undefined,
+      async getPublication(id) { return id === publication.id ? publication : null; },
+      async listTelegramCommunities() { return []; },
+      async getCommunity() { return { id: 'community-1', name: 'Тест', telegramChatId: '-100200300' }; },
+      async getUserLabels() { return new Map([['author-1', { name: 'Автор', username: 'author' }]]); },
+      async listDeedPublications() { return []; },
+      async listEligibleDeedPublications() { return []; },
+    };
+    const emit = new EmitExchangeRightUseCase(
+      new MongooseUzzUnitOfWork(connection), platform, { now: () => new Date(NOW) },
+    );
+
+    await emit.execute({ publicationId: publication.id });
+
+    expect(await connection.db!.collection('uzz_outbox').countDocuments({ 'payload.kind': 'group_right_emitted' })).toBe(0);
+    expect(await connection.db!.collection('uzz_outbox').findOne({ 'payload.kind': 'right_emitted' })).toMatchObject({
+      payload: { telegramUserId: '1001' },
+    });
   });
 
   it('emits the bank to the nomination beneficiary, not the post author', async () => {
@@ -127,7 +169,7 @@ describe('UZZ exchange-right emission', () => {
   it('emits a bank for a deed that is already over the threshold when the list is opened', async () => {
     const repositories = createMongooseUzzRepositories(connection, null);
     await repositories.identities.insert({ id: 'identity-1', canonicalUserId: 'author-1', normalizedEmail: 'author@example.com', telegramUserId: '1001', telegramUsername: 'author', createdAt: NOW, updatedAt: NOW, version: 0 });
-    deedPublications = [{ id: publication.id, title: publication.title, score: publication.score }];
+    deedPublications = [publication];
 
     const deeds = await listDeeds.execute({ userId: 'author-1', communityId: 'community-1' });
 
@@ -140,7 +182,7 @@ describe('UZZ exchange-right emission', () => {
   it('does not emit a second bank when the deed list is opened again', async () => {
     const repositories = createMongooseUzzRepositories(connection, null);
     await repositories.identities.insert({ id: 'identity-1', canonicalUserId: 'author-1', normalizedEmail: 'author@example.com', telegramUserId: '1001', telegramUsername: 'author', createdAt: NOW, updatedAt: NOW, version: 0 });
-    deedPublications = [{ id: publication.id, title: publication.title, score: publication.score }];
+    deedPublications = [publication];
 
     await listDeeds.execute({ userId: 'author-1', communityId: 'community-1' });
     await listDeeds.execute({ userId: 'author-1', communityId: 'community-1' });
@@ -189,6 +231,8 @@ describe('UZZ exchange-right emission', () => {
       notifyDealClosed: true,
       groupAnnounceRightEmitted: true,
       groupAnnounceDealClosed: true,
+      backfillStartedAt: null, backfillEmittedAt: null, backfillEmittedBy: null,
+      backfillScanned: null, backfillEmitted: null, backfillSkipped: null,
       createdAt: NOW,
       updatedAt: NOW,
       version: 0,
@@ -222,6 +266,8 @@ describe('UZZ exchange-right emission', () => {
       notifyDealClosed: true,
       groupAnnounceRightEmitted: true,
       groupAnnounceDealClosed: true,
+      backfillStartedAt: null, backfillEmittedAt: null, backfillEmittedBy: null,
+      backfillScanned: null, backfillEmitted: null, backfillSkipped: null,
       createdAt: NOW,
       updatedAt: NOW,
       version: 0,

@@ -34,6 +34,13 @@ describe('AdminSettingsForm', () => {
     expect(screen.getByLabelText('Новая заявка или отмена')).toBeChecked();
     expect(screen.getByLabelText('Заявка принята или услуга сделана')).toBeChecked();
     expect(screen.getByLabelText('Сделка закрыта')).toBeChecked();
+    expect(screen.getByLabelText('У участника появился банк на обмен')).toBeChecked();
+  });
+
+  it('keeps group-chat announces off unless the admin opts in', () => {
+    render(<AdminSettingsForm settings={{ ...settings, groupAnnounceRightEmitted: false, groupAnnounceDealClosed: false }} pending={false} onSave={vi.fn()} />);
+    expect(screen.getByLabelText('У участника появился банк на обмен')).not.toBeChecked();
+    expect(screen.getByLabelText('Состоялась сделка')).not.toBeChecked();
   });
 
   it('rejects a fractional ruble value, uses step=1, and shows integer guidance', async () => {

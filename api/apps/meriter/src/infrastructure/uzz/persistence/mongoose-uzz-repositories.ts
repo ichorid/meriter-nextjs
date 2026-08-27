@@ -90,6 +90,23 @@ export function getUzzModels(connection: Connection): MongooseUzzModels {
 export async function initializeUzzModels(connection: Connection): Promise<void> {
   const models = getUzzModels(connection);
   await Promise.all(Object.values(models).map((registeredModel) => registeredModel.init()));
+  await silenceLegacyGroupAnnouncements(connection);
+}
+
+/** Old defaults wrote `true` into every settings doc. Flip once; admins can opt back in. */
+export async function silenceLegacyGroupAnnouncements(connection: Connection): Promise<void> {
+  const db = connection.db;
+  if (!db) return;
+  await db.collection('uzz_settings').updateMany(
+    { groupChatOptInMigrated: { $ne: true } },
+    {
+      $set: {
+        groupAnnounceRightEmitted: false,
+        groupAnnounceDealClosed: false,
+        groupChatOptInMigrated: true,
+      },
+    },
+  );
 }
 
 export function createMongooseUzzRepositories(
@@ -263,14 +280,15 @@ function createRepositories(
       return raw ? mapSettings(raw) : null;
     },
     async upsert(record, expectedVersion) {
+      const document = { ...record, groupChatOptInMigrated: true };
       if (expectedVersion === null) {
-        await models.settings.create([record], options);
+        await models.settings.create([document], options);
         return;
       }
       if (expectedVersion !== undefined) {
         const result = await models.settings.updateOne(
           { communityId: record.communityId, version: expectedVersion },
-          { $set: record },
+          { $set: document },
           options,
         );
         if (result.matchedCount !== 1) throw new UzzConflictError('SETTINGS_VERSION_CONFLICT');
@@ -278,7 +296,7 @@ function createRepositories(
       }
       await models.settings.updateOne(
         { communityId: record.communityId },
-        { $set: record },
+        { $set: document },
         { ...options, upsert: true },
       );
     },
@@ -594,8 +612,15 @@ function mapSettings(raw: unknown): UzzSettingsRecord {
     notifyRequestLifecycle: record.notifyRequestLifecycle !== false,
     notifyDealProgress: record.notifyDealProgress !== false,
     notifyDealClosed: record.notifyDealClosed !== false,
-    groupAnnounceRightEmitted: record.groupAnnounceRightEmitted !== false,
-    groupAnnounceDealClosed: record.groupAnnounceDealClosed !== false,
+    // Group chat is opt-in. Missing or legacy-on-by-default must not spam the stand chat.
+    groupAnnounceRightEmitted: record.groupAnnounceRightEmitted === true,
+    groupAnnounceDealClosed: record.groupAnnounceDealClosed === true,
+    backfillStartedAt: record.backfillStartedAt ? new Date(record.backfillStartedAt as Date) : null,
+    backfillEmittedAt: record.backfillEmittedAt ? new Date(record.backfillEmittedAt as Date) : null,
+    backfillEmittedBy: typeof record.backfillEmittedBy === 'string' ? record.backfillEmittedBy : null,
+    backfillScanned: record.backfillScanned == null ? null : Number(record.backfillScanned),
+    backfillEmitted: record.backfillEmitted == null ? null : Number(record.backfillEmitted),
+    backfillSkipped: record.backfillSkipped == null ? null : Number(record.backfillSkipped),
     createdAt,
     updatedAt,
     version: Number(record.version ?? 0),

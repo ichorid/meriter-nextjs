@@ -21,7 +21,7 @@ vi.mock('@/lib/trpc/client', () => {
     useUtils: () => ({
       auth: { me: { invalidate: vi.fn() } },
       community: { listMine: { invalidate: vi.fn() }, getActive: { invalidate: vi.fn() } },
-      settings: { get: { invalidate: vi.fn() } },
+      settings: { get: { invalidate: vi.fn() }, previewBackfill: { invalidate: vi.fn() } },
       banks: { listAwaitingNominal: { invalidate: vi.fn() }, listHolding: { invalidate: vi.fn() } },
       deals: { adminList: { invalidate: vi.fn() } },
       ledger: { list: { invalidate: vi.fn() } },
@@ -33,6 +33,8 @@ vi.mock('@/lib/trpc/client', () => {
     settings: {
       get: { useQuery: () => ({ data: { demurrageRubPerDay: 100, nominalFloorRub: 100 }, isLoading: false, isError: false }) },
       update: { useMutation: () => ({ isPending: false, mutate: vi.fn(), error: null }) },
+      previewBackfill: { useQuery: () => ({ data: { wouldEmit: 0, owners: 0, alreadyHaveBank: 0, emissionThreshold: 10, autoAssignNominal: false, defaultNominalRub: 100, scanned: 0, truncated: false, alreadyRanAt: null }, isError: false }) },
+      backfillRights: { useMutation: () => ({ isPending: false, mutate: vi.fn() }) },
     },
     banks: {
       listAwaitingNominal: { useQuery: () => ({ data: [], isLoading: false, isError: false, refetch: vi.fn() }) },

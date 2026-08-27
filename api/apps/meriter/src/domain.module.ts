@@ -157,6 +157,7 @@ import {
   UzzSettingsPersistenceSchema,
 } from './infrastructure/uzz/persistence/schemas/uzz-settings.schema';
 import { MongooseUzzUnitOfWork } from './infrastructure/uzz/persistence/mongoose-uzz-unit-of-work';
+import { silenceLegacyGroupAnnouncements } from './infrastructure/uzz/persistence/mongoose-uzz-repositories';
 import { runUzzIndexPreflight } from './infrastructure/uzz/persistence/verify-uzz-indexes';
 import { UZZ_UNIT_OF_WORK } from './application/uzz/ports/uzz-unit-of-work';
 import { StartTelegramLinkUseCase } from './application/uzz/use-cases/start-telegram-link.use-case';
@@ -195,6 +196,7 @@ import { ExpireDealsUseCase } from './application/uzz/use-cases/expire-deals.use
 import { SendDealThanksUseCase } from './application/uzz/use-cases/send-deal-thanks.use-case';
 import { EmitExchangeRightUseCase } from './application/uzz/use-cases/emit-exchange-right.use-case';
 import { ListDeedsUseCase } from './application/uzz/use-cases/list-deeds.use-case';
+import { BackfillExchangeRightsUseCase } from './application/uzz/use-cases/backfill-exchange-rights.use-case';
 import {
   ListPilotCommunitiesUseCase,
   SetPilotCommunityUseCase,
@@ -423,7 +425,24 @@ import { EventBus } from './domain/events/event-bus';
         publications: PublicationService,
         users: UserService,
         connection: Connection,
-      ): UzzPlatformPort => ({
+      ): UzzPlatformPort => {
+        const toUzzPublication = (snapshot: {
+          id: string; communityId: string; authorId: string; beneficiaryId?: string | null;
+          title?: string | null; content?: string | null; metrics?: { score?: number };
+          postType?: string | null; deleted?: boolean;
+        }) => ({
+          id: snapshot.id, communityId: snapshot.communityId,
+          authorId: snapshot.authorId,
+          ownerId: snapshot.beneficiaryId || snapshot.authorId,
+          title: (snapshot.title?.trim() || (snapshot.content ?? '').replace(/<[^>]+>/g, ' ').trim() || 'Доброе дело').slice(0, 160),
+          score: snapshot.metrics?.score ?? 0,
+          postType: snapshot.postType ?? null,
+          deleted: Boolean(snapshot.deleted),
+        });
+        const isDeedSnapshot = (snapshot: {
+          communityId: string; deleted?: boolean; postType?: string | null;
+        }) => !snapshot.deleted && (!snapshot.postType || snapshot.postType === 'basic');
+        return {
         async configuredCommunityId() {
           const env = config.get('app')?.defaultTelegramCommunityId?.trim() ?? '';
           const db = connection.db;
@@ -455,16 +474,7 @@ import { EventBus } from './domain/events/event-bus';
         async getPublication(publicationId) {
           const publication = await publications.getPublication(publicationId);
           if (!publication) return null;
-          const snapshot = publication.toSnapshot();
-          return {
-            id: snapshot.id, communityId: snapshot.communityId,
-            authorId: snapshot.authorId,
-            ownerId: snapshot.beneficiaryId || snapshot.authorId,
-            title: (snapshot.title?.trim() || snapshot.content.replace(/<[^>]+>/g, ' ').trim() || 'Доброе дело').slice(0, 160),
-            score: snapshot.metrics.score ?? 0,
-            postType: snapshot.postType ?? null,
-            deleted: Boolean(snapshot.deleted),
-          };
+          return toUzzPublication(publication.toSnapshot());
         },
         async listDeedPublications(communityId, userIds) {
           const batches = await Promise.all([
@@ -474,23 +484,32 @@ import { EventBus } from './domain/events/event-bus';
           const userIdSet = new Set(userIds);
           const seen = new Set<string>();
           return batches.flat().map((publication) => publication.toSnapshot())
-            .filter((snapshot) => snapshot.communityId === communityId &&
-              !snapshot.deleted && (!snapshot.postType || snapshot.postType === 'basic') &&
-              // Merits belong to the nomination beneficiary when set, else the author.
-              userIdSet.has(snapshot.beneficiaryId || snapshot.authorId))
+            .filter((snapshot) => snapshot.communityId === communityId
+              && isDeedSnapshot(snapshot)
+              && userIdSet.has(snapshot.beneficiaryId || snapshot.authorId))
             .filter((snapshot) => !seen.has(snapshot.id) && seen.add(snapshot.id))
-            .map((snapshot) => ({
-              id: snapshot.id, communityId: snapshot.communityId,
-              authorId: snapshot.authorId,
-              ownerId: snapshot.beneficiaryId || snapshot.authorId,
-              title: (snapshot.title?.trim() || snapshot.content.replace(/<[^>]+>/g, ' ').trim() || 'Доброе дело').slice(0, 160),
-              score: snapshot.metrics.score ?? 0,
-              postType: snapshot.postType ?? null,
-              deleted: Boolean(snapshot.deleted),
-            }));
+            .map(toUzzPublication);
+        },
+        async listEligibleDeedPublications(communityId, minScore, limit) {
+          const rows = await publications.findPublicationsByQuery({
+            query: {
+              communityId,
+              deleted: { $ne: true },
+              'metrics.score': { $gte: minScore },
+              $or: [
+                { postType: 'basic' },
+                { postType: null },
+                { postType: { $exists: false } },
+              ],
+            },
+            limit,
+            sort: { 'metrics.score': -1 },
+          });
+          return rows.filter(isDeedSnapshot).map(toUzzPublication);
         },
         getUserLabels: (userIds) => users.getUserLabelsByUserIds(userIds),
-      }),
+      };
+      },
     },
     {
       provide: UzzAccessPolicy,
@@ -624,6 +643,21 @@ import { EventBus } from './domain/events/event-bus';
       ) => new ListDeedsUseCase(unitOfWork, platform, emitRight, authorization),
     },
     {
+      provide: BackfillExchangeRightsUseCase,
+      inject: [
+        UZZ_UNIT_OF_WORK, UZZ_PLATFORM_PORT, EmitExchangeRightUseCase,
+        UzzAuthorizationService,
+      ],
+      useFactory: (
+        unitOfWork: UzzUnitOfWork,
+        platform: UzzPlatformPort,
+        emitRight: EmitExchangeRightUseCase,
+        authorization: UzzAuthorizationService,
+      ) => new BackfillExchangeRightsUseCase(
+        unitOfWork, platform, emitRight, authorization, SYSTEM_CLOCK,
+      ),
+    },
+    {
       provide: UzzApplicationFacade,
       inject: [
         UZZ_UNIT_OF_WORK, UzzAuthorizationService, UZZ_PLATFORM_PORT,
@@ -634,6 +668,7 @@ import { EventBus } from './domain/events/event-bus';
         MarkDealCompletedUseCase, CloseDealUseCase, AdminResolveDealUseCase,
         SendDealThanksUseCase, StartTelegramLinkUseCase,
         ListPilotCommunitiesUseCase, SetPilotCommunityUseCase, ListDeedsUseCase,
+        BackfillExchangeRightsUseCase,
       ],
       useFactory: (
         unitOfWork, authorization, platform, emitRight,
@@ -641,7 +676,7 @@ import { EventBus } from './domain/events/event-bus';
         createListing, updateListing, listCatalog, checkPurchaseGate,
         requestDeal, acceptDeal, rejectDeal, cancelDeal, markDealCompleted,
         closeDeal, adminResolveDeal, sendDealThanks, startTelegramLink,
-        listPilotCommunities, setPilotCommunity, listDeeds,
+        listPilotCommunities, setPilotCommunity, listDeeds, backfillRights,
       ) =>
         new UzzApplicationFacade(
           unitOfWork, authorization, platform, emitRight, GLOBAL_COMMUNITY_ID,
@@ -651,7 +686,7 @@ import { EventBus } from './domain/events/event-bus';
             createListing, updateListing, listCatalog, checkPurchaseGate,
             requestDeal, acceptDeal, rejectDeal, cancelDeal, markDealCompleted,
             closeDeal, adminResolveDeal, sendDealThanks, startTelegramLink,
-            listDeeds,
+            listDeeds, backfillRights,
           },
         ),
     },
@@ -759,6 +794,7 @@ import { EventBus } from './domain/events/event-bus';
     SendDealThanksUseCase,
     EmitExchangeRightUseCase,
     ListDeedsUseCase,
+    BackfillExchangeRightsUseCase,
     ListPilotCommunitiesUseCase,
     SetPilotCommunityUseCase,
     UzzAuthorizationService,
@@ -843,5 +879,6 @@ export class DomainModule implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     await runUzzIndexPreflight(this.connection.db, process.env, this.logger);
+    await silenceLegacyGroupAnnouncements(this.connection);
   }
 }

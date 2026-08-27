@@ -27,6 +27,7 @@ export const UzzLedgerPersistenceSchema = new Schema(
         'demurrage',
         'nominal_assigned',
         'right_emitted',
+        'rights_backfilled',
       ],
       required: true,
     },
