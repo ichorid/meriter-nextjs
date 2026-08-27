@@ -1,5 +1,11 @@
 import { UzzUnitOfWork } from './ports/uzz-unit-of-work';
 import { UzzPlatformPort } from './ports/uzz-platform.port';
+import {
+  buildLedgerContext,
+  collectLedgerRefs,
+  LedgerDealInfo,
+  resolveLedgerCounterpartyId,
+} from './ledger-enrichment';
 import { UzzAuthorizationService } from './uzz-authorization.service';
 import { isIdentityReady } from './policies/uzz-access-policy';
 import { resolveIdentityContext } from './use-cases/deal-use-case.helpers';
@@ -105,13 +111,17 @@ export class UzzApplicationFacade {
     const uniqueListings = [...new Map(listings.map((listing) => [
       listing.id, listing,
     ])).values()];
-    const names = await this.platform.getDisplayNames(
+    const labels = await this.platform.getUserLabels(
       uniqueListings.map((listing) => listing.authorId),
     );
-    return uniqueListings.map((listing) => ({
-      ...listing,
-      ownerName: displayName(names.get(listing.authorId)),
-    }));
+    return uniqueListings.map((listing) => {
+      const label = labels.get(listing.authorId);
+      return {
+        ...listing,
+        ownerName: displayName(label?.name),
+        ownerUsername: label?.username ?? null,
+      };
+    });
   }
   checkPurchaseGate(input: Parameters<CheckPurchaseGateUseCase['execute']>[0]) {
     return this.commands.checkPurchaseGate.execute(input);
@@ -277,12 +287,65 @@ export class UzzApplicationFacade {
     const userIds = input.mineOnly
       ? await this.authorization.resolveUserIds(input.viewerId)
       : undefined;
-    return this.unitOfWork.run((repositories) => repositories.ledger.list({
-      communityId: input.communityId,
-      userIds,
-      limit: Math.min(Math.max(input.limit ?? 30, 1), 50),
-      cursor: input.cursor ?? null,
-    }));
+    const page = await this.unitOfWork.run(async (repositories) => {
+      const result = await repositories.ledger.list({
+        communityId: input.communityId,
+        userIds,
+        limit: Math.min(Math.max(input.limit ?? 30, 1), 50),
+        cursor: input.cursor ?? null,
+      });
+      const { dealIds, publicationIds } = collectLedgerRefs(result.items);
+      const deals = await Promise.all(
+        dealIds.map((dealId) => repositories.deals.findById(dealId)),
+      );
+      const dealInfos = new Map<string, LedgerDealInfo>(
+        deals.flatMap((deal) => {
+          if (!deal) return [];
+          const snapshot = deal.snapshot();
+          return [[snapshot.id, {
+            id: snapshot.id,
+            buyerId: snapshot.buyerId,
+            sellerId: snapshot.sellerId,
+            listingTitle: snapshot.listingSnapshot.title,
+          }] as const];
+        }),
+      );
+      return { ...result, dealInfos, publicationIds };
+    });
+    // Display names and publication titles come from the platform, outside
+    // the unit of work. Enrichment is best-effort: a failed lookup only
+    // degrades the row to its bare form.
+    const counterpartyIds = new Set<string>();
+    for (const item of page.items) {
+      const dealId = typeof item.metadata?.dealId === 'string' ? item.metadata.dealId : undefined;
+      const counterpartyId = resolveLedgerCounterpartyId(
+        item,
+        dealId ? page.dealInfos.get(dealId) : undefined,
+      );
+      if (counterpartyId) counterpartyIds.add(counterpartyId);
+    }
+    let displayNames = new Map<string, string>();
+    const publicationTitles = new Map<string, string>();
+    try {
+      if (counterpartyIds.size > 0) {
+        displayNames = await this.platform.getDisplayNames([...counterpartyIds]);
+      }
+      const publications = await Promise.all(
+        page.publicationIds.map((publicationId) => this.platform.getPublication(publicationId)),
+      );
+      for (const publication of publications) {
+        if (publication) publicationTitles.set(publication.id, publication.title);
+      }
+    } catch {
+      // Leave whatever was resolved so far.
+    }
+    return {
+      items: page.items.map((item) => ({
+        ...item,
+        context: buildLedgerContext(item, page.dealInfos, displayNames, publicationTitles),
+      })),
+      nextCursor: page.nextCursor,
+    };
   }
 
   listDeeds(userId: string, communityId: string) {
