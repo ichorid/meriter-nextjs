@@ -355,9 +355,9 @@ realUzzTest('R12 optional thanks is sent once and appears in both ledger views',
   await page.getByRole('button', { name: 'Всё выполнено' }).click();
   await page.getByRole('button', { name: 'Подтвердить закрытие и передачу банка' }).click();
   await expect(page.getByText('Сделка закрыта')).toBeVisible();
-  await page.getByRole('button', { name: 'Показать историю' }).click();
+  // The closed deal stays in the list and the thanks form opens automatically.
   const thanks = captureTrpcResponses(page, 'deals.thank');
-  await page.getByRole('button', { name: 'Сказать спасибо' }).click();
+  await expect(page.getByPlaceholder('За что хотите поблагодарить')).toBeVisible();
   await page.getByPlaceholder('Заслуг, если хотите добавить').fill('2');
   await page.getByPlaceholder('За что хотите поблагодарить').fill('Очень помогли');
   await page.getByRole('button', { name: 'Отправить' }).click();
