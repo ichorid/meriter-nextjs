@@ -45,9 +45,15 @@ export class SendDealThanksUseCase {
             repositories, actor.userIds, before.communityId,
             this.globalCommunityId, merits.value,
           );
+          // The recipient may keep their wallet on another linked account
+          // (e.g. a Telegram-only id), so pass the whole identity set.
+          const recipient = await resolveIdentityContext(repositories, recipientUserId);
           const transfer = await repositories.wallet.transferPreferLocal({
             userId: payerUserId,
-            recipientUserId,
+            recipientUserIds: [
+              recipientUserId,
+              ...recipient.userIds.filter((id) => id !== recipientUserId),
+            ],
             localCommunityId: before.communityId,
             globalCommunityId: this.globalCommunityId,
             amount: merits.value,

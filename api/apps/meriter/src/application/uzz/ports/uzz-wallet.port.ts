@@ -37,7 +37,14 @@ export interface UzzWalletPort {
     amount: number;
     operationId: string;
   }): Promise<void>;
+  /**
+   * Debits the sender (local first) and credits the recipient in the same
+   * community the debit came from. `recipientUserIds` is the full set of the
+   * recipient's linked account ids: the credit lands on whichever of them
+   * already has a wallet there; if none does, a wallet is created for the
+   * first id, mirroring how the platform lazily creates wallets on credit.
+   */
   transferPreferLocal(
-    input: UzzWalletOperationInput & { recipientUserId: string },
+    input: UzzWalletOperationInput & { recipientUserIds: string[] },
   ): Promise<UzzWalletReservation>;
 }

@@ -100,6 +100,41 @@ describe('UZZ deal thanks', () => {
     expect(await balance('seller-1', GLOBAL)).toBe(2);
   });
 
+  it('creates the recipient wallet on the fly instead of failing', async () => {
+    await rawDb.collection('wallets').deleteMany({ userId: 'seller-1' });
+    await thanks.execute({
+      commandId: 'thanks-no-recipient-wallet', dealId: 'deal-1', actorUserId: 'buyer-1',
+      merits: 2, comment: 'Спасибо', now: NOW,
+    });
+    const created = await rawDb.collection('wallets').findOne({ userId: 'seller-1', communityId: LOCAL });
+    expect(created).toMatchObject({
+      balance: 2,
+      currency: { singular: 'merit', plural: 'merits', genitive: 'merits' },
+    });
+    expect(await balance('buyer-1', LOCAL)).toBe(3);
+  });
+
+  it('credits the wallet of a linked account when the deal-side id has none', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({
+      id: 'identity-seller', canonicalUserId: 'seller-web', normalizedEmail: 'seller@example.com',
+      telegramUserId: '2002', telegramUsername: 'seller', createdAt: NOW, updatedAt: NOW, version: 0,
+    });
+    await repositories.identities.insertAlias({
+      id: 'alias-seller-1', identityId: 'identity-seller', aliasUserId: 'seller-1', createdAt: NOW,
+    });
+    await rawDb.collection('wallets').deleteMany({ userId: 'seller-1' });
+    await seedWallet('seller-web-local', 'seller-web', LOCAL, 4);
+
+    await thanks.execute({
+      commandId: 'thanks-linked-wallet', dealId: 'deal-1', actorUserId: 'buyer-1',
+      merits: 3, comment: 'Спасибо', now: NOW,
+    });
+
+    expect(await balance('seller-web', LOCAL)).toBe(7);
+    expect(await rawDb.collection('wallets').findOne({ userId: 'seller-1', communityId: LOCAL })).toBeNull();
+  });
+
   it('allows a comment-only optional thanks without wallet effects', async () => {
     await thanks.execute({
       commandId: 'thanks-comment-only', dealId: 'deal-1', actorUserId: 'buyer-1',

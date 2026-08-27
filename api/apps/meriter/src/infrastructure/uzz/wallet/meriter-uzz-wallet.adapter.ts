@@ -133,8 +133,11 @@ export class MeriterUzzWalletAdapter implements UzzWalletPort {
   }
 
   async transferPreferLocal(
-    input: UzzWalletOperationInput & { recipientUserId: string },
+    input: UzzWalletOperationInput & { recipientUserIds: string[] },
   ): Promise<UzzWalletReservation> {
+    if (!input.recipientUserIds.length) {
+      throw new UzzConflictError('WALLET_OPERATION_INVALID');
+    }
     const reserved = await this.debitPreferLocal(
       input,
       'uzz_transfer_send',
@@ -143,17 +146,14 @@ export class MeriterUzzWalletAdapter implements UzzWalletPort {
     if (await this.findEffect(input.operationId, 'uzz_transfer_receive')) {
       return reserved;
     }
-    const recipient = await this.connection.collection('wallets').findOneAndUpdate(
-      {
-        userId: input.recipientUserId,
-        communityId: reserved.sourceCommunityId,
-      },
-      { $inc: { balance: input.amount }, $set: { lastUpdated: new Date() } },
-      { returnDocument: 'after', session: this.session ?? undefined },
+    const recipientWalletId = await this.creditRecipient(
+      input.recipientUserIds,
+      reserved.sourceCommunityId,
+      input.amount,
+      reserved.walletId,
     );
-    if (!recipient) throw new UzzConflictError('WALLET_RECIPIENT_NOT_FOUND');
     await this.insertEffect({
-      walletId: String(recipient.id),
+      walletId: recipientWalletId,
       amount: input.amount,
       type: 'deposit',
       referenceType: 'uzz_transfer_receive',
@@ -161,6 +161,49 @@ export class MeriterUzzWalletAdapter implements UzzWalletPort {
       description: `UZZ transfer receive:${reserved.sourceCommunityId}`,
     });
     return reserved;
+  }
+
+  /**
+   * Credits whichever linked account already holds a wallet in the community;
+   * when none exists yet, creates one for the first (canonical) id — the
+   * platform creates wallets lazily on first credit, and a thanks transfer
+   * must never fail because the recipient has not touched this community yet.
+   */
+  private async creditRecipient(
+    recipientUserIds: string[],
+    communityId: string,
+    amount: number,
+    payerWalletId: string,
+  ): Promise<string> {
+    const existing = await this.connection.collection('wallets').findOneAndUpdate(
+      { userId: { $in: recipientUserIds }, communityId },
+      { $inc: { balance: amount }, $set: { lastUpdated: new Date() } },
+      { returnDocument: 'after', session: this.session ?? undefined },
+    );
+    if (existing) return String(existing.id);
+    // The payer wallet in this community exists (the debit just went through);
+    // reuse its currency for the new recipient wallet.
+    const payerWallet = await this.connection.collection('wallets').findOne(
+      { id: payerWalletId },
+      { session: this.session ?? undefined },
+    );
+    const now = new Date();
+    const walletId = randomUUID();
+    await this.connection.collection('wallets').insertOne(
+      {
+        id: walletId,
+        userId: recipientUserIds[0],
+        communityId,
+        balance: amount,
+        currency: payerWallet?.currency
+          ?? { singular: 'заслуга', plural: 'заслуги', genitive: 'заслуг' },
+        lastUpdated: now,
+        createdAt: now,
+        updatedAt: now,
+      },
+      { session: this.session ?? undefined },
+    );
+    return walletId;
   }
 
   private async findEffect(operationId: string, referenceType: string) {
