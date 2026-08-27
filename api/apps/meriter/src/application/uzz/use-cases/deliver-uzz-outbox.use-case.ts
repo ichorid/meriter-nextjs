@@ -101,12 +101,17 @@ function sanitizeOutboxError(error: unknown): string {
 }
 
 function notificationPayload(payload: Record<string, unknown>): UzzNotificationPayload {
-  if (typeof payload.telegramUserId !== 'string' || !payload.telegramUserId.trim() ||
-      typeof payload.text !== 'string' || !payload.text.trim()) {
+  // telegramUserId is the legacy field name for DM events already sitting in the outbox.
+  const chatId = typeof payload.telegramChatId === 'string' && payload.telegramChatId.trim()
+    ? payload.telegramChatId
+    : typeof payload.telegramUserId === 'string' && payload.telegramUserId.trim()
+      ? payload.telegramUserId
+      : null;
+  if (!chatId || typeof payload.text !== 'string' || !payload.text.trim()) {
     throw new UzzValidationError('OUTBOX_PAYLOAD_INVALID');
   }
   const path = typeof payload.path === 'string' && /^\/(?!\/)/.test(payload.path)
     ? payload.path
     : undefined;
-  return { telegramUserId: payload.telegramUserId, text: payload.text, ...(path ? { path } : {}) };
+  return { telegramChatId: chatId, text: payload.text, ...(path ? { path } : {}) };
 }

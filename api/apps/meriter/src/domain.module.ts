@@ -541,8 +541,9 @@ import { EventBus } from './domain/events/event-bus';
     },
     {
       provide: CloseDealUseCase,
-      inject: [UZZ_UNIT_OF_WORK],
-      useFactory: (unitOfWork) => new CloseDealUseCase(unitOfWork),
+      inject: [UZZ_UNIT_OF_WORK, UZZ_PLATFORM_PORT],
+      useFactory: (unitOfWork, platform: UzzPlatformPort) =>
+        new CloseDealUseCase(unitOfWork, platform),
     },
     {
       provide: AdminResolveDealUseCase,

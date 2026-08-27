@@ -1,5 +1,6 @@
 export interface UzzNotificationPayload {
-  telegramUserId: string;
+  /** Telegram chat id: a user's DM chat or a community group chat. */
+  telegramChatId: string;
   text: string;
   path?: string;
 }

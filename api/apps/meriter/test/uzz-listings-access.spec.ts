@@ -262,6 +262,8 @@ function settings(mode: 'nudge' | 'require_min_lots') {
     notifyRequestLifecycle: true,
     notifyDealProgress: true,
     notifyDealClosed: true,
+    groupAnnounceRightEmitted: true,
+    groupAnnounceDealClosed: true,
     createdAt: NOW,
     updatedAt: NOW,
     version: 0,

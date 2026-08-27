@@ -25,6 +25,8 @@ export const UzzSettingsPersistenceSchema = new Schema(
     notifyRequestLifecycle: { type: Boolean, required: true, default: true },
     notifyDealProgress: { type: Boolean, required: true, default: true },
     notifyDealClosed: { type: Boolean, required: true, default: true },
+    groupAnnounceRightEmitted: { type: Boolean, required: true, default: true },
+    groupAnnounceDealClosed: { type: Boolean, required: true, default: true },
     version: { type: Number, required: true, default: 0 },
   },
   { collection: 'uzz_settings', timestamps: true, versionKey: false },

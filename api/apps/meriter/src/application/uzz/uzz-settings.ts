@@ -17,6 +17,8 @@ export const UZZ_SETTINGS_DEFAULTS = {
   notifyRequestLifecycle: true,
   notifyDealProgress: true,
   notifyDealClosed: true,
+  groupAnnounceRightEmitted: true,
+  groupAnnounceDealClosed: true,
 };
 
 export type UzzSettingsPatch = Partial<Omit<
@@ -66,6 +68,8 @@ export function validateSettingsPatch(patch: UzzSettingsPatch): void {
     'notifyRequestLifecycle',
     'notifyDealProgress',
     'notifyDealClosed',
+    'groupAnnounceRightEmitted',
+    'groupAnnounceDealClosed',
     'autoAssignNominal',
   ] as const) {
     if (patch[key] !== undefined && typeof patch[key] !== 'boolean') {

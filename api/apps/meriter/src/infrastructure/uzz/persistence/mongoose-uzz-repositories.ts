@@ -594,6 +594,8 @@ function mapSettings(raw: unknown): UzzSettingsRecord {
     notifyRequestLifecycle: record.notifyRequestLifecycle !== false,
     notifyDealProgress: record.notifyDealProgress !== false,
     notifyDealClosed: record.notifyDealClosed !== false,
+    groupAnnounceRightEmitted: record.groupAnnounceRightEmitted !== false,
+    groupAnnounceDealClosed: record.groupAnnounceDealClosed !== false,
     createdAt,
     updatedAt,
     version: Number(record.version ?? 0),

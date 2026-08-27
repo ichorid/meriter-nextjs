@@ -7,7 +7,12 @@ import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { isIdentityReady } from '../policies/uzz-access-policy';
 import { defaultSettings } from '../uzz-settings';
 import { CommandExecutor } from './command-executor';
-import { appendDealLedger, appendTelegramNotification, resolveIdentityContext } from './deal-use-case.helpers';
+import {
+  appendDealLedger,
+  appendGroupTelegramAnnouncement,
+  appendTelegramNotification,
+  resolveIdentityContext,
+} from './deal-use-case.helpers';
 import { maybeAutoAssignNominal } from './identity-link.helpers';
 
 export class EmitExchangeRightUseCase {
@@ -32,6 +37,21 @@ export class EmitExchangeRightUseCase {
     if (eligibility.existing) return eligibility.existing.snapshot();
     if (publication.score < eligibility.settings.emissionThreshold) return null;
     const now = this.clock.now();
+    // The optional group announcement must never block the emission itself.
+    let groupChatId: string | null = null;
+    let authorName: string | null = null;
+    if (eligibility.settings.groupAnnounceRightEmitted) {
+      try {
+        groupChatId = (await this.platform.getCommunity(publication.communityId))?.telegramChatId ?? null;
+        if (groupChatId) {
+          authorName = (await this.platform.getDisplayNames([publication.authorId]))
+            .get(publication.authorId)?.trim() || 'Участник';
+        }
+      } catch {
+        groupChatId = null;
+        authorName = null;
+      }
+    }
     return this.commands.execute({
       commandId: `emit-right:${publication.id}`,
       actorId: publication.authorId,
@@ -92,6 +112,20 @@ export class EmitExchangeRightUseCase {
               : 'Появился банк на обмен. Привяжите email на сайте, чтобы продолжить.',
           now,
         });
+        if (groupChatId) {
+          const postLabel = publication.title.trim() || 'Доброе дело';
+          await appendGroupTelegramAnnouncement(repositories, {
+            operationId: `emit-right:${publication.id}`,
+            aggregateId: emitted.id,
+            communityId: publication.communityId,
+            telegramChatId: groupChatId,
+            kind: 'right_emitted',
+            text:
+              `🏦 У ${authorName} появился банк на обмен: пост «${postLabel}» ` +
+              `набрал ${publication.score} заслуг. Банком можно оплатить услугу из каталога.`,
+            now,
+          });
+        }
         return emitted;
       },
     });

@@ -242,6 +242,8 @@ export class UzzSeedFactory {
           notifyRequestLifecycle: true,
           notifyDealProgress: true,
           notifyDealClosed: true,
+          groupAnnounceRightEmitted: true,
+          groupAnnounceDealClosed: true,
           version: 0,
           createdAt: now,
           updatedAt: now,

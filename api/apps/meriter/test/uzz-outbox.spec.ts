@@ -93,8 +93,9 @@ describe('UZZ notification outbox', () => {
   it('marks a delivered event processed', async () => {
     expect(await deliver.executeBatch({ limit: 10 })).toEqual({ delivered: 1, failed: 0, deadLettered: 0 });
     expect(sender.calls).toHaveLength(1);
+    // Legacy outbox rows carry telegramUserId; delivery maps them to telegramChatId.
     expect(sender.calls[0]).toMatchObject({
-      eventId: 'event-1', payload: { telegramUserId: '1001', text: 'Hello' },
+      eventId: 'event-1', payload: { telegramChatId: '1001', text: 'Hello' },
     });
     expect(await rawDb.collection('uzz_outbox').findOne({ id: 'event-1' }))
       .toMatchObject({ attempts: 1, processedAt: NOW, lastError: null });

@@ -22,7 +22,7 @@ describe('TelegramUzzNotificationSender', () => {
     );
 
     await sender.send('event-1', {
-      telegramUserId: '1001', text: 'Заявка принята', path: '/deals',
+      telegramChatId: '1001', text: 'Заявка принята', path: '/deals',
     });
 
     expect(tgSend).toHaveBeenCalledWith({

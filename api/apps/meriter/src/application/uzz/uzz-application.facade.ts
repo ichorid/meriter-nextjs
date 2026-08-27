@@ -82,6 +82,12 @@ export class UzzApplicationFacade {
     if (!communityId) return null;
     return this.platform.getCommunity(communityId);
   }
+  /** True when the community is the configured UZZ stand (pilot chat). */
+  async isUzzCommunity(communityId: string): Promise<boolean> {
+    if (!communityId) return false;
+    const configured = await this.platform.configuredCommunityId();
+    return Boolean(configured) && configured === communityId;
+  }
   listPilotCommunities(adminId: string) {
     return this.commands.listPilotCommunities.execute(adminId);
   }

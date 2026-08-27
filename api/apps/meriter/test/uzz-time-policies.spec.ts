@@ -90,7 +90,9 @@ describe('UZZ time policies', () => {
     request = new RequestDealUseCase(uow, access, 'global', clock);
     accept = new AcceptDealUseCase(uow, access, clock);
     complete = new MarkDealCompletedUseCase(uow);
-    close = new CloseDealUseCase(uow);
+    close = new CloseDealUseCase(uow, {
+      async getCommunity() { return null; },
+    } as unknown as import('../src/application/uzz/ports/uzz-platform.port').UzzPlatformPort);
     updateSettings = new UpdateSettingsUseCase(uow, admin, clock);
     demurrage = new ApplyDemurrageUseCase(uow, clock);
     expiry = new ExpireDealsUseCase(uow, clock);

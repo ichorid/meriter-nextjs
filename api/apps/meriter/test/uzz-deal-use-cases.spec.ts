@@ -52,7 +52,9 @@ describe('UZZ deal use cases', () => {
     request = new RequestDealUseCase(uow, access, 'global');
     accept = new AcceptDealUseCase(uow, access);
     complete = new MarkDealCompletedUseCase(uow);
-    close = new CloseDealUseCase(uow);
+    close = new CloseDealUseCase(uow, {
+      async getCommunity() { return null; },
+    } as unknown as import('../src/application/uzz/ports/uzz-platform.port').UzzPlatformPort);
     adminResolve = new AdminResolveDealUseCase(uow, {
       async assertCommunityAdmin(_communityId, userId) {
         if (userId !== 'admin-1') throw new Error('ADMIN_REQUIRED');

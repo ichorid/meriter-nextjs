@@ -6,6 +6,8 @@ export type TelegramGuideInput = {
   hashtags?: string[];
   /** When true, copy describes button panel voting; otherwise reactions. */
   votePanelEnabled?: boolean;
+  /** Set when the community is the UZZ pilot stand. */
+  uzzCatalogUrl?: string;
 };
 
 function esc(text: string): string {
@@ -86,6 +88,20 @@ function buildGuideCheatSheet(hashtag: string, votePanelEnabled?: boolean): stri
   ];
 }
 
+function buildGuideUzzSection(catalogUrl: string): string[] {
+  return [
+    '',
+    b('⭐ ПИЛОТ «УСЛУГИ ЗА ЗАСЛУГИ»'),
+    '',
+    'В этой группе действует пилот обмена услугами:',
+    '1) Пост о добром деле набирает нужный рейтинг — у вас появляется банк на обмен.',
+    '2) Банком можно оплатить услугу другого участника из каталога.',
+    '3) Разместите и свои услуги — так обмен работает в обе стороны.',
+    '',
+    `Каталог и ваши банки: ${esc(catalogUrl)}`,
+  ];
+}
+
 export function buildTelegramGuideMessage(input: TelegramGuideInput = {}): string {
   const hashtag = primaryCommunityHashtag(input.hashtags);
   const votePanelEnabled = input.votePanelEnabled === true;
@@ -157,5 +173,6 @@ export function buildTelegramGuideMessage(input: TelegramGuideInput = {}): strin
     '• Мини-приложение: «нет сообществ» — напишите в группе с хэштегом или проголосуйте, потом откройте снова',
     '',
     ...buildGuideCheatSheet(hashtag, votePanelEnabled),
+    ...(input.uzzCatalogUrl ? buildGuideUzzSection(input.uzzCatalogUrl) : []),
   ].join('\n');
 }

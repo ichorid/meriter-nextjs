@@ -220,6 +220,8 @@ export const uzzAppRouter = router({
               notifyRequestLifecycle: z.boolean().optional(),
               notifyDealProgress: z.boolean().optional(),
               notifyDealClosed: z.boolean().optional(),
+              groupAnnounceRightEmitted: z.boolean().optional(),
+              groupAnnounceDealClosed: z.boolean().optional(),
             })
             .default({}),
         }),

@@ -20,6 +20,8 @@ export interface UzzSettingsRecord {
   notifyRequestLifecycle: boolean;
   notifyDealProgress: boolean;
   notifyDealClosed: boolean;
+  groupAnnounceRightEmitted: boolean;
+  groupAnnounceDealClosed: boolean;
   createdAt: Date;
   updatedAt: Date;
   version: number;

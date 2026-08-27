@@ -547,6 +547,8 @@ export type MemberWelcomeLandingInput = {
   quota: number;
   quotaMax: number;
   startWelcomeMerits?: number;
+  /** Set when the community is the UZZ pilot stand. */
+  uzzCatalogUrl?: string;
 };
 
 export function buildMemberWelcomeLandingMessage(input: MemberWelcomeLandingInput): string {
@@ -585,9 +587,13 @@ export function buildMemberWelcomeLandingMessage(input: MemberWelcomeLandingInpu
     buildGuideStep(),
   ]);
 
+  const uzzBlock = input.uzzCatalogUrl
+    ? `\n\n${buildUzzPilotBlock(input.uzzCatalogUrl)}`
+    : '';
+
   return (
     `${intro}${welcomeGrant}${statsLine}\n\n` +
-    `${steps}\n\n` +
+    `${steps}${uzzBlock}\n\n` +
     `Команды (/balance, /members, /help …) пишите в групповом чате, не здесь.\n\n` +
     `Подробный гайд: /guide в групповом чате или здесь в личке.`
   );
@@ -649,14 +655,31 @@ export function telegramDmCommandLabel(cmd: string): string {
   }
 }
 
-export function buildGroupWelcomeMessage(input: CommunityUsageRulesInput): string {
+/**
+ * Shown only when the chat is the configured UZZ stand community.
+ * Pass the catalog URL to signal that the pilot is active in this chat.
+ */
+export function buildUzzPilotBlock(catalogUrl: string): string {
+  return (
+    `⭐ В этой группе действует пилот «Услуги за заслуги»: посты о добрых делах, ` +
+    `набравшие нужный рейтинг, дают банк на обмен — им можно оплатить услуги ` +
+    `других участников.\nКаталог услуг: ${catalogUrl}`
+  );
+}
+
+export function buildGroupWelcomeMessage(
+  input: CommunityUsageRulesInput,
+  uzzCatalogUrl?: string,
+): string {
   const dailyEmission = input.dailyEmission ?? 0;
+  const uzzBlock = uzzCatalogUrl ? `\n\n${buildUzzPilotBlock(uzzCatalogUrl)}` : '';
   return (
     `Привет!\n\n` +
     `Я – Меритер: бот, который поможет вам учитывать заслуги всех участников этой группы.\n\n` +
     buildGroupWelcomeSteps(input) +
     buildDailyMeritsParagraph(dailyEmission) +
-    buildWelcomeMeritsParagraph(input.welcomeMerits)
+    buildWelcomeMeritsParagraph(input.welcomeMerits) +
+    uzzBlock
   );
 }
 
@@ -680,6 +703,8 @@ export function buildTelegramHelpMessage(
     votePanelEnabled?: boolean;
     /** Shown on /start for new members only (after welcome merits grant). */
     startWelcomeMerits?: number;
+    /** Set when the community is the UZZ pilot stand. */
+    uzzCatalogUrl?: string;
   },
 ): string {
   const input: CommunityUsageRulesInput = {
@@ -711,9 +736,13 @@ export function buildTelegramHelpMessage(
     buildGuideStep(),
   ]);
 
+  const uzzBlock = options?.uzzCatalogUrl
+    ? `\n\n${buildUzzPilotBlock(options.uzzCatalogUrl)}`
+    : '';
+
   return (
     `Добро пожаловать в Meriter!${welcomeGrant}\n\n` +
-    `${steps}\n\n` +
+    `${steps}${uzzBlock}\n\n` +
     `Команды в чате:\n` +
     `/balance — ваши заслуги\n` +
     `/members — список участников\n` +

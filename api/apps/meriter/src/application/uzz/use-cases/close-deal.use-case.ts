@@ -1,12 +1,21 @@
 import { UzzNotFoundError } from '../../../domain/uzz/errors';
 import { Rubles } from '../../../domain/uzz/value-objects/rubles';
+import { UzzPlatformPort } from '../ports/uzz-platform.port';
 import { UzzUnitOfWork } from '../ports/uzz-unit-of-work';
 import { CommandExecutor } from './command-executor';
-import { appendDealLedger, appendTelegramNotification, assertEquivalentActor } from './deal-use-case.helpers';
+import {
+  appendDealLedger,
+  appendGroupTelegramAnnouncement,
+  appendTelegramNotification,
+  assertEquivalentActor,
+} from './deal-use-case.helpers';
 
 export class CloseDealUseCase {
   private readonly commands: CommandExecutor;
-  constructor(unitOfWork: UzzUnitOfWork) {
+  constructor(
+    unitOfWork: UzzUnitOfWork,
+    private readonly platform: UzzPlatformPort,
+  ) {
     this.commands = new CommandExecutor(unitOfWork);
   }
   execute(input: { commandId: string; dealId: string; buyerId: string; now?: Date }) {
@@ -49,6 +58,21 @@ export class CloseDealUseCase {
           targetUserId: state.sellerId, kind: 'deal_closed',
           text: `Сделка «${state.listingSnapshot.title}» закрыта`, now,
         });
+        // The optional group announcement must never fail the deal closure.
+        const groupChatId = await this.platform.getCommunity(state.communityId)
+          .then((community) => community?.telegramChatId ?? null)
+          .catch(() => null);
+        if (groupChatId) {
+          await appendGroupTelegramAnnouncement(repositories, {
+            operationId: input.commandId,
+            aggregateId: state.id,
+            communityId: state.communityId,
+            telegramChatId: groupChatId,
+            kind: 'deal_closed',
+            text: `🤝 В «Услугах за заслуги» состоялась сделка: «${state.listingSnapshot.title}».`,
+            now,
+          });
+        }
         return deal.snapshot();
       },
     });

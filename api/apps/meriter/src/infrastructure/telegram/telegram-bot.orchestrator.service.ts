@@ -1839,9 +1839,34 @@ export class TelegramBotOrchestratorService {
   ): Promise<void> {
     await this.tgBots.tgSend({
       tgChatId: chatId,
-      text: buildGroupWelcomeMessage(usageInput),
+      text: buildGroupWelcomeMessage(
+        usageInput,
+        await this.resolveUzzCatalogUrl(communityId),
+      ),
     });
     await this.sendGroupMiniAppLinkPrompt(chatId, usageInput.botUsername, communityId);
+  }
+
+  /**
+   * Returns the UZZ catalog URL when the community is the configured UZZ
+   * pilot stand; undefined otherwise. Never throws: bot replies must not
+   * depend on UZZ availability.
+   */
+  private async resolveUzzCatalogUrl(
+    communityId?: string | null,
+  ): Promise<string | undefined> {
+    if (!communityId) return undefined;
+    try {
+      if (!(await this.uzzFacade.isUzzCommunity(communityId))) return undefined;
+    } catch (error) {
+      this.logger.warn('UZZ stand check failed', {
+        communityId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
+    const base = this.configService.get('app')?.uzzWebBaseUrl?.replace(/\/$/, '');
+    return base ? `${base}/catalog` : undefined;
   }
 
   private async sendNewMemberWelcomeIfEnabled(
@@ -2709,6 +2734,7 @@ export class TelegramBotOrchestratorService {
       quota: stats.quota,
       quotaMax: stats.quotaMax,
       startWelcomeMerits,
+      uzzCatalogUrl: await this.resolveUzzCatalogUrl(community.id),
     });
     const replyMarkup = buildMemberWelcomeLandingKeyboard({
       groupChatUrl,
@@ -2755,6 +2781,7 @@ export class TelegramBotOrchestratorService {
       platformIntegration: community.settings?.telegramPlatformIntegration === true,
       votePanelEnabled: community.settings?.telegramVotePanelEnabled === true,
       startWelcomeMerits,
+      uzzCatalogUrl: await this.resolveUzzCatalogUrl(community.id),
     });
   }
 
@@ -2789,13 +2816,18 @@ export class TelegramBotOrchestratorService {
 
   private async sendGuideToUser(
     tgUserId: string,
-    community?: { hashtags?: string[]; settings?: { telegramVotePanelEnabled?: boolean } },
+    community?: {
+      id?: string;
+      hashtags?: string[];
+      settings?: { telegramVotePanelEnabled?: boolean };
+    },
   ): Promise<boolean> {
     return this.tgBots.tgSend({
       tgChatId: tgUserId,
       text: buildTelegramGuideMessage({
         hashtags: community?.hashtags,
         votePanelEnabled: community?.settings?.telegramVotePanelEnabled === true,
+        uzzCatalogUrl: await this.resolveUzzCatalogUrl(community?.id),
       }),
       parseMode: 'HTML',
     });

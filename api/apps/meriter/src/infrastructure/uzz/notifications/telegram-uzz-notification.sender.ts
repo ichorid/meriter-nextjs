@@ -29,7 +29,7 @@ export class TelegramUzzNotificationSender implements UzzNotificationSender {
     const baseUrl = this.config.get('app')?.uzzWebBaseUrl?.replace(/\/$/, '');
     const link = baseUrl && payload.path ? `${baseUrl}${payload.path}` : null;
     await this.telegram.tgSend({
-      tgChatId: payload.telegramUserId,
+      tgChatId: payload.telegramChatId,
       text: link ? `${payload.text}\n\n${link}` : payload.text,
     });
   }

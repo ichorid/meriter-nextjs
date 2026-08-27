@@ -53,6 +53,27 @@ describe('UZZ exchange-right emission', () => {
     });
   });
 
+  it('announces the emitted bank in the community group chat', async () => {
+    const repositories = createMongooseUzzRepositories(connection, null);
+    await repositories.identities.insert({ id: 'identity-1', canonicalUserId: 'author-1', normalizedEmail: 'author@example.com', telegramUserId: '1001', telegramUsername: 'author', createdAt: NOW, updatedAt: NOW, version: 0 });
+    const platform: UzzPlatformPort = {
+      configuredCommunityId: async () => 'community-1',
+      setSelectedCommunityId: async () => undefined,
+      async getPublication(id) { return id === publication.id ? publication : null; },
+      async listTelegramCommunities() { return []; },
+      async getCommunity() { return { id: 'community-1', name: 'Тест', telegramChatId: '-100200300' }; },
+      async getDisplayNames() { return new Map([['author-1', 'Автор']]); },
+      async listDeedPublications() { return []; },
+    };
+    const emit = new EmitExchangeRightUseCase(new MongooseUzzUnitOfWork(connection), platform, { now: () => new Date(NOW) });
+
+    await emit.execute({ publicationId: publication.id });
+
+    expect(await connection.db!.collection('uzz_outbox').findOne({ 'payload.kind': 'group_right_emitted' })).toMatchObject({
+      payload: { telegramChatId: '-100200300', path: '/catalog' },
+    });
+  });
+
   it('does not emit below threshold or outside the configured community', async () => {
     publication.score = 9; expect(await useCase.execute({ publicationId: publication.id })).toBeNull();
     publication.score = 10; publication.communityId = 'other'; expect(await useCase.execute({ publicationId: publication.id })).toBeNull();
@@ -146,6 +167,8 @@ describe('UZZ exchange-right emission', () => {
       notifyRequestLifecycle: true,
       notifyDealProgress: true,
       notifyDealClosed: true,
+      groupAnnounceRightEmitted: true,
+      groupAnnounceDealClosed: true,
       createdAt: NOW,
       updatedAt: NOW,
       version: 0,
@@ -177,6 +200,8 @@ describe('UZZ exchange-right emission', () => {
       notifyRequestLifecycle: true,
       notifyDealProgress: true,
       notifyDealClosed: true,
+      groupAnnounceRightEmitted: true,
+      groupAnnounceDealClosed: true,
       createdAt: NOW,
       updatedAt: NOW,
       version: 0,

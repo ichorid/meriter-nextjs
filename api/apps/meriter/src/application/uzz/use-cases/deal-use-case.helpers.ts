@@ -132,6 +132,45 @@ export async function appendTelegramNotification(
   });
 }
 
+export async function appendGroupTelegramAnnouncement(
+  repositories: UzzRepositories,
+  input: {
+    operationId: string;
+    aggregateId: string;
+    communityId: string;
+    telegramChatId: string;
+    kind: 'right_emitted' | 'deal_closed';
+    text: string;
+    now: Date;
+  },
+): Promise<void> {
+  const settings = await repositories.settings.findByCommunityId(input.communityId);
+  const settingKey = input.kind === 'right_emitted'
+    ? 'groupAnnounceRightEmitted' as const
+    : 'groupAnnounceDealClosed' as const;
+  if (settings?.[settingKey] === false) return;
+  await repositories.outbox.append({
+    id: `${input.operationId}:telegram-group:${input.kind}`,
+    topic: 'uzz.telegram',
+    aggregateId: input.aggregateId,
+    payload: {
+      telegramChatId: input.telegramChatId,
+      text: input.text,
+      path: '/catalog',
+      kind: `group_${input.kind}`,
+    },
+    attempts: 0,
+    availableAt: new Date(input.now),
+    processedAt: null,
+    lockedUntil: null,
+    deadLetteredAt: null,
+    lastError: null,
+    leaseToken: null,
+    leaseOwner: null,
+    createdAt: new Date(input.now),
+  });
+}
+
 function notificationSettingKey(kind: string):
   | 'notifyRightEmitted'
   | 'notifyRequestLifecycle'
