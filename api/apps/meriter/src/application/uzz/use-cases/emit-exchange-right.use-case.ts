@@ -47,8 +47,10 @@ export class EmitExchangeRightUseCase {
       try {
         groupChatId = (await this.platform.getCommunity(publication.communityId))?.telegramChatId ?? null;
         if (groupChatId) {
-          ownerName = (await this.platform.getDisplayNames([ownerId]))
-            .get(ownerId)?.trim() || 'Участник';
+          const label = (await this.platform.getUserLabels([ownerId])).get(ownerId);
+          const name = label?.name.trim() || 'Участник';
+          // The login next to the name lets chat members verify who got the bank.
+          ownerName = label?.username ? `${name} (@${label.username})` : name;
         }
       } catch {
         groupChatId = null;

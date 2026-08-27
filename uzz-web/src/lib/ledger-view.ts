@@ -1,9 +1,10 @@
-import { ledgerReasonLabel, ledgerTypeLabel, meritsWord } from '@/lib/utils';
+import { ledgerReasonLabel, ledgerTypeLabel, meritsWord, userLabelText } from '@/lib/utils';
 
 export type LedgerRowContext = {
   dealId?: string;
   counterpartyId?: string;
   counterpartyName?: string;
+  counterpartyUsername?: string;
   listingTitle?: string;
   publicationId?: string;
   publicationTitle?: string;
@@ -99,7 +100,10 @@ export function visibleLedgerRows<T extends { type: string }>(items: T[], showAl
 }
 
 function subtitleFor(row: LedgerRowInput, kind: string): string | undefined {
-  const name = text(row.context?.counterpartyName);
+  const rawName = text(row.context?.counterpartyName);
+  const username = text(row.context?.counterpartyUsername);
+  // «Имя (@логин)» — the login doubles as an anti-phishing anchor.
+  const name = rawName || username ? userLabelText(rawName, username) : undefined;
   const listing = text(row.context?.listingTitle);
   const publication = text(row.context?.publicationTitle);
 

@@ -24,6 +24,15 @@ describe('ledgerRowView', () => {
     });
   });
 
+  it('appends the counterparty login as an anti-phishing anchor when known', () => {
+    const view = ledgerRowView(row({
+      type: 'thanks_received',
+      amount: 3,
+      context: { counterpartyName: 'Айшат', counterpartyUsername: 'oisha0417', listingTitle: 'Помощь с математикой' },
+    }));
+    expect(view.subtitle).toBe('От Айшат (@oisha0417) — за услугу «Помощь с математикой»');
+  });
+
   it('builds a thanks_sent line the same way, addressing the recipient', () => {
     const view = ledgerRowView(row({
       type: 'thanks_sent',

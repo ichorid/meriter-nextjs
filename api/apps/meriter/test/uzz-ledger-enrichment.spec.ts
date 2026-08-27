@@ -78,17 +78,29 @@ describe('UZZ ledger enrichment', () => {
     const context = buildLedgerContext(
       entry({ userId: 'buyer-1', type: 'fee_reserved', metadata: { dealId: 'deal-1' } }),
       new Map([[DEAL.id, DEAL]]),
-      new Map([['seller-1', 'Айшат']]),
+      new Map([['seller-1', { name: 'Айшат', username: 'oisha0417' }]]),
       new Map(),
     );
     expect(context).toEqual({
       dealId: 'deal-1',
       counterpartyId: 'seller-1',
       counterpartyName: 'Айшат',
+      counterpartyUsername: 'oisha0417',
       listingTitle: 'Помощь с математикой',
       publicationId: undefined,
       publicationTitle: undefined,
     });
+  });
+
+  it('omits the counterparty username when the profile has none', () => {
+    const context = buildLedgerContext(
+      entry({ userId: 'buyer-1', type: 'fee_reserved', metadata: { dealId: 'deal-1' } }),
+      new Map([[DEAL.id, DEAL]]),
+      new Map([['seller-1', { name: 'Айшат', username: null }]]),
+      new Map(),
+    );
+    expect(context?.counterpartyName).toBe('Айшат');
+    expect(context?.counterpartyUsername).toBeUndefined();
   });
 
   it('resolves the publication title for an emission row', () => {

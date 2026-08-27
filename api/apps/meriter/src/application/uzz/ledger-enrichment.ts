@@ -1,3 +1,4 @@
+import { UzzUserLabel } from './ports/uzz-platform.port';
 import { UzzLedgerEntry } from './ports/uzz-repositories';
 
 /**
@@ -9,6 +10,8 @@ export interface UzzLedgerContext {
   dealId?: string;
   counterpartyId?: string;
   counterpartyName?: string;
+  /** Telegram login of the counterparty without the leading @, when known. */
+  counterpartyUsername?: string;
   listingTitle?: string;
   publicationId?: string;
   publicationTitle?: string;
@@ -62,19 +65,19 @@ export function resolveLedgerCounterpartyId(
 export function buildLedgerContext(
   item: UzzLedgerEntry,
   deals: Map<string, LedgerDealInfo>,
-  displayNames: Map<string, string>,
+  counterpartyLabels: Map<string, UzzUserLabel>,
   publicationTitles: Map<string, string>,
 ): UzzLedgerContext | undefined {
   const dealId = metaString(item.metadata, 'dealId');
   const deal = dealId ? deals.get(dealId) : undefined;
   const counterpartyId = resolveLedgerCounterpartyId(item, deal);
+  const label = counterpartyId ? counterpartyLabels.get(counterpartyId) : undefined;
   const publicationId = metaString(item.metadata, 'publicationId');
   const context: UzzLedgerContext = {
     dealId,
     counterpartyId,
-    counterpartyName: counterpartyId
-      ? displayNames.get(counterpartyId)?.trim() || undefined
-      : undefined,
+    counterpartyName: label?.name.trim() || undefined,
+    counterpartyUsername: label?.username ?? undefined,
     listingTitle: deal?.listingTitle || undefined,
     publicationId,
     publicationTitle: publicationId

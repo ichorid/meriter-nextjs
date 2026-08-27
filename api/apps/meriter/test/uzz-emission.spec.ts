@@ -24,7 +24,7 @@ describe('UZZ exchange-right emission', () => {
   beforeEach(async () => {
     publication = { id: 'publication-1', communityId: 'community-1', authorId: 'author-1', ownerId: 'author-1', title: 'Доброе дело', score: 10, deleted: false, postType: 'basic' };
     deedPublications = [];
-    const platform: UzzPlatformPort = { configuredCommunityId: async () => 'community-1', setSelectedCommunityId: async () => undefined, async getPublication(id) { return id === publication.id ? publication : null; }, async listTelegramCommunities() { return []; }, async getCommunity() { return null; }, async getDisplayNames() { return new Map(); }, async getUserLabels() { return new Map(); }, async listDeedPublications() { return deedPublications; } };
+    const platform: UzzPlatformPort = { configuredCommunityId: async () => 'community-1', setSelectedCommunityId: async () => undefined, async getPublication(id) { return id === publication.id ? publication : null; }, async listTelegramCommunities() { return []; }, async getCommunity() { return null; }, async getUserLabels() { return new Map(); }, async listDeedPublications() { return deedPublications; } };
     const clock: Clock = { now: () => new Date(NOW) }; useCase = new EmitExchangeRightUseCase(new MongooseUzzUnitOfWork(connection), platform, clock);
     listDeeds = new ListDeedsUseCase(new MongooseUzzUnitOfWork(connection), platform, useCase, { assertCommunityParticipant: async () => undefined, resolveUserIds: async (userId: string) => [userId] });
   });
@@ -62,17 +62,18 @@ describe('UZZ exchange-right emission', () => {
       async getPublication(id) { return id === publication.id ? publication : null; },
       async listTelegramCommunities() { return []; },
       async getCommunity() { return { id: 'community-1', name: 'Тест', telegramChatId: '-100200300' }; },
-      async getDisplayNames() { return new Map([['author-1', 'Автор']]); },
-      async getUserLabels() { return new Map(); },
+      async getUserLabels() { return new Map([['author-1', { name: 'Автор', username: 'author' }]]); },
       async listDeedPublications() { return []; },
     };
     const emit = new EmitExchangeRightUseCase(new MongooseUzzUnitOfWork(connection), platform, { now: () => new Date(NOW) });
 
     await emit.execute({ publicationId: publication.id });
 
-    expect(await connection.db!.collection('uzz_outbox').findOne({ 'payload.kind': 'group_right_emitted' })).toMatchObject({
+    const announcement = await connection.db!.collection('uzz_outbox').findOne({ 'payload.kind': 'group_right_emitted' });
+    expect(announcement).toMatchObject({
       payload: { telegramChatId: '-100200300', path: '/catalog' },
     });
+    expect((announcement?.payload as { text: string }).text).toContain('У Автор (@author) появился банк');
   });
 
   it('emits the bank to the nomination beneficiary, not the post author', async () => {

@@ -7,7 +7,7 @@ import {
   UZZ_UNKNOWN_ERROR_MESSAGE,
   uzzErrorMessage,
 } from '@/lib/uzz-error-messages';
-import { ledgerReasonLabel, listingsWord, meritsLabel, meritsWord, navigatePendingExternalWindow, safeAppPath, walletSourceLabel } from '@/lib/utils';
+import { ledgerReasonLabel, listingsWord, meritsLabel, meritsWord, navigatePendingExternalWindow, safeAppPath, userLabelParts, userLabelText, walletSourceLabel } from '@/lib/utils';
 
 function walkTsFiles(dir: string): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -149,4 +149,30 @@ describe('listingsWord', () => {
     [11, 'услуг'],
     [21, 'услугу'],
   ])('declines %d as %s', (value, expected) => expect(listingsWord(value)).toBe(expected));
+});
+
+describe('userLabelParts', () => {
+  it('shows the Telegram name with the login as an anti-phishing anchor', () => {
+    expect(userLabelParts('Айшат Созаева', 'oisha0417'))
+      .toEqual({ name: 'Айшат Созаева', username: 'oisha0417' });
+  });
+
+  it('collapses to a single @login when the profile has no separate name', () => {
+    expect(userLabelParts('oisha0417', 'oisha0417')).toEqual({ name: '@oisha0417', username: null });
+    expect(userLabelParts('', 'oisha0417')).toEqual({ name: '@oisha0417', username: null });
+    expect(userLabelParts(null, '@oisha0417')).toEqual({ name: '@oisha0417', username: null });
+  });
+
+  it('falls back to a generic label when nothing is known', () => {
+    expect(userLabelParts('', null)).toEqual({ name: 'Участник сообщества', username: null });
+    expect(userLabelParts(undefined, undefined)).toEqual({ name: 'Участник сообщества', username: null });
+  });
+});
+
+describe('userLabelText', () => {
+  it('joins name and login into one line', () => {
+    expect(userLabelText('Айшат Созаева', 'oisha0417')).toBe('Айшат Созаева (@oisha0417)');
+    expect(userLabelText('Айшат Созаева', null)).toBe('Айшат Созаева');
+    expect(userLabelText('', 'oisha0417')).toBe('@oisha0417');
+  });
 });

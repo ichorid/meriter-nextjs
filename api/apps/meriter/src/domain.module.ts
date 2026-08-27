@@ -489,7 +489,6 @@ import { EventBus } from './domain/events/event-bus';
               deleted: Boolean(snapshot.deleted),
             }));
         },
-        getDisplayNames: (userIds) => users.getDisplayNamesByUserIds(userIds),
         getUserLabels: (userIds) => users.getUserLabelsByUserIds(userIds),
       }),
     },

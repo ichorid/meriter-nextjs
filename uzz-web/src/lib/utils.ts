@@ -36,6 +36,34 @@ export function dealStatusLabel(status: string, role?: 'buyer' | 'seller' | 'oth
   return 'Неизвестный статус';
 }
 
+/**
+ * The Telegram name comes first, the login stays visible next to it as an
+ * anti-phishing anchor. When the profile has no separate name, the login
+ * alone is shown once.
+ */
+export function userLabelParts(
+  rawName: string | null | undefined,
+  rawUsername: string | null | undefined,
+): { name: string; username: string | null } {
+  const name = rawName?.trim() || '';
+  const username = rawUsername?.trim().replace(/^@/, '') || null;
+  if (!name && !username) return { name: 'Участник сообщества', username: null };
+  if (!name) return { name: `@${username}`, username: null };
+  if (username && name.toLocaleLowerCase() === username.toLocaleLowerCase()) {
+    return { name: `@${username}`, username: null };
+  }
+  return { name, username };
+}
+
+/** Same as userLabelParts, flattened to plain text: «Имя (@логин)». */
+export function userLabelText(
+  rawName: string | null | undefined,
+  rawUsername: string | null | undefined,
+): string {
+  const { name, username } = userLabelParts(rawName, rawUsername);
+  return username ? `${name} (@${username})` : name;
+}
+
 export function formatSignedRub(value: number): string {
   const abs = Math.abs(value).toLocaleString('ru-RU');
   if (value > 0) return `+${abs} ₽`;

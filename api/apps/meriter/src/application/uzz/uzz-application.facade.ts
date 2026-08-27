@@ -1,5 +1,5 @@
 import { UzzUnitOfWork } from './ports/uzz-unit-of-work';
-import { UzzPlatformPort } from './ports/uzz-platform.port';
+import { UzzPlatformPort, UzzUserLabel } from './ports/uzz-platform.port';
 import {
   buildLedgerContext,
   collectLedgerRefs,
@@ -225,17 +225,19 @@ export class UzzApplicationFacade {
       right!.snapshot().id,
       right!.snapshot().nominalRub,
     ]));
-    const names = await this.platform.getDisplayNames(
+    const labels = await this.platform.getUserLabels(
       snapshots.flatMap((deal) => [deal.buyerId, deal.sellerId]),
     );
     return snapshots.map((deal) => {
       const isBuyer = userIds.includes(deal.buyerId);
       const isSeller = userIds.includes(deal.sellerId);
       const counterpartyId = isBuyer ? deal.sellerId : deal.buyerId;
+      const counterparty = labels.get(counterpartyId);
       return {
         ...deal,
         myRole: isBuyer ? 'buyer' as const : isSeller ? 'seller' as const : 'other' as const,
-        counterpartyName: displayName(names.get(counterpartyId)),
+        counterpartyName: displayName(counterparty?.name),
+        counterpartyUsername: counterparty?.username ?? null,
         currentNominalRub: rightNominalById.get(deal.exchangeRightId) ?? null,
         expiresAt: deal.status === 'requested' ? deal.requestExpiresAt
           : deal.status === 'accepted' ? deal.fulfillmentExpiresAt
@@ -324,11 +326,11 @@ export class UzzApplicationFacade {
       );
       if (counterpartyId) counterpartyIds.add(counterpartyId);
     }
-    let displayNames = new Map<string, string>();
+    let counterpartyLabels = new Map<string, UzzUserLabel>();
     const publicationTitles = new Map<string, string>();
     try {
       if (counterpartyIds.size > 0) {
-        displayNames = await this.platform.getDisplayNames([...counterpartyIds]);
+        counterpartyLabels = await this.platform.getUserLabels([...counterpartyIds]);
       }
       const publications = await Promise.all(
         page.publicationIds.map((publicationId) => this.platform.getPublication(publicationId)),
@@ -342,7 +344,7 @@ export class UzzApplicationFacade {
     return {
       items: page.items.map((item) => ({
         ...item,
-        context: buildLedgerContext(item, page.dealInfos, displayNames, publicationTitles),
+        context: buildLedgerContext(item, page.dealInfos, counterpartyLabels, publicationTitles),
       })),
       nextCursor: page.nextCursor,
     };
@@ -386,7 +388,7 @@ export class UzzApplicationFacade {
     ownerId: string;
     sourcePublicationId: string;
   }>(rights: T[]) {
-    const names = await this.platform.getDisplayNames(rights.map((right) => right.ownerId));
+    const labels = await this.platform.getUserLabels(rights.map((right) => right.ownerId));
     const publications = await Promise.all(
       rights.map((right) => this.platform.getPublication(right.sourcePublicationId)),
     );
@@ -395,7 +397,8 @@ export class UzzApplicationFacade {
     ]));
     return rights.map((right) => ({
       ...right,
-      ownerName: displayName(names.get(right.ownerId)),
+      ownerName: displayName(labels.get(right.ownerId)?.name),
+      ownerUsername: labels.get(right.ownerId)?.username ?? null,
       sourceTitle: byId.get(right.sourcePublicationId)?.title,
       sourceScore: byId.get(right.sourcePublicationId)?.score,
     }));

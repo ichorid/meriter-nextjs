@@ -1,10 +1,12 @@
 'use client';
 
 import { Card, Notice } from '@/components/ui';
+import { userLabelText } from '@/lib/utils';
 
 export type HoldingBank = {
   id: string;
   ownerName: string;
+  ownerUsername?: string | null;
   sourceTitle?: string | null;
   sourceScore?: number | null;
 };
@@ -21,7 +23,7 @@ export function HoldingBanksNotice({ banks }: { banks: HoldingBank[] }) {
         {banks.map((right) => (
           <li key={right.id}>
             <Card>
-              <h3 className="font-extrabold">{right.ownerName}</h3>
+              <h3 className="font-extrabold">{userLabelText(right.ownerName, right.ownerUsername)}</h3>
               <p className="mt-1 text-sm text-stitch-muted">
                 {right.sourceTitle || 'Доброе дело'} · {right.sourceScore ?? 0} заслуг
               </p>
