@@ -182,6 +182,38 @@ export class UserService implements OnModuleInit {
     return result;
   }
 
+  /**
+   * Resolve display name + login (batch). The login lets UIs show a
+   * phishing-resistant label like «Имя (@username)».
+   */
+  async getUserLabelsByUserIds(
+    userIds: string[],
+  ): Promise<Map<string, { name: string; username: string | null }>> {
+    const unique = [...new Set(userIds.filter(Boolean))];
+    const result = new Map<string, { name: string; username: string | null }>();
+    if (unique.length === 0) {
+      return result;
+    }
+    const docs = await this.userPersistence.findForDisplayNames(unique);
+    for (const d of docs) {
+      const name = (d.displayName ?? '').trim();
+      const username = (d.username ?? '').trim().replace(/^@/, '');
+      result.set(d.id, {
+        name: name.length > 0 ? name : username.length > 0 ? username : d.id,
+        username: username.length > 0 ? username : null,
+      });
+    }
+    for (const id of unique) {
+      if (!result.has(id)) {
+        result.set(id, {
+          name: id.length > 8 ? `${id.slice(0, 8)}…` : id,
+          username: null,
+        });
+      }
+    }
+    return result;
+  }
+
   async getUserByAuthId(
     authProvider: string,
     authId: string,

@@ -84,16 +84,16 @@ export class UserPersistenceAdapter implements UserPersistencePort {
 
   async findForDisplayNames(
     ids: string[],
-  ): Promise<Array<Pick<UserRecord, 'id' | 'displayName'>>> {
+  ): Promise<Array<Pick<UserRecord, 'id' | 'displayName' | 'username'>>> {
     if (ids.length === 0) {
       return [];
     }
     const rows = await this.userModel
       .find({ id: { $in: ids } })
-      .select({ id: 1, displayName: 1 })
+      .select({ id: 1, displayName: 1, username: 1 })
       .lean()
       .exec();
-    return rows as Array<Pick<UserRecord, 'id' | 'displayName'>>;
+    return rows as Array<Pick<UserRecord, 'id' | 'displayName' | 'username'>>;
   }
 
   async updateByAuth(

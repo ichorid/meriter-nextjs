@@ -80,7 +80,9 @@ export interface UserPersistencePort {
 
   findForEnrichment(ids: string[]): Promise<Array<Pick<UserRecord, 'id' | 'displayName' | 'avatarUrl'>>>;
 
-  findForDisplayNames(ids: string[]): Promise<Array<Pick<UserRecord, 'id' | 'displayName'>>>;
+  findForDisplayNames(
+    ids: string[],
+  ): Promise<Array<Pick<UserRecord, 'id' | 'displayName' | 'username'>>>;
 
   updateByAuth(authProvider: string, authId: string, set: Record<string, unknown>): Promise<void>;
 

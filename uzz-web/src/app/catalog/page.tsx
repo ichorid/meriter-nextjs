@@ -38,7 +38,7 @@ export default function CatalogPage() {
   const request = trpc.deals.request.useMutation({ onSuccess: (deal) => { void Promise.all([utils.deals.list.invalidate(), utils.banks.listMine.invalidate(), utils.wallet.getBalance.invalidate()]); const feeSource = deal.feeSourceCommunityId === communityId ? 'local' : 'global'; router.push(`/deals?requested=1&feeSource=${feeSource}`); }, onError: (err) => setError(uzzErrorMessage(err)) });
   const activeRights = rights.data?.filter((right) => right.status === 'active' && right.nominalRub != null) ?? [];
   const maxNominal = Math.max(0, ...activeRights.map((right) => right.nominalRub ?? 0));
-  const visible = useMemo(() => { const needle = query.trim().toLocaleLowerCase('ru-RU'); return (listings.data ?? []).filter((item) => (!onlineOnly || item.deliveryMode !== 'offline') && (!affordableOnly || item.priceRub <= maxNominal) && (!needle || `${item.title} ${item.description} ${item.ownerName}`.toLocaleLowerCase('ru-RU').includes(needle))); }, [affordableOnly, listings.data, maxNominal, onlineOnly, query]);
+  const visible = useMemo(() => { const needle = query.trim().toLocaleLowerCase('ru-RU'); return (listings.data ?? []).filter((item) => (!onlineOnly || item.deliveryMode !== 'offline') && (!affordableOnly || item.priceRub <= maxNominal) && (!needle || `${item.title} ${item.description} ${item.ownerName} ${item.ownerUsername ?? ''}`.toLocaleLowerCase('ru-RU').includes(needle))); }, [affordableOnly, listings.data, maxNominal, onlineOnly, query]);
   const showOnboarding = !onboardingHidden && loggedIn && link.data?.linked === true
     && !rights.isLoading && !rights.data?.length
     && !listings.isLoading && !listings.data?.some((item) => item.authorId === userId);

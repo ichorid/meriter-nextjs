@@ -18,6 +18,12 @@ export interface UzzPlatformPublication {
   deleted: boolean;
 }
 
+export interface UzzUserLabel {
+  name: string;
+  /** Telegram login without the leading @, when known. */
+  username: string | null;
+}
+
 export interface UzzPlatformPort {
   configuredCommunityId(): Promise<string>;
   setSelectedCommunityId(communityId: string): Promise<void>;
@@ -27,4 +33,5 @@ export interface UzzPlatformPort {
   /** Deed publications whose merits belong to any of the users (as author or nomination beneficiary). */
   listDeedPublications(communityId: string, userIds: string[]): Promise<UzzPlatformPublication[]>;
   getDisplayNames(userIds: string[]): Promise<Map<string, string>>;
+  getUserLabels(userIds: string[]): Promise<Map<string, UzzUserLabel>>;
 }

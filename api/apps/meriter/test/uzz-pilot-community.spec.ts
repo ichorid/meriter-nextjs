@@ -31,6 +31,7 @@ function platformStub(overrides: Partial<UzzPlatformPort> = {}): UzzPlatformPort
     getPublication: async () => null,
     listDeedPublications: async () => [],
     getDisplayNames: async () => new Map(),
+    getUserLabels: async () => new Map(),
     ...overrides,
   };
 }

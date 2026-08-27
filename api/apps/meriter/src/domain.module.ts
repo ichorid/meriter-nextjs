@@ -490,6 +490,7 @@ import { EventBus } from './domain/events/event-bus';
             }));
         },
         getDisplayNames: (userIds) => users.getDisplayNamesByUserIds(userIds),
+        getUserLabels: (userIds) => users.getUserLabelsByUserIds(userIds),
       }),
     },
     {

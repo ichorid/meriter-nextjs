@@ -12,7 +12,7 @@ import { useUzzCommunityId } from '@/lib/use-uzz-community';
 import { clearUzzSessionFlag, closePendingExternalWindow, cn, dealNeedsAction, isSafeAppPath, markUzzSession, navigatePendingExternalWindow, openPendingExternalWindow, rememberReturnTo, uzzErrorMessage } from '@/lib/utils';
 
 const NAV = [
-  { href: '/catalog', label: 'Обмен', icon: HeartHandshake }, { href: '/', label: 'Моё', icon: ListChecks },
+  { href: '/catalog', label: 'Каталог', icon: HeartHandshake }, { href: '/', label: 'Моё', icon: ListChecks },
   { href: '/deals', label: 'Сделки', icon: HandCoins }, { href: '/wallet', label: 'Кошелёк', icon: WalletCards },
   { href: '/profile', label: 'Профиль', icon: CircleUserRound },
 ] as const;
