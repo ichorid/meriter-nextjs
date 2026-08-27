@@ -4,9 +4,25 @@ import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type LedgerCursor = { createdAt: string; id: string };
+type LedgerTestRow = {
+  id: string;
+  type: string;
+  amount: number;
+  createdAt: string;
+  metadata: Record<string, unknown>;
+  context?: {
+    dealId?: string;
+    counterpartyId?: string;
+    counterpartyName?: string;
+    listingTitle?: string;
+    publicationId?: string;
+    publicationTitle?: string;
+  };
+};
+type LedgerTestPage = { items: LedgerTestRow[]; nextCursor: LedgerCursor | null };
 
 const { community, balanceState, ledgerQuery, defaultPages } = vi.hoisted(() => {
-  const page1 = {
+  const page1: LedgerTestPage = {
     items: Array.from({ length: 30 }, (_, index) => ({
       id: `a-${String(index).padStart(2, '0')}`,
       type: 'fee_reserved',
@@ -14,9 +30,9 @@ const { community, balanceState, ledgerQuery, defaultPages } = vi.hoisted(() => 
       createdAt: '2026-08-14T12:00:00.000Z',
       metadata: {},
     })),
-    nextCursor: { createdAt: '2026-08-14T12:00:00.000Z', id: 'a-29' } as LedgerCursor | null,
+    nextCursor: { createdAt: '2026-08-14T12:00:00.000Z', id: 'a-29' },
   };
-  const page2 = {
+  const page2: LedgerTestPage = {
     items: Array.from({ length: 5 }, (_, index) => ({
       id: `b-${String(index).padStart(2, '0')}`,
       type: 'fee_refunded',
@@ -24,7 +40,7 @@ const { community, balanceState, ledgerQuery, defaultPages } = vi.hoisted(() => 
       createdAt: '2026-08-13T12:00:00.000Z',
       metadata: {},
     })),
-    nextCursor: null as LedgerCursor | null,
+    nextCursor: null,
   };
   return {
     community: { communityId: 'community-1', loggedIn: true },
