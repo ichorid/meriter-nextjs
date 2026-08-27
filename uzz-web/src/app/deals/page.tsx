@@ -11,13 +11,20 @@ import { Button, EmptyState, Notice, PageHeader, QueryFailed, Skeleton } from '@
 import { parseDealFlash } from '@/lib/flash-message';
 import { trpc } from '@/lib/trpc/client';
 import { useUzzCommunityId } from '@/lib/use-uzz-community';
-import { uzzErrorMessage } from '@/lib/utils';
+import { cn, uzzErrorMessage } from '@/lib/utils';
 
 type Panel = { dealId: string; kind: 'accept' | 'reject' | 'cancel' | 'close' | 'thanks' } | null;
 type ActionError = { dealId: string; action: string; message: string } | null;
 
+const OPEN_STATUSES = new Set(['requested', 'accepted', 'completed_by_seller']);
+const DEAL_HIGHLIGHT_MS = 4000;
+
 export default function DealsPage() {
   return <Suspense fallback={<AppShell><Skeleton className="h-64" /></AppShell>}><DealsContent /></Suspense>;
+}
+
+function dealsHref(dealId: string | null): string {
+  return dealId ? `/deals?deal=${encodeURIComponent(dealId)}` : '/deals';
 }
 
 function DealsContent() {
@@ -25,14 +32,19 @@ function DealsContent() {
   const utils = trpc.useUtils();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const focusedDealId = searchParams.get('deal');
   const [openOnly, setOpenOnly] = useState(true);
   const [panel, setPanel] = useState<Panel>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [actionError, setActionError] = useState<ActionError>(null);
+  const [recentlyClosed, setRecentlyClosed] = useState<ReadonlySet<string>>(() => new Set());
+  const [highlightDealId, setHighlightDealId] = useState<string | null>(null);
   const consumedFlash = useRef(false);
+  const scrolledToDeal = useRef<string | null>(null);
   const deals = trpc.deals.list.useQuery({ communityId, mineOnly: true }, { enabled: Boolean(communityId) && loggedIn, retry: false, refetchInterval: 15_000 });
   const settings = trpc.settings.get.useQuery({ communityId }, { enabled: Boolean(communityId) && loggedIn, retry: false });
-  const refresh = () => { setPanel(null); setActionError(null); void Promise.all([utils.deals.list.invalidate(), utils.banks.listMine.invalidate(), utils.wallet.getBalance.invalidate()]); };
+  const invalidateLists = () => { void Promise.all([utils.deals.list.invalidate(), utils.banks.listMine.invalidate(), utils.wallet.getBalance.invalidate()]); };
+  const refresh = () => { setPanel(null); setActionError(null); invalidateLists(); };
 
   useEffect(() => {
     if (consumedFlash.current) return;
@@ -40,8 +52,26 @@ function DealsContent() {
     if (!message) return;
     consumedFlash.current = true;
     setFlash(message);
-    router.replace('/deals', { scroll: false });
-  }, [router, searchParams]);
+    router.replace(dealsHref(focusedDealId), { scroll: false });
+  }, [router, searchParams, focusedDealId]);
+
+  const visible = useMemo(
+    () => (deals.data ?? []).filter((deal) => !openOnly || OPEN_STATUSES.has(deal.status) || recentlyClosed.has(deal.id) || deal.id === focusedDealId),
+    [deals.data, openOnly, recentlyClosed, focusedDealId],
+  );
+
+  useEffect(() => {
+    if (!focusedDealId || scrolledToDeal.current === focusedDealId) return;
+    const node = document.getElementById(`deal-${focusedDealId}`);
+    if (!node) return;
+    scrolledToDeal.current = focusedDealId;
+    node.scrollIntoView({ block: 'center' });
+    setHighlightDealId(focusedDealId);
+    const timer = window.setTimeout(() => {
+      setHighlightDealId((current) => (current === focusedDealId ? null : current));
+    }, DEAL_HIGHLIGHT_MS);
+    return () => window.clearTimeout(timer);
+  }, [focusedDealId, visible]);
 
   function mapActionMessage(err: { message?: string }): string {
     return uzzErrorMessage(err);
@@ -52,7 +82,17 @@ function DealsContent() {
   }
 
   const mutationOptions = (action: string, message: string) => ({
-    onSuccess: () => { setFlash(message); refresh(); },
+    onSuccess: (_data: unknown, variables: { dealId: string }) => {
+      setFlash(message);
+      if (action === 'close') {
+        setRecentlyClosed((current) => new Set(current).add(variables.dealId));
+        setPanel({ dealId: variables.dealId, kind: 'thanks' });
+        setActionError(null);
+        invalidateLists();
+        return;
+      }
+      refresh();
+    },
     onError: (err: { message?: string }, variables: { dealId: string }) => {
       setActionError({ dealId: variables.dealId, action, message: mapActionMessage(err) });
       void deals.refetch();
@@ -65,7 +105,6 @@ function DealsContent() {
   const close = trpc.deals.close.useMutation(mutationOptions('close', 'Сделка закрыта, банк целиком перешёл исполнителю.'));
   const thank = trpc.deals.thank.useMutation(mutationOptions('thanks', 'Благодарность отправлена.'));
   const pending = accept.isPending || reject.isPending || cancel.isPending || complete.isPending || close.isPending || thank.isPending;
-  const visible = useMemo(() => (deals.data ?? []).filter((deal) => !openOnly || ['requested', 'accepted', 'completed_by_seller'].includes(deal.status)), [deals.data, openOnly]);
 
   function act(kind: NonNullable<Panel>['kind'], deal: DealView) {
     setFlash(null);
@@ -85,14 +124,18 @@ function DealsContent() {
       <Button type="button" variant="ghost" onClick={() => setActionError(null)}>Скрыть</Button>
     </div> : null}
     <label className="inline-flex min-h-11 items-center gap-2 rounded-xl border border-stitch-border px-4 text-sm text-stitch-muted"><input type="checkbox" checked={openOnly} onChange={(event) => setOpenOnly(event.target.checked)} />Только активные</label>
-    {deals.isLoading ? <div className="space-y-4" aria-busy><Skeleton className="h-72" /><Skeleton className="h-72" /></div> : deals.isError ? <QueryFailed onRetry={() => void deals.refetch()} error={deals.error} /> : !deals.data?.length ? <EmptyState title="Сделок пока нет"><Link className="text-stitch-accent-text underline" href="/catalog">Выбрать услугу в каталоге</Link></EmptyState> : !visible.length ? <EmptyState title="Активных сделок нет"><button className="text-stitch-accent-text underline" onClick={() => setOpenOnly(false)}>Показать историю</button></EmptyState> : <ul aria-label="Сделки" className="space-y-4">{visible.map((deal) => <li key={deal.id}><DealCard deal={deal}>
+    {deals.isLoading ? <div className="space-y-4" aria-busy><Skeleton className="h-72" /><Skeleton className="h-72" /></div> : deals.isError ? <QueryFailed onRetry={() => void deals.refetch()} error={deals.error} /> : !deals.data?.length ? <EmptyState title="Сделок пока нет"><Link className="text-stitch-accent-text underline" href="/catalog">Выбрать услугу в каталоге</Link></EmptyState> : !visible.length ? <EmptyState title="Активных сделок нет"><button className="text-stitch-accent-text underline" onClick={() => setOpenOnly(false)}>Показать историю</button></EmptyState> : <ul aria-label="Сделки" className="space-y-4">{visible.map((deal) => {
+      const justClosed = recentlyClosed.has(deal.id);
+      const showThanks = (deal.status === 'closed' || justClosed) && !(deal.myRole === 'buyer' ? deal.buyerThankedAt : deal.sellerThankedAt);
+      return <li key={deal.id} id={`deal-${deal.id}`} className={cn(highlightDealId === deal.id && 'rounded-2xl ring-2 ring-stitch-accent')}><DealCard deal={deal}>
       {deal.status === 'requested' && deal.myRole === 'seller' ? panel?.dealId === deal.id && panel.kind === 'accept' ? <DealAcceptForm listingPriceRub={deal.listingSnapshot.priceRub} currentNominalRub={deal.currentNominalRub} demurrageRubPerDay={settings.data?.demurrageRubPerDay} requestMessage={deal.requestMessage} requestedDeadlineAt={deal.requestedDeadlineAt} agreedDeadlineAt={deal.agreedDeadlineAt} pending={accept.isPending} error={panelError(deal.id)} onCancel={() => setPanel(null)} onAccept={(deadline) => { clearActionError(deal.id, 'accept'); accept.mutate({ commandId: crypto.randomUUID(), dealId: deal.id, expectedNominalRub: deal.currentNominalRub!, agreedDeadlineAt: deadline }); }} /> : <div className="flex flex-wrap gap-2"><Button onClick={() => act('accept', deal)}>Рассмотреть и принять</Button><Button variant="danger" disabled={pending} onClick={() => act('reject', deal)}>{panel?.dealId === deal.id && panel.kind === 'reject' ? 'Подтвердить отклонение' : 'Отклонить'}</Button></div> : null}
       {deal.status === 'requested' && deal.myRole === 'buyer' ? <div className="space-y-3"><p className="text-sm text-stitch-muted">До принятия контакт скрыт. Заявку можно отменить без потери комиссии.</p><Button variant="danger" disabled={pending} onClick={() => act('cancel', deal)}>{panel?.dealId === deal.id && panel.kind === 'cancel' ? 'Подтвердить отмену' : 'Отменить заявку'}</Button></div> : null}
       {deal.status === 'accepted' && deal.myRole === 'seller' ? <Button disabled={pending} onClick={() => { clearActionError(deal.id, 'complete'); complete.mutate({ commandId: crypto.randomUUID(), dealId: deal.id }); }}>Услуга выполнена</Button> : null}
       {deal.status === 'accepted' && deal.myRole === 'buyer' ? <p className="text-sm leading-6 text-stitch-muted">Свяжитесь с исполнителем. Когда услуга будет готова, он отметит выполнение, а вы сможете подтвердить закрытие.</p> : null}
-      {deal.status === 'completed_by_seller' && deal.myRole === 'buyer' ? <div className="space-y-3"><Notice>Подтвердите, если всё выполнено. Без ответа сделка закроется автоматически по окончании срока подтверждения.</Notice><Button disabled={pending} onClick={() => act('close', deal)}>{panel?.dealId === deal.id && panel.kind === 'close' ? 'Подтвердить закрытие и передачу банка' : 'Всё выполнено'}</Button></div> : null}
-      {deal.status === 'completed_by_seller' && deal.myRole === 'seller' ? <p className="text-sm text-stitch-muted">Ждём подтверждения заказчика. После истечения срока сделка закроется автоматически.</p> : null}
-      {deal.status === 'closed' && !(deal.myRole === 'buyer' ? deal.buyerThankedAt : deal.sellerThankedAt) ? panel?.dealId === deal.id && panel.kind === 'thanks' ? <ThanksForm pending={thank.isPending} error={panelError(deal.id)} onCancel={() => setPanel(null)} onSubmit={({ comment, merits }) => { clearActionError(deal.id, 'thanks'); thank.mutate({ commandId: crypto.randomUUID(), dealId: deal.id, comment, merits }); }} /> : <div className="flex flex-wrap items-center gap-3"><Button variant="ghost" onClick={() => { setPanel({ dealId: deal.id, kind: 'thanks' }); }}>Сказать спасибо</Button><span className="text-xs text-stitch-muted">Необязательно</span></div> : null}
-    </DealCard></li>)}</ul>}
+      {deal.status === 'completed_by_seller' && !justClosed && deal.myRole === 'buyer' ? <div className="space-y-3"><Notice>Подтвердите, если всё выполнено. Без ответа сделка закроется автоматически по окончании срока подтверждения.</Notice><Button disabled={pending} onClick={() => act('close', deal)}>{panel?.dealId === deal.id && panel.kind === 'close' ? 'Подтвердить закрытие и передачу банка' : 'Всё выполнено'}</Button></div> : null}
+      {deal.status === 'completed_by_seller' && !justClosed && deal.myRole === 'seller' ? <p className="text-sm text-stitch-muted">Ждём подтверждения заказчика. После истечения срока сделка закроется автоматически.</p> : null}
+      {showThanks ? panel?.dealId === deal.id && panel.kind === 'thanks' ? <ThanksForm pending={thank.isPending} error={panelError(deal.id)} onCancel={() => setPanel(null)} onSubmit={({ comment, merits }) => { clearActionError(deal.id, 'thanks'); thank.mutate({ commandId: crypto.randomUUID(), dealId: deal.id, comment, merits }); }} /> : <div className="flex flex-wrap items-center gap-3"><Button variant="ghost" onClick={() => { setPanel({ dealId: deal.id, kind: 'thanks' }); }}>Сказать спасибо</Button><span className="text-xs text-stitch-muted">Необязательно</span></div> : null}
+    </DealCard></li>;
+    })}</ul>}
   </div></AppShell>;
 }

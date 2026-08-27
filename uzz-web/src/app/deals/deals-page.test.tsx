@@ -9,6 +9,7 @@ const { community, dealsState, mutationHandlers, replace } = vi.hoisted(() => ({
   mutationHandlers: {
     accept: undefined as ((err: { message?: string }, vars: { dealId: string }) => void) | undefined,
     complete: undefined as ((err: { message?: string }, vars: { dealId: string }) => void) | undefined,
+    closeSuccess: undefined as ((data: unknown, vars: { dealId: string }) => void) | undefined,
   },
   replace: vi.fn(),
 }));
@@ -51,7 +52,18 @@ vi.mock('@/lib/trpc/client', () => ({
       reject: { useMutation: () => ({ isPending: false, mutate: vi.fn() }) },
       cancel: { useMutation: () => ({ isPending: false, mutate: vi.fn() }) },
       complete: { useMutation: mutationStub('complete') },
-      close: { useMutation: () => ({ isPending: false, mutate: vi.fn() }) },
+      close: {
+        useMutation: (options?: { onSuccess?: (data: unknown, vars: { dealId: string }) => void }) => {
+          mutationHandlers.closeSuccess = options?.onSuccess;
+          return {
+            isPending: false,
+            mutate: (vars: { dealId: string }) => {
+              dealsState.data = dealsState.data.map((deal) => deal.id === vars.dealId ? { ...deal, status: 'closed' } : deal);
+              mutationHandlers.closeSuccess?.(undefined, vars);
+            },
+          };
+        },
+      },
       thank: { useMutation: () => ({ isPending: false, mutate: vi.fn() }) },
     },
     settings: {
@@ -92,6 +104,7 @@ describe('DealsPage action errors', () => {
     dealsState.isError = false;
     mutationHandlers.accept = undefined;
     mutationHandlers.complete = undefined;
+    mutationHandlers.closeSuccess = undefined;
     replace.mockReset();
     window.history.replaceState({}, '', '/deals');
   });
@@ -183,5 +196,68 @@ describe('DealsPage flash', () => {
     await waitFor(() => {
       expect(replace).toHaveBeenCalledWith('/deals', { scroll: false });
     });
+  });
+
+  it('keeps the deal query when consuming a request flash', async () => {
+    window.history.replaceState({}, '', '/deals?requested=1&feeSource=local&deal=deal-keep');
+    render(<DealsPage />);
+
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith('/deals?deal=deal-keep', { scroll: false });
+    });
+  });
+});
+
+const completedBuyer: DealView = {
+  id: 'deal-close',
+  status: 'completed_by_seller',
+  myRole: 'buyer',
+  listingSnapshot: { title: 'Уборка', priceRub: 400, deliveryMode: 'offline', locationText: 'Дом' },
+  requestMessage: 'Сегодня',
+};
+
+describe('DealsPage close and deep link', () => {
+  beforeEach(() => {
+    dealsState.isLoading = false;
+    dealsState.isError = false;
+    mutationHandlers.closeSuccess = undefined;
+    replace.mockReset();
+    window.history.replaceState({}, '', '/deals');
+  });
+
+  it('keeps a just-closed deal in the active list and opens thanks', async () => {
+    const user = userEvent.setup();
+    dealsState.data = [completedBuyer];
+    render(<DealsPage />);
+
+    await user.click(screen.getByRole('button', { name: 'Всё выполнено' }));
+    await user.click(screen.getByRole('button', { name: 'Подтвердить закрытие и передачу банка' }));
+
+    expect(screen.getByText('Сделка закрыта, банк целиком перешёл исполнителю.')).toBeVisible();
+    expect(screen.getByRole('heading', { name: 'Необязательная благодарность' })).toBeVisible();
+    expect(screen.getByRole('checkbox')).toBeChecked();
+    expect(screen.getByRole('list', { name: 'Сделки' })).toBeVisible();
+  });
+
+  it('reveals a closed deal from the deal query and highlights it', () => {
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+    dealsState.data = [{ ...completedBuyer, id: 'deal-deep', status: 'closed' }];
+    window.history.replaceState({}, '', '/deals?deal=deal-deep');
+    render(<DealsPage />);
+
+    expect(screen.getByText('Уборка')).toBeVisible();
+    expect(scrollIntoView).toHaveBeenCalled();
+    expect(document.getElementById('deal-deal-deep')?.className).toMatch(/ring-stitch-accent/);
+  });
+
+  it('does nothing when the deal query does not match a listed deal', () => {
+    dealsState.data = [{ ...completedBuyer, status: 'closed' }];
+    window.history.replaceState({}, '', '/deals?deal=missing');
+    render(<DealsPage />);
+
+    expect(screen.getByText('Активных сделок нет')).toBeVisible();
+    expect(screen.queryByText('Уборка')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
