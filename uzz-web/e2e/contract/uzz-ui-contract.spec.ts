@@ -32,17 +32,24 @@ test('admin settings expose every configurable business parameter', async ({ pag
     'Переходов банка',
     'Таяние, ₽ в день',
     'Нижний номинал, ₽',
-    'Рекомендовано карточек',
+    'Рекомендовано услуг',
     'Режим взаимности',
     'Ответ на заявку, часов',
     'Исполнение, дней',
     'Подтверждение, дней',
+  ]) {
+    await expect(page.getByLabel(name)).toBeVisible();
+  }
+  // Exact match: «Появился банк на обмен» is a substring of the group-announce label.
+  for (const name of [
     'Появился банк на обмен',
     'Новая заявка или отмена',
     'Заявка принята или услуга сделана',
     'Сделка закрыта',
+    'У участника появился банк на обмен',
+    'Состоялась сделка',
   ]) {
-    await expect(page.getByLabel(name)).toBeVisible();
+    await expect(page.getByRole('checkbox', { name, exact: true })).toBeVisible();
   }
   await expect(page.getByLabel('Режим взаимности')).toHaveValue('nudge');
 });
@@ -55,7 +62,8 @@ test('catalog sends an unlinked member to profile without lying about nominal', 
   await expect(action).toBeEnabled();
   await expect(page.getByText('Нужен больший номинал')).toHaveCount(0);
   await action.click();
-  await expect(page).toHaveURL(/\/profile$/);
+  // The redirect carries ?from=catalog so the profile can explain why the user landed there.
+  await expect(page).toHaveURL(/\/profile\?from=catalog$/);
 });
 
 test('deal request flash reports the wallet actually used for the fee', async ({ page }) => {
