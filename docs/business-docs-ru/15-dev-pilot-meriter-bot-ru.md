@@ -15,7 +15,7 @@
 | Git / CI | ветка **`dev`** → job **`deploy-dev`** (без webhook `@meriter_bot`) |
 | VPS бота | cw.ru (`37.139.43.179`) |
 | Бот для пользователей | **`@meriter_bot`** |
-| Webhook | `https://cw.ru/api/telegram/hooks/meriter_bot` |
+| Webhook | `https://dev.meriter.pro/api/telegram/hooks/meriter_bot` (Caddy на DigitalOcean проксирует на API cw.ru) |
 | Mini App | `https://community.37.139.43.179.sslip.io/tg` (community-web; не UZZ на cw.ru) |
 | Каноническая БД | **MongoDB на cw.ru** (клон бывшего dev) |
 
@@ -61,7 +61,7 @@ docker compose run --rm --no-deps api node scripts/setup-bot-menu.js check
 
 Ожидается:
 
-- URL: `https://cw.ru/api/telegram/hooks/meriter_bot`
+- URL: `https://dev.meriter.pro/api/telegram/hooks/meriter_bot`
 - Menu: `https://community.37.139.43.179.sslip.io/tg` (не `https://cw.ru/`)
 - `pending_update_count`: 0
 - без `last_error_message`
@@ -116,5 +116,5 @@ bash /opt/meriter/scripts/vps/mongodb-backup.sh
 | Webhook check: wrong URL | `grep BOT_USERNAME /opt/meriter/.env`; redeploy или `setup-webhook.js set` |
 | 401 / unauthorized | `BOT_TOKEN` не совпадает с `@meriter_bot` |
 | Login Widget не грузится | BotFather domain = `community.37.139.43.179.sslip.io`; CSP в Caddy |
-| Бот молчит | `TELEGRAM_BOT_ENABLED=true` на **cw.ru**; webhook check; Caddy без HTTP/3 (`Alt-Svc` не должен содержать `h3`) |
-| Две базы / пропал бот после deploy-dev или deploy-prod | webhook должен быть только на cw.ru; в `dev.env` и `prod.env` стоит `TELEGRAM_BOT_ENABLED=false` |
+| Бот молчит | Webhook URL = `https://dev.meriter.pro/api/telegram/hooks/meriter_bot`, `ip_address` = DigitalOcean (не `37.139.43.179`); `TELEGRAM_BOT_ENABLED=true` только на **cw.ru**; Caddy без HTTP/3 |
+| Две базы / пропал бот после deploy-dev или deploy-prod | Обработка только на cw.ru (`TELEGRAM_BOT_ENABLED=false` в `dev.env`/`prod.env`). Ingress — прокси Caddy на `dev.meriter.pro`. На cw.ru в `.env` нужен `TELEGRAM_WEBHOOK_BASE_URL=https://dev.meriter.pro`, иначе `setup-webhook.js set` вернёт URL на `https://cw.ru` |

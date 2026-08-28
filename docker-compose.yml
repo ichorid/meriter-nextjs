@@ -99,7 +99,10 @@ services:
       - NODE_OPTIONS=--dns-result-order=ipv4first
     extra_hosts:
       - "api.telegram.org:149.154.167.220"
-      - "core.telegram.org:149.154.167.99"
+      - "core.telegram.org:149.154.167.220"
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+      - net.ipv6.conf.default.disable_ipv6=1
     # Security: API port not exposed to host, only accessible through Caddy
     # ports:
     #   - "8002:8002"
@@ -139,10 +142,15 @@ services:
       - DOMAIN=${DOMAIN}
       - BOT_USERNAME=${BOT_USERNAME}
       - BOT_TOKEN=${BOT_TOKEN}
+      - TELEGRAM_WEBHOOK_BASE_URL=${TELEGRAM_WEBHOOK_BASE_URL:-}
+      - TELEGRAM_WEBHOOK_IP=${TELEGRAM_WEBHOOK_IP:-}
       - NODE_OPTIONS=--dns-result-order=ipv4first
     extra_hosts:
       - "api.telegram.org:149.154.167.220"
-      - "core.telegram.org:149.154.167.99"
+      - "core.telegram.org:149.154.167.220"
+    sysctls:
+      - net.ipv6.conf.all.disable_ipv6=1
+      - net.ipv6.conf.default.disable_ipv6=1
     depends_on:
       api:
         condition: service_started

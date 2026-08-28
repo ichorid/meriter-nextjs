@@ -36,6 +36,19 @@
 
     import meriter_security_headers
 
+    # Telegram Bot API cannot reliably POST to cw.ru (Connection timed out).
+    # On the DigitalOcean host (dev.meriter.pro) this path forwards to the
+    # live API on cw.ru. Longest-prefix handle wins over /api* below.
+    handle /api/telegram/hooks* {
+        reverse_proxy https://cw.ru {
+            header_up Host cw.ru
+            header_up X-Forwarded-Host cw.ru
+            header_up X-Forwarded-Proto https
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+        }
+    }
+
     # Rate limiting for API endpoints (stricter limits)
     # Note: Caddy v2 doesn't have built-in rate limiting - requires caddy-ratelimit plugin
     # To enable rate limiting, build Caddy with: xcaddy build --with github.com/mholt/caddy-ratelimit

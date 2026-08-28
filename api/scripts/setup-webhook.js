@@ -191,7 +191,8 @@ async function setWebhook(botToken, botUsername, appUrl) {
         const payload = {
             url: webhookUrl,
             allowed_updates: allowedUpdates,
-            ...(webhookIp ? { ip_address: webhookIp } : {}),
+            // Empty string clears a previously pinned ip_address (Telegram docs).
+            ip_address: webhookIp || '',
         };
         if (webhookIp) {
             console.log(`   IP: ${webhookIp} (skip DNS; Telegram Bot API webhook)\n`);
@@ -263,9 +264,12 @@ async function main() {
     const botToken = process.env.BOT_TOKEN;
     const botUsername = process.env.BOT_USERNAME;
     const domain = process.env.DOMAIN;
-    const appUrl = domain
-        ? (domain === 'localhost' ? 'http://localhost' : `https://${domain}`)
-        : undefined;
+    const webhookBase = process.env.TELEGRAM_WEBHOOK_BASE_URL?.replace(/\/$/, '');
+    const appUrl = webhookBase
+        ? webhookBase
+        : domain
+          ? (domain === 'localhost' ? 'http://localhost' : `https://${domain}`)
+          : undefined;
 
     if (!botToken) {
         console.error('❌ ERROR: BOT_TOKEN environment variable must be set');
@@ -285,8 +289,8 @@ async function main() {
     if (command === 'check') {
         await checkWebhook(botToken);
     } else if (command === 'set') {
-        if (!botUsername || !domain || !appUrl) {
-            console.error('❌ ERROR: BOT_USERNAME and DOMAIN must be set for webhook configuration');
+        if (!botUsername || !appUrl) {
+            console.error('❌ ERROR: BOT_USERNAME and DOMAIN or TELEGRAM_WEBHOOK_BASE_URL must be set');
             console.error('');
             console.error('Example:');
             console.error('  export BOT_USERNAME=meriterbot');
