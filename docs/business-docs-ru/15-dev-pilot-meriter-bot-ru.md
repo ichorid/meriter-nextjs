@@ -1,8 +1,8 @@
 # 15. Пилот @meriter_bot на dev VPS (каноническая база)
 
 **Аудитория:** оператор, DevOps  
-**Стратегия:** один живой стенд (dev VPS), git-ветка **`dev`**, пользователи видят **`@meriter_bot`**.  
-**Prod (`main`)** не используется для пилота до отдельного cutover с переносом MongoDB.
+**Стратегия:** живой **`@meriter_bot`** после клона Mongo — **cw.ru** (`TELEGRAM_BOT_ENABLED=true`).  
+Ветка **`dev`** больше не регистрирует webhook этого бота (`TELEGRAM_BOT_ENABLED=false` в `scripts/vps/profiles/dev.env`), чтобы деплой на dev VPS не перехватывал токен. Отдельный dev-бот — отдельный токен BotFather.
 
 Связанные документы: [11-telegram-bot-runbook-ru.md](./11-telegram-bot-runbook-ru.md), [13-telegram-stack-deployment-ru.md](./13-telegram-stack-deployment-ru.md).
 
@@ -12,12 +12,12 @@
 
 | Что | Значение |
 |-----|----------|
-| Git / CI | ветка **`dev`** → job **`deploy-dev`** |
-| VPS | dev (`159.223.212.122`, `dev.meriter.pro`) |
+| Git / CI | ветка **`dev`** → job **`deploy-dev`** (без webhook `@meriter_bot`) |
+| VPS бота | cw.ru (`37.139.43.179`) |
 | Бот для пользователей | **`@meriter_bot`** |
-| Webhook | `https://dev.meriter.pro/api/telegram/hooks/meriter_bot` |
-| Mini App / Login Widget | `https://community-dev.meriter.pro` |
-| Каноническая БД | **MongoDB на dev VPS** (`/var/lib/docker/volumes/...`) |
+| Webhook | `https://cw.ru/api/telegram/hooks/meriter_bot` |
+| Mini App | `https://community.37.139.43.179.sslip.io/tg` (community-web; не UZZ на cw.ru) |
+| Каноническая БД | **MongoDB на cw.ru** (клон бывшего dev) |
 
 ---
 
@@ -41,28 +41,28 @@ BOT_TOKEN=123456789:AA...
 
 1. **Allow Groups: On**
 2. **Group Privacy: Off** (бот видит все сообщения в группе)
-3. `/setdomain` → **`community-dev.meriter.pro`**
-4. Mini App URL (если спрашивает): `https://community-dev.meriter.pro/tg`
+3. `/setdomain` → **`community.37.139.43.179.sslip.io`** (публичный community-web на VPS cw.ru без отдельного DNS)
+4. Mini App URL (если спрашивает): `https://community.37.139.43.179.sslip.io/tg`
 
 ### 3. Деплой кода
 
-Push в **`dev`** (или дождитесь CI после merge). На VPS `./deploy.sh`:
+Push в **`dev`** обновляет **dev VPS** и **не** должен трогать webhook `@meriter_bot`.
+Живые webhook/menu выставляются на **cw.ru** (`TELEGRAM_BOT_ENABLED=true` в `/opt/meriter/.env` там).
+Несекретный шаблон ключей: `scripts/vps/profiles/cw.env` (на сервер копировать руками, CI его не накатывает).
 
-- применит `scripts/vps/profiles/dev.env` (`BOT_USERNAME=meriter_bot`, `telegram_mvp`);
-- перерегистрирует webhook;
-- выставит menu button `/tg`.
-
-### 4. Проверка webhook (на VPS)
+### 4. Проверка webhook (cw.ru)
 
 ```bash
-ssh deploy@159.223.212.122
+ssh debian@cw.ru
 cd /opt/meriter
 docker compose run --rm --no-deps api node scripts/setup-webhook.js check
+docker compose run --rm --no-deps api node scripts/setup-bot-menu.js check
 ```
 
 Ожидается:
 
-- URL: `https://dev.meriter.pro/api/telegram/hooks/meriter_bot`
+- URL: `https://cw.ru/api/telegram/hooks/meriter_bot`
+- Menu: `https://community.37.139.43.179.sslip.io/tg` (не `https://cw.ru/`)
 - `pending_update_count`: 0
 - без `last_error_message`
 
@@ -72,7 +72,7 @@ docker compose run --rm --no-deps api node scripts/setup-webhook.js check
 2. Пройти онбординг в личке.
 3. `#заслуга тест` → пост + anchor.
 4. `/баланс` → ephemeral ответ с балансом.
-5. Открыть Mini App из меню бота → `community-dev.meriter.pro`.
+5. Открыть Mini App из меню бота → community-web (выбор сообществ / дела), не UZZ.
 
 ---
 
@@ -115,6 +115,6 @@ bash /opt/meriter/scripts/vps/mongodb-backup.sh
 |---------|----------|
 | Webhook check: wrong URL | `grep BOT_USERNAME /opt/meriter/.env`; redeploy или `setup-webhook.js set` |
 | 401 / unauthorized | `BOT_TOKEN` не совпадает с `@meriter_bot` |
-| Login Widget не грузится | BotFather domain = `community-dev.meriter.pro`; CSP в Caddy |
-| Бот молчит | `TELEGRAM_BOT_ENABLED=true`; логи `docker logs meriter-api` |
-| Две базы | убедиться, что webhook только на dev VPS |
+| Login Widget не грузится | BotFather domain = `community.37.139.43.179.sslip.io`; CSP в Caddy |
+| Бот молчит | `TELEGRAM_BOT_ENABLED=true` на **cw.ru**; webhook check; Caddy без HTTP/3 (`Alt-Svc` не должен содержать `h3`) |
+| Две базы / пропал бот после deploy-dev или deploy-prod | webhook должен быть только на cw.ru; в `dev.env` и `prod.env` стоит `TELEGRAM_BOT_ENABLED=false` |

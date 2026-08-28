@@ -32,14 +32,14 @@ const http = require('http');
 function makeRequest(url) {
     return new Promise((resolve, reject) => {
         const protocol = url.startsWith('https') ? https : http;
-        
-        protocol.get(url, (res) => {
+
+        const req = protocol.get(url, (res) => {
             let data = '';
-            
+
             res.on('data', (chunk) => {
                 data += chunk;
             });
-            
+
             res.on('end', () => {
                 try {
                     const parsed = JSON.parse(data);
@@ -48,9 +48,12 @@ function makeRequest(url) {
                     reject(new Error(`Failed to parse response: ${e.message}`));
                 }
             });
-        }).on('error', (err) => {
-            reject(err);
         });
+
+        req.setTimeout(20000, () => {
+            req.destroy(new Error('Request timed out'));
+        });
+        req.on('error', reject);
     });
 }
 
@@ -171,6 +174,8 @@ async function setWebhook(botToken, botUsername, appUrl) {
     console.log('🔧 Setting webhook...');
     console.log(`   URL: ${webhookUrl}\n`);
     
+    // Telegram expects a JSON array. A comma-separated query string is ignored,
+    // so reactions never get subscribed and GET check shows the previous list.
     const allowedUpdates = [
         'message',
         'my_chat_member',
@@ -178,14 +183,14 @@ async function setWebhook(botToken, botUsername, appUrl) {
         'callback_query',
         'message_reaction',
         'message_reaction_count',
-    ].join(',');
-    const url =
-        `https://api.telegram.org/bot${botToken}/setWebhook` +
-        `?url=${encodeURIComponent(webhookUrl)}` +
-        `&allowed_updates=${encodeURIComponent(allowedUpdates)}`;
+    ];
+    const url = `https://api.telegram.org/bot${botToken}/setWebhook`;
     
     try {
-        const response = await makeRequest(url);
+        const response = await makePostRequest(url, {
+            url: webhookUrl,
+            allowed_updates: allowedUpdates,
+        });
         
         if (!response.ok) {
             throw new Error(response.description || 'Unknown error');

@@ -94,6 +94,11 @@ services:
       # Manual dry-run: pnpm --filter @meriter/api migrate:collaborative-documents:dry
       # MongoDB connection with authentication
       - MONGO_URL=mongodb://meriter_user:${MONGO_APP_PASSWORD}@mongodb:27017/meriter?authSource=meriter
+      # Broken AAAA for api.telegram.org/core.telegram.org: prefer IPv4 (Node Happy Eyeballs).
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+    extra_hosts:
+      - "api.telegram.org:149.154.167.220"
+      - "core.telegram.org:149.154.167.99"
     # Security: API port not exposed to host, only accessible through Caddy
     # ports:
     #   - "8002:8002"
@@ -133,6 +138,10 @@ services:
       - DOMAIN=${DOMAIN}
       - BOT_USERNAME=${BOT_USERNAME}
       - BOT_TOKEN=${BOT_TOKEN}
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+    extra_hosts:
+      - "api.telegram.org:149.154.167.220"
+      - "core.telegram.org:149.154.167.99"
     depends_on:
       api:
         condition: service_started
@@ -273,10 +282,15 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      # Meriter web vhost. Defaults to DOMAIN; on cw.ru set MERITER_DOMAIN to a
+      # non-public name so UZZ_DOMAIN=cw.ru is the only public site on that host.
+      - MERITER_DOMAIN=${MERITER_DOMAIN:-${DOMAIN}}
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp"
+      # Do not publish UDP/443. HTTP/3 is disabled in the Caddyfile; advertising
+      # h3 while UDP is broken caused Telegram webhook "Connection timed out".
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

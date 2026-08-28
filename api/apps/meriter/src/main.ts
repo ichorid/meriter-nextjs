@@ -1,3 +1,4 @@
+import { setDefaultResultOrder } from 'node:dns';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { MeriterModule } from './meriter.module';
@@ -13,6 +14,7 @@ import { sentryBeforeSend } from './common/sentry/sentry-event-filter';
 declare const module: any;
 
 async function bootstrap() {
+  setDefaultResultOrder('ipv4first');
   const logger = new Logger('Bootstrap');
   // Initialize Sentry before creating NestJS app
   const sentryDsn = process.env.SENTRY_DSN;

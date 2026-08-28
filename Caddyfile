@@ -1,9 +1,14 @@
 # Caddyfile for Meriter application
 # Replace {$DOMAIN} with your actual domain or use environment variable
 
-# Enable admin API for reloading without restart (only accessible from localhost)
+# Enable admin API for reloading without restart (only accessible from localhost).
+# Disable HTTP/3: Telegram Bot API webhook delivery times out when Caddy advertises
+# Alt-Svc h3 and UDP/443 is flaky. Commands/hashtags use HTTP/1.1 POST.
 {
 	admin localhost:2019
+	servers {
+		protocols h1 h2
+	}
 }
 
 (meriter_security_headers) {
@@ -20,8 +25,9 @@
 	}
 }
 
-# Support both HTTP and HTTPS for localhost development
-{$DOMAIN} {
+# Meriter full web. On cw.ru this is MERITER_DOMAIN=legacy.localhost so it does
+# not collide with UZZ_DOMAIN=cw.ru (Caddy: "ambiguous site definition").
+{$MERITER_DOMAIN} {
     # Enable access logs
     log {
         output stdout

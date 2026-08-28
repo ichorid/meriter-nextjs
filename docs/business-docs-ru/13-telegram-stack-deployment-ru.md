@@ -453,7 +453,7 @@ Login Widget требует HTTPS на **community-web** домене. Tunnel н
 | Нет зеркала в TG | frozen community, нет chatId | пост `pending` | `telegramChatId` в Mongo |
 | resolveForTelegramUser null | пользователь не в группе | — | membership + role в БД |
 | Дубль поста в TG | — | — | bot posts имеют `skipTelegramMirror` |
-| pending updates растут | 5xx на webhook, логи API | — | — |
+| pending updates растут | 5xx на webhook, логи API, Telegram `Connection timed out` (часто HTTP/3 / `Alt-Svc: h3`) | — | — |
 
 **Логи:** `TelegramBotOrchestratorService`, `MirrorPublicationToTelegramUseCase`, `TelegramPublicationModerationUseCase`.
 
