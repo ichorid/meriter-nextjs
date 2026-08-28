@@ -187,10 +187,16 @@ async function setWebhook(botToken, botUsername, appUrl) {
     const url = `https://api.telegram.org/bot${botToken}/setWebhook`;
     
     try {
-        const response = await makePostRequest(url, {
+        const webhookIp = process.env.TELEGRAM_WEBHOOK_IP?.trim();
+        const payload = {
             url: webhookUrl,
             allowed_updates: allowedUpdates,
-        });
+            ...(webhookIp ? { ip_address: webhookIp } : {}),
+        };
+        if (webhookIp) {
+            console.log(`   IP: ${webhookIp} (skip DNS; Telegram Bot API webhook)\n`);
+        }
+        const response = await makePostRequest(url, payload);
         
         if (!response.ok) {
             throw new Error(response.description || 'Unknown error');

@@ -94,7 +94,8 @@ services:
       # Manual dry-run: pnpm --filter @meriter/api migrate:collaborative-documents:dry
       # MongoDB connection with authentication
       - MONGO_URL=mongodb://meriter_user:${MONGO_APP_PASSWORD}@mongodb:27017/meriter?authSource=meriter
-      # Broken AAAA for api.telegram.org/core.telegram.org: prefer IPv4 (Node Happy Eyeballs).
+      # Docker DNS AAAA / 149.154.166.110 time out from this NAT. Pin the IPv4
+      # that is reachable from meriter-backend-network (host curl uses it too).
       - NODE_OPTIONS=--dns-result-order=ipv4first
     extra_hosts:
       - "api.telegram.org:149.154.167.220"
