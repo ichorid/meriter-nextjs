@@ -242,8 +242,7 @@ export class UzzApplicationFacade {
         counterpartyUsername: counterparty?.username ?? null,
         currentNominalRub: rightNominalById.get(deal.exchangeRightId) ?? null,
         expiresAt: deal.status === 'requested' ? deal.requestExpiresAt
-          : deal.status === 'accepted' ? deal.fulfillmentExpiresAt
-            : deal.status === 'completed_by_seller' ? deal.confirmationExpiresAt : null,
+          : deal.status === 'completed_by_seller' ? deal.confirmationExpiresAt : null,
       };
     });
   }

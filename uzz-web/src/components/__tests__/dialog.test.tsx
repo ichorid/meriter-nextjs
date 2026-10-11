@@ -85,7 +85,7 @@ function Harness({
       <button type="button">Открыть каталог</button>
       <Dialog open={open} onClose={onClose} labelledBy="dlg-title" describedBy="dlg-desc">
         <DialogTitle id="dlg-title">Запросить услугу «Консультация»</DialogTitle>
-        <p id="dlg-desc">Цена 500 ₽. Комиссия 1 заслуга: кошелёк сообщества. Срок можно указать в форме.</p>
+        <p id="dlg-desc">Цена 500. Комиссия 1 заслуга: кошелёк сообщества. Срок можно указать в форме.</p>
         <form
           onSubmit={(event: FormEvent) => {
             event.preventDefault();
@@ -93,7 +93,7 @@ function Harness({
           }}
         >
           <select aria-label="Банк на обмен" defaultValue="right-1">
-            <option value="right-1">до 5000 ₽</option>
+            <option value="right-1">до 5000</option>
           </select>
           <textarea aria-label="Сообщение исполнителю" />
           <button type="button" onClick={onClose}>Отмена</button>

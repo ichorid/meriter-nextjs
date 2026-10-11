@@ -69,19 +69,20 @@ vi.mock('@/lib/trpc/client', () => ({
 import CatalogPage from '@/app/catalog/page';
 
 describe('DealRequestForm', () => {
-  it('does not submit without a request message', async () => {
+  it('submits an empty request message', async () => {
+    const user = userEvent.setup();
     const onSubmit = vi.fn();
     render(<DealRequestForm title="Консультация" priceRub={500} rights={[right]} pending={false} onCancel={vi.fn()} onSubmit={onSubmit} />);
 
-    expect(screen.getByRole('button', { name: 'Подтвердить заявку' })).toBeDisabled();
-    expect(onSubmit).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Подтвердить заявку' }));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ bankId: 'right-1', requestMessage: '' }));
   });
 
   it('shows nominal forecast and fee source before confirmation', () => {
-    render(<DealRequestForm title="Консультация" priceRub={500} rights={[right]} pending={false} demurrageRubPerDay={100} nominalFloorRub={100} feeSourceLabel="кошелёк сообщества" onCancel={vi.fn()} onSubmit={vi.fn()} />);
+    render(<DealRequestForm title="Консультация" priceRub={500} rights={[right]} pending={false} demurrageEnabled demurrageRubPerDay={100} nominalFloorRub={100} feeSourceLabel="кошелёк сообщества" onCancel={vi.fn()} onSubmit={vi.fn()} />);
 
-    expect(screen.getByText('Сегодня банк: до 5 000 ₽')).toBeVisible();
-    expect(screen.getByText('Завтра: до 4 900 ₽')).toBeVisible();
+    expect(screen.getByText('Сегодня банк: до 5 000')).toBeVisible();
+    expect(screen.getByText('Завтра: до 4 900')).toBeVisible();
     expect(screen.getByText(/Комиссия 1 заслуга: кошелёк сообщества/)).toBeVisible();
   });
 
@@ -97,8 +98,8 @@ describe('DealRequestForm', () => {
   it('does not forecast tomorrow from hard-coded 100/100 fallbacks when settings are missing', () => {
     render(<DealRequestForm title="Консультация" priceRub={500} rights={[right]} pending={false} onCancel={vi.fn()} onSubmit={vi.fn()} />);
 
-    expect(screen.queryByText('Завтра: до 4 900 ₽')).not.toBeInTheDocument();
-    expect(screen.getByText('Загружаем условия…')).toBeVisible();
+    expect(screen.queryByText(/Завтра:/)).not.toBeInTheDocument();
+    expect(screen.getByText('Сегодня банк: до 5 000')).toBeVisible();
   });
 });
 

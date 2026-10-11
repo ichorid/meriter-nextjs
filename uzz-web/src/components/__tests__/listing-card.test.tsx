@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ListingCard, type ListingView } from '@/components/listing-card';
 
@@ -34,6 +35,18 @@ describe('ListingCard long content', () => {
     render(<ListingCard listing={{ ...listing, description: `Начало описания. ${'Очень '.repeat(400)}` }} own />);
 
     const description = screen.getByText(/^Начало описания\./);
+    expect(description.className).toContain('line-clamp-4');
+  });
+
+  it('expands a long description in place', async () => {
+    const user = userEvent.setup();
+    render(<ListingCard listing={{ ...listing, description: `Начало описания. ${'Подробности. '.repeat(40)}` }} own />);
+
+    const description = screen.getByText(/^Начало описания\./);
+    expect(description.className).toContain('line-clamp-4');
+    await user.click(screen.getByRole('button', { name: 'Читать полностью' }));
+    expect(description.className).not.toContain('line-clamp-4');
+    await user.click(screen.getByRole('button', { name: 'Свернуть' }));
     expect(description.className).toContain('line-clamp-4');
   });
 

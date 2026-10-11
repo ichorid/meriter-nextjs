@@ -235,7 +235,7 @@ realUzzTest('R10 request accept contacts complete close transfers the right', as
     const accepts = captureTrpcResponses(sellerSession.page, 'deals.accept');
     await sellerSession.page.goto('/deals');
     await sellerSession.page.getByRole('button', { name: 'Рассмотреть и принять' }).click();
-    await sellerSession.page.getByRole('button', { name: /Принять на 1\s?200 ₽/ }).click();
+    await sellerSession.page.getByRole('button', { name: /Принять на 1\s?200/ }).click();
     await expect(sellerSession.page.getByText('Заявка принята. Контакты открыты обеим сторонам.')).toBeVisible();
     await expect(sellerSession.page.getByRole('link', { name: /Написать @buyerr10/i })).toBeVisible();
     expect(accepts[0]?.status).toBe(200);
@@ -297,19 +297,19 @@ realUzzTest('R11 current nominal below listing price is disclosed and accepted a
     await sellerSession.page.goto('/deals');
     await sellerSession.page.getByRole('button', { name: 'Рассмотреть и принять' }).click();
     await expect(sellerSession.page.getByText('Текущий номинал ниже цены услуги')).toBeVisible();
-    await expect(sellerSession.page.getByRole('button', { name: /Принять на 400 ₽/ })).toBeVisible();
+    await expect(sellerSession.page.getByRole('button', { name: /Принять на 400/ })).toBeVisible();
 
     await seed.updateRightNominal(right.id, 350);
-    await sellerSession.page.getByRole('button', { name: /Принять на 400 ₽/ }).click();
+    await sellerSession.page.getByRole('button', { name: /Принять на 400/ }).click();
     await expect(
       sellerSession.page.getByRole('alert').filter({ hasText: /Номинал изменился/ }),
     ).toBeVisible();
     expect(accepts.some((row) => row.status >= 400 || /NOMINAL/i.test(row.body))).toBe(true);
 
-    await expect(sellerSession.page.getByRole('button', { name: /Принять на 350 ₽/ })).toBeVisible({
+    await expect(sellerSession.page.getByRole('button', { name: /Принять на 350/ })).toBeVisible({
       timeout: 15_000,
     });
-    await sellerSession.page.getByRole('button', { name: /Принять на 350 ₽/ }).click();
+    await sellerSession.page.getByRole('button', { name: /Принять на 350/ }).click();
     await expect(sellerSession.page.getByText('Заявка принята. Контакты открыты обеим сторонам.')).toBeVisible();
   } finally {
     await sellerSession.close();
@@ -343,7 +343,7 @@ realUzzTest('R12 optional thanks is sent once and appears in both ledger views',
   try {
     await sellerSession.page.goto('/deals');
     await sellerSession.page.getByRole('button', { name: 'Рассмотреть и принять' }).click();
-    await sellerSession.page.getByRole('button', { name: /Принять на 900 ₽/ }).click();
+    await sellerSession.page.getByRole('button', { name: /Принять на 900/ }).click();
     await expect(sellerSession.page.getByText('Заявка принята')).toBeVisible();
     await sellerSession.page.getByRole('button', { name: 'Услуга выполнена' }).click();
     await expect(sellerSession.page.getByText('Отмечено как выполненное')).toBeVisible();

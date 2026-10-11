@@ -250,6 +250,7 @@ function settings(mode: 'nudge' | 'require_min_lots') {
     emissionThreshold: 10,
     initialHops: 10,
     demurrageRubPerDay: 100,
+    demurrageEnabled: false,
     nominalFloorRub: 100,
     defaultNominalRub: 100,
     autoAssignNominal: false,

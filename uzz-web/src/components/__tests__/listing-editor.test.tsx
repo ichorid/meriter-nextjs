@@ -20,8 +20,8 @@ describe('ListingEditor', () => {
     render(<ListingEditor pending={false} onCancel={vi.fn()} onSubmit={onSubmit} />);
 
     await user.type(screen.getByLabelText('Название'), '   ');
-    await user.clear(screen.getByLabelText('Цена, ₽'));
-    await user.type(screen.getByLabelText('Цена, ₽'), '10.5');
+    await user.clear(screen.getByLabelText('Цена'));
+    await user.type(screen.getByLabelText('Цена'), '10.5');
     await user.click(screen.getByRole('button', { name: 'Опубликовать' }));
     expect(screen.getByText('Название должно содержать не меньше 3 символов')).toBeVisible();
     expect(screen.getByText('Цена должна быть целым числом больше нуля')).toBeVisible();

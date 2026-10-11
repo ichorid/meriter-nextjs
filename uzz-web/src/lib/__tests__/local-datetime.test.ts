@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   DEAL_DEADLINE_NOT_FUTURE_MESSAGE,
+  MOSCOW_OFFSET_MINUTES,
   formatDeadlineLabel,
+  formatMoscowDeadline,
   instantToLocalInput,
   isInstantTooSoon,
   isLocalDayTooSoon,
@@ -67,6 +69,8 @@ describe('local calendar conversion', () => {
     expect(cells[5]).toEqual({ year: 2026, month: 8, day: 1, inMonth: true });
     expect(cells).toHaveLength(42);
     expect(formatDeadlineLabel('2026-08-14T11:00:00Z', -420)).toBe('14 авг. 2026, 18:00');
+    expect(MOSCOW_OFFSET_MINUTES).toBe(-180);
+    expect(formatMoscowDeadline('2026-10-05T09:00:00Z')).toBe('5 окт. 2026, 12:00 МСК');
     expect(isInstantTooSoon(new Date('2026-08-14T11:04:00.000Z'), new Date('2026-08-14T11:00:00.000Z'))).toBe(true);
     expect(isLocalDayTooSoon(2026, 8, 13, new Date('2026-08-14T11:00:00.000Z'), 0)).toBe(true);
     expect(isLocalDayTooSoon(2026, 8, 14, new Date('2026-08-14T11:00:00.000Z'), 0)).toBe(false);

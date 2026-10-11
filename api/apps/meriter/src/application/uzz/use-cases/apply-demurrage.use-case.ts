@@ -30,6 +30,10 @@ export class ApplyDemurrageUseCase {
         (now.getTime() - snapshot.lastDemurrageAt.getTime()) / DAY_MS,
       );
       if (elapsedDays < 1) continue;
+      const settings = await this.unitOfWork.run((repositories) =>
+        repositories.settings.findByCommunityId(snapshot.communityId),
+      );
+      if (!settings?.demurrageEnabled) continue;
       const commandId = `demurrage:${snapshot.id}:${snapshot.lastDemurrageAt.toISOString()}:${elapsedDays}`;
       await this.commands.execute({
         commandId, actorId: 'system', type: 'apply_demurrage',

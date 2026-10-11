@@ -278,7 +278,7 @@ realUzzTest('R5 listing create and update replay the same command without duplic
   await expect(page.getByRole('heading', { name: 'Ваши услуги' })).toBeVisible();
   await page.getByRole('button', { name: 'Добавить услугу' }).click();
   await page.getByLabel('Название').fill(title);
-  await page.getByLabel('Цена, ₽').fill('700');
+  await page.getByLabel('Цена').fill('700');
   await page.getByRole('button', { name: 'Опубликовать' }).click();
   await expect(page.getByRole('heading', { name: title })).toBeVisible({ timeout: 15_000 });
   expect(createPosts.length).toBeGreaterThan(0);

@@ -131,7 +131,7 @@ describe('DealsPage action errors', () => {
     render(<DealsPage />);
 
     await user.click(screen.getByRole('button', { name: 'Рассмотреть и принять' }));
-    await user.click(screen.getByRole('button', { name: /Принять на 900 ₽/ }));
+    await user.click(screen.getByRole('button', { name: /Принять на 900/ }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(DEAL_DEADLINE_NOT_FUTURE_MESSAGE);
     expect(screen.getByRole('button', { name: 'Назад' })).toBeVisible();
@@ -156,12 +156,12 @@ describe('DealsPage counterparty contact', () => {
     expect(screen.getByRole('link', { name: 'Написать @buyer' })).toHaveAttribute('href', 'https://t.me/buyer');
   });
 
-  it('falls back to a telegram user id link when the counterparty has no username', () => {
+  it('explains that a missing public username cannot open a chat', () => {
     dealsState.data = [{ ...acceptedSeller, buyerContact: { telegramUserId: '1001', telegramUsername: null } }];
     render(<DealsPage />);
 
-    expect(screen.getByRole('link', { name: 'Открыть чат в Telegram' })).toHaveAttribute('href', 'tg://user?id=1001');
-    expect(screen.getByText(/не задан публичный @username/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Открыть чат|Написать/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/нет публичного имени/)).toBeInTheDocument();
   });
 
   it('hides the contact entirely while the request is still pending', () => {

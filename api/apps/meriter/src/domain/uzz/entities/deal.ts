@@ -122,9 +122,8 @@ export class Deal {
         'DEAL_RIGHT_ID_INVALID',
       ),
       status: 'requested',
-      requestMessage: requireText(
+      requestMessage: optionalText(
         input.requestMessage,
-        1,
         1000,
         'DEAL_REQUEST_MESSAGE_INVALID',
       ),
@@ -247,7 +246,6 @@ export class Deal {
   ): void {
     this.requireActor(sellerId, this.state.sellerId);
     this.requireStatus('accepted');
-    this.requireFulfillmentOpen(now);
     if (
       confirmationExpiresAt &&
       confirmationExpiresAt.getTime() <= now.getTime()
@@ -308,11 +306,7 @@ export class Deal {
       this.state.status = 'cancelled';
       this.state.cancelledAt = new Date(now);
     } else if (this.state.status === 'accepted') {
-      if (!this.state.fulfillmentExpiresAt || now.getTime() < this.state.fulfillmentExpiresAt.getTime()) {
-        throw new UzzConflictError('DEAL_NOT_DUE');
-      }
-      this.state.status = 'cancelled';
-      this.state.cancelledAt = new Date(now);
+      throw new UzzConflictError('DEAL_NOT_DUE');
     } else if (this.state.status === 'completed_by_seller') {
       if (!this.state.confirmationExpiresAt || now.getTime() < this.state.confirmationExpiresAt.getTime()) {
         throw new UzzConflictError('DEAL_NOT_DUE');
@@ -390,14 +384,6 @@ export class Deal {
     }
   }
 
-  private requireFulfillmentOpen(now: Date): void {
-    if (
-      !this.state.fulfillmentExpiresAt ||
-      now.getTime() >= this.state.fulfillmentExpiresAt.getTime()
-    ) {
-      throw new UzzExpiredError('DEAL_FULFILLMENT_EXPIRED');
-    }
-  }
 }
 
 function validateSnapshot(snapshot: DealSnapshot): void {
@@ -407,7 +393,7 @@ function validateSnapshot(snapshot: DealSnapshot): void {
   requireText(snapshot.sellerId, 1, 200, 'DEAL_SELLER_ID_INVALID');
   requireText(snapshot.listingId, 1, 200, 'DEAL_LISTING_ID_INVALID');
   requireText(snapshot.exchangeRightId, 1, 200, 'DEAL_RIGHT_ID_INVALID');
-  requireText(snapshot.requestMessage, 1, 1000, 'DEAL_REQUEST_MESSAGE_INVALID');
+  optionalText(snapshot.requestMessage, 1000, 'DEAL_REQUEST_MESSAGE_INVALID');
   normalizeListingSnapshot(snapshot.listingSnapshot);
   if (!Number.isSafeInteger(snapshot.version) || snapshot.version < 0) {
     throw new UzzValidationError('DEAL_VERSION_INVALID');

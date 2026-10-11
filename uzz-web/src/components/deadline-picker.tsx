@@ -4,20 +4,34 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button, inputClass } from '@/components/ui';
 import {
-  formatDeadlineLabel,
+  MOSCOW_OFFSET_MINUTES,
+  formatMoscowDeadline,
   instantFromLocalParts,
   isInstantTooSoon,
   isLocalDayTooSoon,
   localPartsFromInstant,
   monthGrid,
   shiftLocalMonth,
+  type LocalCalendarParts,
 } from '@/lib/local-datetime';
 import { cn } from '@/lib/utils';
 
 const WEEKDAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 const MINUTES = [0, 15, 30, 45];
-const MONTH_TITLE = new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric' });
+const MONTH_TITLE = new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric', timeZone: 'Europe/Moscow' });
+
+function moscowParts(value: Date | string) {
+  return localPartsFromInstant(value, MOSCOW_OFFSET_MINUTES);
+}
+
+function moscowInstant(parts: LocalCalendarParts) {
+  return instantFromLocalParts(parts, MOSCOW_OFFSET_MINUTES);
+}
+
+function moscowDayTooSoon(year: number, month: number, day: number, now: Date) {
+  return isLocalDayTooSoon(year, month, day, now, MOSCOW_OFFSET_MINUTES);
+}
 
 function monthTitle(year: number, month: number): string {
   const raw = MONTH_TITLE.format(new Date(Date.UTC(year, month - 1, 1)));
@@ -53,12 +67,12 @@ export function DeadlinePicker({
   hint?: string;
 }) {
   const now = new Date();
-  const initial = localPartsFromInstant(value ?? now);
+  const initial = moscowParts(value ?? now);
   const [open, setOpen] = useState(false);
   const [view, setView] = useState({ year: initial.year, month: initial.month });
   const rootRef = useRef<HTMLDivElement>(null);
 
-  const selected = value ? localPartsFromInstant(value) : null;
+  const selected = value ? moscowParts(value) : null;
   const cells = useMemo(() => monthGrid(view.year, view.month), [view.month, view.year]);
   const minuteOptions = selected && !MINUTES.includes(selected.minute)
     ? [...MINUTES, selected.minute].sort((left, right) => left - right)
@@ -84,17 +98,17 @@ export function DeadlinePicker({
   }, [open]);
 
   function pickDay(year: number, month: number, day: number) {
-    if (isLocalDayTooSoon(year, month, day, now)) return;
+    if (moscowDayTooSoon(year, month, day, now)) return;
     const fallback = nextValidInstant(now);
-    const fallbackParts = localPartsFromInstant(fallback);
-    const candidate = instantFromLocalParts({
+    const fallbackParts = moscowParts(fallback);
+    const candidate = moscowInstant({
       year,
       month,
       day,
       hour: selected?.hour ?? fallbackParts.hour,
       minute: selected?.minute ?? fallbackParts.minute,
     });
-    onChange(isInstantTooSoon(candidate, now) ? instantFromLocalParts({
+    onChange(isInstantTooSoon(candidate, now) ? moscowInstant({
       year,
       month,
       day,
@@ -105,11 +119,11 @@ export function DeadlinePicker({
 
   function pickTime(hour: number, minute: number) {
     if (!selected) {
-      const fallback = localPartsFromInstant(nextValidInstant(now));
-      onChange(instantFromLocalParts({ ...fallback, hour, minute }));
+      const fallback = moscowParts(nextValidInstant(now));
+      onChange(moscowInstant({ ...fallback, hour, minute }));
       return;
     }
-    onChange(instantFromLocalParts({ ...selected, hour, minute }));
+    onChange(moscowInstant({ ...selected, hour, minute }));
   }
 
   return (
@@ -126,14 +140,14 @@ export function DeadlinePicker({
             // Browsing away without picking a day must not leave the calendar
             // parked months ahead the next time it opens.
             if (!current) {
-              const base = localPartsFromInstant(value ?? new Date());
+              const base = moscowParts(value ?? new Date());
               setView({ year: base.year, month: base.month });
             }
             return !current;
           })}
           className={cn(inputClass, 'flex flex-1 items-center justify-between text-left')}
         >
-          <span>{value ? formatDeadlineLabel(value) : 'Не указан'}</span>
+          <span>{value ? formatMoscowDeadline(value) : 'Не указан'}</span>
           <span className="text-stitch-muted">{open ? '▴' : '▾'}</span>
         </button>
         {value ? (
@@ -170,7 +184,7 @@ export function DeadlinePicker({
           <div className="grid grid-cols-7 gap-1 text-center text-xs text-stitch-muted">
             {WEEKDAYS.map((day) => <span key={day} className="py-1">{day}</span>)}
             {cells.map((cell) => {
-              const disabled = isLocalDayTooSoon(cell.year, cell.month, cell.day, now);
+              const disabled = moscowDayTooSoon(cell.year, cell.month, cell.day, now);
               const isSelected = selected?.year === cell.year && selected.month === cell.month && selected.day === cell.day;
               return (
                 <button

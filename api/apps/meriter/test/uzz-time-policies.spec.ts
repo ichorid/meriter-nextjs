@@ -141,7 +141,15 @@ describe('UZZ time policies', () => {
     await replSet.stop();
   });
 
+  async function enableDemurrage(commandId: string) {
+    await updateSettings.execute({
+      commandId, communityId: 'community-1', adminId: 'admin-1',
+      patch: { demurrageEnabled: true },
+    });
+  }
+
   it('preserves remainder hours after catch-up demurrage', async () => {
+    await enableDemurrage('enable-demurrage-catchup');
     clock.set('2026-08-16T02:00:00.000Z');
     expect(await demurrage.executePage({ limit: 100 })).toMatchObject({ processed: 1 });
     const right = await createMongooseUzzRepositories(connection, null).rights.findById('right-1');
@@ -152,6 +160,7 @@ describe('UZZ time policies', () => {
   });
 
   it('never increases a right when an administrator raises the floor', async () => {
+    await enableDemurrage('enable-demurrage-floor');
     await rawDb.collection('uzz_rights').updateOne(
       { id: 'right-1' },
       { $set: { nominalRub: 50, lastDemurrageAt: START } },
@@ -167,6 +176,7 @@ describe('UZZ time policies', () => {
   });
 
   it('continues demurrage while the right is locked in an accepted deal', async () => {
+    await enableDemurrage('enable-demurrage-locked');
     const deal = await createRequest();
     await accept.execute({
       commandId: 'accept-for-demurrage', dealId: deal.id, sellerId: 'seller-1',
@@ -259,20 +269,28 @@ describe('UZZ time policies', () => {
     expect(wallet?.balance).toBe(1);
   });
 
-  it('expires accepted fulfillment, unlocks the right, and refunds the fee', async () => {
+  it('keeps an accepted deal open after the old fulfillment window', async () => {
     const deal = await createRequest();
     const accepted = await accept.execute({
       commandId: 'accept-for-fulfillment-expiry', dealId: deal.id, sellerId: 'seller-1',
       expectedNominalRub: 500, agreedDeadlineAt: null, now: START,
     });
     clock.set(accepted.fulfillmentExpiresAt!.toISOString());
-    await expiry.executePage({ limit: 100 });
-    const persisted = await createMongooseUzzRepositories(connection, null).deals.findById(deal.id);
-    const right = await createMongooseUzzRepositories(connection, null).rights.findById('right-1');
+    expect(await expiry.executePage({ limit: 100 })).toMatchObject({ processed: 0 });
+    const repos = createMongooseUzzRepositories(connection, null);
+    const persisted = await repos.deals.findById(deal.id);
+    const right = await repos.rights.findById('right-1');
     const wallet = await rawDb.collection('wallets').findOne({ id: 'wallet-1' });
-    expect(persisted?.snapshot()).toMatchObject({ status: 'cancelled', feeReserved: false });
-    expect(right?.snapshot()).toMatchObject({ status: 'active', lockedByDealId: null });
-    expect(wallet?.balance).toBe(1);
+    expect(persisted?.snapshot()).toMatchObject({ status: 'accepted', feeReserved: true });
+    expect(right?.snapshot()).toMatchObject({ status: 'in_deal', lockedByDealId: deal.id });
+    expect(wallet?.balance).toBe(0);
+    const completed = await complete.execute({
+      commandId: 'complete-after-old-window',
+      dealId: deal.id,
+      sellerId: 'seller-1',
+      now: clock.now(),
+    });
+    expect(completed.status).toBe('completed_by_seller');
   });
 
   it('M: auto-closes after seller completion', async () => {

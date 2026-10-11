@@ -2387,7 +2387,7 @@ export class TelegramBotOrchestratorService {
         'telegram',
         tgUserId,
       );
-      await this.confirmTelegramLinkUseCase.execute({
+      const linked = await this.confirmTelegramLinkUseCase.execute({
         token,
         telegramUserId: tgUserId,
         telegramUsername,
@@ -2395,8 +2395,9 @@ export class TelegramBotOrchestratorService {
       });
       await this.tgBots.tgSend({
         tgChatId: tgUserId,
-        text:
-          'Telegram привязан к аккаунту на площадке «Услуги за заслуги». Можно смотреть банки на обмен и сделки на сайте.',
+        text: linked.refreshed
+          ? 'Имя в Telegram обновлено. Новые сделки на площадке «Услуги за заслуги» возьмут этот ник.'
+          : 'Telegram привязан к аккаунту на площадке «Услуги за заслуги». Можно смотреть банки на обмен и сделки на сайте.',
       });
     } catch (error) {
       await this.tgBots.tgSend({

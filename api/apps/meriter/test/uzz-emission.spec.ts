@@ -58,7 +58,7 @@ describe('UZZ exchange-right emission', () => {
     await repositories.identities.insert({ id: 'identity-1', canonicalUserId: 'author-1', normalizedEmail: 'author@example.com', telegramUserId: '1001', telegramUsername: 'author', createdAt: NOW, updatedAt: NOW, version: 0 });
     await repositories.settings.upsert({
       communityId: 'community-1',
-      emissionThreshold: 10, initialHops: 10, demurrageRubPerDay: 100,
+      emissionThreshold: 10, initialHops: 10, demurrageRubPerDay: 100, demurrageEnabled: false,
       nominalFloorRub: 100, defaultNominalRub: 100, autoAssignNominal: false,
       minimumListingsToBuy: 3, purchaseGateMode: 'nudge',
       requestTtlHours: 48, fulfillmentTtlDays: 7, confirmationTtlDays: 7,
@@ -217,6 +217,7 @@ describe('UZZ exchange-right emission', () => {
       emissionThreshold: 10,
       initialHops: 10,
       demurrageRubPerDay: 100,
+      demurrageEnabled: false,
       nominalFloorRub: 100,
       defaultNominalRub: 500,
       autoAssignNominal: true,
@@ -252,6 +253,7 @@ describe('UZZ exchange-right emission', () => {
       emissionThreshold: 10,
       initialHops: 10,
       demurrageRubPerDay: 100,
+      demurrageEnabled: false,
       nominalFloorRub: 100,
       defaultNominalRub: 500,
       autoAssignNominal: true,

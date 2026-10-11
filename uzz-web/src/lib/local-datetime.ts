@@ -1,5 +1,8 @@
 const LEAD_MS = 5 * 60_000;
 
+/** Minutes west of UTC, matching Date#getTimezoneOffset. Moscow is UTC+3 year-round. */
+export const MOSCOW_OFFSET_MINUTES = -180;
+
 export const DEAL_DEADLINE_NOT_FUTURE_MESSAGE =
   'Срок должен быть хотя бы на 5 минут позже текущего времени';
 
@@ -77,6 +80,15 @@ const MONTHS_RU = [
 export function formatDeadlineLabel(value: Date | string, offsetMinutes?: number): string {
   const parts = localPartsFromInstant(value, offsetMinutes);
   return `${parts.day} ${MONTHS_RU[parts.month - 1]} ${parts.year}, ${two(parts.hour)}:${two(parts.minute)}`;
+}
+
+export function formatMoscowDeadline(value: Date | string): string {
+  return `${formatDeadlineLabel(value, MOSCOW_OFFSET_MINUTES)} МСК`;
+}
+
+export function formatMoscowWhen(value: Date | string): string {
+  const parts = localPartsFromInstant(value, MOSCOW_OFFSET_MINUTES);
+  return `${parts.day} ${MONTHS_RU[parts.month - 1]}, ${two(parts.hour)}:${two(parts.minute)}`;
 }
 
 export function shiftLocalMonth(parts: Pick<LocalCalendarParts, 'year' | 'month'>, delta: number): { year: number; month: number } {

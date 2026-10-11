@@ -8,6 +8,7 @@ export const UzzSettingsPersistenceSchema = new Schema(
     emissionThreshold: { type: Number, required: true, default: 10 },
     initialHops: { type: Number, required: true, default: 10 },
     demurrageRubPerDay: { type: Number, required: true, default: 100 },
+    demurrageEnabled: { type: Boolean, required: true, default: false },
     nominalFloorRub: { type: Number, required: true, default: 100 },
     defaultNominalRub: { type: Number, required: true, default: 100 },
     autoAssignNominal: { type: Boolean, required: true, default: false },

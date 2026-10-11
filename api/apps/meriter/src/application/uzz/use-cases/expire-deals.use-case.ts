@@ -30,9 +30,9 @@ export class ExpireDealsUseCase {
       const candidateState = candidate.snapshot();
       const deadline = candidateState.status === 'requested'
         ? candidateState.requestExpiresAt
-        : candidateState.status === 'accepted'
-          ? candidateState.fulfillmentExpiresAt
-          : candidateState.confirmationExpiresAt;
+        : candidateState.status === 'completed_by_seller'
+          ? candidateState.confirmationExpiresAt
+          : null;
       if (!deadline) {
         skipped += 1;
         continue;

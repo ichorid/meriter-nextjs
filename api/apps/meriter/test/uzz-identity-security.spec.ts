@@ -298,7 +298,7 @@ describe('UZZ identity security', () => {
         telegramUsername: '@new_participant',
         now: new Date('2026-08-14T00:01:00.000Z'),
       }),
-    ).resolves.toEqual({ canonicalUserId: 'email-user-2' });
+    ).resolves.toEqual({ canonicalUserId: 'email-user-2', refreshed: false });
 
     expect(await repositories.identities.findByTelegramUserId('2002')).toMatchObject({
       canonicalUserId: 'email-user-2',
@@ -341,7 +341,7 @@ describe('UZZ identity security', () => {
         telegramUsername: 'email_first',
         now: new Date('2026-08-14T00:01:00.000Z'),
       }),
-    ).resolves.toEqual({ canonicalUserId: session.user.id });
+    ).resolves.toEqual({ canonicalUserId: session.user.id, refreshed: false });
   });
 
   it('rate-limits repeated invalid magic-link attempts inside the use case', async () => {

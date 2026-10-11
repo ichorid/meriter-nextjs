@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DealAcceptForm } from '@/components/deal-accept-form';
 import { DealRequestForm } from '@/components/deal-request-form';
-import { DEAL_DEADLINE_NOT_FUTURE_MESSAGE, formatDeadlineLabel } from '@/lib/local-datetime';
+import { DEAL_DEADLINE_NOT_FUTURE_MESSAGE, formatMoscowDeadline } from '@/lib/local-datetime';
 
 const right = { id: 'right-1', nominalRub: 5000, status: 'active', hopsLeft: 10 };
 
@@ -13,7 +13,7 @@ describe('DealAcceptForm local deadline', () => {
     vi.useRealTimers();
   });
 
-  it('prefills the calendar trigger from local calendar parts instead of a UTC ISO slice', () => {
+  it('prefills the calendar trigger in Moscow time instead of a UTC ISO slice', () => {
     vi.spyOn(Date.prototype, 'getTimezoneOffset').mockReturnValue(-420);
     render(
       <DealAcceptForm
@@ -26,7 +26,7 @@ describe('DealAcceptForm local deadline', () => {
     );
 
     expect(screen.getByRole('button', { name: /Согласованный срок/ })).toHaveTextContent(
-      formatDeadlineLabel('2026-08-14T11:00:00.000Z', -420),
+      formatMoscowDeadline('2026-08-14T11:00:00.000Z'),
     );
     expect(screen.queryByDisplayValue('2026-08-14T11:00')).not.toBeInTheDocument();
   });
@@ -46,7 +46,7 @@ describe('DealAcceptForm local deadline', () => {
       />,
     );
 
-    fireEvent.submit(screen.getByRole('button', { name: /Принять на 600 ₽/ }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: /Принять на 600/ }).closest('form')!);
     expect(onAccept).toHaveBeenCalledTimes(1);
     const deadline = onAccept.mock.calls[0][0] as Date;
     expect(deadline.toISOString()).toBe('2026-08-14T11:00:00.000Z');
@@ -66,7 +66,7 @@ describe('DealAcceptForm local deadline', () => {
       />,
     );
 
-    fireEvent.submit(screen.getByRole('button', { name: /Принять на 600 ₽/ }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: /Принять на 600/ }).closest('form')!);
     expect(screen.getByRole('alert')).toHaveTextContent(DEAL_DEADLINE_NOT_FUTURE_MESSAGE);
     expect(onAccept).not.toHaveBeenCalled();
   });

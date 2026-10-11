@@ -92,8 +92,8 @@ describe('ledgerRowView', () => {
       amount: -10,
       metadata: { from: 500, to: 490 },
     }));
-    expect(view.subtitle).toBe('Номинал 500 → 490 ₽');
-    expect(view.unitText).toBe('₽ номинала');
+    expect(view.subtitle).toBe('Номинал 500 → 490');
+    expect(view.unitText).toBe('номинала');
     expect(ledgerRowView(row({
       type: 'demurrage',
       amount: -10,

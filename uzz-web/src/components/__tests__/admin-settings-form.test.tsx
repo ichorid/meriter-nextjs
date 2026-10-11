@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AdminSettingsForm, type AdminSettings } from '@/components/admin-settings-form';
 import { dealStatusLabel } from '@/lib/utils';
 
-const settings: AdminSettings = { emissionThreshold: 10, initialHops: 10, demurrageRubPerDay: 100, nominalFloorRub: 100, minimumListingsToBuy: 3, purchaseGateMode: 'nudge', requestTtlHours: 48, fulfillmentTtlDays: 7, confirmationTtlDays: 7, notifyRightEmitted: true, notifyRequestLifecycle: true, notifyDealProgress: true, notifyDealClosed: true, groupAnnounceRightEmitted: true, groupAnnounceDealClosed: true };
+const settings: AdminSettings = { emissionThreshold: 10, initialHops: 10, demurrageEnabled: false, demurrageRubPerDay: 100, nominalFloorRub: 100, minimumListingsToBuy: 3, purchaseGateMode: 'nudge', requestTtlHours: 48, fulfillmentTtlDays: 7, confirmationTtlDays: 7, notifyRightEmitted: true, notifyRequestLifecycle: true, notifyDealProgress: true, notifyDealClosed: true, groupAnnounceRightEmitted: true, groupAnnounceDealClosed: true };
 
 describe('AdminSettingsForm', () => {
   it('requires explicit confirmation for floor and TTL changes', async () => {
@@ -57,7 +57,7 @@ describe('AdminSettingsForm', () => {
     await user.click(screen.getByRole('button', { name: 'Сохранить настройки' }));
 
     expect(onSave).not.toHaveBeenCalled();
-    expect(screen.getByText('Введите целое число рублей')).toBeVisible();
+    expect(screen.getByText('Введите целое число')).toBeVisible();
   });
 });
 

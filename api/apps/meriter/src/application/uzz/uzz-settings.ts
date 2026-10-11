@@ -5,6 +5,7 @@ export const UZZ_SETTINGS_DEFAULTS = {
   emissionThreshold: 10,
   initialHops: 10,
   demurrageRubPerDay: 100,
+  demurrageEnabled: false,
   nominalFloorRub: 100,
   defaultNominalRub: 100,
   autoAssignNominal: false,
@@ -80,6 +81,7 @@ export function validateSettingsPatch(patch: UzzSettingsPatch): void {
     'groupAnnounceRightEmitted',
     'groupAnnounceDealClosed',
     'autoAssignNominal',
+    'demurrageEnabled',
   ] as const) {
     if (patch[key] !== undefined && typeof patch[key] !== 'boolean') {
       throw new UzzValidationError('SETTINGS_VALUE_INVALID', 'SETTINGS_VALUE_INVALID', {

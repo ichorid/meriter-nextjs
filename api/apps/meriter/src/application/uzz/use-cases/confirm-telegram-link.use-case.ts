@@ -23,7 +23,7 @@ export class ConfirmTelegramLinkUseCase {
     telegramUsername: string | null;
     linkedUserId?: string;
     now?: Date;
-  }): Promise<{ canonicalUserId: string }> {
+  }): Promise<{ canonicalUserId: string; refreshed: boolean }> {
     const now = input.now ?? new Date();
     const tokenHash = this.tokenHasher.hash(input.token);
     await consumeUzzRateLimit(this.rateLimiter, {
@@ -50,6 +50,7 @@ export class ConfirmTelegramLinkUseCase {
         throw new UzzIdentityConflictError('IDENTITY_CONFLICT');
       }
 
+      const refreshed = Boolean(identity.telegramUserId);
       identity.telegramUserId = input.telegramUserId;
       identity.telegramUsername = normalizeTelegramUsername(input.telegramUsername);
       identity.updatedAt = now;
@@ -73,7 +74,7 @@ export class ConfirmTelegramLinkUseCase {
       const aliases = await repositories.identities.listAliases(identity.id);
       ownerIds.push(...aliases.map((entry) => entry.aliasUserId));
       await releaseHoldingRightsAfterIdentityReady(repositories, ownerIds, now);
-      return { canonicalUserId: identity.canonicalUserId };
+      return { canonicalUserId: identity.canonicalUserId, refreshed };
     });
   }
 }

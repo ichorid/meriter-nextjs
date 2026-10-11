@@ -133,7 +133,7 @@ function subtitleFor(row: LedgerRowInput, kind: string): string | undefined {
       const from = metaNumber(row.metadata, 'from');
       const to = metaNumber(row.metadata, 'to');
       if (from === undefined || to === undefined) return undefined;
-      return `Номинал ${from.toLocaleString('ru-RU')} → ${to.toLocaleString('ru-RU')} ₽`;
+      return `Номинал ${from.toLocaleString('ru-RU')} → ${to.toLocaleString('ru-RU')}`;
     }
     default:
       return undefined;
@@ -147,7 +147,7 @@ export function ledgerRowView(row: LedgerRowInput): LedgerRowView {
   let unitText: string | undefined;
   if (amountText) {
     if (MERIT_UNIT_TYPES.has(row.type) || MERIT_UNIT_TYPES.has(kind)) unitText = meritsWord(row.amount);
-    else if (NOMINAL_UNIT_TYPES.has(row.type) || NOMINAL_UNIT_TYPES.has(kind)) unitText = '₽ номинала';
+    else if (NOMINAL_UNIT_TYPES.has(row.type) || NOMINAL_UNIT_TYPES.has(kind)) unitText = 'номинала';
   }
 
   return {

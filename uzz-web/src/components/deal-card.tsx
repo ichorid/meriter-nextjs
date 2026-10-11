@@ -2,8 +2,8 @@
 import { ReactNode } from 'react';
 import { Badge, Card, userContentClass } from '@/components/ui';
 import { DealTimeline } from '@/components/deal-timeline';
-import { formatDeadlineLabel } from '@/lib/local-datetime';
-import { cn, dealNeedsAction, dealStatusLabel, formatDeadline, userLabelParts } from '@/lib/utils';
+import { formatMoscowDeadline } from '@/lib/local-datetime';
+import { cn, dealNeedsAction, dealStatusLabel, formatAmount, formatDeadline, userLabelParts } from '@/lib/utils';
 
 export interface DealContact { telegramUserId?: string | null; telegramUsername?: string | null }
 
@@ -36,7 +36,7 @@ export function DealCard({ deal, children }: { deal: DealView; children?: ReactN
   return <Card className={dealNeedsAction(deal) ? 'ring-2 ring-stitch-accent/50' : undefined}>
     <div className="flex min-w-0 flex-wrap items-start justify-between gap-3"><div className="min-w-0"><h2 className={cn('text-lg font-black', userContentClass)}>{deal.listingSnapshot.title}</h2><p className={cn('mt-1 text-sm text-stitch-muted', userContentClass)}>{deal.myRole === 'buyer' ? 'Вы заказчик' : 'Вы исполнитель'} · {counterparty.name}{counterparty.username ? <span className="text-xs text-stitch-muted/70"> @{counterparty.username}</span> : null}</p></div><Badge tone={dealNeedsAction(deal) ? 'accent' : deal.status === 'closed' ? 'ok' : 'neutral'}>{dealStatusLabel(deal.status, deal.myRole)}</Badge></div>
     <div className="mt-5"><DealTimeline status={deal.status} dates={[deal.requestedAt, deal.acceptedAt, deal.completedBySellerAt, deal.closedAt]} /></div>
-    <dl className="mt-5 grid min-w-0 gap-3 rounded-xl bg-stitch-canvas/50 p-4 text-sm sm:grid-cols-2"><div><dt className="text-xs text-stitch-muted">Цена услуги</dt><dd className="font-semibold">{deal.listingSnapshot.priceRub.toLocaleString('ru-RU')} ₽</dd></div><div><dt className="text-xs text-stitch-muted">Номинал сделки</dt><dd className="font-semibold">{displayedNominal?.toLocaleString('ru-RU') ?? 'будет зафиксирован при принятии'}{displayedNominal != null ? ' ₽' : ''}</dd>{deal.status === 'closed' ? <p className="mt-1 text-xs text-stitch-muted">Банк передан целиком, без сдачи.</p> : null}</div><div className="min-w-0 sm:col-span-2"><dt className="text-xs text-stitch-muted">Сообщение</dt><dd className={cn('whitespace-pre-wrap leading-6', userContentClass)}>{deal.requestMessage}</dd></div>{feeText ? <div className="sm:col-span-2"><dt className="text-xs text-stitch-muted">Комиссия</dt><dd>{feeText}</dd></div> : null}{deadline ? <div><dt className="text-xs text-stitch-muted">Текущий этап</dt><dd>{deadline}</dd></div> : null}{deal.agreedDeadlineAt ? <div><dt className="text-xs text-stitch-muted">Согласованный срок</dt><dd>{formatDeadlineLabel(deal.agreedDeadlineAt)}</dd></div> : null}</dl>
+    <dl className="mt-5 grid min-w-0 gap-3 rounded-xl bg-stitch-canvas/50 p-4 text-sm sm:grid-cols-2"><div><dt className="text-xs text-stitch-muted">Цена услуги</dt><dd className="font-semibold">{formatAmount(deal.listingSnapshot.priceRub)}</dd></div><div><dt className="text-xs text-stitch-muted">Номинал сделки</dt><dd className="font-semibold">{displayedNominal != null ? formatAmount(displayedNominal) : 'будет зафиксирован при принятии'}</dd>{deal.status === 'closed' ? <p className="mt-1 text-xs text-stitch-muted">Банк передан целиком, без сдачи.</p> : null}</div>{deal.requestMessage.trim() ? <div className="min-w-0 sm:col-span-2"><dt className="text-xs text-stitch-muted">Сообщение</dt><dd className={cn('whitespace-pre-wrap leading-6', userContentClass)}>{deal.requestMessage}</dd></div> : null}{feeText ? <div className="sm:col-span-2"><dt className="text-xs text-stitch-muted">Комиссия</dt><dd>{feeText}</dd></div> : null}{deadline ? <div><dt className="text-xs text-stitch-muted">Текущий этап</dt><dd>{deadline}</dd></div> : null}{deal.agreedDeadlineAt ? <div><dt className="text-xs text-stitch-muted">Согласованный срок</dt><dd>{formatMoscowDeadline(deal.agreedDeadlineAt)}</dd></div> : null}</dl>
     {contact && CONTACT_VISIBLE_STATUSES.includes(deal.status) ? <ContactLink contact={contact} /> : null}
     {children ? <div className="mt-5 border-t border-stitch-border pt-5">{children}</div> : null}
   </Card>;
@@ -50,8 +50,5 @@ function ContactLink({ contact }: { contact: DealContact }) {
     return <a className={cn('mt-4', contactLinkClass)} href={`https://t.me/${username}`} target="_blank" rel="noreferrer">Написать @{username}</a>;
   }
   if (!contact.telegramUserId) return null;
-  return <div className="mt-4 space-y-1">
-    <a className={contactLinkClass} href={`tg://user?id=${contact.telegramUserId}`}>Открыть чат в Telegram</a>
-    <p className="text-xs text-stitch-muted">Ссылка открывается в приложении Telegram: у собеседника не задан публичный @username.</p>
-  </div>;
+  return <p className="mt-4 text-sm leading-6 text-stitch-muted">У собеседника нет публичного имени в Telegram. Пусть задаст @username и нажмёт «Обновить Telegram» в профиле.</p>;
 }

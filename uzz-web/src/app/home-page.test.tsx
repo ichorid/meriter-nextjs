@@ -126,7 +126,7 @@ describe('HomePage listings and forecast', () => {
     window.history.replaceState({}, '', '/');
     render(<HomePage />);
 
-    expect(screen.queryByText('4900 ₽')).not.toBeInTheDocument();
-    expect(screen.getByText('—')).toBeVisible();
+    expect(screen.queryByText('4 900')).not.toBeInTheDocument();
+    expect(screen.queryByText('Завтра')).not.toBeInTheDocument();
   });
 });

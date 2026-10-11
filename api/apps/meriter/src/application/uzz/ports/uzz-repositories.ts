@@ -8,6 +8,7 @@ export interface UzzSettingsRecord {
   emissionThreshold: number;
   initialHops: number;
   demurrageRubPerDay: number;
+  demurrageEnabled: boolean;
   nominalFloorRub: number;
   defaultNominalRub: number;
   autoAssignNominal: boolean;

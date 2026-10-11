@@ -58,7 +58,7 @@ export const UZZ_ERROR_MESSAGES: Record<string, string> = {
   PURCHASE_GATE_BLOCKED: 'Сначала добавьте свои услуги',
   PURCHASE_GATE_INPUT_INVALID: 'Некорректные условия взаимности. Обновите страницу',
 
-  RUBLES_INVALID: 'Укажите положительную цену целым числом рублей',
+  RUBLES_INVALID: 'Укажите положительную цену целым числом',
   MERIT_AMOUNT_INVALID: 'Сумма заслуг должна быть целым положительным числом',
   DEAL_DEADLINE_NOT_FUTURE: DEAL_DEADLINE_NOT_FUTURE_MESSAGE,
   DEAL_REQUEST_MESSAGE_INVALID: 'Напишите исполнителю, что именно вам нужно',

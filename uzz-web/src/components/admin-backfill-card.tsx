@@ -65,7 +65,7 @@ export function AdminBackfillCard({
                 <strong>{preview.data.owners}</strong> участникам. Порог:{' '}
                 {preview.data.emissionThreshold} заслуг. Автономинал:{' '}
                 {preview.data.autoAssignNominal
-                  ? `вкл, ${preview.data.defaultNominalRub.toLocaleString('ru-RU')} ₽`
+                  ? `вкл, ${preview.data.defaultNominalRub.toLocaleString('ru-RU')}`
                   : 'выкл, назначит администратор'}
                 . Уже есть банк: {preview.data.alreadyHaveBank}.
                 {preview.data.truncated ? ' Показаны первые 500 дел.' : ''}

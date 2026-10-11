@@ -239,7 +239,6 @@ function createRepositories(
           ...(afterId ? { id: { $gt: afterId } } : {}),
           $or: [
             { status: 'requested', requestExpiresAt: { $lte: now } },
-            { status: 'accepted', fulfillmentExpiresAt: { $lte: now } },
             { status: 'completed_by_seller', confirmationExpiresAt: { $lte: now } },
           ],
         }).sort({ id: 1 }).limit(limit).lean(),
@@ -599,6 +598,7 @@ function mapSettings(raw: unknown): UzzSettingsRecord {
     emissionThreshold: Number(record.emissionThreshold ?? 10),
     initialHops: Number(record.initialHops ?? record.bankInitialHops ?? 10),
     demurrageRubPerDay: Number(record.demurrageRubPerDay ?? 100),
+    demurrageEnabled: record.demurrageEnabled === true,
     nominalFloorRub: Number(record.nominalFloorRub ?? 100),
     defaultNominalRub: Number(record.defaultNominalRub ?? record.nominalFloorRub ?? 100),
     autoAssignNominal: record.autoAssignNominal === true,

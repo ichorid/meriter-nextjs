@@ -93,7 +93,7 @@ export function AdminNominalSettings({
           />
           Автоназначение номинала
         </label>
-        <Field label="Номинал по умолчанию, ₽" hint={`Не ниже нижнего номинала (${floor} ₽).`}>
+        <Field label="Номинал по умолчанию" hint={`Не ниже нижнего номинала (${floor}).`}>
           <NumberField
             min={floor}
             max={1_000_000_000}

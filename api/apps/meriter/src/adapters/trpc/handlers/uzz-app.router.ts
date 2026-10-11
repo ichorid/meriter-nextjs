@@ -208,6 +208,7 @@ export const uzzAppRouter = router({
               emissionThreshold: z.number().int().optional(),
               initialHops: z.number().int().optional(),
               demurrageRubPerDay: z.number().int().optional(),
+              demurrageEnabled: z.boolean().optional(),
               nominalFloorRub: z.number().int().optional(),
               defaultNominalRub: z.number().int().optional(),
               autoAssignNominal: z.boolean().optional(),
@@ -381,7 +382,7 @@ export const uzzAppRouter = router({
           communityId: z.string().min(1),
           lotId: z.string().min(1),
           bankId: z.string().min(1),
-          requestMessage: z.string().trim().min(1).max(1000),
+          requestMessage: z.string().trim().max(1000),
           requestedDeadlineAt: optionalDealDeadlineInput,
         }),
       )

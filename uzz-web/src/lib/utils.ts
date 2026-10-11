@@ -3,7 +3,7 @@ import { twMerge } from 'tailwind-merge';
 
 export function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)); }
 
-export const INTEGER_RUBLES_MESSAGE = 'Введите целое число рублей';
+export const INTEGER_RUBLES_MESSAGE = 'Введите целое число';
 
 const DEAL_STATUS_LABELS: Record<string, string> = {
   requested: 'Ждёт ответа',
@@ -64,11 +64,15 @@ export function userLabelText(
   return username ? `${name} (@${username})` : name;
 }
 
+export function formatAmount(value: number): string {
+  return value.toLocaleString('ru-RU');
+}
+
 export function formatSignedRub(value: number): string {
-  const abs = Math.abs(value).toLocaleString('ru-RU');
-  if (value > 0) return `+${abs} ₽`;
-  if (value < 0) return `−${abs} ₽`;
-  return '0 ₽';
+  const abs = formatAmount(Math.abs(value));
+  if (value > 0) return `+${abs}`;
+  if (value < 0) return `−${abs}`;
+  return '0';
 }
 
 export function parseIntegerRubles(raw: string): number | null {
@@ -87,7 +91,7 @@ export function ledgerTypeLabel(type: string): string {
 
 export function bankHeadline(bank: { status: string; nominalRub: number | null; createdAt?: Date | string }): string {
   const since = bank.createdAt ? ` · с ${formatWhen(bank.createdAt)}` : '';
-  return bank.nominalRub == null ? `Банк на обмен · номинал ещё не назначен${since}` : `Банк на обмен · сегодня до ${bank.nominalRub.toLocaleString('ru-RU')} ₽${since}`;
+  return bank.nominalRub == null ? `Банк на обмен · номинал ещё не назначен${since}` : `Банк на обмен · до ${formatAmount(bank.nominalRub)}${since}`;
 }
 export function bankHopsLabel(hopsLeft: number): string { return `Осталось переходов: ${Math.max(0, hopsLeft)}`; }
 
